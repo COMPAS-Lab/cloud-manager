@@ -27,3 +27,7 @@ To report a bug or request a feature in Cloud Manager, please [open a GitHub Iss
 
 All code located in this repository is distributed under the terms of the [APLv2
 license](LICENSE).
+# NodeStack
+
+manager: Frontend adapted from Linode's Cloud Manager
+openstack-proxy: Proxy used to forward requests to OpenStack server
