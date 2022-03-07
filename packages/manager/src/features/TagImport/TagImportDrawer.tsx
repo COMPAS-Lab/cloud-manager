@@ -81,7 +81,6 @@ export const TagImportDrawer: React.FC<CombinedProps> = (props) => {
   };
 
   const linodeGroups = getGroupImportList(linodes);
-
   return (
     <Drawer title="Import Display Groups as Tags" open={open} onClose={close}>
       <Grid container direction={'column'}>

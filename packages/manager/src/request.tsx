@@ -116,7 +116,6 @@ baseRequest.interceptors.request.use((config) => {
   const token = ACCESS_TOKEN || (state.authentication?.token ?? '');
 
   const url = getURL(config);
-
   return {
     ...config,
     url,

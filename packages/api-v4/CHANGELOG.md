@@ -79,7 +79,6 @@
 ## [2021-11-30] - v0.64.0
 
 ### Added:
-
 - getLinodeFirewalls method
 
 ## [2021-11-15] - v0.63.0
@@ -114,14 +113,12 @@
 ## [2021-10-20] - v0.60.0
 
 ### Changed:
-
 Change default export from /lib to root
 Add build config for Node.js
 
 ## [2021-10-05] - v0.59.0
 
 ### Added:
-
 - AutoscaleNodePool
 - AutoscaleNodePoolRequest
 
@@ -153,13 +150,11 @@ deletePaymentMethod
 addPromotion
 
 ### Changed:
-
 getLinodeTypes
 
 ## Validation Package
 
 ### Changed:
-
 PaymentMethodSchema
 PromoCodeSchema
 createDomainSchema
@@ -178,7 +173,6 @@ CreateVolumeSchema
 ## [2021-06-28] - v0.54.0
 
 ### Changed:
-
 - Removed ‘ready’ and ‘completed’ statuses from AccountMaintenance interface in account/types.ts
 
 ## [2021-05-18] - v0.53.0
@@ -245,7 +239,6 @@ CreateVolumeSchema
 ## [2021-02-22] - v0.43.0
 
 ### Changed
-
 - Update TypeScript version to v4.1.5
 - Adjust types for rescueLinode to work with TypeScript
 
@@ -269,7 +262,6 @@ Update Node version from 10.16 to 14.15.4
 - Method for recycleNode
 
 ### Changed:
-
 - Update getKubernetesVersions
 - Update FirewallRuleTypeSchema
 

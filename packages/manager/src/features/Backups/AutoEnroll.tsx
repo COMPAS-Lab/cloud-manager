@@ -46,7 +46,6 @@ type CombinedProps = Props & WithStyles<ClassNames>;
 
 export const AutoEnroll: React.FC<CombinedProps> = (props) => {
   const { classes, enabled, error, toggle } = props;
-
   return (
     <Paper className={classes.root}>
       {error && (

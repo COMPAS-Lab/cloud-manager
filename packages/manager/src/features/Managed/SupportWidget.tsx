@@ -29,7 +29,6 @@ export const SupportWidget: React.FC<CombinedProps> = (props) => {
       state: { attachmentErrors },
     });
   };
-
   return (
     <>
       <Button
