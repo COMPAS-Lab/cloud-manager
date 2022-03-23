@@ -1,6 +1,6 @@
 import { baseRequest } from '@linode/api-v4/lib/request';
 import { APIError } from '@linode/api-v4/lib/types';
-import { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as React from 'react';
 import { AccountActivationError } from 'src/components/AccountActivation';
 import { SupportError } from './components/SupportError';
@@ -123,7 +123,13 @@ baseRequest.interceptors.request.use((config) => {
   const token = ACCESS_TOKEN || (state.authentication?.token ?? '');
 
   const url = getURL(config);
-
+  if (!token) {
+    throw new axios.Cancel('No token found');
+  }
+  console.log(url);
+  if (url && url.includes('gravatar')) {
+    throw new axios.Cancel('Cannot fetch gravatar');
+  }
   return {
     ...config,
     url,
