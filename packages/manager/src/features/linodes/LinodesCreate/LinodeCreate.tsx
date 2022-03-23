@@ -583,6 +583,7 @@ export class LinodeCreate extends React.PureComponent<
               regions={regionsData!}
               handleSelection={this.props.updateRegionID}
               selectedID={this.props.selectedRegionID}
+              copy="Determine the best location for your server."
               updateFor={[this.props.selectedRegionID, regionsData, errors]}
               disabled={userCannotCreateLinode}
               helperText={this.props.regionHelperText}
@@ -648,7 +649,7 @@ export class LinodeCreate extends React.PureComponent<
               requestKeys={requestKeys}
             />
           )}
-          <AddonsPanel
+          {/* <AddonsPanel
             data-qa-addons-panel
             backups={this.props.backupsEnabled}
             accountBackups={accountBackupsEnabled}
@@ -666,47 +667,41 @@ export class LinodeCreate extends React.PureComponent<
             labelError={hasErrorFor['interfaces[1].label']}
             ipamError={hasErrorFor['interfaces[1].ipam_address']}
             createType={this.props.createType}
-          />
-          <CheckoutSummary
+          /> */}
+        </Grid>
+        <Grid item className="mlSidebar">
+          <CheckoutBar
             data-qa-checkout-bar
-            heading={`Summary ${this.props.label}`}
-            displaySections={displaySections}
+            heading="Linode Summary"
+            calculatedPrice={calculatedPrice}
+            isMakingRequest={formIsSubmitting}
+            disabled={
+              formIsSubmitting ||
+              userCannotCreateLinode ||
+              (showAgreement && !signedAgreement)
+            }
+            onDeploy={this.createLinode}
+            submitText="Create Linode"
+            footer={
+              // <SMTPRestrictionText>
+              //   {({ text }) => <div style={{ marginTop: 16 }}>{text}</div>}
+              // </SMTPRestrictionText>
+            }
+            agreement={
+              showAgreement ? (
+                <EUAgreementCheckbox
+                  checked={signedAgreement}
+                  onChange={handleAgreementChange}
+                />
+              ) : undefined
+            }
           >
-            {this.props.createType === 'fromApp' &&
-            this.props.documentation.length > 0 ? (
+            <DisplaySectionList displaySections={displaySections} />
+          </CheckoutBar>
+          {this.props.createType === 'fromApp' &&
+            this.props.documentation.length > 0 && (
               <DocsSidebar docs={this.props.documentation} />
-            ) : null}
-          </CheckoutSummary>
-          <Box
-            display="flex"
-            justifyContent={showAgreement ? 'space-between' : 'flex-end'}
-            alignItems="center"
-            flexWrap="wrap"
-            className={classes.buttonGroup}
-          >
-            {showAgreement ? (
-              <EUAgreementCheckbox
-                checked={signedAgreement}
-                onChange={handleAgreementChange}
-                className={classes.agreement}
-                centerCheckbox
-              />
-            ) : null}
-            <Button
-              data-qa-deploy-linode
-              buttonType="primary"
-              onClick={this.createLinode}
-              loading={formIsSubmitting}
-              className={classes.createButton}
-              disabled={
-                formIsSubmitting ||
-                userCannotCreateLinode ||
-                (showAgreement && !signedAgreement)
-              }
-            >
-              Create Linode
-            </Button>
-          </Box>
+            )}
         </Grid>
       </form>
     );
