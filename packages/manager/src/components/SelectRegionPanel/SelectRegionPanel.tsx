@@ -76,7 +76,7 @@ const SelectRegionPanel: React.FC<Props & WithStyles<ClassNames>> = (props) => {
       <Typography variant="h2" data-qa-tp="Region">
         Region
       </Typography>
-      {regionHelperText(() => sendLinodeCreateDocsEvent('Speedtest Link'))}
+      {/* regionHelperText(() => sendLinodeCreateDocsEvent('Speedtest Link')) */}
       <RegionSelect
         errorText={error}
         disabled={disabled}
