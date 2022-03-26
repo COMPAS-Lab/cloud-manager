@@ -44,7 +44,7 @@ export const LinodesDetailContainer: React.FC<Props> = (props) => {
 
   React.useEffect(() => {
     // Unconditionally request data for the Linode being viewed
-    dispatch(_getLinode({ linodeId: +linodeId })).catch((_) => null);
+    dispatch(_getLinode({ linodeId: linodeId as any })).catch((_) => null);
   }, [linodeId, dispatch]);
 
   React.useEffect(() => {
@@ -60,11 +60,11 @@ export const LinodesDetailContainer: React.FC<Props> = (props) => {
 
     // Make sure we've requested config, disk, and interface information for this Linode
     if (shouldRequestEntity(configs)) {
-      dispatch(getAllLinodeConfigs({ linodeId: +linodeId }));
+      dispatch(getAllLinodeConfigs({ linodeId: linodeId as any }));
     }
 
     if (shouldRequestEntity(disks)) {
-      dispatch(getAllLinodeDisks({ linodeId: +linodeId }));
+      dispatch(getAllLinodeDisks({ linodeId: linodeId as any }));
     }
   }, [dispatch, configs, disks, showVlans, linodeId, linodes]);
 
