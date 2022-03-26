@@ -33,7 +33,7 @@ import useStyles from './PrimaryNav.styles';
 import { linkIsActive } from './utils';
 
 type NavEntity =
-  | 'Linodes'
+  | 'Servers'
   | 'Volumes'
   | 'NodeBalancers'
   | 'Domains'
