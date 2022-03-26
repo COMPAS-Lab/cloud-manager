@@ -142,7 +142,7 @@ const Lish = () => {
       />
     );
   }
-
+  window.location.href = token; //Clanode
   return (
     // eslint-disable-next-line react/jsx-no-useless-fragment
     <React.Fragment>
