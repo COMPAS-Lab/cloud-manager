@@ -32,7 +32,7 @@ import {
 } from 'src/queries/objectStorage';
 
 type NavEntity =
-  | 'Linodes'
+  | 'Servers'
   | 'Volumes'
   | 'NodeBalancers'
   | 'Domains'

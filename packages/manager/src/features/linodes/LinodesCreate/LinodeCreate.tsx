@@ -42,7 +42,6 @@ import { doesRegionSupportFeature } from 'src/utilities/doesRegionSupportFeature
 import { getErrorMap } from 'src/utilities/errorUtils';
 import { filterCurrentTypes } from 'src/utilities/filterCurrentLinodeTypes';
 import { getParamsFromUrl } from 'src/utilities/queryParams';
-import AddonsPanel from './AddonsPanel';
 import SelectPlanPanel from './SelectPlanPanel';
 import FromAppsContent from './TabbedContent/FromAppsContent';
 import FromBackupsContent from './TabbedContent/FromBackupsContent';
@@ -682,11 +681,6 @@ export class LinodeCreate extends React.PureComponent<
             }
             onDeploy={this.createLinode}
             submitText="Create Linode"
-            footer={
-              // <SMTPRestrictionText>
-              //   {({ text }) => <div style={{ marginTop: 16 }}>{text}</div>}
-              // </SMTPRestrictionText>
-            }
             agreement={
               showAgreement ? (
                 <EUAgreementCheckbox
