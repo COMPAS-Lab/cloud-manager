@@ -17,11 +17,6 @@ import {
 import Typography from 'src/components/core/Typography';
 import ErrorState from 'src/components/ErrorState';
 import NotFound from 'src/components/NotFound';
-import SafeTabPanel from 'src/components/SafeTabPanel';
-import TabLinkList from 'src/components/TabLinkList';
-import { Tab } from 'src/components/TabLinkList/TabLinkList';
-import Glish from './Glish';
-import Weblish from './Weblish';
 
 type ClassNames = 'tabs' | 'progress' | 'notFound' | 'lish';
 
