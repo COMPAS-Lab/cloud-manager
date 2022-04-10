@@ -813,7 +813,7 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
   };
 
   render() {
-    const { backupsEnabled, permissions, type } = this.props;
+    const { backupsEnabled, permissions } = this.props;
 
     if (this.props.backups.error) {
       /** @todo remove promise loader and source backups from Redux */
@@ -822,8 +822,8 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
       );
     }
 
-    const backupsMonthlyPrice =
-      type.response?.addons?.backups?.price?.monthly ?? 0;
+    const backupsMonthlyPrice = 0;
+    // type?.response.addons.backups.price.monthly ?? 0;
 
     return (
       <div>
