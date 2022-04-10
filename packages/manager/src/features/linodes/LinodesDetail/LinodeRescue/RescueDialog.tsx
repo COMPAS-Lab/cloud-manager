@@ -1,7 +1,7 @@
 import { rescueLinode } from '@linode/api-v4/lib/linodes';
 import { APIError } from '@linode/api-v4/lib/types';
 import { useSnackbar } from 'notistack';
-import { assoc, clamp, equals, pathOr } from 'ramda';
+import { assoc, equals } from 'ramda';
 import * as React from 'react';
 import { connect } from 'react-redux';
 import { RouteComponentProps } from 'react-router-dom';
@@ -96,39 +96,10 @@ const LinodeRescue: React.FC<CombinedProps> = (props) => {
   const classes = useStyles();
 
   const linode = useExtendedLinode(linodeId);
-  const linodeRegion = linode?.region;
   const linodeLabel = linode?.label;
   const linodeDisks = linode?._disks.map((disk) =>
     assoc('_id', `disk-${disk.id}`, disk)
   );
-
-  // We need the API to allow us to filter on `linode_id`
-  // const { data: volumes } = useAllVolumesQuery(
-  //   {},
-  //   {
-  //     '+or': [
-  //       { linode_id: props.linodeId },
-  //       { linode_id: null, region: linodeRegion },
-  //     ],
-  //   },
-  //   open
-  // );
-
-  const { data: volumes, error: volumesError } = useAllVolumesQuery(
-    {},
-    { region: linodeRegion },
-    open
-  );
-
-  const filteredVolumes =
-    volumes?.filter((volume) => {
-      // whether volume is not attached to any Linode
-      const volumeIsUnattached = volume.linode_id === null;
-      // whether volume is attached to the current Linode we're viewing
-      const volumeIsAttachedToCurrentLinode = volume.linode_id === linodeId;
-
-      return volumeIsAttachedToCurrentLinode || volumeIsUnattached;
-    }) ?? [];
 
   const [deviceMap, initialCounter] = getDefaultDeviceMapAndCounter(
     linodeDisks ?? []
@@ -136,7 +107,6 @@ const LinodeRescue: React.FC<CombinedProps> = (props) => {
 
   const prevDeviceMap = usePrevious(deviceMap);
 
-  const [counter, setCounter] = React.useState<number>(initialCounter);
   const [rescueDevices, setRescueDevices] = React.useState<DevicesAsStrings>(
     deviceMap
   );
@@ -147,20 +117,10 @@ const LinodeRescue: React.FC<CombinedProps> = (props) => {
 
   React.useEffect(() => {
     if (!equals(deviceMap, prevDeviceMap)) {
-      setCounter(initialCounter);
       setRescueDevices(deviceMap);
       setAPIError('');
     }
   }, [open, initialCounter, deviceMap, prevDeviceMap]);
-
-  const devices = {
-    disks: linodeDisks ?? [],
-    volumes:
-      filteredVolumes.map((volume) => ({
-        ...volume,
-        _id: `volume-${volume.id}`,
-      })) ?? [],
-  };
 
   const unauthorized = linode?._permissions === 'read_only';
   const disabled = unauthorized;
@@ -178,17 +138,6 @@ const LinodeRescue: React.FC<CombinedProps> = (props) => {
         setAPIError(errorResponse[0].reason);
       });
   };
-
-  const incrementCounter = () => {
-    setCounter(clamp(1, 6, counter + 1));
-  };
-
-  /** string format is type-id */
-  const onChange = (slot: string, _id: string) =>
-    setRescueDevices((rescueDevices) => ({
-      ...rescueDevices,
-      [slot]: _id,
-    }));
 
   return (
     <Dialog
