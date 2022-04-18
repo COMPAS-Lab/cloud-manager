@@ -636,10 +636,11 @@ export default ImagesLanding;
 
 const getImagesWithEvents = (images: Image[], events: Event[]) => {
   const itemsById = listToItemsByID(images ?? []);
+  const flag = false;
   return Object.values(itemsById).reduce(
     (accum, thisImage: Image) =>
       produce(accum, (draft: any) => {
-        if (!thisImage.is_public) {
+        if (!thisImage.is_public && flag) {
           // NB: the secondary_entity returns only the numeric portion of the image ID so we have to interpolate.
           const matchingEvent = events.find(
             (thisEvent) =>
