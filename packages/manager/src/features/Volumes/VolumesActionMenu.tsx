@@ -113,12 +113,12 @@ export const VolumesActionMenu = (props: Props) => {
         handleResize();
       },
     },
-    {
-      title: 'Clone',
-      onClick: () => {
-        handleClone();
-      },
-    },
+    // {
+    //   title: 'Clone',
+    //   onClick: () => {
+    //     handleClone();
+    //   },
+    // },
   ];
 
   if (!attached && isVolumesLanding) {
