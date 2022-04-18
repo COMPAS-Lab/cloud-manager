@@ -68,10 +68,10 @@ export const VolumesActionMenu = (props: Props) => {
     openForResize(volumeId, size, label);
   };
 
-  const handleClone = () => {
-    const { openForClone, volumeId, label, size, regionID } = props;
-    openForClone(volumeId, label, size, regionID);
-  };
+  // const handleClone = () => {
+  //   const { openForClone, volumeId, label, size, regionID } = props;
+  //   openForClone(volumeId, label, size, regionID);
+  // };
 
   const handleAttach = () => {
     const { handleAttach, volumeId, label, regionID } = props;
