@@ -8,15 +8,12 @@ import { Region } from '@linode/api-v4/lib/regions';
 import { APIError } from '@linode/api-v4/lib/types';
 import { stringify } from 'qs';
 import * as React from 'react';
-import { useHistory } from 'react-router-dom';
 import ActionMenu, { Action } from 'src/components/ActionMenu';
 import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
 import { Action as BootAction } from 'src/features/linodes/PowerActionsDialogOrDrawer';
 import { DialogType } from 'src/features/linodes/types';
 import { lishLaunch } from 'src/features/Lish/lishUtils';
-import { useTypes } from 'src/hooks/useTypes';
 import { useGrants } from 'src/queries/profile';
-import { useRegionsQuery } from 'src/queries/regions';
 import { getPermissionsForLinode } from 'src/store/linodes/permissions/permissions.selector';
 import { ExtendedType } from 'src/store/linodeType/linodeType.reducer';
 import {
@@ -77,7 +74,6 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
   const {
     linodeId,
     linodeLabel,
-    linodeRegion,
     linodeStatus,
     linodeType,
     openPowerActionDialog,
@@ -88,9 +84,6 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
   const theme = useTheme<Theme>();
   const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const { types } = useTypes();
-  const history = useHistory();
-  const regions = useRegionsQuery().data ?? [];
   const isBareMetalInstance = linodeType?.class === 'metal';
 
   const { data: grants } = useGrants();
@@ -182,7 +175,28 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
           ...readOnlyProps,
         }
       : null,
-    inListView || matchesSmDown
+    // inLandingListView || inEntityView || inTableContext
+    //   ? {
+    //       title: 'Hard Reboot',
+    //       className: classes.link,
+    //       disabled:
+    //         linodeStatus !== 'running' ||
+    //         (!hasMadeConfigsRequest && matchesSmDown) ||
+    //         readOnly ||
+    //         Boolean(configsError?.[0]?.reason),
+    //       tooltip: readOnly
+    //         ? noPermissionTooltipText
+    //         : configsError
+    //         ? 'Could not load configs for this Linode.'
+    //         : undefined,
+    //       onClick: () => {
+    //         sendLinodeActionMenuItemEvent('Reboot Linode');
+    //         openPowerActionDialog('Reboot', linodeId, linodeLabel, configs);
+    //       },
+    //       ...readOnlyProps,
+    //     }
+    //   : null,
+    inTableContext || matchesSmDown
       ? {
           title: 'Launch LISH Console',
           onClick: () => {
@@ -192,26 +206,6 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
           ...readOnlyProps,
         }
       : null,
-    isBareMetalInstance
-      ? null
-      : {
-          title: 'Clone',
-          onClick: () => {
-            sendLinodeActionMenuItemEvent('Clone');
-            history.push({
-              pathname: '/linodes/create',
-              search: buildQueryStringForLinodeClone(
-                linodeId,
-                linodeRegion,
-                linodeType?.id ?? null,
-                types.entities,
-                regions
-              ),
-            });
-          },
-          ...maintenanceProps,
-          ...readOnlyProps,
-        },
     isBareMetalInstance
       ? null
       : {
