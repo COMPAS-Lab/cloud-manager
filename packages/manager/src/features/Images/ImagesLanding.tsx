@@ -158,7 +158,7 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
    * query for `is_mine` && `automatic`.
    */
 
-  const [manualImages, automaticImages] = partition(
+  const [manualImages] = partition(
     (thisImage) => thisImage.type === 'manual',
     imagesData ?? []
   );
@@ -277,6 +277,15 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
     });
   };
 
+  const deployNewLinodeDist = (imageID: string) => {
+    const { history } = props;
+    history.push({
+      pathname: `/linodes/create/`,
+      search: `?type=Distributions&imageID=${imageID}`,
+      state: { selectedImageId: imageID },
+    });
+  };
+
   const deployNewLinode = (imageID: string) => {
     const { history } = props;
     history.push({
@@ -364,6 +373,7 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
 
   const handlers: ImageHandlers = {
     onRestore: openForRestore,
+    onDeployDist: deployNewLinodeDist,
     onDeploy: deployNewLinode,
     onEdit: openForEdit,
     onDelete: openDialog,
@@ -372,7 +382,7 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
   };
 
   const manualHeaders = getHeaders('manual');
-  const automaticHeaders = getHeaders('automatic');
+  // const automaticHeaders = getHeaders('automatic');
 
   const initialOrder = {
     order: 'asc' as Order,
@@ -387,13 +397,13 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
     handlers,
   };
 
-  const autoImageRow: EntityTableRow<Image> = {
-    Component: ImageRow,
-    data: automaticImages,
-    loading: false,
-    lastUpdated: 100,
-    handlers,
-  };
+  // const autoImageRow: EntityTableRow<Image> = {
+  //   Component: ImageRow,
+  //   data: automaticImages,
+  //   loading: false,
+  //   lastUpdated: 100,
+  //   handlers,
+  // };
 
   const renderError = (_: APIError[]) => {
     return (
@@ -479,7 +489,7 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
           initialOrder={initialOrder}
         />
       </Paper>
-      <Paper className={classes.imageTable}>
+      {/* <Paper className={classes.imageTable}>
         <div className={classes.imageTableHeader}>
           <Typography variant="h3">Recovery Images</Typography>
           <Typography className={classes.imageTableSubheader}>
@@ -494,7 +504,7 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
           emptyMessage={'No Recovery Images to display.'}
           initialOrder={initialOrder}
         />
-      </Paper>
+      </Paper> */}
       {renderImageDrawer()}
       <ConfirmationDialog
         open={dialog.open}
