@@ -14,7 +14,7 @@ import eventMessageGenerator from 'src/eventMessageGenerator';
 import { parseAPIDate } from 'src/utilities/date';
 import { getEntityByIDFromStore } from 'src/utilities/getEntityByIDFromStore';
 import getEventsActionLink from 'src/utilities/getEventsActionLink';
-import GravatarIcon from '../Profile/DisplaySettings/GravatarIcon';
+// import { formatEventSeconds } from 'src/utilities/minute-conversion/minute-conversion';
 import { formatEventWithUsername } from './Event.helpers';
 
 const useStyles = makeStyles((theme: Theme) => ({
@@ -84,7 +84,18 @@ export interface RowProps {
 export const Row: React.FC<RowProps> = (props) => {
   const classes = useStyles();
 
-  const { action, link, message, created, username } = props;
+  const {
+    action,
+    entityId,
+    link,
+    message,
+    status,
+    type,
+    created,
+    username,
+    // duration,
+    history,
+  } = props;
 
   /** Some event types may not be handled by our system (or new types
    * may be added). Filter these out so we don't display blank messages to the user.
@@ -128,14 +139,18 @@ export const Row: React.FC<RowProps> = (props) => {
           />
         )}
       </TableCell>
-      <TableCell parentColumn="Relative Date">
-        {parseAPIDate(created).toRelative()}
+
+      {/* <TableCell parentColumn="Duration"> */}
+      {/* <Typography variant="body1"> */}
+      {/* There is currently an API bug where host_reboot event durations are
+          not reported correctly. This patch simply hides the duration. @todo
+          remove this // check when the API bug is fixed. */}
+      {/* {action === 'host_reboot' ? '' : formatEventSeconds(duration)} */}
+      {/* </Typography> */}
+      {/* </TableCell> */}
+      <TableCell parentColumn={'When'} data-qa-event-created-cell>
+        <DateTimeDisplay value={created} />
       </TableCell>
-      <Hidden smDown>
-        <TableCell parentColumn="Absolute Date" data-qa-event-created-cell>
-          <DateTimeDisplay value={created} />
-        </TableCell>
-      </Hidden>
     </TableRow>
   );
 };

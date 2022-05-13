@@ -287,17 +287,18 @@ export const EventsLanding: React.FC<CombinedProps> = (props) => {
             >
               Event
             </TableCell>
-            <TableCell className={classes.columnHeader}>
-              Relative Date
+            {/* <TableCell
+              className={classes.columnHeader}
+              data-qa-events-duration-header
+            >
+              Duration
+            </TableCell> */}
+            <TableCell
+              className={classes.columnHeader}
+              data-qa-events-time-header
+            >
+              When
             </TableCell>
-            <Hidden smDown>
-              <TableCell
-                className={classes.columnHeader}
-                data-qa-events-time-header
-              >
-                Absolute Date
-              </TableCell>
-            </Hidden>
           </TableRow>
         </TableHead>
         <TableBody>

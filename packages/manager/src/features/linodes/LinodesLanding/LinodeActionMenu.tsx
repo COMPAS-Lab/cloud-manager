@@ -19,7 +19,7 @@ import { ExtendedType } from 'src/store/linodeType/linodeType.reducer';
 import {
   sendLinodeActionEvent,
   sendLinodeActionMenuItemEvent,
-  sendMigrationNavigationEvent,
+  // sendMigrationNavigationEvent,
 } from 'src/utilities/ga';
 
 export interface Props {
@@ -234,17 +234,17 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
       ...maintenanceProps,
       ...readOnlyProps,
     },
-    isBareMetalInstance
-      ? null
-      : {
-          title: 'Migrate',
-          onClick: () => {
-            sendMigrationNavigationEvent('/linodes');
-            sendLinodeActionMenuItemEvent('Migrate');
-            openDialog('migrate', linodeId);
-          },
-          ...readOnlyProps,
-        },
+    // isBareMetalInstance
+    //   ? null
+    //   : {
+    //       title: 'Migrate',
+    //       onClick: () => {
+    //         sendMigrationNavigationEvent('/linodes');
+    //         sendLinodeActionMenuItemEvent('Migrate');
+    //         openDialog('migrate', linodeId);
+    //       },
+    //       ...readOnlyProps,
+    //     },
     {
       title: 'Delete',
       onClick: () => {
