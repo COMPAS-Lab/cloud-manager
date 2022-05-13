@@ -53,10 +53,10 @@ export const VolumesActionMenu = (props: Props) => {
   const theme = useTheme<Theme>();
   const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleShowConfig = () => {
-    const { openForConfig, label, filesystemPath } = props;
-    openForConfig(label, filesystemPath);
-  };
+  // const handleShowConfig = () => {
+  //   const { openForConfig, label, filesystemPath } = props;
+  //   openForConfig(label, filesystemPath);
+  // };
 
   const handleOpenEdit = () => {
     const { openForEdit, volumeId, label, volumeTags } = props;
@@ -95,12 +95,12 @@ export const VolumesActionMenu = (props: Props) => {
   };
 
   const actions: Action[] = [
-    {
-      title: 'Show Config',
-      onClick: () => {
-        handleShowConfig();
-      },
-    },
+    // {
+    //   title: 'Show Config',
+    //   onClick: () => {
+    //     handleShowConfig();
+    //   },
+    // },
     {
       title: 'Edit',
       onClick: () => {

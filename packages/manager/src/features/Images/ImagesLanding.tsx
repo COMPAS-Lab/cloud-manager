@@ -304,6 +304,14 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
     });
   };
 
+  const deployNewLinodeDist = (imageID: string) => {
+    history.push({
+      pathname: `/linodes/create/`,
+      search: `?type=Distributions&imageID=${imageID}`,
+      state: { selectedImageId: imageID },
+    });
+  };
+
   const deployNewLinode = (imageID: string) => {
     history.push({
       pathname: `/linodes/create/`,
@@ -390,6 +398,7 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
 
   const handlers: ImageHandlers = {
     onRestore: openForRestore,
+    onDeployDist: deployNewLinodeDist,
     onDeploy: deployNewLinode,
     onEdit: openForEdit,
     onDelete: openDialog,
@@ -547,7 +556,7 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
           eventCategory="Custom Images Table"
         />
       </Paper>
-      <Paper className={classes.imageTable}>
+      {/* <Paper className={classes.imageTable}>
         <div className={classes.imageTableHeader}>
           <Typography variant="h3">Recovery Images</Typography>
           <Typography className={classes.imageTableSubheader}>
@@ -613,7 +622,7 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
           pageSize={paginationForAutomaticImages.pageSize}
           eventCategory="Recovery Images Table"
         />
-      </Paper>
+      </Paper> */}
       {renderImageDrawer()}
       <ConfirmationDialog
         open={dialog.open}
