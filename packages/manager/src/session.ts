@@ -28,6 +28,10 @@ export const genOAuthEndpoint = (
     throw new Error('No CLIENT_ID specified.');
   }
 
+  if (redirectUri.includes('logout')) {
+    redirectUri = '/';
+  }
+
   const query = {
     client_id: clientID,
     scope,

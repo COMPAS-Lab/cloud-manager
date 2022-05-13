@@ -35,7 +35,7 @@ import { parseMaintenanceStartTime } from '../utils';
 import withNotifications, { WithNotifications } from '../withNotifications';
 import withRecentEvent, { WithRecentEvent } from '../withRecentEvent';
 import styled, { StyleProps } from './LinodeRow.style';
-import LinodeRowBackupCell from './LinodeRowBackupCell';
+// import LinodeRowBackupCell from './LinodeRowBackupCell';
 import LinodeRowHeadCell from './LinodeRowHeadCell';
 
 interface Props {
@@ -104,7 +104,7 @@ export const LinodeRow: React.FC<CombinedProps> = (props) => {
     mutationAvailable,
   } = props;
 
-  const isBareMetalInstance = type?.class === 'metal';
+  // const isBareMetalInstance = type?.class === 'metal';
 
   const loading = linodeInTransition(status, recentEvent);
   const parsedMaintenanceStartTime = parseMaintenanceStartTime(
@@ -220,14 +220,14 @@ export const LinodeRow: React.FC<CombinedProps> = (props) => {
           </TableCell>
         </Hidden>
       </Hidden>
-      <Hidden lgDown>
+      {/* <Hidden lgDown>
         <LinodeRowBackupCell
           linodeId={id}
           backupsEnabled={backups.enabled || false}
           mostRecentBackup={mostRecentBackup || ''}
           isBareMetalInstance={isBareMetalInstance}
         />
-      </Hidden>
+      </Hidden> */}
 
       <TableCell actionCell data-qa-notifications>
         <RenderFlag

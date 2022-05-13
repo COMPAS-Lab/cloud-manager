@@ -17,9 +17,9 @@ const LinodeNetworking = React.lazy(
   () => import('./LinodeNetworking/LinodeNetworking')
 );
 const LinodeStorage = React.lazy(() => import('./LinodeStorage'));
-const LinodeConfigurations = React.lazy(
-  () => import('./LinodeAdvanced/LinodeAdvancedConfigurationsPanel')
-);
+// const LinodeConfigurations = React.lazy(
+//   () => import('./LinodeAdvanced/LinodeAdvancedConfigurationsPanel')
+// );
 const LinodeBackup = React.lazy(() => import('./LinodeBackup'));
 const LinodeActivity = React.lazy(
   () => import('./LinodeActivity/LinodeActivity')
@@ -59,11 +59,11 @@ const LinodesDetailNavigation: React.FC<CombinedProps> = (props) => {
       title: 'Storage',
       hidden: isBareMetalInstance,
     },
-    {
-      routeName: `${url}/configurations`,
-      title: 'Configurations',
-      hidden: isBareMetalInstance,
-    },
+    // {
+    //   routeName: `${url}/configurations`,
+    //   title: 'Configurations',
+    //   hidden: isBareMetalInstance,
+    // },
     {
       routeName: `${url}/backup`,
       title: 'Backups',
@@ -138,9 +138,9 @@ const LinodesDetailNavigation: React.FC<CombinedProps> = (props) => {
                   <SafeTabPanel index={idx++}>
                     <LinodeStorage />
                   </SafeTabPanel>
-                  <SafeTabPanel index={idx++}>
+                  {/* <SafeTabPanel index={idx++}>
                     <LinodeConfigurations />
-                  </SafeTabPanel>
+                  </SafeTabPanel> */}
 
                   <SafeTabPanel index={idx++}>
                     <LinodeBackup />

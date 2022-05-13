@@ -266,7 +266,7 @@ export class ListLinodes extends React.Component<CombinedProps, State> {
       { label: 'Image', key: 'image' },
       { label: 'Region', key: 'region' },
       { label: 'Created', key: 'created' },
-      { label: 'Last Backup', key: 'lastBackup' },
+      // { label: 'Last Backup', key: 'lastBackup' },
     ];
 
     return (
