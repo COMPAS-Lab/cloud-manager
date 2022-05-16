@@ -91,10 +91,10 @@ const GoTo: React.FC<CombinedProps> = (props) => {
         href: '/firewalls',
       },
 
-      {
-        display: 'StackScripts',
-        href: '/stackscripts',
-      },
+      // {
+      //   display: 'StackScripts',
+      //   href: '/stackscripts',
+      // },
       {
         display: 'Images',
         href: '/images',
