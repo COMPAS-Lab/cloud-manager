@@ -5,11 +5,11 @@ import { Link } from 'react-router-dom';
 import { compose } from 'recompose';
 import Hidden from 'src/components/core/Hidden';
 import { makeStyles, Theme } from 'src/components/core/styles';
-import StatusIcon from 'src/components/StatusIcon';
+// import StatusIcon from 'src/components/StatusIcon';
 import TableCell from 'src/components/TableCell';
 import TableRow from 'src/components/TableRow';
 import useFirewallDevices from 'src/hooks/useFirewallDevices';
-import capitalize from 'src/utilities/capitalize';
+// import capitalize from 'src/utilities/capitalize';
 import ActionMenu, { ActionHandlers } from './FirewallActionMenu';
 
 const useStyles = makeStyles((theme: Theme) => ({
@@ -56,10 +56,10 @@ export const FirewallRow: React.FC<CombinedProps> = (props) => {
           {label}
         </Link>
       </TableCell>
-      <TableCell statusCell>
+      {/* <TableCell statusCell>
         <StatusIcon status={status === 'enabled' ? 'active' : 'inactive'} />
         {capitalize(status)}
-      </TableCell>
+      </TableCell> */}
       <Hidden smDown>
         <TableCell>{getRuleString(count)}</TableCell>
         {/* <TableCell>
