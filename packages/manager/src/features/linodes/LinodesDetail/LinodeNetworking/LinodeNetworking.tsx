@@ -51,7 +51,7 @@ import DeleteIPConfirm from './DeleteIPConfirm';
 import EditRDNSDrawer from './EditRDNSDrawer';
 import IPSharing from './IPSharing';
 import IPTransfer from './IPTransfer';
-// import LinodeNetworkingActionMenu from './LinodeNetworkingActionMenu';
+import LinodeNetworkingActionMenu from './LinodeNetworkingActionMenu';
 // import LinodeNetworkingSummaryPanel from './NetworkingSummaryPanel';
 import { IPTypes } from './types';
 import ViewIPDrawer from './ViewIPDrawer';
@@ -381,8 +381,8 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
   };
 
   renderIPRow = (ipDisplay: IPDisplay) => {
-    // const { classes, readOnly } = this.props;
-    const { address, type } = ipDisplay;
+    const { classes, readOnly } = this.props;
+    const { address, type, _ip, _range } = ipDisplay;
 
     return (
       <TableRow
@@ -407,7 +407,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
         {/* Ranges have special handling for RDNS. */}
         {/* {_range ? this.renderRangeRDNSCell(_range) : rdns} */}
         {/* </TableCell> */}
-        {/* <TableCell className={classes.action} data-qa-action>
+        <TableCell className={classes.action} data-qa-action>
           {_ip ? (
             <LinodeNetworkingActionMenu
               onEdit={this.handleOpenEditRDNS}
@@ -425,7 +425,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
               readOnly={readOnly}
             />
           ) : null}
-        </TableCell> */}
+        </TableCell>
       </TableRow>
     );
   };
@@ -792,7 +792,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                       <TableCell style={{ width: '20%', borderRight: 'none' }}>
                         Reverse DNS
                       </TableCell> */}
-                      {/* <TableCell style={{ width: '20%', borderLeft: 'none' }} /> */}
+                      <TableCell style={{ width: '20%', borderLeft: 'none' }} />
                     </TableRow>
                   </TableHead>
                   <TableBody>{orderedData.map(this.renderIPRow)}</TableBody>

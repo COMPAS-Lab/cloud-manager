@@ -1,35 +1,38 @@
 import { Firewall, FirewallDevice } from '@linode/api-v4/lib/firewalls';
-// import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { compose } from 'recompose';
 import Hidden from 'src/components/core/Hidden';
 import { makeStyles, Theme } from 'src/components/core/styles';
-// import StatusIcon from 'src/components/StatusIcon';
+import Grid from 'src/components/Grid';
 import TableCell from 'src/components/TableCell';
 import TableRow from 'src/components/TableRow';
 import useFirewallDevices from 'src/hooks/useFirewallDevices';
-// import capitalize from 'src/utilities/capitalize';
-import ActionMenu, { ActionHandlers } from './FirewallActionMenu';
 
 const useStyles = makeStyles((theme: Theme) => ({
   link: {
     display: 'block',
-    color: theme.textColors.linkActiveLight,
+    color: theme.cmrTextColors.linkActiveLight,
     fontSize: '.875rem',
     lineHeight: '1.125rem',
     '&:hover, &:focus': {
       textDecoration: 'underline',
     },
   },
+  labelWrapper: {
+    display: 'flex',
+    flexFlow: 'row nowrap',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
+  },
 }));
 
-export type CombinedProps = Firewall & ActionHandlers;
+export type CombinedProps = Firewall;
 
-export const FirewallRow: React.FC<CombinedProps> = (props) => {
+export const LinodeFirewallsRow: React.FC<CombinedProps> = (props) => {
   const classes = useStyles();
 
-  const { id, label, status, rules, ...actionHandlers } = props;
+  const { id, label, rules } = props;
 
   const {
     devices: { error, loading, lastUpdated },
@@ -52,28 +55,30 @@ export const FirewallRow: React.FC<CombinedProps> = (props) => {
       ariaLabel={`Firewall ${label}`}
     >
       <TableCell>
-        <Link className={classes.link} to={`/firewalls/${id}`} tabIndex={0}>
-          {label}
-        </Link>
+        <Grid container wrap="nowrap" alignItems="center">
+          <Grid item className="py0">
+            <div className={classes.labelWrapper}>
+              <Link
+                className={classes.link}
+                to={`/firewalls/${id}`}
+                tabIndex={0}
+              >
+                {label}
+              </Link>
+            </div>
+          </Grid>
+        </Grid>
       </TableCell>
-      {/* <TableCell statusCell>
+      {/* <TableCell>
         <StatusIcon status={status === 'enabled' ? 'active' : 'inactive'} />
         {capitalize(status)}
       </TableCell> */}
-      <Hidden smDown>
+      <Hidden xsDown>
         <TableCell>{getRuleString(count)}</TableCell>
         {/* <TableCell>
           {getLinodesCellString(devices, loading, error.read)}
         </TableCell> */}
       </Hidden>
-      <TableCell actionCell>
-        <ActionMenu
-          firewallID={id}
-          firewallLabel={label}
-          firewallStatus={status}
-          {...actionHandlers}
-        />
-      </TableCell>
     </TableRow>
   );
 };
@@ -150,6 +155,4 @@ export const getDeviceLinks = (data: FirewallDevice[]): JSX.Element => {
   );
 };
 
-export default compose<CombinedProps, ActionHandlers & Firewall>(React.memo)(
-  FirewallRow
-);
+export default compose<CombinedProps, Firewall>(React.memo)(LinodeFirewallsRow);
