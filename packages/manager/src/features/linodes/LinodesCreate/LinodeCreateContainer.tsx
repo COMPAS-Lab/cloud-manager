@@ -77,6 +77,7 @@ import {
   WithTypesProps,
 } from './types';
 import { getRegionIDFromLinodeID } from './utilities';
+import Button from 'src/components/Button';
 
 const DEFAULT_IMAGE = 'linode/debian11';
 
@@ -611,6 +612,25 @@ class LinodeCreateContainer extends React.PureComponent<CombinedProps, State> {
             variant: 'success',
           }
         );
+
+        this.props.enqueueSnackbar('Please copy your private key: ', {
+          persist: true,
+          variant: 'info',
+          action: (snackbarId) => (
+            <>
+              <Button
+                onClick={() =>
+                  navigator.clipboard.writeText((response as any).private_key)
+                }
+              >
+                Copy to Clipboard
+              </Button>
+              <Button onClick={() => this.props.closeSnackbar(snackbarId)}>
+                Dismiss
+              </Button>
+            </>
+          ),
+        });
 
         /** reset the Events polling */
         resetEventsPolling();
