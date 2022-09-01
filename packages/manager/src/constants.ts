@@ -11,8 +11,12 @@ export const ENABLE_DEV_TOOLS = Boolean(process.env.REACT_APP_ENABLE_DEV_TOOLS);
 /** required for the app to function */
 export const APP_ROOT =
   process.env.REACT_APP_APP_ROOT || 'http://localhost:3000';
+// export const LOGIN_ROOT =
+//   process.env.REACT_APP_LOGIN_ROOT || 'https://login.linode.com';
 export const LOGIN_ROOT =
-  process.env.REACT_APP_LOGIN_ROOT || 'https://login.linode.com';
+  process.env.REACT_APP_LOGIN_ROOT || 'http://localhost:3000/login';
+// export const API_ROOT =
+// process.env.REACT_APP_API_ROOT || 'https://api.linode.com/v4';
 export const API_ROOT =
   process.env.REACT_APP_API_ROOT || 'http://localhost:8080/api';
 export const BETA_API_ROOT = API_ROOT + '/beta';
@@ -107,6 +111,7 @@ export const REFRESH_INTERVAL = 60 * 30 * 1000;
 
 export const dcDisplayNames = {
   // us-east-1 is for backwards-compatibility
+  nova: 'Nova',
   'us-east-1': 'Newark, NJ',
   'us-east-1a': 'Newark, NJ',
   'us-south-1a': 'Dallas, TX',
@@ -132,6 +137,7 @@ export const dcDisplayNames = {
 };
 
 export const dcDisplayCountry = {
+  nova: 'US',
   'us-east-1a': 'US',
   'us-south-1a': 'US',
   'us-west-1a': 'US',
