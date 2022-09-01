@@ -1,16 +1,18 @@
 import * as React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import CircleProgress from 'src/components/CircleProgress';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import Tabs from 'src/components/core/ReachTabs';
+// import TabPanels from 'src/components/core/ReachTabPanels';
+// import Tabs from 'src/components/core/ReachTabs';
 import { Theme, makeStyles } from 'src/components/core/styles';
 import ErrorState from 'src/components/ErrorState';
-import SafeTabPanel from 'src/components/SafeTabPanel';
-import TabLinkList from 'src/components/TabLinkList';
-import { Tab } from 'src/components/TabLinkList/TabLinkList';
+// import SafeTabPanel from 'src/components/SafeTabPanel';
+// import TabLinkList from 'src/components/TabLinkList';
+// import { Tab } from 'src/components/TabLinkList/TabLinkList';
 import { useLinodeLishTokenQuery, useLinodeQuery } from 'src/queries/linodes';
-import Glish from './Glish';
-import Weblish from './Weblish';
+// import Glish from './Glish';
+// import Weblish from './Weblish';
+
+type ClassNames = 'tabs' | 'progress' | 'notFound' | 'lish';
 
 const AUTH_POLLING_INTERVAL = 2000;
 
@@ -145,41 +147,7 @@ const Lish = () => {
   window.location.href = token; //Clanode
   return (
     // eslint-disable-next-line react/jsx-no-useless-fragment
-    <React.Fragment>
-      {linode && token && (
-        <Tabs
-          className={classes.tabs}
-          onChange={navToURL}
-          index={
-            type &&
-            tabs.findIndex((tab) => tab.title.toLocaleLowerCase() === type) !==
-              -1
-              ? tabs.findIndex((tab) => tab.title.toLocaleLowerCase() === type)
-              : 0
-          }
-        >
-          <TabLinkList tabs={tabs} />
-          <TabPanels>
-            <SafeTabPanel index={0} data-qa-tab="Weblish">
-              <Weblish
-                token={token}
-                linode={linode}
-                refreshToken={refreshToken}
-              />
-            </SafeTabPanel>
-            {!isBareMetal && (
-              <SafeTabPanel index={1} data-qa-tab="Glish">
-                <Glish
-                  token={token}
-                  linode={linode}
-                  refreshToken={refreshToken}
-                />
-              </SafeTabPanel>
-            )}
-          </TabPanels>
-        </Tabs>
-      )}
-    </React.Fragment>
+    <React.Fragment></React.Fragment>
   );
 };
 
