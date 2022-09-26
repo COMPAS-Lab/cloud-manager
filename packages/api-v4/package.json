@@ -22,7 +22,7 @@
   "author": "Linode",
   "license": "Apache-2.0",
   "private": false,
-  "type": "module",
+  "type": "commonjs",
   "main": "lib/index.cjs",
   "module": "lib/index.js",
   "exports": {
