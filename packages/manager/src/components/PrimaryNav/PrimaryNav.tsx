@@ -34,7 +34,7 @@ import useStyles from './PrimaryNav.styles';
 import { linkIsActive } from './utils';
 
 type NavEntity =
-  | 'Servers'
+  | 'Linodes'
   | 'Volumes'
   | 'NodeBalancers'
   | 'Domains'
@@ -145,7 +145,7 @@ export const PrimaryNav: React.FC<Props> = (props) => {
       ],
       [
         {
-          display: 'Servers',
+          display: 'Linodes',
           href: '/linodes',
           activeLinks: ['/linodes', '/linodes/create'],
           icon: <Linode />,
