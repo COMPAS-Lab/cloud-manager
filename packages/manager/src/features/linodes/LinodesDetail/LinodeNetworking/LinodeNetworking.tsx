@@ -17,7 +17,7 @@ import * as React from 'react';
 import { connect, MapDispatchToProps } from 'react-redux';
 import { compose as recompose } from 'recompose';
 import AddNewLink from 'src/components/AddNewLink';
-// import Button from 'src/components/Button';
+import Button from 'src/components/Button';
 import CircleProgress from 'src/components/CircleProgress';
 import CopyTooltip from 'src/components/CopyTooltip';
 import Hidden from 'src/components/core/Hidden';
@@ -52,7 +52,7 @@ import EditRDNSDrawer from './EditRDNSDrawer';
 import IPSharing from './IPSharing';
 import IPTransfer from './IPTransfer';
 import LinodeNetworkingActionMenu from './LinodeNetworkingActionMenu';
-// import LinodeNetworkingSummaryPanel from './NetworkingSummaryPanel';
+import LinodeNetworkingSummaryPanel from './NetworkingSummaryPanel';
 import { IPTypes } from './types';
 import ViewIPDrawer from './ViewIPDrawer';
 import ViewRangeDrawer from './ViewRangeDrawer';
@@ -382,7 +382,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
 
   renderIPRow = (ipDisplay: IPDisplay) => {
     const { classes, readOnly } = this.props;
-    const { address, type, _ip, _range } = ipDisplay;
+    const { address, type, gateway, subnetMask, rdns, _ip, _range } = ipDisplay;
 
     return (
       <TableRow
@@ -401,12 +401,12 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
         <TableCell parentColumn="Type" data-qa-ip-address>
           {type}
         </TableCell>
-        {/* <TableCell parentColumn="Default Gateway">{gateway}</TableCell>
-        <TableCell parentColumn="Subnet Mask">{subnetMask}</TableCell> */}
-        {/* <TableCell parentColumn="Reverse DNS" data-qa-rdns> */}
-        {/* Ranges have special handling for RDNS. */}
-        {/* {_range ? this.renderRangeRDNSCell(_range) : rdns} */}
-        {/* </TableCell> */}
+        <TableCell parentColumn="Default Gateway">{gateway}</TableCell>
+        <TableCell parentColumn="Subnet Mask">{subnetMask}</TableCell>
+        <TableCell parentColumn="Reverse DNS" data-qa-rdns>
+          {/* Ranges have special handling for RDNS. */}
+          {_range ? this.renderRangeRDNSCell(_range) : rdns}
+        </TableCell>
         <TableCell className={classes.action} data-qa-action>
           {_ip ? (
             <LinodeNetworkingActionMenu
@@ -525,9 +525,9 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
       readOnly,
       linode: {
         id: linodeID,
-        // label: linodeLabel,
+        label: linodeLabel,
         region: linodeRegion,
-        // created: linodeCreated,
+        created: linodeCreated,
       },
     } = this.props;
     const {
@@ -587,12 +587,12 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
     return (
       <div>
         {readOnly && <LinodePermissionsError />}
-        {/* <LinodeNetworkingSummaryPanel
+        <LinodeNetworkingSummaryPanel
           linodeRegion={linodeRegion}
           linodeID={linodeID}
           linodeCreated={linodeCreated}
           linodeLabel={linodeLabel}
-        /> */}
+        />
 
         {this.renderIPTable()}
 
@@ -719,7 +719,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
           body={
             <Hidden mdUp>
               <div style={{ padding: 5 }}>
-                {/* <Hidden smDown>
+                <Hidden xsDown>
                   <Button
                     onClick={this.openTransferDialog}
                     buttonType="secondary"
@@ -733,7 +733,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                   >
                     IP Sharing
                   </Button>
-                </Hidden> */}
+                </Hidden>
                 <AddNewLink
                   label="Add an IP Address"
                   onClick={this.openAddIPDrawer}
@@ -744,7 +744,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
           actions={
             <Hidden mdDown>
               <div style={{ padding: 5 }}>
-                {/* <Button
+                <Button
                   onClick={this.openTransferDialog}
                   buttonType="secondary"
                 >
@@ -756,7 +756,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                   buttonType="secondary"
                 >
                   IP Sharing
-                </Button> */}
+                </Button>
                 <AddNewLink
                   label="Add an IP Address"
                   onClick={this.openAddIPDrawer}
@@ -783,7 +783,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                       >
                         Type
                       </TableSortCell>
-                      {/* <TableCell style={{ width: '10%' }}>
+                      <TableCell style={{ width: '10%' }}>
                         Default Gateway
                       </TableCell>
                       <TableCell style={{ width: '10%' }}>
@@ -791,7 +791,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                       </TableCell>
                       <TableCell style={{ width: '20%', borderRight: 'none' }}>
                         Reverse DNS
-                      </TableCell> */}
+                      </TableCell>
                       <TableCell style={{ width: '20%', borderLeft: 'none' }} />
                     </TableRow>
                   </TableHead>
