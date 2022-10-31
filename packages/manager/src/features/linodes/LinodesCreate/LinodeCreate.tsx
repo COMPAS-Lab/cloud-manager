@@ -44,7 +44,7 @@ import { getErrorMap } from 'src/utilities/errorUtils';
 import { filterCurrentTypes } from 'src/utilities/filterCurrentLinodeTypes';
 import { getParamsFromUrl } from 'src/utilities/queryParams';
 import SelectPlanPanel from './SelectPlanPanel';
-// import FromAppsContent from './TabbedContent/FromAppsContent';
+import FromAppsContent from './TabbedContent/FromAppsContent';
 // import FromBackupsContent from './TabbedContent/FromBackupsContent';
 import FromImageContent from './TabbedContent/FromImageContent';
 // import FromLinodeContent from './TabbedContent/FromLinodeContent';
@@ -270,11 +270,11 @@ export class LinodeCreate extends React.PureComponent<
       type: 'fromImage',
       routeName: `${this.props.match.url}?type=Distributions`,
     },
-    // {
-    //   title: 'Marketplace',
-    //   type: 'fromApp',
-    //   routeName: `${this.props.match.url}?type=One-Click`,
-    // },
+    {
+      title: 'Marketplace',
+      type: 'fromApp',
+      routeName: `${this.props.match.url}?type=One-Click`,
+    },
     {
       title: 'StackScripts',
       type: 'fromStackScript',
@@ -491,7 +491,7 @@ export class LinodeCreate extends React.PureComponent<
                   {...rest}
                 />
               </SafeTabPanel>
-              {/* <SafeTabPanel index={1}>
+              <SafeTabPanel index={1}>
                 <FromAppsContent
                   imagesData={imagesData!}
                   regionsData={regionsData!}
@@ -501,7 +501,7 @@ export class LinodeCreate extends React.PureComponent<
                   userCannotCreateLinode={userCannotCreateLinode}
                   {...rest}
                 />
-              </SafeTabPanel> */}
+              </SafeTabPanel>
               <SafeTabPanel index={1}>
                 <Tabs defaultIndex={stackScriptSelectedTab}>
                   <Paper className={classes.stackScriptWrapper}>
