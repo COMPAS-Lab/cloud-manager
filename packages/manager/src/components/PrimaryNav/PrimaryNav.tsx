@@ -16,7 +16,7 @@ import StackScript from 'src/assets/icons/entityIcons/stackscript.svg';
 import Volume from 'src/assets/icons/entityIcons/volume.svg';
 import HelpIcon from 'src/assets/icons/get_help.svg';
 import Longview from 'src/assets/icons/longview.svg';
-// import Logo from 'src/assets/logo/logo.svg';
+import Logo from 'src/assets/logo/logo.svg';
 import CompasLogo from 'src/assets/compas-logo.png';
 import BetaChip from 'src/components/BetaChip';
 import Divider from 'src/components/core/Divider';
@@ -273,7 +273,7 @@ export const PrimaryNav: React.FC<Props> = (props) => {
               [classes.logoContainer]: isCollapsed,
             })}
           >
-            <img src={CompasLogo} width={128} height={50} alt="COMPS Logo" />
+            <img src={CompasLogo} width={"100%"} alt="COMPAS Logo" style={{ backgroundColor: 'white' }} />
             <Logo
               style={{ display: 'none' }}
               width={128}

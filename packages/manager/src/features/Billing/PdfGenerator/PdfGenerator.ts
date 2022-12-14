@@ -10,8 +10,10 @@ import { ADDRESSES } from 'src/constants';
 import { reportException } from 'src/exceptionReporting';
 import { FlagSet, TaxDetail } from 'src/featureFlags';
 import formatDate from 'src/utilities/formatDate';
-import { getShouldUseAkamaiBilling } from '../billingUtils';
-import LinodeLogo from './LinodeLogo.png';
+// import { getShouldUseAkamaiBilling } from '../billingUtils';
+// import LinodeLogo from './LinodeLogo.png';
+import CompasLogo from './CompasLogo';
+
 import {
   createFooter,
   createInvoiceItemsTable,
@@ -52,56 +54,56 @@ const addLeftHeader = (
   }
 
   doc.setFont(baseFont, 'bold');
-  addLine('Remit to:');
-  doc.setFont(baseFont, 'normal');
+  // addLine('Remit to:');
+  // doc.setFont(baseFont, 'normal');
 
-  const isAkamaiBilling = getShouldUseAkamaiBilling(date);
-  const isInternational = !['US', 'CA'].includes(country);
+  // const isAkamaiBilling = getShouldUseAkamaiBilling(date);
+  // const isInternational = !['US', 'CA'].includes(country);
 
-  const remitAddress = isAkamaiBilling
-    ? ['US', 'CA'].includes(country)
-      ? ADDRESSES.akamai.us
-      : ADDRESSES.akamai.international
-    : ADDRESSES.linode;
+  // const remitAddress = isAkamaiBilling
+  //   ? ['US', 'CA'].includes(country)
+  //     ? ADDRESSES.akamai.us
+  //     : ADDRESSES.akamai.international
+  //   : ADDRESSES.linode;
 
-  addLine(remitAddress.entity);
-  addLine(remitAddress.address1);
+  // addLine(remitAddress.entity);
+  // addLine(remitAddress.address1);
 
-  if (isInternational && isAkamaiBilling) {
-    addLine(`${remitAddress.city} ${remitAddress.zip}`);
-  } else {
-    addLine(`${remitAddress.city}, ${remitAddress.state} ${remitAddress.zip}`);
-  }
+  // if (isInternational && isAkamaiBilling) {
+  //   addLine(`${remitAddress.city} ${remitAddress.zip}`);
+  // } else {
+  //   addLine(`${remitAddress.city}, ${remitAddress.state} ${remitAddress.zip}`);
+  // }
 
-  addLine(remitAddress.country);
+  // addLine(remitAddress.country);
 
-  if (countryTax || provincialTax) {
-    doc.setFont(baseFont, 'bold');
-    addLine('Tax ID(s):');
-    doc.setFont(baseFont, 'normal');
+  // if (countryTax || provincialTax) {
+  //   doc.setFont(baseFont, 'bold');
+  //   addLine('Tax ID(s):');
+  //   doc.setFont(baseFont, 'normal');
 
-    if (countryTax) {
-      addLine(`${countryTax.tax_name}: ${countryTax.tax_id}`);
-    }
-    if (provincialTax) {
-      addLine(`${provincialTax.tax_name}: ${provincialTax.tax_id}`);
-    }
-  }
+  //   if (countryTax) {
+  //     addLine(`${countryTax.tax_name}: ${countryTax.tax_id}`);
+  //   }
+  //   if (provincialTax) {
+  //     addLine(`${provincialTax.tax_name}: ${provincialTax.tax_id}`);
+  //   }
+  // }
 
   return currentLine;
 };
 
 const addRightHeader = (doc: jsPDF, account: Account) => {
   const {
-    address_1,
-    address_2,
-    city,
-    company,
-    country,
+    // address_1,
+    // address_2,
+    // city,
+    // company,
+    // country,
     first_name,
     last_name,
-    state,
-    zip,
+    // state,
+    // zip,
   } = account;
 
   const RightHeaderPadding = 310;
@@ -121,16 +123,16 @@ const addRightHeader = (doc: jsPDF, account: Account) => {
   doc.setFont(baseFont, 'normal');
 
   addLine(`${first_name} ${last_name}`);
-  addLine(`${company}`);
-  addLine(`${address_1}`);
-  if (address_2) {
-    addLine(`${address_2}`);
-  }
-  addLine(`${city}, ${state}, ${zip}`);
-  addLine(`${country}`);
-  if (account.tax_id) {
-    addLine(`Tax ID: ${account.tax_id}`);
-  }
+  // addLine(`${company}`);
+  // addLine(`${address_1}`);
+  // if (address_2) {
+  //   addLine(`${address_2}`);
+  // }
+  // addLine(`${city}, ${state}, ${zip}`);
+  // addLine(`${country}`);
+  // if (account.tax_id) {
+  //   addLine(`Tax ID: ${account.tax_id}`);
+  // }
 
   return currentLine;
 };
@@ -204,7 +206,7 @@ export const printInvoice = (
 
     // Create a separate page for each set of invoice items
     itemsChunks.forEach((itemsChunk, index) => {
-      doc.addImage(LinodeLogo, 'JPEG', 160, 10, 120, 40);
+      doc.addImage(CompasLogo, 'JPEG', 160, 10, 120, 40);
 
       const leftHeaderYPosition = addLeftHeader(
         doc,
@@ -258,7 +260,7 @@ export const printPayment = (
     });
     doc.setFontSize(10);
 
-    doc.addImage(LinodeLogo, 'JPEG', 160, 10, 120, 40);
+    doc.addImage(CompasLogo, 'JPEG', 160, 10, 120, 40);
 
     const leftHeaderYPosition = addLeftHeader(
       doc,
