@@ -68,7 +68,7 @@ const renderAuthentication = () => (
         <Switch>
           <Route path="/login" component={LoginPage} />
           {/* Route that makes GET request to server /oauth/callback */}
-          <Route exact path="/oauth" component={OAuthPage} />
+          <Route exact path="/oauth/authorize" component={OAuthPage} />
           <Route exact path="/oauth/callback" component={OAuthCallbackPage} />
           <Route
             exact
