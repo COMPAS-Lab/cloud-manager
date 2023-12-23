@@ -10,7 +10,7 @@ import Image from 'src/assets/icons/entityIcons/image.svg';
 import Kubernetes from 'src/assets/icons/entityIcons/kubernetes.svg';
 import Linode from 'src/assets/icons/entityIcons/linode.svg';
 import Managed from 'src/assets/icons/entityIcons/managed.svg';
-import NodeBalancer from 'src/assets/icons/entityIcons/nodebalancer.svg';
+// import NodeBalancer from 'src/assets/icons/entityIcons/nodebalancer.svg';
 import OCA from 'src/assets/icons/entityIcons/oneclick.svg';
 import StackScript from 'src/assets/icons/entityIcons/stackscript.svg';
 import Volume from 'src/assets/icons/entityIcons/volume.svg';
@@ -155,11 +155,11 @@ export const PrimaryNav: React.FC<Props> = (props) => {
           href: '/volumes',
           icon: <Volume />,
         },
-        {
-          display: 'NodeBalancers',
-          href: '/nodebalancers',
-          icon: <NodeBalancer />,
-        },
+        // {
+        //   display: 'NodeBalancers',
+        //   href: '/nodebalancers',
+        //   icon: <NodeBalancer />,
+        // },
         {
           display: 'Firewalls',
           href: '/firewalls',
