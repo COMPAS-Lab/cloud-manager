@@ -286,7 +286,7 @@ export const PrimaryNav: React.FC<Props> = (props) => {
               [classes.logoContainer]: isCollapsed,
             })}
           >
-            <img src={CompasLogo} width={128} height={50} alt="COMPS Logo" />
+            <img src={CompasLogo} width={"100%"} alt="COMPAS Logo" style={{ backgroundColor: 'transparent' }} />
             <AkamaiLogo
               style={{ display: 'none' }}
               width={140}
