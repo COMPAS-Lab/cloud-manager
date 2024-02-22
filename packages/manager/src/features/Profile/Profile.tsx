@@ -6,14 +6,14 @@ import NavTabs, { NavTab } from 'src/components/NavTabs/NavTabs';
 
 const SSHKeys = React.lazy(() => import('./SSHKeys'));
 const Settings = React.lazy(() => import('./Settings'));
-const Referrals = React.lazy(() => import('./Referrals'));
-const OAuthClients = React.lazy(() => import('./OAuthClients'));
+// const Referrals = React.lazy(() => import('./Referrals'));
+// const OAuthClients = React.lazy(() => import('./OAuthClients'));
 const LishSettings = React.lazy(() => import('./LishSettings'));
 const DisplaySettings = React.lazy(() => import('./DisplaySettings'));
 const AuthenticationSettings = React.lazy(
   () => import('./AuthenticationSettings')
 );
-const APITokens = React.lazy(() => import('./APITokens/APITokens'));
+// const APITokens = React.lazy(() => import('./APITokens'));
 
 const Profile = (props: RouteComponentProps) => {
   const {
@@ -41,21 +41,21 @@ const Profile = (props: RouteComponentProps) => {
       routeName: `${url}/lish`,
       component: LishSettings,
     },
-    {
-      title: 'API Tokens',
-      routeName: `${url}/tokens`,
-      component: APITokens,
-    },
-    {
-      title: 'OAuth Apps',
-      routeName: `${url}/clients`,
-      component: OAuthClients,
-    },
-    {
-      title: 'Referrals',
-      routeName: `${url}/referrals`,
-      component: Referrals,
-    },
+    // {
+    //   title: 'API Tokens',
+    //   routeName: `${url}/tokens`,
+    //   component: APITokens,
+    // },
+    // {
+    //   title: 'OAuth Apps',
+    //   routeName: `${url}/clients`,
+    //   component: OAuthClients,
+    // },
+    // {
+    //   title: 'Referrals',
+    //   routeName: `${url}/referrals`,
+    //   component: Referrals,
+    // },
     {
       title: 'My Settings',
       routeName: `${url}/settings`,
