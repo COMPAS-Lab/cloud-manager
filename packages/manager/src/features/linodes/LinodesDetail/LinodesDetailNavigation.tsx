@@ -66,11 +66,11 @@ const LinodesDetailNavigation: React.FC<CombinedProps> = (props) => {
       title: 'Storage',
       hidden: isBareMetalInstance,
     },
-    {
-      routeName: `${url}/configurations`,
-      title: 'Configurations',
-      hidden: isBareMetalInstance,
-    },
+    // {
+    //   routeName: `${url}/configurations`,
+    //   title: 'Configurations',
+    //   hidden: isBareMetalInstance,
+    // },
     {
       routeName: `${url}/backup`,
       title: 'Backups',
