@@ -44,6 +44,7 @@ export const AuthenticationSettings: React.FC = () => {
   const authType = profile?.authentication_type ?? 'password';
   const twoFactor = Boolean(profile?.two_factor_auth);
   const username = profile?.username;
+  const showSecuritySettings = false;
 
   const isThirdPartyAuthEnabled = authType !== 'password';
 
@@ -59,45 +60,56 @@ export const AuthenticationSettings: React.FC = () => {
     <>
       <DocumentTitleSegment segment="Login & Authentication" />
       <TPAProviders authType={authType} />
-      <Paper className={classes.root}>
-        <Typography className={classes.linode} variant="h3">
-          Security Settings
-        </Typography>
-        <Divider spacingTop={24} spacingBottom={16} />
-        {!isThirdPartyAuthEnabled ? (
-          <>
-            <ResetPassword username={username} />
-            <Divider spacingTop={22} spacingBottom={16} />
-            <TwoFactor twoFactor={twoFactor} username={username} />
-            <Divider spacingTop={22} spacingBottom={16} />
-          </>
-        ) : null}
-        <SecurityQuestions />
-        <Divider spacingTop={22} spacingBottom={16} />
-        <Typography variant="h3">Phone Verification</Typography>
-        <Typography variant="body1" className={classes.copy}>
-          A verified phone number provides our team with a secure method of
-          verifying your identity as the owner of your Linode user account. This
-          phone number is only ever used to send an SMS message with a
-          verification code. Standard carrier messaging fees may apply. By
-          clicking Send Verification Code you are opting in to receive SMS
-          messages. You may opt out at any time.{' '}
-          <Link to="https://www.linode.com/docs/guides/user-security-controls#phone-verification">
-            Learn more about security options.
-          </Link>
-        </Typography>
-        <PhoneVerification />
-        <Divider spacingTop={22} spacingBottom={16} />
-        <Typography variant="h3">SMS Messaging</Typography>
-        <SMSMessaging />
-        {!isThirdPartyAuthEnabled ? (
-          <>
-            <Divider spacingTop={22} spacingBottom={16} />
-            <TrustedDevices />
-          </>
-        ) : null}
-      </Paper>
-    </>
+      {showSecuritySettings ? (
+        <Paper className={classes.root}>
+          <Typography className={classes.linode} variant="h3">
+            Security Settings
+          </Typography>
+          <Divider spacingTop={24} spacingBottom={16} />
+          {!isThirdPartyAuthEnabled ? (
+            <>
+              <ResetPassword username={username} />
+              <Divider spacingTop={22} spacingBottom={16} />
+              <TwoFactor twoFactor={twoFactor} username={username} />
+              <Divider spacingTop={22} spacingBottom={16} />
+            </>
+          ) : null}
+          <SecurityQuestions />
+          <Divider spacingTop={22} spacingBottom={16} />
+          <Typography variant="h3">Phone Verification</Typography>
+          <Typography variant="body1" className={classes.copy}>
+            A verified phone number provides our team with a secure method of
+            verifying your identity as the owner of your Linode user account.
+            This phone number is only ever used to send an SMS message with a
+            verification code. Standard carrier messaging fees may apply. By
+            clicking Send Verification Code you are opting in to receive SMS
+            messages. You may opt out at any time.{' '}
+            <Link to="https://www.linode.com/docs/guides/user-security-controls#phone-verification">
+              Learn more about security options.
+            </Link>
+          </Typography>
+          <PhoneVerification />
+          <Divider spacingTop={22} spacingBottom={16} />
+          <Typography variant="h3">SMS Messaging</Typography>
+          <SMSMessaging />
+          {!isThirdPartyAuthEnabled ? (
+            <>
+              <Divider spacingTop={22} spacingBottom={16} />
+              <TrustedDevices />
+              {ipAllowlisting ? (
+                <SecuritySettings
+                  updateProfile={updateProfile}
+                  onSuccess={onAllowlistingDisable}
+                  updateProfileError={profileUpdateError || undefined}
+                  ipAllowlistingEnabled={ipAllowlisting}
+                  data-qa-allowlisting-form
+                />
+              ) : null}
+            </>
+          ) : null}
+        </Paper>
+      ) : null}
+    </div>
   );
 };
 
