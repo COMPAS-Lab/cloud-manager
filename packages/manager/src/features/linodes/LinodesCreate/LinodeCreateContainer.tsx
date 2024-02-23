@@ -615,24 +615,26 @@ class LinodeCreateContainer extends React.PureComponent<CombinedProps, State> {
           }
         );
 
-        this.props.enqueueSnackbar('Please copy your private key: ', {
-          persist: true,
-          variant: 'info',
-          action: (snackbarId) => (
-            <>
-              <Button
-                onClick={() =>
-                  navigator.clipboard.writeText((response as any).private_key)
-                }
-              >
-                Copy to Clipboard
-              </Button>
-              <Button onClick={() => this.props.closeSnackbar(snackbarId)}>
-                Dismiss
-              </Button>
-            </>
-          ),
-        });
+        if ((response as any).private_key) {
+          this.props.enqueueSnackbar('Please copy your private key: ', {
+            persist: true,
+            variant: 'info',
+            action: (snackbarId) => (
+              <>
+                <Button
+                  onClick={() =>
+                    navigator.clipboard.writeText((response as any).private_key)
+                  }
+                >
+                  Copy to Clipboard
+                </Button>
+                <Button onClick={() => this.props.closeSnackbar(snackbarId)}>
+                  Dismiss
+                </Button>
+              </>
+            ),
+          });
+        }
 
         /** reset the Events polling */
         resetEventsPolling();
