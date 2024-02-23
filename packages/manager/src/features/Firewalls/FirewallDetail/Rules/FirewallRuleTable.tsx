@@ -439,8 +439,9 @@ const FirewallRuleTableRow: React.FC<FirewallRuleTableRowProps> = React.memo(
             aria-label="Drag indicator icon"
           />
           {
-            label ||
-              '' /*(
+            label || ''
+            /* -- Clanode Change -- */
+            /*(
             <button
               className={classes.addLabelButton}
               style={{
