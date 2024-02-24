@@ -83,10 +83,15 @@ export default (Component: React.ComponentType<any>) => {
       } else {
         getUsers()
           .then((response) => {
-            const users = response.data;
+            /* -- Clanode Change -- */
+            /*const*/ let users = response.data;
+            /* -- Clanode Change End -- */
             if (!users || users.length === 0) {
               return;
             }
+            /* -- Clanode Change -- */
+            users = users.filter((user) => user.username === profile?.username);
+            /* -- Clanode Change End -- */
             setSshError(undefined);
             setUserSSHKeys([
               ...users.reduce((cleanedUsers, user) => {
