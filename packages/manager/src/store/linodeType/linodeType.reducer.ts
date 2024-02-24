@@ -103,9 +103,15 @@ export const extendType = (type: LinodeType): ExtendedType => {
   const subHeadings = [
     `$${monthly}/mo ($${hourly}/hr)`,
     typeLabelDetails(memory, disk, vcpus),
-    `${transfer / 1000} TB Transfer`,
+    /* -- Clanode Change -- */
+    // `${transfer / 1000} TB Transfer`,
   ];
 
+  if (transfer > 0) {
+    subHeadings.push(`${transfer / 1000} TB Transfer`);
+  }
+
+  /* -- Clanode Change End -- */
   if (network_out > 0) {
     subHeadings.push(
       `${LINODE_NETWORK_IN} Gbps In / ${network_out / 1000} Gbps Out`
