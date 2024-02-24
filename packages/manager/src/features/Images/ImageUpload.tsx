@@ -225,6 +225,9 @@ export const ImageUpload: React.FC<Props> = (props) => {
             selectedID={region}
             disabled={!canCreateImage}
             required
+            /* -- Clanode Change -- */
+            hide={true}
+            /* -- Clanode Change End -- */
           />
 
           {showAgreement ? (
