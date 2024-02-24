@@ -89,10 +89,14 @@ const LinodeSelect: React.FC<CombinedProps> = (props) => {
   );
 
   const { _loading } = useReduxLoad(['linodes']);
-
+  /* -- Clanode Change -- */
+  /*
   const linodes = region
     ? linodesData.filter((thisLinode) => thisLinode.region === region)
     : linodesData;
+  */
+  const linodes = linodesData;
+  /* -- Clanode Change End -- */
 
   const options = groupByRegion
     ? linodesToGroupedItems(

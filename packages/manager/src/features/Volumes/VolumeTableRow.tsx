@@ -10,7 +10,9 @@ import Grid from 'src/components/Grid';
 import LinearProgress from 'src/components/LinearProgress';
 import TableCell from 'src/components/TableCell';
 import TableRow from 'src/components/TableRow';
-import { formatRegion } from 'src/utilities';
+/* -- Clanode Change -- */
+// import { formatRegion } from 'src/utilities';
+/* -- Clanode Change -- */
 import { ExtendedVolume } from './types';
 import VolumesActionMenu, { ActionHandlers } from './VolumesActionMenu';
 
@@ -70,7 +72,9 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
   const location = useLocation();
   const isVolumesLanding = Boolean(location.pathname.match(/volumes/));
 
-  const formattedRegion = formatRegion(region);
+  /* -- Clanode Change -- */
+  // const formattedRegion = formatRegion(region);
+  /* -- Clanode Change End -- */
 
   const isNVMe = hardwareType === 'nvme';
 
@@ -152,7 +156,9 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
       </TableCell>
       {region ? (
         <TableCell data-qa-volume-region noWrap>
-          {formattedRegion}
+          {
+            /* -- Clanode Change -- */ /*formattedRegion*/ '' /* -- Clanode Change End -- */
+          }
         </TableCell>
       ) : null}
       <TableCell data-qa-volume-size>{size} GB</TableCell>
