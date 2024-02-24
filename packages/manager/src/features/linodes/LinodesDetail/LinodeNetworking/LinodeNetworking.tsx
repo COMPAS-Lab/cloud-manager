@@ -384,7 +384,14 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
 
   renderIPRow = (ipDisplay: IPDisplay) => {
     const { classes, readOnly } = this.props;
-    const { address, type, gateway, subnetMask, rdns, _ip, _range } = ipDisplay;
+    const {
+      address,
+      type,
+      gateway,
+      subnetMask,
+      /* -- Clanode Change -- */ /*rdns,*/ /* -- Clanode Change End -- */ _ip,
+      _range,
+    } = ipDisplay;
 
     return (
       <TableRow
@@ -405,10 +412,14 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
         </TableCell>
         <TableCell parentColumn="Default Gateway">{gateway}</TableCell>
         <TableCell parentColumn="Subnet Mask">{subnetMask}</TableCell>
-        <TableCell parentColumn="Reverse DNS" data-qa-rdns>
-          {/* Ranges have special handling for RDNS. */}
-          {_range ? this.renderRangeRDNSCell(_range) : rdns}
-        </TableCell>
+        {
+          /* -- Clanode Change -- */
+          // <TableCell parentColumn="Reverse DNS" data-qa-rdns>
+          //  {/* Ranges have special handling for RDNS. */}
+          //  {_range ? this.renderRangeRDNSCell(_range) : rdns}
+          // </TableCell>
+          /* -- Clanode Change End */
+        }
         <TableCell className={classes.action} data-qa-action>
           {_ip ? (
             <LinodeNetworkingActionMenu
@@ -750,13 +761,20 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
             <Hidden mdDown>
               <div style={{ padding: 5 }}>
                 <Button
+                  style={{
+                    /* -- Clanode Change -- */ display:
+                      'none' /* -- Clanode Change End -- */,
+                  }}
                   onClick={this.openTransferDialog}
                   buttonType="secondary"
                 >
                   IP Transfer
                 </Button>
                 <Button
-                  style={{ marginRight: 16 }}
+                  style={{
+                    marginRight: 16 /* -- Clanode Change -- */,
+                    display: 'none' /* -- Clanode Change End -- */,
+                  }}
                   onClick={this.openSharingDialog}
                   buttonType="secondary"
                 >
@@ -794,9 +812,13 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                       <TableCell style={{ width: '10%' }}>
                         Subnet Mask
                       </TableCell>
-                      <TableCell style={{ width: '20%', borderRight: 'none' }}>
+                      {/* -- Clanode Change -- */
+                      /*
+                      <TableCell style={{ display: 'none', width: '20%', borderRight: 'none' }}>
                         Reverse DNS
                       </TableCell>
+                      */
+                      /* -- Clanode Chande End -- */}
                       <TableCell style={{ width: '20%', borderLeft: 'none' }} />
                     </TableRow>
                   </TableHead>
