@@ -155,7 +155,9 @@ const SortableTableHead: React.FC<CombinedProps> = (props) => {
                   className={classes.regionCell}
                   data-qa-sort-region={order}
                 >
-                  Region
+                  {
+                    /* -- Clanode Change -- */ /*'Region'*/ 'CPU Type' /* -- Clande Change End -- */
+                  }
                 </TableSortCell>
               </Hidden>
             </Hidden>

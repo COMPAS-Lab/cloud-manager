@@ -9,7 +9,9 @@ import StatusIcon from 'src/components/StatusIcon';
 import Grid from 'src/components/Grid';
 import TableCell from 'src/components/TableCell';
 import TableRow from 'src/components/TableRow';
-import { formatRegion } from 'src/utilities';
+/* -- Clanode Change -- */
+// import { formatRegion } from 'src/utilities';
+/* -- Clanode Change -- */
 import VolumesActionMenu, { ActionHandlers } from './VolumesActionMenu';
 import SupportLink from 'src/components/SupportLink';
 import { Volume } from '@linode/api-v4/lib/volumes/types';
@@ -88,7 +90,9 @@ export const VolumeTableRow = (props: CombinedProps) => {
   } = props;
 
   const isVolumesLanding = !isDetailsPageRow;
-  const formattedRegion = formatRegion(region);
+  /* -- Clanode Change -- */
+  // const formattedRegion = formatRegion(region);
+  /* -- Clanode Change End -- */
   // const { events } = useEvents();
 
   // const recentEvent = events.find((event) => event.entity?.id === id);
@@ -129,7 +133,9 @@ export const VolumeTableRow = (props: CombinedProps) => {
       </TableCell>
       {isVolumesLanding && region ? (
         <TableCell data-qa-volume-region noWrap>
-          {formattedRegion}
+          {
+            /* -- Clanode Change -- */ /*formattedRegion*/ '' /* -- Clanode Change End -- */
+          }
         </TableCell>
       ) : null}
       <TableCell data-qa-volume-size>{size} GB</TableCell>
