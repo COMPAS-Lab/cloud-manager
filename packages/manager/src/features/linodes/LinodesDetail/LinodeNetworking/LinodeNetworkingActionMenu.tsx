@@ -34,13 +34,21 @@ export const LinodeNetworkingActionMenu: React.FC<CombinedProps> = (props) => {
   const theme = useTheme<Theme>();
   const matchesMdDown = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { onEdit, onRemove, ipType, ipAddress, readOnly } = props;
-
+  const {
+    onEdit,
+    onRemove,
+    ipType,
+    ipAddress,
+    readOnly,
+  } = props; /*
   const showEdit =
     ipType !== 'IPv4 – Private' &&
     ipType !== 'IPv6 – Link Local' &&
     ipType !== 'IPv4 – Reserved (public)' &&
-    ipType !== 'IPv4 – Reserved (private)';
+    ipType !== 'IPv4 – Reserved (private)'; */
+
+  /* -- Clanode Change -- */ const showEdit = false;
+  /* -- Clanode Change -- */
 
   const deletableIPTypes = ['IPv4 – Public', 'IPv6 – Range'];
 
@@ -57,6 +65,7 @@ export const LinodeNetworkingActionMenu: React.FC<CombinedProps> = (props) => {
           },
         }
       : null,
+
     onEdit && ipAddress && showEdit
       ? {
           title: 'Edit RDNS',
