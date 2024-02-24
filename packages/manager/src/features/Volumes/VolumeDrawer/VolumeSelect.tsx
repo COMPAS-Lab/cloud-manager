@@ -134,7 +134,9 @@ class VolumeSelect extends React.Component<CombinedProps, State> {
         return {
           ...response,
           data: response.data.filter(
-            (v) => v.region === this.props.region && v.linode_id === null
+            (v) =>
+              /* -- Clanode Change --*/ /* v.region === this.props.region && */ /* -- Clanode Change End --*/ v.linode_id ===
+              null
           ),
         };
       })
@@ -178,7 +180,11 @@ class VolumeSelect extends React.Component<CombinedProps, State> {
         />
         {!error && (
           <FormHelperText data-qa-volume-region>
-            Only volumes in this Linode&rsquo;s region are displayed.
+            {
+              /* -- Clanode Change -- */
+              //  Only volumes in this Linode&rsquo;s region are displayed.
+              /* -- Clanode Change End -- */
+            }
           </FormHelperText>
         )}
       </FormControl>

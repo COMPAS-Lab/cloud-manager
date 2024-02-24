@@ -137,7 +137,11 @@ export const VolumeAttachmentDrawer = React.memo((props: Props) => {
         />
         {!linodeError && (
           <FormHelperText>
+            {/* -- Clanode Change -- */
+            /*
             Only Linodes in this Volume&rsquo;s region are displayed.
+          */
+            /* -- Clanode Change End -- */}
           </FormHelperText>
         )}
         {/* Config Selection */}
