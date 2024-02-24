@@ -106,24 +106,26 @@ type CombinedProps = Props &
   WithNotifications;
 
 export const volumeHeaders = [
+  /* -- Clanode Change -- */
   {
     label: 'Label',
     dataColumn: 'label',
     sortable: true,
-    widthPercent: 40,
+    widthPercent: /*40*/ 35,
   },
   {
-    label: 'Region',
+    label: /*'Region'*/ '',
     dataColumn: 'region',
-    sortable: true,
-    widthPercent: 15,
+    sortable: /*true*/ false,
+    widthPercent: /*15*/ 0,
   },
   {
     label: 'Size',
     dataColumn: 'size',
     sortable: true,
-    widthPercent: 5,
+    widthPercent: /*5*/ 15,
   },
+  /* -- Clanode Change End -- */
   {
     label: 'Attached To',
     dataColumn: 'Attached To',

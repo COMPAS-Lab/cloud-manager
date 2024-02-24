@@ -34,7 +34,6 @@ const TableWrapper: React.FC<CombinedProps> = (props) => {
   React.useEffect(() => {
     sync('pulse');
   }, []);
-
   return (
     <Grid container className="m0" spacing={0} style={{ width: '100%' }}>
       <Grid item xs={12} className="p0">
