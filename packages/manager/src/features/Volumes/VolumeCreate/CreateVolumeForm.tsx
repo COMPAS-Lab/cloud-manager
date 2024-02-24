@@ -339,6 +339,9 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                       }))}
                     selectedID={values.region}
                     width={320}
+                    /* -- Clanode Change -- */
+                    hide={true}
+                    /* -- Clanode Change End -- */
                   />
                   {/* -- Clanode Change -- */
                   /*renderSelectTooltip(

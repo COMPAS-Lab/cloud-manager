@@ -206,10 +206,13 @@ class VolumeAttachmentDrawer extends React.Component<CombinedProps, State> {
         />
         {!(linodeError || linodesError) && (
           <FormHelperText>
+            {/* -- Clanode Change -- */
+            /*
             Only Linodes in this Volume&rsquo;s region are displayed.
+          */
+            /* -- Clanode Change End -- */}
           </FormHelperText>
         )}
-
         {/* Config Selection */}
         {configs.length > 1 && (
           <FormControl fullWidth>
