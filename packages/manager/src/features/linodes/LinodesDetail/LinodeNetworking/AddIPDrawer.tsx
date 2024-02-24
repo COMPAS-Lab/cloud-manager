@@ -216,6 +216,10 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
     );
   };
 
+  /* -- Clanode Change -- */
+  const hide = { display: 'none' };
+  /* -- Clanode Change End -- */
+
   return (
     <Drawer open={open} onClose={onClose} title="Add an IP Address">
       <React.Fragment>
@@ -258,13 +262,21 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
             buttonJSX('IPv4')
           )}
         </ActionsPanel>
-        <Typography variant="h2" className={classes.ipv6}>
+        <Typography
+          variant="h2"
+          /* -- Clanode Change -- */ style={hide}
+          /* -- Clanode Change End -- */ className={classes.ipv6}
+        >
           IPv6
         </Typography>
         {errorMessageIPv6 && (
           <Notice error text={errorMessageIPv6} spacingTop={8} />
         )}
-        <Typography variant="h3" className={classes.ipSubheader}>
+        <Typography
+          variant="h3"
+          className={classes.ipSubheader}
+          /* -- Clanode Change -- */ style={hide} /* -- Clanode Change End -- */
+        >
           Select prefix
         </Typography>
         <RadioGroup
@@ -273,6 +285,7 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
           value={selectedIPv6Prefix}
           onChange={handleIPv6Change}
           className={classes.radioButtons}
+          /* -- Clanode Change -- */ style={hide} /* -- Clanode Change End -- */
           data-qa-ip-options-radio-group
         >
           {prefixOptions.map((option, idx) => (
@@ -290,7 +303,9 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
             {IPv6ExplanatoryCopy[selectedIPv6Prefix]}
           </Typography>
         )}
-        <Typography>
+        <Typography
+          /* -- Clanode Change -- */ style={hide} /* -- Clanode Change End -- */
+        >
           IPv6 addresses are allocated as ranges, which you can choose to
           distribute and further route yourself.{' '}
           <ExternalLink to="https://www.linode.com/docs/guides/an-overview-of-ipv6-on-linode/">
@@ -298,7 +313,11 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
           </ExternalLink>
           .
         </Typography>
-        <ActionsPanel>{buttonJSX('IPv6')}</ActionsPanel>
+        <ActionsPanel
+          /* -- Clanode Change -- */ style={hide} /* -- Clanode Change End -- */
+        >
+          {buttonJSX('IPv6')}
+        </ActionsPanel>
       </React.Fragment>
     </Drawer>
   );
