@@ -89,6 +89,9 @@ export interface Props {
   className?: any;
   to?: string;
   hideText?: boolean;
+  /* -- Clanode Change -- */
+  hide?: boolean;
+  /* -- Clanode Change -- */
 }
 
 type FinalProps = Props & WithStyles<CSSClasses>;
@@ -106,7 +109,11 @@ const IconTextLink: React.FC<FinalProps> = (props) => {
     className,
     to,
     hideText,
+    hide,
   } = props;
+  /* -- Clanode Change -- */
+  if (hide) return null;
+  /* -- Clanode Change End -- */
 
   return (
     <ConditionalWrapper
