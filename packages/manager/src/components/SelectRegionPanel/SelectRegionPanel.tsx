@@ -73,10 +73,15 @@ const SelectRegionPanel: React.FC<Props & WithStyles<ClassNames>> = (props) => {
   return (
     <Paper className={classes.root}>
       <Typography variant="h2" data-qa-tp="Region">
-        Region
+        {
+          /* -- Clanode Change -- */ /* Region */ 'CPU Type' /* -- Clanode Change End -- */
+        }
       </Typography>
       {/* {regionHelperText(() => sendLinodeCreateDocsEvent('Speedtest Link'))} */}
       <RegionSelect
+        /* -- Clanode Change -- */
+        label={'CPU Type'}
+        /* -- Clanode Change End -- */
         errorText={error}
         disabled={disabled}
         handleSelection={handleSelection}

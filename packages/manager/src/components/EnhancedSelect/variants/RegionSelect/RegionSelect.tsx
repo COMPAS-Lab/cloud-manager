@@ -192,7 +192,9 @@ const SelectRegionPanel: React.FC<Props> = (props) => {
         value={getSelectedRegionById(selectedID || '', options) ?? ''}
         label={label ?? 'Region'}
         disabled={disabled}
-        placeholder="Select a Region"
+        /* -- Clanode Change --*/
+        placeholder={`Select a ${label ?? 'Region'}`}
+        /* -- Clanode Change --*/
         options={options}
         onChange={onChange}
         components={{ Option: RegionOption, SingleValue }}
