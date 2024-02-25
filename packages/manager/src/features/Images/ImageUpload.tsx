@@ -244,18 +244,19 @@ export const ImageUpload: React.FC<Props> = (props) => {
             />
           ) : null}
 
-          {/* -- Clanode Change -- */
-          /*
-          <Typography className={classes.helperText}>
-            Image files must be raw disk images (.img) compressed using gzip
+          {
+            /* -- Clanode Change -- */
+            <Typography className={classes.helperText}>
+              Image files must be raw disk images (.img)
+              {/* compressed using gzip
             (.gz). The maximum file size is 5 GB (compressed).
             <br />
             <br />
             Custom Images are billed at $0.10/GB per month based on the
-            uncompressed image size.
-          </Typography>
-          */
-          /* -- Clanode Change End -- */}
+            uncompressed image size.*/}
+            </Typography>
+            /* -- Clanode Change End -- */
+          }
 
           <FileUploader
             label={label}
