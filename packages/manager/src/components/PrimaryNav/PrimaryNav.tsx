@@ -108,11 +108,14 @@ export const PrimaryNav: React.FC<Props> = (props) => {
     account?.capabilities ?? []
   );
 
+  /* -- Clanode Change -- */
   const showDomains = Boolean(flags.domains);
   const showKubernetes = Boolean(flags.kubernetes);
   const showNodeBalancer = Boolean(flags.nodeBalancer);
   const showObjectStorage = Boolean(flags.objectStorage);
   const showLongView = Boolean(flags.longView);
+  const showMarketplace = Boolean(flags.marketplace);
+  /* -- Clanode Change End -- */
 
   const prefetchObjectStorage = () => {
     if (!enableObjectPrefetch) {
@@ -208,6 +211,7 @@ export const PrimaryNav: React.FC<Props> = (props) => {
           icon: <Longview />,
         },
         {
+          hide: !showMarketplace,
           display: 'Marketplace',
           href: '/linodes/create?type=One-Click',
           attr: { 'data-qa-one-click-nav-btn': true },
