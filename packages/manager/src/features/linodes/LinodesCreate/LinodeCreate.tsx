@@ -44,10 +44,12 @@ import { getErrorMap } from 'src/utilities/errorUtils';
 import { filterCurrentTypes } from 'src/utilities/filterCurrentLinodeTypes';
 import { getParamsFromUrl } from 'src/utilities/queryParams';
 import SelectPlanPanel from './SelectPlanPanel';
-import FromAppsContent from './TabbedContent/FromAppsContent';
+/* -- Clanode Change -- */
+// import FromAppsContent from './TabbedContent/FromAppsContent';
 // import FromBackupsContent from './TabbedContent/FromBackupsContent';
-import FromImageContent from './TabbedContent/FromImageContent';
 // import FromLinodeContent from './TabbedContent/FromLinodeContent';
+/* -- Clanode Change End -- */
+import FromImageContent from './TabbedContent/FromImageContent';
 import FromStackScriptContent from './TabbedContent/FromStackScriptContent';
 import { renderBackupsDisplaySection } from './TabbedContent/utils';
 import { v4 } from 'uuid';
@@ -270,11 +272,11 @@ export class LinodeCreate extends React.PureComponent<
       type: 'fromImage',
       routeName: `${this.props.match.url}?type=Distributions`,
     },
-    {
+    /*{
       title: 'Marketplace',
       type: 'fromApp',
       routeName: `${this.props.match.url}?type=One-Click`,
-    },
+    },*/
     {
       title: 'StackScripts',
       type: 'fromStackScript',
@@ -491,6 +493,8 @@ export class LinodeCreate extends React.PureComponent<
                   {...rest}
                 />
               </SafeTabPanel>
+              {/* -- Clanode Change -- */
+              /*
               <SafeTabPanel index={1}>
                 <FromAppsContent
                   imagesData={imagesData!}
@@ -502,6 +506,8 @@ export class LinodeCreate extends React.PureComponent<
                   {...rest}
                 />
               </SafeTabPanel>
+              */
+              /* -- Clanode Change End */}
               <SafeTabPanel index={1}>
                 <Tabs defaultIndex={stackScriptSelectedTab}>
                   <Paper className={classes.stackScriptWrapper}>
@@ -521,7 +527,9 @@ export class LinodeCreate extends React.PureComponent<
                           {...rest}
                         />
                       </SafeTabPanel>
-                      {/* <SafeTabPanel index={1}>
+                      {/* -- Clanode Change -- */
+                      /*
+                      <SafeTabPanel index={1}>
                         <FromStackScriptContent
                           category="community"
                           accountBackupsEnabled={accountBackupsEnabled}
@@ -550,7 +558,9 @@ export class LinodeCreate extends React.PureComponent<
                   {...rest}
                 />
               </SafeTabPanel>
-              {/* <SafeTabPanel index={2}>
+              {/* -- Clanode Change -- */
+              /*
+              <SafeTabPanel index={2}>
                 <FromBackupsContent
                   errors={errors}
                   imagesData={imagesData!}
@@ -562,8 +572,8 @@ export class LinodeCreate extends React.PureComponent<
                   {...restoreBackup}
                   {...rest}
                 />
-              </SafeTabPanel> */}
-              {/* <SafeTabPanel index={3}>
+              </SafeTabPanel>
+              <SafeTabPanel index={3}>
                 <FromLinodeContent
                   errors={errors}
                   imagesData={imagesData!}
@@ -574,7 +584,9 @@ export class LinodeCreate extends React.PureComponent<
                   userCannotCreateLinode={userCannotCreateLinode}
                   {...rest}
                 />
-              </SafeTabPanel> */}
+              </SafeTabPanel>
+              */
+              /* -- Clanode Change End -- */}
             </TabPanels>
           </Tabs>
 

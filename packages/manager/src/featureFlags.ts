@@ -47,11 +47,14 @@ export interface Flags {
   promotionalOffers: PromotionalOffer[];
   mainContentBanner: MainContentBanner;
   databases: boolean;
+  /* -- Clanode Change -- */
   domains: boolean;
   kubernetes: boolean;
   nodeBalancer: boolean;
   objectStorage: boolean;
   longView: boolean;
+  marketplace: boolean;
+  /* -- Clanode Change End -- */
   tpaProviders: Provider[];
   ipv6Sharing: boolean;
   referralBannerText: ReferralBannerText;
