@@ -6,10 +6,11 @@ import IconButton from 'src/components/core/IconButton';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import Toolbar from 'src/components/core/Toolbar';
 import Typography from 'src/components/core/Typography';
-import AddNewMenu from './AddNewMenu';
+import AddNewMenu from './AddNewMenu'; /*
 import Community from './Community';
 import Help from './Help';
-import NotificationButton from './NotificationButton';
+*/ /* -- Clanode Change End -- */
+/* -- Clanode Change -- */ import NotificationButton from './NotificationButton';
 import SearchBar from './SearchBar';
 import TopMenuIcon from './TopMenuIcon';
 import UserMenu from './UserMenu';
@@ -103,8 +104,12 @@ const TopMenu: React.FC<PropsWithStyles> = (props) => {
           </Hidden>
           <AddNewMenu />
           <SearchBar />
+          {/* -- Clanode Change -- */
+          /*
           <Help />
           <Community className={classes.communityIcon} />
+          */
+          /* -- Clanode Change -- */}
           <NotificationButton />
           <UserMenu />
         </Toolbar>
