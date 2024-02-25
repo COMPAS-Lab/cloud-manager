@@ -131,13 +131,13 @@ export const VolumeTableRow = (props: CombinedProps) => {
         <StatusIcon status={volumeStatusIconMap[status]} />
         {volumeStatusMap[status]}
       </TableCell>
-      {isVolumesLanding && region ? (
+      {/* -- Clanode Change -- */
+      /*isVolumesLanding && region ? (
         <TableCell data-qa-volume-region noWrap>
-          {
-            /* -- Clanode Change -- */ /*formattedRegion*/ '' /* -- Clanode Change End -- */
-          }
+          {formattedRegion}
         </TableCell>
-      ) : null}
+      ) : null */
+      /* -- Clanode Change End -- */}
       <TableCell data-qa-volume-size>{size} GB</TableCell>
       {!isVolumesLanding ? (
         <Hidden smDown>
