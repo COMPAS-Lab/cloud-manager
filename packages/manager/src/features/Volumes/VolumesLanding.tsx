@@ -112,26 +112,33 @@ export const volumeHeaders = [
     dataColumn: 'label',
     sortable: true,
     widthPercent: /*40*/ 35,
-  },
+  } /*
   {
-    label: /*'Region'*/ '',
+    label: 'Region',
     dataColumn: 'region',
-    sortable: /*true*/ false,
-    widthPercent: /*15*/ 0,
-  },
+    sortable: true,
+    widthPercent: 15,
+  },*/,
   {
     label: 'Size',
     dataColumn: 'size',
     sortable: true,
-    widthPercent: /*5*/ 15,
+    widthPercent: /*5*/ 25,
   },
-  /* -- Clanode Change End -- */
   {
     label: 'Attached To',
     dataColumn: 'Attached To',
     sortable: false,
-    widthPercent: 25,
+    widthPercent: 30,
   },
+  {
+    label: 'Action Menu',
+    visuallyHidden: true,
+    dataColumn: '',
+    sortable: false,
+    widthPercent: 10,
+  },
+  /* -- Clanode Change End -- */
 ];
 
 export const useStyles = makeStyles(() => ({
@@ -382,7 +389,9 @@ export const VolumesLanding: React.FC<CombinedProps> = (props) => {
                 entity="volume"
                 headers={volumeHeaders}
                 isGroupedByTag={volumesAreGrouped}
-                toggleGroupByTag={toggleGroupVolumes}
+                /* -- Clanode Change -- */
+                toggleGroupByTag={/*toggleGroupVolumes*/ undefined}
+                /* -- Clanode Change End -- */
                 row={volumeRow}
                 initialOrder={{ order: 'asc', orderBy: 'label' }}
               />

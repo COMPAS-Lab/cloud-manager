@@ -256,6 +256,9 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               onChange={(selected) => setFieldValue('tags', selected)}
               value={values.tags}
               disabled={disabled}
+              /* -- Clanode Change -- */
+              hide={true}
+              /* -- Clanode Change End -- */
             />
 
             <PricePanel value={values.size} currentSize={10} />
