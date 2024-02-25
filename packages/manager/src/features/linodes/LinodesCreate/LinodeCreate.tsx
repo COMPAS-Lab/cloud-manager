@@ -632,11 +632,17 @@ export class LinodeCreate extends React.PureComponent<
               errorText: hasErrorFor.label,
               disabled: userCannotCreateLinode,
             }}
-            tagsInputProps={
+            /* -- Clanode Change -- */
+            /*tagsInputProps={
               this.props.createType !== 'fromLinode'
                 ? tagsInputProps
                 : undefined
-            }
+            }*/
+            tagsInputProps={{
+              ...tagsInputProps,
+              hide: true,
+            }}
+            /* -- Clanode Change End -- */
             updateFor={[tags, label, errors]}
           />
           {/* Hide for backups and clone */}
