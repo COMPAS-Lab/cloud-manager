@@ -305,9 +305,9 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
           onInputChange={handleSearchChange}
           onKeyDown={onKeyDown}
           placeholder={
-            searchActive
-              ? 'Search'
-              : 'Search for Linodes, Volumes, NodeBalancers, Domains, Buckets, Tags...'
+            /* -- Clanode Change -- */
+            searchActive ? 'Search' : 'Search for Linodes, Volumes, Tags...' //NodeBalancers, Domains, Buckets, Tags...'
+            /* -- Clanode Change End -- */
           }
           components={{ Control, Option }}
           styles={selectStyles}
