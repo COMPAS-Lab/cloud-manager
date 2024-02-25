@@ -157,10 +157,13 @@ class AddNewMenu extends React.Component<CombinedProps> {
       account?.capabilities ?? []
     );
 
+    /* -- Clanode Change -- */
     const showDomains = Boolean(flags.domains);
     const showKubernetes = Boolean(flags.kubernetes);
     const showNodeBalancer = Boolean(flags.nodeBalancer);
     const showObjectStorage = Boolean(flags.objectStorage);
+    const showMarketplace = Boolean(flags.marketplace);
+    /* -- Clanode Change End -- */
 
     return (
       <dbaasContext.Consumer>
@@ -275,18 +278,20 @@ class AddNewMenu extends React.Component<CombinedProps> {
                       />
                     </MenuLink>
                   ) : null}
-                  <MenuLink
-                    as={Link}
-                    to="/linodes/create?type=One-Click"
-                    className={classes.menuItemLink}
-                  >
-                    <AddNewMenuItem
-                      title="Marketplace"
-                      body="Deploy applications with ease"
-                      ItemIcon={OneClickIcon}
-                      attr={{ 'data-qa-one-click-add-new': true }}
-                    />
-                  </MenuLink>
+                  {showMarketplace ? (
+                    <MenuLink
+                      as={Link}
+                      to="/linodes/create?type=One-Click"
+                      className={classes.menuItemLink}
+                    >
+                      <AddNewMenuItem
+                        title="Marketplace"
+                        body="Deploy applications with ease"
+                        ItemIcon={OneClickIcon}
+                        attr={{ 'data-qa-one-click-add-new': true }}
+                      />
+                    </MenuLink>
+                  ) : null}
                 </MenuItems>
               </MenuPopover>
             </Menu>

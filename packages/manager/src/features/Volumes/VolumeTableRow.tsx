@@ -154,13 +154,13 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
           )}
         </Grid>
       </TableCell>
-      {region ? (
+      {/* -- Clanode Change -- */
+      /*region ? (
         <TableCell data-qa-volume-region noWrap>
-          {
-            /* -- Clanode Change -- */ /*formattedRegion*/ '' /* -- Clanode Change End -- */
-          }
+          {formattedRegion}
         </TableCell>
-      ) : null}
+      ) : null */
+      /* -- Clanode Change End -- */}
       <TableCell data-qa-volume-size>{size} GB</TableCell>
       {!isVolumesLanding ? (
         <Hidden xsDown>

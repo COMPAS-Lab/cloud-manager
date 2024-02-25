@@ -10,7 +10,9 @@ import { makeStyles, Theme } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
 import RegionSelect from 'src/components/EnhancedSelect/variants/RegionSelect';
 import FileUploader from 'src/components/FileUploader/FileUploader';
-import Link from 'src/components/Link';
+/* -- Clanode Change -- */
+// import Link from 'src/components/Link';
+/* -- Clanode Change End -- */
 import LinodeCLIModal from 'src/components/LinodeCLIModal';
 import Notice from 'src/components/Notice';
 import Prompt from 'src/components/Prompt';
@@ -205,7 +207,10 @@ export const ImageUpload: React.FC<Props> = (props) => {
           />
 
           <TextField
-            label="Description"
+            /* -- Clanode Change -- */
+            style={{ display: 'none' }}
+            label="" /*"Description"*/
+            /* -- Clanode Change End -- */
             multiline
             rows={4}
             value={description}
@@ -239,14 +244,19 @@ export const ImageUpload: React.FC<Props> = (props) => {
             />
           ) : null}
 
-          <Typography className={classes.helperText}>
-            Image files must be raw disk images (.img) compressed using gzip
+          {
+            /* -- Clanode Change -- */
+            <Typography className={classes.helperText}>
+              Image files must be raw disk images (.img)
+              {/* compressed using gzip
             (.gz). The maximum file size is 5 GB (compressed).
             <br />
             <br />
             Custom Images are billed at $0.10/GB per month based on the
-            uncompressed image size.
-          </Typography>
+            uncompressed image size.*/}
+            </Typography>
+            /* -- Clanode Change End -- */
+          }
 
           <FileUploader
             label={label}
@@ -258,6 +268,8 @@ export const ImageUpload: React.FC<Props> = (props) => {
             setCancelFn={setCancelFn}
             onSuccess={onSuccess}
           />
+          {/* -- Clanode Change -- */
+          /*
           <ActionsPanel>
             <Typography>
               Or, upload an image using the{' '}
@@ -274,6 +286,8 @@ export const ImageUpload: React.FC<Props> = (props) => {
               .
             </Typography>
           </ActionsPanel>
+          */
+          /* -- Clanode Change End -- */}
         </div>
       </Paper>
       <LinodeCLIModal

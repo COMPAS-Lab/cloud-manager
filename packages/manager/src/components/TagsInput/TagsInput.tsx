@@ -23,6 +23,9 @@ export interface Props {
   onChange: (selected: Item[]) => void;
   disabled?: boolean;
   menuPlacement?: 'bottom' | 'top' | 'auto' | undefined;
+  /* -- Clanode Change -- */
+  hide?: boolean;
+  /* -- Clanode Change End -- */
 }
 
 const TagsInput: React.FC<Props> = (props) => {
@@ -35,6 +38,9 @@ const TagsInput: React.FC<Props> = (props) => {
     onChange,
     disabled,
     menuPlacement,
+    /* -- Clanode Change -- */
+    hide,
+    /* -- Clanode Change End -- */
   } = props;
 
   const [accountTags, setAccountTags] = React.useState<Tag[]>([]);
@@ -92,6 +98,10 @@ const TagsInput: React.FC<Props> = (props) => {
   const generalError = errorMap.none;
 
   const error = disabled ? undefined : labelError || tagError || generalError;
+
+  /* -- Clanode Change -- */
+  if (hide) return null;
+  /* -- Clanode Change End -- */
 
   return (
     <Select

@@ -45,6 +45,9 @@ export const DocsLink: React.FC<Props> = (props) => {
 
   return (
     <IconTextLink
+      /* -- Clanode Change -- */
+      hide={true}
+      /* -- Clanode Change End -- */
       className={`${classes.root} docsButton`}
       SideIcon={DocsIcon}
       text={label ?? 'Docs'}
