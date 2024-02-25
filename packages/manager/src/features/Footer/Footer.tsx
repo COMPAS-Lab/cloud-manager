@@ -1,7 +1,9 @@
 import classNames from 'classnames';
 import * as React from 'react';
 import { Theme, makeStyles } from 'src/components/core/styles';
-import ExternalLink from 'src/components/ExternalLink';
+/* -- Clanode Change -- */
+// import ExternalLink from 'src/components/ExternalLink';
+/* -- Clanode Change End -- */
 import Grid from 'src/components/Grid';
 
 interface Props {
@@ -65,8 +67,9 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
 }));
-
-const FEEDBACK_LINK = 'https://www.linode.com/feedback/';
+/* -- Clanode Change -- */
+// const FEEDBACK_LINK = 'https://www.linode.com/feedback/';
+/* -- Clanode Change End -- */
 
 export const Footer: React.FC<Props> = (props) => {
   const classes = useStyles();
@@ -87,6 +90,8 @@ export const Footer: React.FC<Props> = (props) => {
         <Grid item className={classes.version}>
           {renderVersion(classes.link)}
         </Grid>
+        {/* -- Clanode Change -- */
+        /*
         <Grid
           item
           className={classNames({
@@ -117,6 +122,8 @@ export const Footer: React.FC<Props> = (props) => {
             hideIcon
           />
         </Grid>
+        */
+        /* -- Clanode Change End -- */}
       </Grid>
     </footer>
   );
