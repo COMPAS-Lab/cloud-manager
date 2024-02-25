@@ -24,6 +24,7 @@ interface Props {
   linodeId: number;
   linodeLabel: string;
   linodeAlerts: LinodeAlerts;
+  hide?: boolean;
 }
 
 interface State {
@@ -284,6 +285,9 @@ class LinodeSettingsAlertsPanel extends React.Component<CombinedProps, State> {
     const alertSections: Section[] = this.renderAlertSections();
     const hasErrorFor = getAPIErrorFor({}, this.state.errors);
     const generalError = hasErrorFor('none');
+    /* -- Clanode Change -- */
+    if (this.props.hide) return null;
+    /* -- Clanode Change End -- */
 
     return (
       <Accordion

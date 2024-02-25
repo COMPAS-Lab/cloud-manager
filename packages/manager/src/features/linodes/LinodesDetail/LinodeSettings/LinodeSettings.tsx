@@ -38,6 +38,9 @@ const LinodeSettings: React.FC<CombinedProps> = (props) => {
               linodeStatus={linode.status}
             />
             <LinodeSettingsAlertsPanel
+              /* -- Clanode Change -- */
+              hide={true}
+              /* -- Clanode Change End -- */
               isBareMetalInstance={isBareMetalInstance}
               linodeId={linode.id}
               linodeLabel={linode.label}
