@@ -95,7 +95,10 @@ export const TransferDisplay: React.FC<Props> = (props) => {
     <>
       <Typography
         className={classes.root}
-        style={{ marginTop: spacingTop ?? 8 }}
+        style={{
+          marginTop: spacingTop ?? 8,
+          /* -- Clanode Change -- */ display: 'none' /* -- Clanode Change -- */,
+        }}
       >
         {isLoading ? (
           'Loading transfer data...'
