@@ -14,9 +14,11 @@ import NodeBalancer from 'src/assets/icons/entityIcons/nodebalancer.svg';
 import OCA from 'src/assets/icons/entityIcons/oneclick.svg';
 import StackScript from 'src/assets/icons/entityIcons/stackscript.svg';
 import Volume from 'src/assets/icons/entityIcons/volume.svg';
-import HelpIcon from 'src/assets/icons/get_help.svg';
 import Longview from 'src/assets/icons/longview.svg';
+/* -- Clanode Change -- */
+// import HelpIcon from 'src/assets/icons/get_help.svg';
 // import Logo from 'src/assets/logo/logo.svg';
+/* -- Clanode Change End -- */
 import CompasLogo from 'src/assets/compas-logo.png';
 import Chip from 'src/components/core/Chip';
 import Divider from 'src/components/core/Divider';
@@ -106,11 +108,14 @@ export const PrimaryNav: React.FC<Props> = (props) => {
     account?.capabilities ?? []
   );
 
+  /* -- Clanode Change -- */
   const showDomains = Boolean(flags.domains);
   const showKubernetes = Boolean(flags.kubernetes);
   const showNodeBalancer = Boolean(flags.nodeBalancer);
   const showObjectStorage = Boolean(flags.objectStorage);
   const showLongView = Boolean(flags.longView);
+  const showMarketplace = Boolean(flags.marketplace);
+  /* -- Clanode Change End -- */
 
   const prefetchObjectStorage = () => {
     if (!enableObjectPrefetch) {
@@ -206,6 +211,7 @@ export const PrimaryNav: React.FC<Props> = (props) => {
           icon: <Longview />,
         },
         {
+          hide: !showMarketplace,
           display: 'Marketplace',
           href: '/linodes/create?type=One-Click',
           attr: { 'data-qa-one-click-nav-btn': true },
@@ -217,12 +223,14 @@ export const PrimaryNav: React.FC<Props> = (props) => {
           display: 'Account',
           href: '/account',
           icon: <Account />,
-        },
+        } /*
         {
           display: 'Help & Support',
           href: '/support',
           icon: <HelpIcon />,
         },
+        */ /* -- Clanode Change End -- */,
+        /* -- Clanode Change -- */
       ],
     ],
     [showDatabases, _isManagedAccount, allowObjPrefetch, flags.databaseBeta]

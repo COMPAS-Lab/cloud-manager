@@ -882,7 +882,11 @@ export const Footer: React.FC<FooterProps> = React.memo((props) => {
                 [classes.listItemLast]: matchesSmDown,
               })}
             >
-              <span className={classes.label}>Region:</span>{' '}
+              <span className={classes.label}>
+                {
+                  /* -- Clanode Change --*/ /*'Region:'*/ 'CPU:' /* -- Clanode Change End --*/
+                }
+              </span>{' '}
               {linodeRegionDisplay}
             </Typography>
           )}

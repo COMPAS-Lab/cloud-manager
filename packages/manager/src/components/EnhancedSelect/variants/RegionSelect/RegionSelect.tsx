@@ -153,6 +153,9 @@ const SelectRegionPanel: React.FC<Props> = (props) => {
     styles,
     required,
     width,
+    /* -- Clanode Change -- */
+    hide,
+    /* -- Clanode Change End -- */
     ...restOfReactSelectProps
   } = props;
 
@@ -177,9 +180,10 @@ const SelectRegionPanel: React.FC<Props> = (props) => {
   const options = React.useMemo(() => getRegionOptions(regions), [regions]);
 
   /* -- Clanode Change -- */
-  if (!selectedID) handleSelection(regions[0].id);
-  return null;
-  /* -- Change Change End -- */
+  if (hide && !selectedID) handleSelection(regions[0].id);
+
+  if (hide && selectedID) return null;
+  /* -- Clanode Change End -- */
 
   return (
     <div className={classes.root} style={{ width }}>
@@ -188,7 +192,9 @@ const SelectRegionPanel: React.FC<Props> = (props) => {
         value={getSelectedRegionById(selectedID || '', options) ?? ''}
         label={label ?? 'Region'}
         disabled={disabled}
-        placeholder="Select a Region"
+        /* -- Clanode Change --*/
+        placeholder={`Select a ${label ?? 'Region'}`}
+        /* -- Clanode Change --*/
         options={options}
         onChange={onChange}
         components={{ Option: RegionOption, SingleValue }}

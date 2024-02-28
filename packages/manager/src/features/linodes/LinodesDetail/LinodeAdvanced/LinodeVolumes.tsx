@@ -100,24 +100,26 @@ type CombinedProps = LinodeContextProps &
   RouteProps;
 
 const volumeHeaders = [
+  /* -- Clanode Change End -- */
   {
     label: 'Label',
     dataColumn: 'label',
     sortable: true,
-    widthPercent: 25,
+    widthPercent: /*25*/ 35,
   },
-  {
+  /*{
     label: 'Region',
     dataColumn: 'region',
     sortable: true,
     widthPercent: 20,
-  },
+  },*/
   {
     label: 'Size',
     dataColumn: 'size',
     sortable: true,
-    widthPercent: 5,
+    widthPercent: /*5*/ 15,
   },
+  /* -- Clanode Change End -- */
   {
     label: 'File System Path',
     dataColumn: 'File System Path',
