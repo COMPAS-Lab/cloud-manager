@@ -170,7 +170,7 @@ export const NetworkGraphs: React.FC<Props> = (props) => {
     <Grid container className={`${classes.graphGrids} p0`}>
       <Grid item className={classes.grid} xs={12}>
         <StatsPanel
-          title={`Network Usage`}
+          title={`Network — IPv4 (${v4Unit}/s)`}
           renderBody={() => (
             <Graph
               data={v4Data}
