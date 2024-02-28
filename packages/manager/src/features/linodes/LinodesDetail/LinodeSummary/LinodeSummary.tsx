@@ -202,13 +202,13 @@ const LinodeSummary: React.FC<Props> = (props) => {
             borderColor: 'transparent',
             backgroundColor: theme.graphs.diskIO.read,
             data: data.io,
-            label: 'Swap In Rate',
+            label: 'Read Rate',
           },
           {
             borderColor: 'transparent',
             backgroundColor: theme.graphs.diskIO.swap,
             data: data.swap,
-            label: 'Swap Out Rate',
+            label: 'Write Rate',
           },
         ]}
         legendRows={[
@@ -300,7 +300,7 @@ const LinodeSummary: React.FC<Props> = (props) => {
             </Grid>
             <Grid item className={classes.grid} xs={12}>
               <StatsPanel
-                title="Disk I/O (blocks/s)"
+                title="Disk IO (MB/s)"
                 renderBody={renderDiskIOChart}
                 {...chartProps}
               />
