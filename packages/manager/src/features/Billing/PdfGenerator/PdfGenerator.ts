@@ -164,7 +164,9 @@ export const printInvoice = (
   try {
     const itemsPerPage = 12;
     const date = formatDate(invoice.date, { displayTime: true });
-    const invoiceId = invoice.id;
+    /* -- Clanode Change -- */
+    // const invoiceId = invoice.id;
+    /* -- Clanode Change End -- */
 
     /**
      * splits invoice items into nested arrays based on the itemsPerPage
@@ -222,18 +224,31 @@ export const printInvoice = (
       const rightHeaderYPosition = addRightHeader(doc, account);
 
       addTitle(doc, Math.max(leftHeaderYPosition, rightHeaderYPosition) + 4, {
-        text: `Invoice: #${invoiceId}`,
+        /* -- Clanode Change -- */
+        // text: `Invoice #${invoice.id}`,
+        text: `${invoice.label}`,
+        /* -- Clanode Changes End -- */
       });
 
-      createInvoiceItemsTable(doc, itemsChunk);
+      createInvoiceItemsTable(
+        doc,
+        itemsChunk
+      ); 
+      /* -- Clanode Change -- */
+      /*
       createFooter(doc, baseFont, account.country, invoice.date);
       if (index < itemsChunks.length - 1) {
         doc.addPage();
       }
+      */ 
+      /* -- Clanode Change End -- */
+      
     });
 
     createInvoiceTotalsTable(doc, invoice);
-    createFooter(doc, baseFont, account.country, invoice.date);
+    /* -- Clanode Change -- */
+    // createFooter(doc, baseFont, account.country, invoice.date);
+    /* -- Clanode Change End -- */
 
     doc.save(`invoice-${date}.pdf`);
     return {
