@@ -14,9 +14,13 @@ import TabLinkList from 'src/components/TabLinkList';
 import TaxBanner from 'src/components/TaxBanner';
 import { akamaiBillingInvoiceText } from 'src/features/Billing/billingUtils';
 import { useAccount } from 'src/queries/account';
-import { getGrantData, useProfile } from 'src/queries/profile';
+/* -- Clanode Change -- */
+// import { getGrantData, useProfile } from 'src/queries/profile';
+/* -- Clanode Change End -- */
 
-const Billing = React.lazy(() => import('src/features/Billing'));
+const Billing = React.lazy(
+  () => import('src/features/Billing')
+); /*
 const EntityTransfersLanding = React.lazy(
   () => import('src/features/EntityTransfers/EntityTransfersLanding')
 );
@@ -25,23 +29,25 @@ const GlobalSettings = React.lazy(() => import('./GlobalSettings'));
 const MaintenanceLanding = React.lazy(
   () => import('./Maintenance/MaintenanceLanding')
 );
-
-const AccountLanding: React.FC = () => {
+*/ /* -- Clanode Change End -- */
+/* -- Clanode Change -- */ const AccountLanding: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
-  const { data: profile } = useProfile();
+  /* -- Clanode Change -- */
+  // const { data: profile } = useProfile();
   const { data: account } = useAccount();
 
-  const grantData = getGrantData();
-  const accountAccessGrant = grantData?.global?.account_access;
-  const readOnlyAccountAccess = accountAccessGrant === 'read_only';
+  // const grantData = getGrantData();
+  // const accountAccessGrant = grantData?.global?.account_access;
+  // const readOnlyAccountAccess = accountAccessGrant === 'read_only';
   const isAkamaiAccount = account?.billing_source === 'akamai';
+  /* -- Clanode Change End -- */
 
   const tabs = [
     {
       title: 'Billing Info',
       routeName: '/account/billing',
-    },
+    } /*
     {
       title: 'Users & Grants',
       routeName: '/account/users',
@@ -58,6 +64,8 @@ const AccountLanding: React.FC = () => {
       title: 'Settings',
       routeName: '/account/settings',
     },
+    */ /* -- Clanode Change End -- */,
+    /* -- Clanode Change -- */
   ];
 
   const overrideWhitelist = [
@@ -89,17 +97,18 @@ const AccountLanding: React.FC = () => {
     history.push(tabs[index].routeName);
   };
 
-  let idx = 0;
+  /* -- Clanode Change -- */
+  /*let*/ const idx = 0;
 
-  const isBillingTabSelected = location.pathname.match(/billing/);
+  // const isBillingTabSelected = location.pathname.match(/billing/);
+  /* -- Clanode Change End -- */
 
   const landingHeaderProps: LandingHeaderProps = {
     title: 'Account',
     breadcrumbProps: {
       pathname: '/account',
     },
-  };
-
+  }; /*
   if (isBillingTabSelected) {
     landingHeaderProps.docsLabel = 'How Linode Billing Works';
     landingHeaderProps.docsLink =
@@ -111,8 +120,9 @@ const AccountLanding: React.FC = () => {
     }
     landingHeaderProps.disabledCreateButton = readOnlyAccountAccess;
   }
+  */ /* -- Clanode Change End -- */
 
-  return (
+  /* -- Clanode Change -- */ return (
     <React.Fragment>
       <DocumentTitleSegment segment="Account Settings" />
       <TaxBanner marginBottom={24} />
@@ -134,6 +144,8 @@ const AccountLanding: React.FC = () => {
             <SafeTabPanel index={idx}>
               <Billing />
             </SafeTabPanel>
+            {/* -- Clanode Change -- */
+            /*
             <SafeTabPanel index={++idx}>
               <Users isRestrictedUser={profile?.restricted || false} />
             </SafeTabPanel>
@@ -146,6 +158,8 @@ const AccountLanding: React.FC = () => {
             <SafeTabPanel index={++idx}>
               <GlobalSettings />
             </SafeTabPanel>
+            */
+            /* -- Clanode Change End -- */}
           </TabPanels>
         </React.Suspense>
       </Tabs>
