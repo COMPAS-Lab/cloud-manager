@@ -25,7 +25,7 @@ import { useProfile } from 'src/queries/profile';
 import { setUpCharts } from 'src/utilities/charts';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import {
-  formatNumber,
+  /* -- Clanode Change -- */ //formatNumber, /* -- Clanode Change End -- */
   formatPercentage,
   getMetrics,
 } from 'src/utilities/statMetrics';
@@ -33,6 +33,14 @@ import { debounce } from 'throttle-debounce';
 import { getDateOptions } from './helpers';
 import NetworkGraph, { ChartProps } from './NetworkGraphs';
 import { StatsPanel } from './StatsPanel';
+/* -- Clanode Change -- */
+import {
+  generateDiskIOUnits,
+  convertDiskIOToUnit,
+  formatDiskIOTooltip,
+  formatBytesPerSecond,
+} from 'src/features/Longview/shared/utilities';
+/* -- Clanode Change End -- */
 
 setUpCharts();
 
@@ -189,12 +197,26 @@ const LinodeSummary: React.FC<Props> = (props) => {
       io: stats?.data.io.io ?? [],
       swap: stats?.data.io.swap ?? [],
     };
+    /* -- Clanode Change -- */
+    const readMetrics = getMetrics(data.io);
+    const writeMetrics = getMetrics(data.swap);
+
+    const maxIO = Math.max(readMetrics.max, writeMetrics.max);
+    const unit = generateDiskIOUnits(maxIO);
+    const convertDiskIOData = (value: number) => {
+      return convertDiskIOToUnit(value, unit as any);
+    };
+    /* -- Clanode Change End -- */
 
     return (
       <LineGraph
         timezone={timezone}
         chartHeight={chartHeight}
         showToday={rangeSelection === '24'}
+        /* -- Clanode Change -- */
+        formatData={convertDiskIOData}
+        formatTooltip={formatDiskIOTooltip}
+        /* -- Clanode Change End -- */
         data={[
           {
             borderColor: 'transparent',
@@ -209,16 +231,19 @@ const LinodeSummary: React.FC<Props> = (props) => {
             label: 'Write Rate',
           },
         ]}
+        /* -- Clanode Change -- */
+        unit={`/s`}
         legendRows={[
           {
-            data: getMetrics(data.io),
-            format: formatNumber,
+            data: readMetrics,
+            format: /*formatNumber*/ formatBytesPerSecond,
           },
           {
-            data: getMetrics(data.swap),
-            format: formatNumber,
+            data: writeMetrics,
+            format: /*formatNumber*/ formatBytesPerSecond,
           },
         ]}
+        /* -- Clanode Change End -- */
       />
     );
   };
@@ -298,7 +323,7 @@ const LinodeSummary: React.FC<Props> = (props) => {
             </Grid>
             <Grid item className={classes.grid} xs={12}>
               <StatsPanel
-                title="Disk IO (MB/s)"
+                title="Disk IO"
                 renderBody={renderDiskIOChart}
                 {...chartProps}
               />

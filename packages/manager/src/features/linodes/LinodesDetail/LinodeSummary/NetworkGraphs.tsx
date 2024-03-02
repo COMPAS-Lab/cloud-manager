@@ -259,13 +259,15 @@ const Graph: React.FC<GraphProps> = (props) => {
           borderColor: 'transparent',
           backgroundColor: theme.graphs.network.inbound,
           data: convertedPublicIn,
-          label: 'Public In',
+          label:
+            /* -- Clanode Change -- */ /* 'Public In' */ 'Net In' /* -- Clanode Change End -- */,
         },
         {
           borderColor: 'transparent',
           backgroundColor: theme.graphs.network.outbound,
           data: convertedPublicOut,
-          label: 'Public Out',
+          label:
+            /* -- Clanode Change -- */ /* 'Public Out' */ 'Net Out' /* -- Clanode Change End -- */,
         },
         // {
         //   borderColor: 'transparent',
