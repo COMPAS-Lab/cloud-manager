@@ -63,6 +63,9 @@ interface Props extends Pick<RouteComponentProps, 'history'> {
   email: string;
   phone: string;
   taxId: string;
+  /* -- Clanode Change -- */
+  hide?: boolean;
+  /* -- Clanode Change End -- */
 }
 
 type CombinedProps = Props;
@@ -81,6 +84,9 @@ const ContactInformation: React.FC<CombinedProps> = (props) => {
     email,
     phone,
     taxId,
+    /* -- Clanode Change -- */
+    hide,
+    /* -- Clanode Change End -- */
   } = props;
 
   const classes = useStyles();
@@ -130,6 +136,9 @@ const ContactInformation: React.FC<CombinedProps> = (props) => {
   const countryName = countryData?.find(
     (_country) => _country.countryShortCode === country
   )?.countryName;
+  /* -- Clanode Change -- */
+  if (hide) return null;
+  /* -- Clanode Change End -- */
 
   return (
     <Grid item xs={12} md={6}>
