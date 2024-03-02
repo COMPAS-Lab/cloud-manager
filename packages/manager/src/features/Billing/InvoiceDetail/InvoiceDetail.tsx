@@ -136,7 +136,9 @@ export const InvoiceDetail: React.FC<CombinedProps> = (props) => {
               </Link>
               {invoice && (
                 <Typography variant="h2" data-qa-invoice-id>
-                  Invoice #{invoice.id}
+                  {
+                    /* -- Clanode Change -- */ /*`Invoice #${invoice.id}`*/ invoice.label /* -- Clanode Change End -- */
+                  }
                 </Typography>
               )}
             </Grid>
