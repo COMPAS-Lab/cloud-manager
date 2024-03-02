@@ -227,17 +227,22 @@ const profileLinks: MenuLink[] = [
     display: 'Display',
     href: '/profile/display',
   },
-  { display: 'Login & Authentication', href: '/profile/auth' },
+  /* -- Clanode Change -- */
+  /* { display: 'Login & Authentication', href: '/profile/auth' }, */
   { display: 'SSH Keys', href: '/profile/keys' },
-  { display: 'LISH Console Settings', href: '/profile/lish' },
-  {
-    display: 'API Tokens',
-    href: '/profile/tokens',
-  },
-  { display: 'OAuth Apps', href: '/profile/clients' },
-  { display: 'Referrals', href: '/profile/referrals' },
   { display: 'My Settings', href: '/profile/settings' },
   { display: 'Log Out', href: '/logout' },
+  { display: /*'Login & Authentication'*/ '', href: '/profile/auth' },
+  { display: /*'LISH Console Settings'*/ '', href: '/profile/lish' },
+  {
+    display: /*'API Tokens'*/ '',
+    href: '/profile/tokens',
+  },
+  { display: /*'OAuth Apps'*/ '', href: '/profile/clients' },
+  { display: /*'Referrals'*/ '', href: '/profile/referrals' },
+  /* { display: 'My Settings', href: '/profile/settings' },
+  { display: 'Log Out', href: '/logout' }, */
+  /* -- Clanode Change End -- */
 ];
 
 export const UserMenu: React.FC<{}> = () => {
@@ -256,10 +261,12 @@ export const UserMenu: React.FC<{}> = () => {
 
   const accountLinks: MenuLink[] = React.useMemo(
     () => [
+      /* -- Clanode Change -- */
       {
-        display: 'Billing & Contact Information',
+        display: /*'Billing & Contact Information'*/ 'Billing Information',
         href: '/account/billing',
-      },
+      } /* -- Clanode Change End -- */,
+      /*
       // Restricted users can't view the Users tab regardless of their grants
       {
         display: 'Users & Grants',
@@ -282,6 +289,7 @@ export const UserMenu: React.FC<{}> = () => {
         href: '/account/settings',
         hide: !hasFullAccountAccess,
       },
+      */
     ],
     [hasFullAccountAccess, _isRestrictedUser]
   );
