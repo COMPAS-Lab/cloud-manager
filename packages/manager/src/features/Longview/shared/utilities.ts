@@ -346,6 +346,55 @@ export const convertNetworkToUnit = (
   }
 };
 
+/* -- Clanode Change -- */
+export type DiskIOUnit = 'B' | 'KB' | 'MB';
+/**
+ * converts bytes to either KB (Kilobytes) or MB (Megabytes)
+ * depending on if the Kilobyte conversion exceeds 1000.
+ *
+ * @param networkUsedInBytes inbound and outbound traffic in bytes
+ */
+export const generateDiskIOUnits = (diskIOInBytes: number): DiskIOUnit => {
+  /** Thanks to http://www.matisse.net/bitcalc/ */
+  const diskIOInKilobytes = diskIOInBytes / 1000;
+  if (diskIOInKilobytes <= 1) {
+    return 'B';
+  } else if (diskIOInKilobytes <= 1000) {
+    return 'KB';
+  } else {
+    return 'MB';
+  }
+};
+
+export const convertDiskIOToUnit = (
+  valueInBytes: number,
+  maxUnit: DiskIOUnit
+) => {
+  if (maxUnit === 'MB') {
+    // If the unit we're using for the graph is MB, return the output in MB.
+    // eslint-disable-next-line
+    const valueInMegabytes = valueInBytes / 1000 / 1000;
+    return valueInMegabytes;
+  } else if (maxUnit === 'KB') {
+    // If the unit we're using for the graph is KB, return the output in KB.
+    // eslint-disable-next-line
+    const valueInKilobytes = valueInBytes / 1000;
+    return valueInKilobytes;
+  } else {
+    // Unit is 'B' so just return the unformatted value, rounded to the nearest byte.
+    return Math.round(valueInBytes);
+  }
+};
+
+export const formatDiskIOTooltip = (valueInBytes: number) => {
+  const _unit = generateDiskIOUnits(valueInBytes);
+  const converted = convertDiskIOToUnit(valueInBytes, _unit);
+  return `${Math.round(converted * 100) / 100} ${_unit}`;
+};
+export const formatBytesPerSecond = (valueInBytes: number) =>
+  formatDiskIOTooltip(valueInBytes) + '/s';
+/* -- Clanode Change End -- */
+
 export const getMaxUnitAndFormatNetwork = (
   rx_bytes: StatWithDummyPoint[],
   tx_bytes: StatWithDummyPoint[]
