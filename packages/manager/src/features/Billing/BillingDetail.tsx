@@ -90,6 +90,9 @@ export const BillingDetail: React.FC<CombinedProps> = (props) => {
                 phone={account.phone}
                 taxId={account.tax_id}
                 history={props.history}
+                /* -- Clanode Change -- */
+                hide={true}
+                /* -- Clanode Change End -- */
               />
               {/* <PaymentInformation
                 loading={paymentMethodsLoading}
