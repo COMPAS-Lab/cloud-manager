@@ -11,7 +11,11 @@ import {
   handleFieldErrors,
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
-import { number, object } from 'yup';
+import {
+  number,
+  object /* -- Clanode Change -- */,
+  string /* -- Clanode Change End -- */,
+} from 'yup';
 import ConfigSelect from './ConfigSelect';
 import { modes } from './modes';
 import { ModeSelection } from './ModeSelection';
@@ -37,9 +41,14 @@ type CombinedProps = Props & DispatchProps;
  * provided as a prop and not a user input value.
  */
 const AttachVolumeValidationSchema = object({
-  volume_id: number()
+  /* -- Clanode Change -- */
+  /* volume_id: number()
     .min(0, 'Volume is required.')
+    .required('Volume is required.')*/ 
+  volume_id: string()
+    .min('', 'Volume is required.')
     .required('Volume is required.'),
+  /* -- Clanode Change End -- */
   config_id: number()
     .min(0, 'Config is required.')
     .required('Config is required.'),
