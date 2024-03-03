@@ -16,7 +16,11 @@ import {
   handleFieldErrors,
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
-import { number, object } from 'yup';
+import {
+  number,
+  object /* -- Clanode Change -- */,
+  string /* -- Clanode Change End -- */,
+} from 'yup';
 import ConfigSelect from './ConfigSelect';
 import { modes } from './modes';
 import ModeSelection from './ModeSelection';
@@ -40,7 +44,7 @@ type CombinedProps = Props & StateProps & DispatchProps & VolumesRequests;
  * provided as a prop and not a user input value.
  */
 const validationScheme = object({
-  volume_id: number().required(),
+  volume_id: /* -- Clanode Change -- */ /* number().required()*/ string().required() /* -- Clanode Change End -- */,
   config_id: number().required(),
 });
 
