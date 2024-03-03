@@ -4,7 +4,9 @@ import * as React from 'react';
 import { compose } from 'recompose';
 import Form from 'src/components/core/Form';
 import Notice from 'src/components/Notice';
-import TagsInput, { Tag } from 'src/components/TagsInput';
+/* -- Clanode Change -- */
+import { /*TagsInput,*/ Tag } from 'src/components/TagsInput';
+/* -- Clanode Change End -- */
 import withVolumesRequest, {
   VolumesRequests,
 } from 'src/containers/volumesRequests.container';
@@ -119,7 +121,8 @@ const RenameVolumeForm: React.FC<CombinedProps> = (props) => {
               disabled={readOnly}
             />
 
-            <TagsInput
+            {/* -- Clanode Change -- */
+            /*<TagsInput
               tagError={
                 touched.tags
                   ? errors.tags
@@ -132,7 +135,8 @@ const RenameVolumeForm: React.FC<CombinedProps> = (props) => {
               onChange={(selected) => setFieldValue('tags', selected)}
               value={values.tags}
               disabled={readOnly}
-            />
+            />*/
+            /* -- Clanode Change -- */}
 
             <VolumesActionsPanel
               isSubmitting={isSubmitting}
