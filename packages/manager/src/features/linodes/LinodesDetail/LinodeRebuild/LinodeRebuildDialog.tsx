@@ -52,7 +52,7 @@ type MODES =
 const options = [
   { value: 'fromImage', label: 'From Image' },
   // { value: 'fromCommunityStackScript', label: 'From Community StackScript' },
-  // { value: 'fromAccountStackScript', label: 'From Account StackScript' },
+  { value: 'fromAccountStackScript', label: 'From Account StackScript' },
 ];
 
 const passwordHelperText = 'Set a password for your rebuilt Linode.';
