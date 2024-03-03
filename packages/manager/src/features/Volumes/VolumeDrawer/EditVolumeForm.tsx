@@ -2,7 +2,9 @@ import { UpdateVolumeSchema } from '@linode/validation/lib/volumes.schema';
 import { useFormik } from 'formik';
 import * as React from 'react';
 import Notice from 'src/components/Notice';
-import TagsInput, { Tag } from 'src/components/TagsInput';
+/* -- Clanode Change -- */
+import { /*TagsInput,*/ Tag } from 'src/components/TagsInput';
+/* -- Clanode Change End -- */
 import { useUpdateVolumeMutation } from 'src/queries/volumes';
 import {
   handleFieldErrors,
@@ -89,7 +91,8 @@ export const EditVolumeForm = (props: Props) => {
         disabled={readOnly}
       />
 
-      <TagsInput
+      {/* -- Clanode Change -- */
+            /*<TagsInput
         tagError={
           touched.tags
             ? errors.tags
@@ -102,7 +105,8 @@ export const EditVolumeForm = (props: Props) => {
         onChange={(selected) => setFieldValue('tags', selected)}
         value={values.tags}
         disabled={readOnly}
-      />
+      />*/
+            /* -- Clanode Change -- */}
 
       <VolumesActionsPanel
         isSubmitting={isSubmitting}
