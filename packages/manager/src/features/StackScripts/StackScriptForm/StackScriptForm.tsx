@@ -6,10 +6,12 @@ import Button from 'src/components/Button';
 import InputAdornment from 'src/components/core/InputAdornment';
 import Paper from 'src/components/core/Paper';
 import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
+/* -- Clanode Change -- */
+// import Typography from 'src/components/core/Typography';
+// import Notice from 'src/components/Notice';
+/* -- Clanode Change End -- */
 import { Item } from 'src/components/EnhancedSelect/Select';
 import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
 import TextField from 'src/components/TextField';
 import ImageSelect from 'src/features/Images/ImageSelect';
 import getAPIErrorsFor from 'src/utilities/getAPIErrorFor';
@@ -165,7 +167,8 @@ export const StackScriptForm: React.FC<CombinedProps> = (props) => {
             data-qa-stackscript-target-select
           />
         </Grid>
-        <Grid item className={classes.gridWithTips}>
+        {/* -- Clanode Change -- */
+        /* <Grid item className={classes.gridWithTips}>
           <Notice className={classes.tips}>
             <Typography variant="h2">Tips</Typography>
             <Typography>
@@ -178,7 +181,8 @@ export const StackScriptForm: React.FC<CombinedProps> = (props) => {
               <li>LINODE_DATACENTERID</li>
             </ul>
           </Notice>
-        </Grid>
+        </Grid> */
+        /* -- Clanode Change End -- */}
       </Grid>
       <TextField
         multiline
