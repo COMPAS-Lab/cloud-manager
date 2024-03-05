@@ -2,7 +2,9 @@ import { allocateIPAddress } from '@linode/api-v4/lib/linodes';
 import { createIPv6Range, IPv6Prefix } from '@linode/api-v4/lib/networking';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+/* -- Clanode Change -- */
+// import { Link } from 'react-router-dom';
+/* -- Clanode Change End -- */
 import ActionsPanel from 'src/components/ActionsPanel';
 import Button from 'src/components/Button';
 import FormControlLabel from 'src/components/core/FormControlLabel';
@@ -46,7 +48,9 @@ const prefixOptions = [
 
 // @todo: Pre-fill support tickets.
 const explainerCopy: Record<IPType, JSX.Element> = {
+  /* -- Clanode Change -- */
   v4Public: (
+    /* (
     <>
       Public IP addresses, over and above the one included with each Linode,
       incur an additional monthly charge. If you need an additional Public IP
@@ -54,7 +58,11 @@ const explainerCopy: Record<IPType, JSX.Element> = {
       <Link to="support/tickets">Support Ticket</Link> if you have not done so
       already.
     </>
+  )*/ <>
+      {' '}
+    </>
   ),
+  /* -- Clanode Change End -- */
   v4Private: (
     <>
       Add a private IP address to your Linode. Data sent explicitly to and from
@@ -81,7 +89,9 @@ const IPv6ExplanatoryCopy = {
 };
 
 const tooltipCopy: Record<IPType, JSX.Element | null> = {
-  v4Public: null,
+  /* -- Clanode Change -- */
+  v4Public: /* null */ <>This Linode already has a public IP address.</>,
+  /* -- Clanode Change End -- */
   v4Private: <>This Linode already has a private IP address.</>,
 };
 
@@ -90,6 +100,9 @@ interface Props {
   onClose: () => void;
   linodeID: number;
   hasPrivateIPAddress: boolean;
+  /* -- Clanode Change -- */
+  hasPublicIPAddress: boolean;
+  /* -- Clanode Change End -- */
   onSuccess: () => Promise<void>[];
   readOnly: boolean;
 }
@@ -116,6 +129,7 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
     onClose,
     linodeID,
     hasPrivateIPAddress,
+    hasPublicIPAddress,
     onSuccess,
     readOnly,
   } = props;
@@ -184,6 +198,9 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
 
   const disabledIPv4 =
     (selectedIPv4 === 'v4Private' && hasPrivateIPAddress) ||
+    /* -- Clanode Change -- */
+    (selectedIPv4 === 'v4Public' && hasPublicIPAddress) ||
+    /* -- Clanode Change End -- */
     !selectedIPv4 ||
     readOnly;
 
