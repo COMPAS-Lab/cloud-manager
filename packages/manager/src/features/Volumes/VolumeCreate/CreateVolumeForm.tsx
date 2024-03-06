@@ -44,6 +44,7 @@ import ConfigSelect, {
 import LabelField from '../VolumeDrawer/LabelField';
 import NoticePanel from '../VolumeDrawer/NoticePanel';
 import SizeField from '../VolumeDrawer/SizeField';
+import VolumeTypeSelect from 'src/components/EnhancedSelect/variants/VolumeTypeSelect/VolumeTypeSelect';
 
 const useStyles = makeStyles((theme: Theme) => ({
   copy: {
@@ -317,6 +318,22 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                   />
                 </Box>
                 <Box display="flex" alignItems="flex-end">
+                  <VolumeTypeSelect
+                    label="Volume Type"
+                    selectedType={values.volume_type}
+                    handleSelection={(value) =>
+                      setFieldValue('volume_type', value)
+                    }
+                    errorText={
+                      touched.volume_type ? errors.volume_type : undefined
+                    }
+                    disabled={doesNotHavePermission}
+                    isClearable={true}
+                    helperText="Select the type of volume you wish to create."
+                    width={320}
+                  />
+                </Box>
+                <Box display="flex" alignItems="flex-end">
                   <RegionSelect
                     label="Region"
                     name="region"
@@ -434,6 +451,7 @@ interface FormState {
   region: string;
   linode_id: number;
   config_id: number;
+  volume_type: string;
 }
 
 const initialValues: FormState = {
@@ -442,6 +460,7 @@ const initialValues: FormState = {
   region: '',
   linode_id: initialValueDefaultId,
   config_id: initialValueDefaultId,
+  volume_type: 'hdd',
 };
 
 interface StateProps {
