@@ -5,7 +5,9 @@ import { makeStyles, Theme, withTheme } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import Grid from 'src/components/Grid';
-import PreferenceToggle, { ToggleProps } from 'src/components/PreferenceToggle';
+/* -- Clanode Change -- */
+// import PreferenceToggle, { ToggleProps } from 'src/components/PreferenceToggle';
+/* -- Clanode Change End -- */
 import Toggle from 'src/components/Toggle';
 import { useMutateProfile, useProfile } from 'src/queries/profile';
 import { getQueryParam } from 'src/utilities/queryParams';
@@ -106,7 +108,8 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
           </Grid>
         </Grid>
       </Paper>
-      <Paper className={classes.root}>
+      {/* -- Clanode Change -- */
+      /*<Paper className={classes.root}>
         <Typography variant="h2" className={classes.title}>
           Type-to-Confirm
         </Typography>
@@ -142,7 +145,8 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
             );
           }}
         </PreferenceToggle>
-      </Paper>
+      </Paper> */
+      /* -- Clanode Change End -- */}
     </>
   );
 };
