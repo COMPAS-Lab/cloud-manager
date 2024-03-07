@@ -203,7 +203,8 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
       ...maintenanceProps,
       ...readOnlyProps,
     },
-    {
+    /* -- Clanode Change -- */
+    /*{
       title: 'Rescue',
       onClick: () => {
         sendLinodeActionMenuItemEvent('Navigate to Rescue Page');
@@ -212,17 +213,18 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
       ...maintenanceProps,
       ...readOnlyProps,
     },
-    // isBareMetalInstance
-    //   ? null
-    //   : {
-    //       title: 'Migrate',
-    //       onClick: () => {
-    //         sendMigrationNavigationEvent('/linodes');
-    //         sendLinodeActionMenuItemEvent('Migrate');
-    //         openDialog('migrate', linodeId);
-    //       },
-    //       ...readOnlyProps,
-    //     },
+    isBareMetalInstance
+      ? null
+      : {
+          title: 'Migrate',
+          onClick: () => {
+            sendMigrationNavigationEvent('/linodes');
+            sendLinodeActionMenuItemEvent('Migrate');
+            openDialog('migrate', linodeId);
+          },
+          ...readOnlyProps,
+        },*/
+    /* -- Clanode Change End -- */
     {
       title: 'Delete',
       onClick: () => {
