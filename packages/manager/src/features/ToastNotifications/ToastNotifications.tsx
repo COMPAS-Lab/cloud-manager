@@ -58,6 +58,13 @@ class ToastNotifications extends React.PureComponent<WithSnackbarProps, {}> {
   componentDidMount() {
     this.subscription = events$
       .filter((e) => !e._initial)
+      /* -- Clanode Change -- */
+      .filter(
+        (e) =>
+          !(e.action === 'volume_attach' || e.action === 'volume_detach') ||
+          e.secondary_entity != null
+      )
+      /* -- Clanode Change End -- */
       .map((event) => {
         const { enqueueSnackbar } = this.props;
         const _toastWithPersist = toastSuccessAndFailure(
@@ -74,15 +81,25 @@ class ToastNotifications extends React.PureComponent<WithSnackbarProps, {}> {
         const secondaryLabel = getSecondaryLabel(event);
         switch (event.action) {
           case 'volume_attach':
-            return _toast(
+            /* -- Clanode Change -- */
+            /*return _toast(
               `Volume ${label} successfully attached.`,
+              `Error attaching Volume ${label}.`
+            );*/
+            return _toast(
+              `Volume ${label} successfully attached onto ${secondaryLabel}.`,
               `Error attaching Volume ${label}.`
             );
           case 'volume_detach':
-            return _toast(
+            /*return _toast(
               `Volume ${label} successfully detached.`,
               `Error detaching Volume ${label}.`
+            );*/
+            return _toast(
+              `Volume ${label} successfully detached from ${secondaryLabel}.`,
+              `Error detaching Volume ${label}.`
             );
+          /* -- Clanode Change -- */
           case 'volume_create':
             return _toast(
               `Volume ${label} successfully created.`,
