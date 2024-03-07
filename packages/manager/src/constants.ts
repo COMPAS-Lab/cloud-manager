@@ -114,6 +114,7 @@ export const dcDisplayNames = {
   nova: 'Nova',
   E5450: 'E5450',
   'E5-2680v4': 'E5-2680v4',
+  'E5-2695v4': 'E5-2965v4',
   'E5-2620v3': 'E5-2620v3',
   /* -- Clanode Change End -- */
   // us-east-1 is for backwards-compatibility

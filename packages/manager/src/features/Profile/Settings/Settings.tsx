@@ -5,7 +5,9 @@ import { makeStyles, Theme } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import Grid from 'src/components/Grid';
-import PreferenceToggle, { ToggleProps } from 'src/components/PreferenceToggle';
+/* -- Clanode Change -- */
+// import PreferenceToggle, { ToggleProps } from 'src/components/PreferenceToggle';
+/* -- Clanode Change End -- */
 import Toggle from 'src/components/Toggle';
 import { useMutatePreferences, usePreferences } from 'src/queries/preferences';
 import { useMutateProfile, useProfile } from 'src/queries/profile';
@@ -105,7 +107,8 @@ const ProfileSettings = () => {
           </Grid>
         </Grid>
       </Paper>
-      <Paper className={classes.root}>
+      {/* -- Clanode Change -- */
+      /*<Paper className={classes.root}>
         <Typography variant="h2" className={classes.title}>
           Type-to-Confirm
         </Typography>
@@ -141,7 +144,8 @@ const ProfileSettings = () => {
             );
           }}
         </PreferenceToggle>
-      </Paper>
+      </Paper> */
+      /* -- Clanode Change End -- */}
     </>
   );
 };
