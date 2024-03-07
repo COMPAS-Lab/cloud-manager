@@ -634,11 +634,48 @@ export const eventMessageCreators: { [index: string]: CreatorsForStatus } = {
   volume_attach: {
     // @todo Once we have better events, display the name of the attached Linode
     // in these messages.
-    scheduled: (e) => `Volume ${e.entity!.label} is scheduled to be attached.`,
+    /* -- Clanode Change (OpenStack doesn't give us the instance name/id instead of the volume's name/id -- */
+    /* scheduled: (e) => `Volume ${e.entity!.label} is scheduled to be attached.`,
     started: (e) => `Volume ${e.entity!.label} is being attached.`,
     failed: (e) => `Volume ${e.entity!.label} failed to attach.`,
     finished: (e) => `Volume ${e.entity!.label} has been attached.`,
-    notification: (e) => `Volume ${e.entity!.label} has been attached.`,
+    notification: (e) => `Volume ${e.entity!.label} has been attached.`, */
+    scheduled: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} is scheduled to be attached onto ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume is scheduled to be attached onto ${e.entity!.label}.`;
+    },
+    started: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} is being attached onto ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume is being attached onto ${e.entity!.label}.`;
+    },
+    failed: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} failed to attach onto ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume failed to attach onto ${e.entity!.label}.`;
+    },
+    finished: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} has been attached onto ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume has been attached onto ${e.entity!.label}.`;
+    },
+    notification: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} has been attached onto ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume has been attached onto ${e.entity!.label}.`;
+    },
+    /* -- Clanode Change End -- */
   },
   volume_clone: {
     notification: (e) => `Volume ${e.entity!.label} has been cloned.`,
@@ -663,11 +700,48 @@ export const eventMessageCreators: { [index: string]: CreatorsForStatus } = {
   volume_detach: {
     // @todo Once we have better events, display the name of the attached Linode
     // in these messages.
-    scheduled: (e) => `Volume ${e.entity!.label} is scheduled for detachment.`,
+    /* -- Clanode Change (OpenStack doesn't give us the instance name/id instead of the volume's name/id -- */
+    /*scheduled: (e) => `Volume ${e.entity!.label} is scheduled for detachment.`,
     started: (e) => `Volume ${e.entity!.label} is being detached.`,
     failed: (e) => `Volume ${e.entity!.label} failed to detach.`,
     finished: (e) => `Volume ${e.entity!.label} has been detached.`,
-    notification: (e) => `Volume ${e.entity!.label} has been detached.`,
+    notification: (e) => `Volume ${e.entity!.label} has been detached.`,*/
+    scheduled: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} is scheduled for detachment from ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume is scheduled for detachment from ${e.entity!.label}.`;
+    },
+    started: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} is being detached from ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume is being detached from ${e.entity!.label}.`;
+    },
+    failed: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} failed to detach from ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume failed to detach from ${e.entity!.label}.`;
+    },
+    finished: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} has been detached from ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume has been detached from ${e.entity!.label}.`;
+    },
+    notification: (e) => {
+      if (e.secondary_entity)
+        return `Volume ${e.entity!.label} has been detached from ${
+          e.secondary_entity!.label
+        }.`;
+      else return `Volume has been detached from ${e.entity!.label}.`;
+    },
+    /* -- Clanode Change End -- */
   },
   volume_migrate: {
     started: (e) => `Volume ${e.entity!.label} is being upgraded to NVMe.`,
