@@ -57,39 +57,51 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
         setSubmitting(false);
       });
   };
+  /* -- Clanode Change -- */
+  const hideEmailNotifications = true;
+  const hideTypeToConfirm = true;
+  /* -- Clanode Change End -- */
 
   return (
     <>
       <DocumentTitleSegment segment="My Settings" />
-      <Paper className={classes.root}>
-        <Typography variant="h2" className={classes.title}>
-          Notifications
-        </Typography>
-        <Grid container alignItems="center">
-          <Grid item xs={12}>
-            <FormControlLabel
-              control={
-                <Toggle
-                  onChange={toggle}
-                  checked={profile?.email_notifications}
-                />
-              }
-              label={`
+      {
+        /* -- Clanode Change -- */
+        !hideEmailNotifications ? (
+          <Paper className={classes.root}>
+            <Typography variant="h2" className={classes.title}>
+              Notifications
+            </Typography>
+            <Grid container alignItems="center">
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Toggle
+                      onChange={toggle}
+                      checked={profile?.email_notifications}
+                    />
+                  }
+                  label={`
                 Email alerts for account activity are ${
                   profile?.email_notifications === true ? 'enabled' : 'disabled'
                 }
               `}
-              disabled={submitting}
-            />
-          </Grid>
-        </Grid>
-        {preferenceEditorMode && (
-          <PreferenceEditor
-            open={preferenceEditorOpen}
-            onClose={() => setPreferenceEditorOpen(false)}
-          />
-        )}
-      </Paper>
+                  disabled={submitting}
+                />
+              </Grid>
+            </Grid>
+            {preferenceEditorMode && (
+              <PreferenceEditor
+                open={preferenceEditorOpen}
+                onClose={() => setPreferenceEditorOpen(false)}
+              />
+            )}
+          </Paper>
+        ) : (
+          <></>
+        )
+        /* -- Clanode Change End -- */
+      }
       <Paper className={classes.root}>
         <Typography variant="h2" className={classes.title}>
           Dark Mode
@@ -106,43 +118,51 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
           </Grid>
         </Grid>
       </Paper>
-      <Paper className={classes.root}>
-        <Typography variant="h2" className={classes.title}>
-          Type-to-Confirm
-        </Typography>
-        <Typography variant="body1">
-          For some products and services, the type-to-confirm setting requires
-          entering the label before deletion.
-        </Typography>
-        <PreferenceToggle<boolean>
-          preferenceKey="type_to_confirm"
-          preferenceOptions={[true, false]}
-          localStorageKey="typeToConfirm"
-        >
-          {({
-            preference: istypeToConfirm,
-            togglePreference: toggleTypeToConfirm,
-          }: ToggleProps<boolean>) => {
-            return (
-              <Grid container alignItems="center">
-                <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Toggle
-                        onChange={toggleTypeToConfirm}
-                        checked={istypeToConfirm}
+      {
+        /* -- Clanode Change -- */
+        !hideTypeToConfirm ? (
+          <Paper className={classes.root}>
+            <Typography variant="h2" className={classes.title}>
+              Type-to-Confirm
+            </Typography>
+            <Typography variant="body1">
+              For some products and services, the type-to-confirm setting
+              requires entering the label before deletion.
+            </Typography>
+            <PreferenceToggle<boolean>
+              preferenceKey="type_to_confirm"
+              preferenceOptions={[true, false]}
+              localStorageKey="typeToConfirm"
+            >
+              {({
+                preference: istypeToConfirm,
+                togglePreference: toggleTypeToConfirm,
+              }: ToggleProps<boolean>) => {
+                return (
+                  <Grid container alignItems="center">
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Toggle
+                            onChange={toggleTypeToConfirm}
+                            checked={istypeToConfirm}
+                          />
+                        }
+                        label={`Type-to-confirm is${
+                          istypeToConfirm ? ' enabled' : ' disabled'
+                        }`}
                       />
-                    }
-                    label={`Type-to-confirm is${
-                      istypeToConfirm ? ' enabled' : ' disabled'
-                    }`}
-                  />
-                </Grid>
-              </Grid>
-            );
-          }}
-        </PreferenceToggle>
-      </Paper>
+                    </Grid>
+                  </Grid>
+                );
+              }}
+            </PreferenceToggle>
+          </Paper>
+        ) : (
+          <></>
+        )
+        /* -- Clanode Change End -- */
+      }
     </>
   );
 };

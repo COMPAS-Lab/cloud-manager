@@ -510,6 +510,14 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
     return privateIPs.length > 0;
   }
 
+  /* -- Clanode Change -- */
+  hasPublicIPAddress() {
+    const { linodeIPs } = this.state;
+    const publicIPs = pathOr([], ['ipv4', 'public'], linodeIPs);
+    return publicIPs.length > 0;
+  }
+  /* -- Clanode Change End -- */
+
   renderErrorState = () => {
     const { IPRequestError, ipv6Error } = this.state;
     const errorText =
@@ -671,6 +679,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
           onClose={this.closeAddIPDrawer}
           linodeID={linodeID}
           hasPrivateIPAddress={this.hasPrivateIPAddress()}
+          hasPublicIPAddress={this.hasPublicIPAddress()}
           onSuccess={this.refreshIPs}
           readOnly={readOnly}
         />
