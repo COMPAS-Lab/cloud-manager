@@ -38,7 +38,6 @@ const TypeToConfirm: React.FC<Props> = (props) => {
     hideInstructions,
     ...rest
   } = props;
-
   const classes = useStyles();
 
   /*
