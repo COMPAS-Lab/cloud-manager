@@ -77,7 +77,9 @@ const TypeToConfirm: React.FC<Props> = (props) => {
         }}
       </PreferenceToggle>
     );
-
+    /* -- Clanode Change -- */
+    const hideToggle = true;
+    /* -- Clanode Change End -- */
     return (
       <>
         <Typography variant="h2">{title}</Typography>
@@ -89,7 +91,7 @@ const TypeToConfirm: React.FC<Props> = (props) => {
           style={textFieldStyle}
           {...rest}
         />
-        {!hideDisable && preferenceToggle}
+        {!hideDisable && !hideToggle && preferenceToggle}
       </>
     );
   } else {

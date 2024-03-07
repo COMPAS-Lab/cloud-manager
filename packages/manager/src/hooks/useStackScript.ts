@@ -106,7 +106,12 @@ const getCompatibleImages = (
   allImages: Image[],
   stackScriptImages: string[]
 ) => {
-  return allImages.filter((image) => stackScriptImages.includes(image.id));
+  /* -- Clanode Change -- */
+  const allowAllImages = stackScriptImages.includes('any/all');
+  return allowAllImages
+    ? allImages
+    : allImages.filter((image) => stackScriptImages.includes(image.id));
+  /* -- Clanode Change End -- */
 };
 
 const getDefaultUDFData = (userDefinedFields: UserDefinedField[]) => {
