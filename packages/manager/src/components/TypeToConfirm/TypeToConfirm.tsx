@@ -42,7 +42,6 @@ const TypeToConfirm: React.FC<Props> = (props) => {
     visible,
     ...rest
   } = props;
-
   const classes = useStyles();
 
   if (visible !== false) {
@@ -77,9 +76,6 @@ const TypeToConfirm: React.FC<Props> = (props) => {
         }}
       </PreferenceToggle>
     );
-    /* -- Clanode Change -- */
-    const hideToggle = true;
-    /* -- Clanode Change End -- */
     return (
       <>
         <Typography variant="h2">{title}</Typography>
@@ -91,16 +87,18 @@ const TypeToConfirm: React.FC<Props> = (props) => {
           style={textFieldStyle}
           {...rest}
         />
-        {!hideDisable && !hideToggle && preferenceToggle}
+        {!hideDisable && preferenceToggle}
       </>
     );
   } else {
-    return (
+    /* -- Clanode Change -- */
+    return visible ? (
       <Typography className={classes.description}>
         To enable type-to-confirm, go to{' '}
         <Link to="/profile/settings">My Settings</Link>.
       </Typography>
-    );
+    ) : null;
+    /* -- Clanode Change End -- */
   }
 };
 
