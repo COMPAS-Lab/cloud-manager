@@ -12,4 +12,5 @@ export const distroIcons = {
   Rocky: 'rocky-linux',
   Slackware: 'slackware',
   Ubuntu: 'ubuntu',
+  Windows: 'windows',
 };
