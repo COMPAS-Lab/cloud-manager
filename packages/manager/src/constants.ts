@@ -287,6 +287,16 @@ export const allowedHTMLTags = [
   'tr',
 ];
 
+export interface ExtendedVolumeType {
+  label: string;
+  value: string;
+}
+
+export const volumeTypes: ExtendedVolumeType[] = [
+  { label: 'HDD', value: 'hdd' },
+  { label: 'SSD', value: 'nvme' },
+];
+
 export const allowedHTMLAttr = ['href', 'lang', 'title', 'align'];
 
 /**

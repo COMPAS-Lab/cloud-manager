@@ -32,6 +32,7 @@ export const CreateVolumeSchema = object({
     .max(32, 'Label must be 32 characters or less.'),
   config_id: number().typeError('Config ID must be a number.'),
   tags: array().of(string()),
+  hardware_type: string(),
 });
 
 export const CloneVolumeSchema = object({
