@@ -245,6 +245,9 @@ const FirewallRuleTable: React.FC<CombinedProps> = (props) => {
                       key={thisRuleRow.id}
                       draggableId={String(thisRuleRow.id)}
                       index={index}
+                      /* -- Clanode Change -- */
+                      isDragDisabled={true}
+                      /* -- Clanode Change End -- */
                     >
                       {(provided, snapshot) => {
                         return (
