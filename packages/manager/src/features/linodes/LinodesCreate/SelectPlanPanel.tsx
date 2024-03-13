@@ -227,7 +227,11 @@ export const SelectPlanPanel: React.FC<CombinedProps> = (props) => {
             aria-label={rowAriaLabel}
             key={type.id}
             onClick={
-              !isSamePlan && !isDisabledClass ? onSelect(type.id) : undefined
+              !isSamePlan &&
+              !isDisabledClass &&
+              /* -- Clanode Change -- */ !planTooSmall /* -- Clanode Change End -- */
+                ? onSelect(type.id)
+                : undefined
             }
             aria-disabled={isSamePlan || planTooSmall || isDisabledClass}
             className={classNames(classes.focusedRow, {
