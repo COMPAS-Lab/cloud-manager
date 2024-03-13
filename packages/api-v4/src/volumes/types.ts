@@ -31,7 +31,7 @@ export interface VolumeRequestPayload {
   linode_id?: number;
   config_id?: number;
   tags?: string[];
-  volume_type?: string;
+  hardware_type?: string;
 }
 
 export interface AttachVolumePayload {
