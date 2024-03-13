@@ -290,7 +290,6 @@ export class LinodeResize extends React.Component<CombinedProps, State> {
         ? type.label
         : 'Unknown Plan'
       : 'No Assigned Plan';
-
     const [
       diskToResize,
       _shouldEnableAutoResizeDiskOption,
@@ -301,6 +300,10 @@ export class LinodeResize extends React.Component<CombinedProps, State> {
       linodeType || '',
       typesData
     );
+
+    /* -- Clanode Change -- */
+    const shouldDisplayAutoDiskResize = false;
+    /* -- Clanode Change End -- */
 
     return (
       <Dialog
@@ -342,53 +345,63 @@ export class LinodeResize extends React.Component<CombinedProps, State> {
             selectedID={this.state.selectedId}
             disabled={tableDisabled}
             updateFor={[this.state.selectedId]}
+            /* -- Clanode Change -- */
+            selectedDiskSize={type ? type.disk : 0}
+            /* -- Clanode Change End -- */
           />
         </div>
-        <Typography variant="h2" className={classes.resizeTitle}>
-          Auto Resize Disk
-          {disksError ? (
-            <HelpIcon
-              className={classes.toolTip}
-              text={`There was an error loading your Linode&rsquo; disks.`}
-            />
-          ) : isSmaller ? (
-            <HelpIcon
-              className={classes.toolTip}
-              text={`Your disks cannot be automatically resized when moving to a smaller plan.`}
-            />
-          ) : !_shouldEnableAutoResizeDiskOption ? (
-            <HelpIcon
-              className={classes.toolTip}
-              text={`Your ext disk can only be automatically resized if you have one ext
+        {
+          /* -- Clanode Change -- */
+          shouldDisplayAutoDiskResize ? (
+            <>
+              <Typography variant="h2" className={classes.resizeTitle}>
+                Auto Resize Disk
+                {disksError ? (
+                  <HelpIcon
+                    className={classes.toolTip}
+                    text={`There was an error loading your Linode&rsquo; disks.`}
+                  />
+                ) : isSmaller ? (
+                  <HelpIcon
+                    className={classes.toolTip}
+                    text={`Your disks cannot be automatically resized when moving to a smaller plan.`}
+                  />
+                ) : !_shouldEnableAutoResizeDiskOption ? (
+                  <HelpIcon
+                    className={classes.toolTip}
+                    text={`Your ext disk can only be automatically resized if you have one ext
                       disk or one ext disk and one swap disk on this Linode.`}
-            />
-          ) : null}
-        </Typography>
-        <Checkbox
-          disabled={!_shouldEnableAutoResizeDiskOption || isSmaller}
-          checked={
-            !_shouldEnableAutoResizeDiskOption || isSmaller
-              ? false
-              : this.state.autoDiskResize
-          }
-          onChange={this.handleToggleAutoDisksResize}
-          text={
-            <Typography>
-              Would you like{' '}
-              {_shouldEnableAutoResizeDiskOption ? (
-                <strong>{diskToResize}</strong>
-              ) : (
-                'your disk'
-              )}{' '}
-              to be automatically scaled with this Linode&rsquo;s new size? We
-              recommend you keep this option enabled when available. Automatic
-              resizing is only available when moving to a larger plan, and when
-              you have a single ext disk (or one ext and one swap disk) on your
-              Linode.
-            </Typography>
-          }
-        />
-
+                  />
+                ) : null}
+              </Typography>
+              <Checkbox
+                disabled={!_shouldEnableAutoResizeDiskOption || isSmaller}
+                checked={
+                  !_shouldEnableAutoResizeDiskOption || isSmaller
+                    ? false
+                    : this.state.autoDiskResize
+                }
+                onChange={this.handleToggleAutoDisksResize}
+                text={
+                  <Typography>
+                    Would you like{' '}
+                    {_shouldEnableAutoResizeDiskOption ? (
+                      <strong>{diskToResize}</strong>
+                    ) : (
+                      'your disk'
+                    )}{' '}
+                    to be automatically scaled with this Linode&rsquo;s new
+                    size? We recommend you keep this option enabled when
+                    available. Automatic resizing is only available when moving
+                    to a larger plan, and when you have a single ext disk (or
+                    one ext and one swap disk) on your Linode.
+                  </Typography>
+                }
+              />
+            </>
+          ) : null
+          /* -- Clanode Change End -- */
+        }
         <ActionsPanel className={classes.actionPanel}>
           <TypeToConfirm
             title="Confirm"
