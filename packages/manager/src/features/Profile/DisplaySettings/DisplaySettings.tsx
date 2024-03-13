@@ -1,28 +1,27 @@
 import { updateUser } from '@linode/api-v4/lib/account';
 import * as React from 'react';
-/* -- Clanode Change -- */
-// import { useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import { compose } from 'recompose';
-// // import Box from 'src/components/core/Box';
+import Box from 'src/components/core/Box';
 import Divider from 'src/components/core/Divider';
 import Paper from 'src/components/core/Paper';
-// import { makeStyles, Theme } from 'src/components/core/styles';
-// import Typography from 'src/components/core/Typography';
-// import ExternalLink from 'src/components/ExternalLink';
+import { makeStyles, Theme } from 'src/components/core/styles';
+import Typography from 'src/components/core/Typography';
+import ExternalLink from 'src/components/ExternalLink';
 import { GravatarByEmail } from 'src/components/GravatarByEmail';
-// import HelpIcon from 'src/components/HelpIcon';
-// import Link from 'src/components/Link';
-// import Notice from 'src/components/Notice';
+import HelpIcon from 'src/components/HelpIcon';
+import Link from 'src/components/Link';
+import Notice from 'src/components/Notice';
 import { SingleTextFieldForm } from 'src/components/SingleTextFieldForm/SingleTextFieldForm';
 import { useMutateProfile, useProfile } from 'src/queries/profile';
-// import { ApplicationState } from 'src/store';
+import { ApplicationState } from 'src/store';
 import withNotifications, {
   WithNotifications,
 } from 'src/store/notification/notification.containers';
 import { v4 } from 'uuid';
-// import TimezoneForm from './TimezoneForm';
-/*
+import TimezoneForm from './TimezoneForm';
+
 const useStyles = makeStyles((theme: Theme) => ({
   profile: {
     marginTop: theme.spacing(),
@@ -62,22 +61,23 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
   },
 }));
-*/
-
-/* -- Clanode Change End -- */
 
 export const DisplaySettings: React.FC<WithNotifications> = (props) => {
   /* -- Clanode Change -- */
-  // const classes = useStyles();
+  const hideGravatar = true;
+  const hideTimezone = true;
+  const disableNameEmailChange = true;
+  /* -- Clanode Change End -- */
+
+  const classes = useStyles();
 
   const { mutateAsync: updateProfile } = useMutateProfile();
   const { data: profile, refetch: requestProfile } = useProfile();
-  /*
+
   const loggedInAsCustomer = useSelector(
     (state: ApplicationState) => state.authentication.loggedInAsCustomer
   );
-  */
-  /* -- Clanode Change End -- */
+
   const location = useLocation<{ focusEmail: boolean }>();
 
   const emailRef = React.createRef<HTMLInputElement>();
@@ -107,19 +107,18 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
   };
 
   const helpIconText = (
-    <> 
+    <>
       Go to <Link to="https://en.gravatar.com/">gravatar.com</Link> and register
       an account using the same email address as your Linode account. Upload
       your desired profile image to your Gravatar account and it will be
       automatically linked.
     </>
-  ); */
-  /* -- Clanode Change End -- */
+  );
 
   return (
     <Paper>
       {/* -- Clanode Change -- */
-      /*
+      hideGravatar ? null : (
       <Box className={classes.profile} display="flex" style={{ gap: 16 }}>
         <GravatarByEmail
           email={profile?.email ?? ''}
@@ -146,8 +145,7 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
             fixedIcon
           />
         </div>
-      </Box>
-      <Divider /> */
+      </Box>)
       /* -- Clanode Change End -- */}
       <SingleTextFieldForm
         key={usernameResetToken}
@@ -155,14 +153,12 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
         submitForm={updateUsername}
         initialValue={profile?.username}
         disabled={
-          profile?.restricted /* -- Clanode Change -- */
-            ? profile?.restricted
-            : true /* -- Clanode Change End -- */
+          profile?.restricted /* -- Clanode Change -- */ ||
+          disableNameEmailChange /* -- Clanode Change End -- */
         }
         tooltipText={
-          /* -- Clanode Change -- */ (
-            profile?.restricted ? profile?.restricted : true
-          ) /* -- Clanode Change End -- */
+          profile?.restricted /* -- Clanode Change -- */ ||
+          disableNameEmailChange /* -- Clanode Change End -- */
             ? 'Restricted users cannot update their username. Please contact an account administrator.'
             : undefined
         }
@@ -174,9 +170,10 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
         label="Email"
         submitForm={updateEmail}
         initialValue={profile?.email}
-        /* -- Clanode Change -- */
-        disabled={profile?.restricted ? profile?.restricted : true}
-        /* -- Clanode Change End -- */
+        disabled={
+          profile?.restricted /* -- Clanode Change -- */ ||
+          disableNameEmailChange /* -- Clanode Change End -- */
+        }
         successCallback={() => {
           // If there's a "user_email_bounce" notification for this user, and
           // the user has just updated their email, re-request notifications to
@@ -192,8 +189,12 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
         type="email"
       />
       {/* -- Clanode Change -- */
-      /*<Divider spacingTop={24} spacingBottom={16} />
-      <TimezoneForm loggedInAsCustomer={loggedInAsCustomer} /> */
+      hideTimezone ? null : (
+        <>
+          <Divider spacingTop={24} spacingBottom={16} />
+          <TimezoneForm loggedInAsCustomer={loggedInAsCustomer} /> 
+        </>
+      )
       /* -- Clanode Change End -- */}
     </Paper>
   );
