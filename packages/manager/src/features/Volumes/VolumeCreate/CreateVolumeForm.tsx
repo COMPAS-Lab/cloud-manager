@@ -168,7 +168,14 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
         values,
         { resetForm, setSubmitting, setStatus, setErrors }
       ) => {
-        const { label, size, region, linode_id, config_id } = values;
+        const {
+          label,
+          size,
+          region,
+          linode_id,
+          config_id,
+          volume_type,
+        } = values;
 
         setSubmitting(true);
 
@@ -191,6 +198,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
             config_id === initialValueDefaultId
               ? undefined
               : maybeCastToNumber(config_id),
+          hardware_type: volume_type == 'nvme' ? 'ssd_volume' : 'hdd_volume',
         })
           .then(({ filesystem_path, label: volumeLabel }) => {
             if (hasSignedAgreement) {
