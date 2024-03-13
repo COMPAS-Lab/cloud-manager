@@ -106,11 +106,7 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
       notification.severity === 'critical'
   );
 
-  const {
-    promotions,
-    paymentMethods /* -- Clanode Change -- */ /* ,balanceUninvoiced */ /* -- Clanode Change End -- */,
-    balance,
-  } = props;
+  const { promotions, paymentMethods, balanceUninvoiced, balance } = props;
 
   //
   // Payment Drawer
@@ -208,15 +204,17 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
     balance <= 0 &&
     !_isRestrictedUser &&
     isWithinDays(90, account?.active_since) &&
-    promotions?.length ===
-      0; /*
-  const accruedChargesHelperText =
+    promotions?.length === 0;
+  /* -- Clanode Change -- */
+  /*const accruedChargesHelperText =
     account?.billing_source === 'akamai'
       ? 'Accrued charges shown are an approximation and may not exactly reflect your post-tax invoice.'
-      : 'Our billing cycle ends on the last day of the month. You may be invoiced before the end of the cycle if your balance exceeds your credit limit.';
-  */ /* -- Clanode Change End -- */
+      : 'Our billing cycle ends on the last day of the month. You may be invoiced before the end of the cycle if your balance exceeds your credit limit.'; */
+  const accruedChargesHelperText =
+    'You will be invoiced at 4 am UTC every day for your accrued charges of the previous day.';
+  /* -- Clanode Change End -- */
 
-  /* -- Clanode Change -- */ return (
+  return (
     <>
       <Grid container spacing={2} className={classes.root}>
         <Grid item {...gridDimensions} sm={6}>
@@ -271,8 +269,6 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
             </Paper>
           </Grid>
         ) : null}
-        {/* -- Clanode Change -- */
-        /*
         <Grid item {...gridDimensions}>
           <Paper className={classes.paper} variant="outlined">
             <Box display="flex" alignItems="center">
@@ -299,8 +295,6 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
             </Box>
           </Paper>
         </Grid>
-        */
-        /* -- Clanode Change End -- */}
       </Grid>
       <PaymentDrawer
         paymentMethods={paymentMethods}

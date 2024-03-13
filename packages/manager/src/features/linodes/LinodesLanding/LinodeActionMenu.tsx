@@ -18,7 +18,7 @@ import { ExtendedType } from 'src/store/linodeType/linodeType.reducer';
 import {
   sendLinodeActionEvent,
   sendLinodeActionMenuItemEvent,
-  // sendMigrationNavigationEvent,
+  sendMigrationNavigationEvent,
 } from 'src/utilities/ga';
 
 export interface Props {
@@ -79,6 +79,11 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
     inListView,
     openDialog,
   } = props;
+
+  /* -- Clanode Change -- */
+  const hideRescue = true;
+  const hideMigrate = true;
+  /* -- Clanode Change End -- */
 
   const theme = useTheme<Theme>();
   const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
@@ -204,16 +209,23 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
       ...readOnlyProps,
     },
     /* -- Clanode Change -- */
-    /*{
-      title: 'Rescue',
-      onClick: () => {
-        sendLinodeActionMenuItemEvent('Navigate to Rescue Page');
-        openDialog('rescue', linodeId);
-      },
-      ...maintenanceProps,
-      ...readOnlyProps,
-    },
-    isBareMetalInstance
+    hideRescue
+      ? null
+      : /* -- Clanode Change End -- */
+        {
+          title: 'Rescue',
+          onClick: () => {
+            sendLinodeActionMenuItemEvent('Navigate to Rescue Page');
+            openDialog('rescue', linodeId);
+          },
+          ...maintenanceProps,
+          ...readOnlyProps,
+        },
+    /* -- Clanode Change -- */
+    hideMigrate
+      ? null
+      : /* -- Clanode Change End -- */
+      isBareMetalInstance
       ? null
       : {
           title: 'Migrate',
@@ -223,8 +235,7 @@ export const LinodeActionMenu: React.FC<Props> = (props) => {
             openDialog('migrate', linodeId);
           },
           ...readOnlyProps,
-        },*/
-    /* -- Clanode Change End -- */
+        },
     {
       title: 'Delete',
       onClick: () => {
