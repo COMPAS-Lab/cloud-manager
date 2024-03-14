@@ -19,6 +19,9 @@ import {
   ResizeVolumePayload,
   Volume,
   VolumeRequestPayload,
+  /* -- Clanode Change -- */
+  VolumeType,
+  /* -- Clanode Change End -- */
 } from './types';
 
 /**
@@ -167,3 +170,8 @@ export const createVolume = (data: VolumeRequestPayload) =>
     setMethod('POST'),
     setData(data, CreateVolumeSchema)
   );
+
+/* -- Clanode Change -- */
+export const getVolumeTypes = () =>
+  Request<VolumeType[]>(setURL(`${API_ROOT}/volume_types`), setMethod('GET'));
+/* -- Clanode Change End -- */
