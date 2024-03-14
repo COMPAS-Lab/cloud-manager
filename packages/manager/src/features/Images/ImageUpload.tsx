@@ -247,7 +247,8 @@ export const ImageUpload: React.FC<Props> = (props) => {
           {
             /* -- Clanode Change -- */
             <Typography className={classes.helperText}>
-              Image files must be raw disk images (.img)
+              Image files must be raw disk images (.img). The maximum file size
+              is 30 GB.
               {/* compressed using gzip
             (.gz). The maximum file size is 5 GB (compressed).
             <br />
