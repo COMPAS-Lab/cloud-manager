@@ -11,7 +11,9 @@ import Form from 'src/components/core/Form';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
 import TagsInput, { Tag as _Tag } from 'src/components/TagsInput';
-import { MAX_VOLUME_SIZE } from 'src/constants';
+/* -- Clanode Change -- */
+import { /*MAX_VOLUME_SIZE*/ CREATE_VOLUME_DESCRIPTION } from 'src/constants';
+/* -- Clanode Change End -- */
 import { resetEventsPolling } from 'src/eventsPolling';
 import { hasGrant } from 'src/features/Profile/permissionsHelpers';
 import { useGrants, useProfile } from 'src/queries/profile';
@@ -193,9 +195,14 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               className={classes.textWrapper}
               data-qa-volume-size-help
             >
-              A single Volume can range from 10 to {MAX_VOLUME_SIZE} gigabytes
+              {
+                /* -- Clanode Change -- */
+                /*A single Volume can range from 10 to {MAX_VOLUME_SIZE} gigabytes
               in size and costs $0.10/GB per month. Up to eight volumes can be
-              attached to a single Linode.
+              attached to a single Linode. */
+                CREATE_VOLUME_DESCRIPTION
+                /* -- Clanode Change End -- */
+              }
             </Typography>
 
             <LabelField

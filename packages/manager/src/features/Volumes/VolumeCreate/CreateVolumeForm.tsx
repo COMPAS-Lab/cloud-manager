@@ -1,5 +1,8 @@
 import { Linode } from '@linode/api-v4/lib/linodes/types';
 import { Region } from '@linode/api-v4/lib/regions/types';
+/* -- Clanode Change -- */
+import { VolumeType } from '@linode/api-v4/lib/volumes';
+/* -- Clanode Change End -- */
 import { CreateVolumeSchema } from '@linode/validation/lib/volumes.schema';
 import { Formik } from 'formik';
 import * as React from 'react';
@@ -15,7 +18,12 @@ import Typography from 'src/components/core/Typography';
 import RegionSelect from 'src/components/EnhancedSelect/variants/RegionSelect';
 import HelpIcon from 'src/components/HelpIcon';
 import Notice from 'src/components/Notice';
-import { dcDisplayNames, MAX_VOLUME_SIZE } from 'src/constants';
+/* -- Clanode Change -- */
+import {
+  dcDisplayNames,
+  /*MAX_VOLUME_SIZE*/ CREATE_VOLUME_DESCRIPTION,
+} from 'src/constants';
+/* -- Clanode Change End -- */
 import EUAgreementCheckbox from 'src/features/Account/Agreements/EUAgreementCheckbox';
 import LinodeSelect from 'src/features/linodes/LinodeSelect';
 import { hasGrant } from 'src/features/Profile/permissionsHelpers';
@@ -107,6 +115,9 @@ const useStyles = makeStyles((theme: Theme) => ({
 }));
 
 interface Props {
+  /* -- Clanode Change -- */
+  volumeTypes: VolumeType[];
+  /* -- Clanode Change End -- */
   regions: Region[];
   history: RouteComponentProps['history'];
   onSuccess: (
@@ -120,7 +131,17 @@ type CombinedProps = Props & StateProps;
 
 const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
   const classes = useStyles();
-  const { onSuccess, origin, history, regions } = props;
+  /* -- Clanode Change -- */
+  // const { onSuccess, origin, history, regions } = props;
+  const {
+    onSuccess,
+    createVolume,
+    origin,
+    history,
+    regions,
+    volumeTypes,
+  } = props;
+  /* -- Clanode Change End -- */
 
   const { data: profile } = useProfile();
   const { data: grants } = useGrants();
@@ -297,9 +318,14 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                   variant="body1"
                   data-qa-volume-size-help
                 >
-                  A single Volume can range from 10 to {MAX_VOLUME_SIZE} GB in
+                  {
+                    /* -- Clanode Change -- */
+                    /*A single Volume can range from 10 to {MAX_VOLUME_SIZE} GB in
                   size and costs $0.10/GB per month. <br />
-                  Up to eight volumes can be attached to a single Linode.
+                  Up to eight volumes can be attached to a single Linode.*/
+                    CREATE_VOLUME_DESCRIPTION
+                    /* -- Clanode Change End -- */
+                  }
                 </Typography>
                 <LabelField
                   name="label"
@@ -317,6 +343,10 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                 <Box display="flex" alignItems="flex-end">
                   <SizeField
                     name="size"
+                    /* -- Clanode Change -- */
+                    volumeTypes={volumeTypes}
+                    selectedType={values.volume_type}
+                    /* -- Clanode Change End -- */
                     disabled={doesNotHavePermission}
                     error={touched.size ? errors.size : undefined}
                     onBlur={handleBlur}
@@ -328,6 +358,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                 <Box display="flex" alignItems="flex-end">
                   <VolumeTypeSelect
                     label="Volume Type"
+                    volumeTypes={volumeTypes}
                     selectedType={values.volume_type}
                     handleSelection={(value) =>
                       setFieldValue('volume_type', value)
