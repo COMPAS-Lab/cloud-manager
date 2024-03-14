@@ -22,6 +22,17 @@ export type VolumeStatus =
 
 type VolumeHardwareType = 'hdd' | 'nvme';
 
+/* -- Clanode Change -- */
+export interface VolumeType {
+  label: string;
+  hardware_type: VolumeHardwareType;
+  price: {
+    monthly: number;
+    hourly: number;
+  };
+}
+/* -- Clanode Change End -- */
+
 export interface VolumeRequestPayload {
   label: string;
   size?: number;

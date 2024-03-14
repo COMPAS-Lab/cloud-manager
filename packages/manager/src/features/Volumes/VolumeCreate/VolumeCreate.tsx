@@ -5,6 +5,9 @@ import BreadCrumb from 'src/components/Breadcrumb';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import { useRegionsQuery } from 'src/queries/regions';
+/* -- Clanode Change -- */
+import { useVolumeTypesQuery } from 'src/queries/volumeTypes';
+/* -- Clanode Change End -- */
 import { MapState } from 'src/store/types';
 import { openForConfig, viewResizeInstructions } from 'src/store/volumeForm';
 import CreateVolumeForm from './CreateVolumeForm';
@@ -61,6 +64,9 @@ type CombinedProps = StateProps & RouteComponentProps<{}> & DispatchProps;
 const VolumeCreate: React.FC<CombinedProps> = (props) => {
   const classes = useStyles();
   const regions = useRegionsQuery().data ?? [];
+  /* -- Clanode Change -- */
+  const volumeTypes = useVolumeTypesQuery().data ?? [];
+  /* -- Clanode Change End -- */
 
   const { actions, history } = props;
 
@@ -73,6 +79,9 @@ const VolumeCreate: React.FC<CombinedProps> = (props) => {
         pathname={props.location.pathname}
       />
       <CreateVolumeForm
+        /* -- Clanode Change -- */
+        volumeTypes={volumeTypes}
+        /* -- Clanode Change End -- */
         onSuccess={actions.openForConfig}
         regions={regions}
         history={history}

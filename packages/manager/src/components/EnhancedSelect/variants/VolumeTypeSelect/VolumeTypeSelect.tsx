@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import Select, { BaseSelectProps } from 'src/components/EnhancedSelect/Select';
-import { ExtendedVolumeType, volumeTypes } from 'src/constants'; // Adjust the import path as necessary
+import { VolumeType } from '@linode/api-v4/lib/volumes';
 
 interface Props extends Omit<BaseSelectProps, 'onChange'> {
   handleSelection: (value: string) => void;
   selectedType: string | null;
+  volumeTypes: VolumeType[];
   label?: string;
   helperText?: string;
   isClearable?: boolean;
@@ -24,6 +25,7 @@ const VolumeTypeSelect: React.FC<Props> = (props) => {
     handleSelection,
     isClearable,
     helperText,
+    volumeTypes,
     selectedType,
     styles,
     required,
@@ -32,11 +34,16 @@ const VolumeTypeSelect: React.FC<Props> = (props) => {
   } = props;
 
   const onChange = React.useCallback(
-    (selection: ExtendedVolumeType | null) => {
-      handleSelection(selection ? selection.value : '');
+    (selection: VolumeType | null) => {
+      handleSelection(selection ? selection.hardware_type : '');
     },
     [handleSelection]
   );
+
+  const extendedVolumeTypes = volumeTypes.map((volumeType: VolumeType) => ({
+    ...volumeType,
+    value: volumeType.hardware_type,
+  }));
 
   const classes = useStyles();
 
@@ -44,11 +51,13 @@ const VolumeTypeSelect: React.FC<Props> = (props) => {
     <div className={classes.root} style={{ width }}>
       <Select
         isClearable={Boolean(isClearable)}
-        value={volumeTypes.find((type) => type.value === selectedType) ?? ''}
+        value={
+          extendedVolumeTypes.find((type) => type.value === selectedType) ?? ''
+        }
         label={label ?? 'Volume Type'}
         disabled={disabled}
         placeholder="Select a Volume Type"
-        options={volumeTypes}
+        options={extendedVolumeTypes}
         onChange={onChange}
         styles={styles}
         textFieldProps={{
