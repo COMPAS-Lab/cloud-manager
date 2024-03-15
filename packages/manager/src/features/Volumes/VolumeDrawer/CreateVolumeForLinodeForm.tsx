@@ -37,6 +37,7 @@ import NoticePanel from './NoticePanel';
 import PricePanel from './PricePanel';
 import SizeField from './SizeField';
 import VolumesActionsPanel from './VolumesActionsPanel';
+import VolumeTypeSelect from 'src/components/EnhancedSelect/variants/VolumeTypeSelect/VolumeTypeSelect';
 
 const useStyles = makeStyles((theme: Theme) => ({
   textWrapper: {
@@ -93,7 +94,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
       initialValues={initialValues}
       validationSchema={extendedCreateVolumeSchema}
       onSubmit={(values, { setSubmitting, setStatus, setErrors }) => {
-        const { label, size, config_id, tags } = values;
+        const { label, size, config_id, tags, volume_type } = values;
 
         setSubmitting(true);
 
@@ -107,6 +108,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
             // If the config_id still set to default value of -1, set this to undefined, so volume gets created on back-end according to the API logic
             config_id === -1 ? undefined : maybeCastToNumber(config_id),
           tags: tags.map((v) => v.value),
+          hardware_type: volume_type,
         })
           .then(({ label: newLabel, filesystem_path }) => {
             resetEventsPolling();
@@ -215,6 +217,16 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               isFromLinode
             />
 
+            <VolumeTypeSelect
+              label="Volume Type"
+              selectedType={values.volume_type}
+              handleSelection={(value) => setFieldValue('volume_type', value)}
+              errorText={touched.volume_type ? errors.volume_type : undefined}
+              disabled={disabled}
+              isClearable={true}
+              helperText="Select the type of volume you wish to create."
+            />
+
             <ConfigSelect
               error={touched.config_id ? errors.config_id : undefined}
               linodeId={linode_id}
@@ -271,6 +283,7 @@ interface FormState {
   linode_id: number;
   config_id: number;
   tags: _Tag[];
+  volume_type: string;
 }
 
 const initialValues: FormState = {
@@ -280,6 +293,7 @@ const initialValues: FormState = {
   linode_id: -1,
   config_id: -1,
   tags: [],
+  volume_type: 'hdd',
 };
 
 interface DispatchProps {
