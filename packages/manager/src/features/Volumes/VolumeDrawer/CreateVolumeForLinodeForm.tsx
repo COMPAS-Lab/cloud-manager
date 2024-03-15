@@ -16,7 +16,11 @@ import {
 } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
 import TagsInput, { Tag as _Tag } from 'src/components/TagsInput';
-import { MAX_VOLUME_SIZE } from 'src/constants';
+/* -- Clanode Change -- */
+import { /*MAX_VOLUME_SIZE*/ CREATE_VOLUME_DESCRIPTION } from 'src/constants';
+import VolumeTypeSelect from 'src/components/EnhancedSelect/variants/VolumeTypeSelect/VolumeTypeSelect';
+import { VolumeType } from '@linode/api-v4/lib/volumes';
+/* -- Clanode Change End -- */
 import withVolumesRequests, {
   VolumesRequests,
 } from 'src/containers/volumesRequests.container';
@@ -44,7 +48,6 @@ import NoticePanel from './NoticePanel';
 import PricePanel from './PricePanel';
 import SizeField from './SizeField';
 import VolumesActionsPanel from './VolumesActionsPanel';
-import VolumeTypeSelect from 'src/components/EnhancedSelect/variants/VolumeTypeSelect/VolumeTypeSelect';
 
 type ClassNames = 'root' | 'textWrapper';
 const styles = (theme: Theme) =>
@@ -60,6 +63,9 @@ interface Props {
   linode_id: number;
   linodeLabel: string;
   linodeRegion: string;
+  /* -- Clanode Change -- */
+  volumeTypes: VolumeType[];
+  /* -- Clanode Change End -- */
   onSuccess: (
     volumeLabel: string,
     volumePath: string,
@@ -80,6 +86,9 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
     linode_id,
     linodeLabel,
     linodeRegion,
+    /* -- Clanode Change -- */
+    volumeTypes,
+    /* -- Clanode Change End -- */
     actions,
     createVolume,
     origin,
@@ -208,9 +217,14 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               className={props.classes.textWrapper}
               data-qa-volume-size-help
             >
-              A single Volume can range from 10 to {MAX_VOLUME_SIZE} gigabytes
+              {
+                /* -- Clanode Change -- */
+                /*A single Volume can range from 10 to {MAX_VOLUME_SIZE} gigabytes
               in size and costs $0.10/GB per month. Up to eight volumes can be
-              attached to a single Linode.
+              attached to a single Linode. */
+                CREATE_VOLUME_DESCRIPTION
+                /* -- Clanode Change End -- */
+              }
             </Typography>
 
             <LabelField
@@ -232,15 +246,20 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               isFromLinode
             />
 
-            <VolumeTypeSelect
-              label="Volume Type"
-              selectedType={values.volume_type}
-              handleSelection={(value) => setFieldValue('volume_type', value)}
-              errorText={touched.volume_type ? errors.volume_type : undefined}
-              disabled={disabled}
-              isClearable={true}
-              helperText="Select the type of volume you wish to create."
-            />
+            {
+              /* -- Clanode Change -- */
+              <VolumeTypeSelect
+                label="Volume Type"
+                volumeTypes={volumeTypes}
+                selectedType={values.volume_type}
+                handleSelection={(value) => setFieldValue('volume_type', value)}
+                errorText={touched.volume_type ? errors.volume_type : undefined}
+                disabled={disabled}
+                isClearable={true}
+                helperText="Select the type of volume you wish to create."
+              />
+              /* -- Clanode Change -- */
+            }
 
             <ConfigSelect
               error={touched.config_id ? errors.config_id : undefined}
@@ -272,9 +291,17 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               hide={true}
               /* -- Clanode Change End -- */
             />
-
-            <PricePanel value={values.size} currentSize={10} />
-
+            {
+              /* -- Clanode Change -- */
+              // <PricePanel value={values.size} currentSize={10} />
+              <PricePanel
+                value={values.size}
+                currentSize={10}
+                selectedType={values.volume_type}
+                volumeTypes={volumeTypes}
+              />
+              /* -- Clanode Change End -- */
+            }
             <VolumesActionsPanel
               isSubmitting={isSubmitting}
               onSubmit={handleSubmit}

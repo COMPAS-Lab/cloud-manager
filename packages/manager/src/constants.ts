@@ -1,6 +1,8 @@
 import { ZoneName } from '@linode/api-v4/lib/networking';
 import { ObjectStorageClusterID } from '@linode/api-v4/lib/object-storage';
-
+/* -- Clanode Change -- */
+import { VolumeType } from '@linode/api-v4/lib/volumes';
+/* -- Clanode Change End -- */
 const PRODUCTION = 'production';
 
 // native to webpack build
@@ -92,6 +94,10 @@ export const ISO_DATETIME_NO_TZ_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
 export const MAX_VOLUME_SIZE = 10240;
 
+/* -- Clanode Change -- */
+export const MIN_VOLUME_SIZE = 1;
+export const CREATE_VOLUME_DESCRIPTION = `A single Volume can range from ${MIN_VOLUME_SIZE} to ${MAX_VOLUME_SIZE} GB in size.`;
+/* -- Clanode Change End -- */
 /**
  * The lowest interval at which to make an Events request. This is later multiplied by the pollIteration
  * to get the actual interval.
@@ -288,15 +294,16 @@ export const allowedHTMLTags = [
   'tr',
 ];
 
-export interface ExtendedVolumeType {
-  label: string;
-  value: string;
-}
-
-export const volumeTypes: ExtendedVolumeType[] = [
-  { label: 'HDD', value: 'hdd' },
-  { label: 'SSD', value: 'nvme' },
+/* -- Clanode Clanode -- */
+export const defaultVolumeTypes: VolumeType[] = [
+  { label: 'HDD', hardware_type: 'hdd', price: { hourly: 0.0, monthly: 1.0 } },
+  {
+    label: 'NVMe',
+    hardware_type: 'nvme',
+    price: { hourly: 0.0, monthly: 5.0 },
+  },
 ];
+/* -- Clanode Clanode End -- */
 
 export const allowedHTMLAttr = ['href', 'lang', 'title', 'align'];
 

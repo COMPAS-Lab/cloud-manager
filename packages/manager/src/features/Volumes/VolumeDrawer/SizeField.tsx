@@ -4,6 +4,9 @@ import InputAdornment from 'src/components/core/InputAdornment';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import TextField from 'src/components/TextField';
 import { MAX_VOLUME_SIZE } from 'src/constants';
+/* -- Clanode Change -- */
+import { VolumeType } from '@linode/api-v4/lib/volumes';
+/* -- Clanode Change End -- */
 
 const useStyles = makeStyles((theme: Theme) => ({
   createVolumeText: {
@@ -18,6 +21,10 @@ interface Props {
   value: number;
   onBlur: (e: any) => void;
   onChange: (e: React.ChangeEvent<any>) => void;
+  /* -- Clanode Change -- */
+  volumeTypes?: VolumeType[];
+  selectedType?: string;
+  /* -- Clanode Change End -- */
   disabled?: boolean;
   error?: string;
   isFromLinode?: boolean;
@@ -39,14 +46,29 @@ const SizeField: React.FC<CombinedProps> = (props) => {
     isFromLinode,
     resize,
     textFieldStyles,
+    /* -- Clanode Change -- */
+    volumeTypes,
+    selectedType,
+    /* -- Clanode Change End -- */
     ...rest
   } = props;
 
   const helperText = resize
     ? `This volume can range from ${resize} GB to ${MAX_VOLUME_SIZE} GB in size.`
     : undefined;
-
-  const price = value >= 10 ? (value / 10).toFixed(2) : '0.00';
+  /* -- Clanode Change -- */
+  const volumeType = selectedType
+    ? volumeTypes?.find(
+        (volumeType) => volumeType.hardware_type === selectedType
+      )
+    : undefined;
+  const monthlyCost = volumeType ? volumeType.price.monthly : 0;
+  const price =
+    value > 0
+      ? (value * monthlyCost) /* 10*/
+          .toFixed(2)
+      : '0.00';
+  /* -- Clanode Change End -- */
 
   return (
     <>
