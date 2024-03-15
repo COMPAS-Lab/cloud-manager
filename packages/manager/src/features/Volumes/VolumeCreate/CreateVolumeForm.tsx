@@ -197,7 +197,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
             config_id === initialValueDefaultId
               ? undefined
               : maybeCastToNumber(config_id),
-          hardware_type: volume_type == 'nvme' ? 'ssd_volume' : 'hdd_volume',
+          hardware_type: volume_type,
         })
           .then(({ filesystem_path, label: volumeLabel }) => {
             if (hasSignedAgreement) {
@@ -360,7 +360,9 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                       )
                       .map((eachRegion) => ({
                         ...eachRegion,
-                        display: dcDisplayNames[eachRegion.id],
+                        display: (dcDisplayNames as { [key: string]: string })[
+                          eachRegion.id
+                        ],
                       }))}
                     selectedID={values.region}
                     width={320}
