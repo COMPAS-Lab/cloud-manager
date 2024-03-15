@@ -20,6 +20,11 @@ import { modes } from './modes';
 import { ResizeVolumeForm } from './ResizeVolumeForm';
 import ResizeVolumesInstruction from './ResizeVolumesInstruction';
 import VolumeConfigForm from './VolumeConfigForm';
+/* -- Clanode Change -- */
+import { volumeQueryOptions } from 'src/queries/volumeTypes';
+import { VolumeType, getVolumeTypes } from '@linode/api-v4/lib/volumes';
+import { UseQuery } from 'src/queries/UseQuery';
+/* -- Clanode Change End -- */
 
 type CombinedProps = StateProps & DispatchProps & ProfileProps;
 
@@ -97,13 +102,24 @@ class VolumeDrawer extends React.PureComponent<CombinedProps> {
           linodeId !== undefined &&
           linodeLabel !== undefined &&
           linodeRegion !== undefined && (
-            <CreateVolumeForLinodeForm
-              linode_id={linodeId}
-              linodeLabel={linodeLabel}
-              linodeRegion={linodeRegion}
-              onSuccess={actions.openForConfig}
-              onClose={actions.closeDrawer}
-            />
+            /* -- Clanode Change -- */
+            <UseQuery
+              queryKey="volume_types"
+              queryFn={getVolumeTypes}
+              options={volumeQueryOptions}
+            >
+              {(query) => (
+                <CreateVolumeForLinodeForm
+                  linode_id={linodeId}
+                  linodeLabel={linodeLabel}
+                  linodeRegion={linodeRegion}
+                  volumeTypes={query.data as VolumeType[]}
+                  onSuccess={actions.openForConfig}
+                  onClose={actions.closeDrawer}
+                />
+              )}
+            </UseQuery>
+            /* -- Clanode Change End -- */
           )}
         {mode === modes.ATTACHING &&
           linodeId !== undefined &&

@@ -355,23 +355,27 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                     textFieldStyles={classes.size}
                   />
                 </Box>
-                <Box display="flex" alignItems="flex-end">
-                  <VolumeTypeSelect
-                    label="Volume Type"
-                    volumeTypes={volumeTypes}
-                    selectedType={values.volume_type}
-                    handleSelection={(value) =>
-                      setFieldValue('volume_type', value)
-                    }
-                    errorText={
-                      touched.volume_type ? errors.volume_type : undefined
-                    }
-                    disabled={doesNotHavePermission}
-                    isClearable={true}
-                    helperText="Select the type of volume you wish to create."
-                    width={320}
-                  />
-                </Box>
+                {
+                  /* -- Clanode Change -- */
+                  <Box display="flex" alignItems="flex-end">
+                    <VolumeTypeSelect
+                      label="Volume Type"
+                      volumeTypes={volumeTypes}
+                      selectedType={values.volume_type}
+                      handleSelection={(value) =>
+                        setFieldValue('volume_type', value)
+                      }
+                      errorText={
+                        touched.volume_type ? errors.volume_type : undefined
+                      }
+                      disabled={doesNotHavePermission}
+                      isClearable={true}
+                      helperText="Select the type of volume you wish to create."
+                      width={320}
+                    />
+                  </Box>
+                  /* -- Clanode Change End -- */
+                }
                 <Box display="flex" alignItems="flex-end">
                   <RegionSelect
                     label="Region"
