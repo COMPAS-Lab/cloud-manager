@@ -153,6 +153,7 @@ export const dcDisplayNames = {
   E5450: 'E5450',
   'E5-2680v4': 'E5-2680v4',
   'E5-2695v4': 'E5-2965v4',
+  'E5-2620v4': 'E5-2620v4',
   'E5-2620v3': 'E5-2620v3',
   'E5-2670v3': 'E5-2670v3',
   /* -- Clanode Change End -- */
