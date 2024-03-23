@@ -86,8 +86,13 @@ const RenderData: React.FC<{
       }) => (
         <React.Fragment>
           {paginatedData.map(
-            ({ label, from, to, quantity, unit_price, amount, tax, total }) => (
-              <TableRow key={`${label}-${from}-${to}`}>
+            /* -- Clanode Change (Added idx) -- */
+            (
+              { label, from, to, quantity, unit_price, amount, tax, total },
+              idx
+            ) => (
+              <TableRow key={`${label}-${from}-${to}-${idx}`}>
+                {/* -- Clanode Change End -- */}
                 <TableCell parentColumn="Description" data-qa-description>
                   {label}
                 </TableCell>

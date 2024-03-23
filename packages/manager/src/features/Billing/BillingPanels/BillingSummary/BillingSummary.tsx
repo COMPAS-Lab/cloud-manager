@@ -211,7 +211,7 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
       ? 'Accrued charges shown are an approximation and may not exactly reflect your post-tax invoice.'
       : 'Our billing cycle ends on the last day of the month. You may be invoiced before the end of the cycle if your balance exceeds your credit limit.'; */
   const accruedChargesHelperText =
-    'You will be invoiced at 4 am UTC every day for your accrued charges of the previous day.';
+    'Your accured charges will update at 4 am UTC every day with the charges of the previous day.';
   /* -- Clanode Change End -- */
 
   return (
