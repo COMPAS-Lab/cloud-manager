@@ -198,16 +198,13 @@ export const printInvoice = (
         /* -- Clanode Changes End -- */
       });
 
-      createInvoiceItemsTable(
-        doc,
-        itemsChunk
-      ); /*
-      createFooter(doc, baseFont);
+      createInvoiceItemsTable(doc, itemsChunk);
+      /* -- Clanode Change -- */
+      //createFooter(doc, baseFont);
+      /* -- Clanode Change End -- */
       if (index < itemsChunks.length - 1) {
         doc.addPage();
       }
-      */ /* -- Clanode Change End -- */
-      /* -- Clanode Change -- */
     });
 
     createInvoiceTotalsTable(doc, invoice);
