@@ -230,19 +230,13 @@ export const printInvoice = (
         /* -- Clanode Changes End -- */
       });
 
-      createInvoiceItemsTable(
-        doc,
-        itemsChunk
-      ); 
+      createInvoiceItemsTable(doc, itemsChunk);
       /* -- Clanode Change -- */
-      /*
-      createFooter(doc, baseFont, account.country, invoice.date);
+      //createFooter(doc, baseFont);
+      /* -- Clanode Change End -- */
       if (index < itemsChunks.length - 1) {
         doc.addPage();
       }
-      */ 
-      /* -- Clanode Change End -- */
-      
     });
 
     createInvoiceTotalsTable(doc, invoice);
