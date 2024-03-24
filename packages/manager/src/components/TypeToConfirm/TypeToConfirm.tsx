@@ -91,14 +91,12 @@ const TypeToConfirm: React.FC<Props> = (props) => {
       </>
     );
   } else {
-    /* -- Clanode Change -- */
-    return visible ? (
+    return (
       <Typography className={classes.description}>
         To enable type-to-confirm, go to{' '}
         <Link to="/profile/settings">My Settings</Link>.
       </Typography>
-    ) : null;
-    /* -- Clanode Change End -- */
+    );
   }
 };
 
