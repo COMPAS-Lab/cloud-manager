@@ -40,17 +40,25 @@ const ResizeVolumeInstructions: React.FC<CombinedProps> = (props) => {
       {message && <NoticePanel success={message} />}
 
       <div className={classes.copySection}>
-        <Typography variant="body1">
+        {
+          /* -- Clanode Change -- */
+          /* <Typography variant="body1">
           After the volume resize is complete, you'll need to restart your
           Linode for the changes to take effect.
-        </Typography>
-        <Typography variant="body1">
-          Once your Linode has restarted, make sure the volume is unmounted for
-          safety:
-        </Typography>
+        </Typography> */
+          <Typography variant="body1">
+            {/*Once your Linode has restarted, m*/} Make sure the volume is
+            unmounted for safety(the 'X' in vdX should be replaced by the letter
+            of your volume):
+          </Typography>
+          /* -- Clanode Change Emd -- */
+        }
         <CopyableTextField
           className={classes.copyField}
-          value={`umount /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel}`}
+          /* -- Clanode Change -- */
+          //value={`umount /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel}`}
+          value={`umount /dev/vdX`}
+          /* -- Clanode Change End -- */
           data-qa-umount
           label="Make sure the volume is unmounted for safety"
           hideLabel
@@ -64,14 +72,20 @@ const ResizeVolumeInstructions: React.FC<CombinedProps> = (props) => {
         </Typography>
         <CopyableTextField
           className={classes.copyField}
-          value={`e2fsck -f /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel}`}
+          /* -- Clanode Change -- */
+          //value={`e2fsck -f /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel}`}
+          value={`e2fsck -f /dev/vdX`}
+          /* -- Clanode Change End -- */
           data-qa-check-filesystem
           label="Run a file system check"
           hideLabel
         />
         <CopyableTextField
           className={classes.copyField}
-          value={`resize2fs /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel}`}
+          /* -- Clanode Change -- */
+          // value={`resize2fs /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel}`}
+          value={`resize2fs /dev/vdX`}
+          /* -- Clanode Change End -- */
           data-qa-resize-filesystem
           label="Resize file system to fill the new volume"
           hideLabel
@@ -84,7 +98,10 @@ const ResizeVolumeInstructions: React.FC<CombinedProps> = (props) => {
         </Typography>
         <CopyableTextField
           className={classes.copyField}
-          value={`mount /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel} /mnt/${volumeLabel}`}
+          /* -- Clanode Change -- */
+          // value={`mount /dev/disk/by-id/scsi-0Linode_Volume_${volumeLabel} /mnt/${volumeLabel}`}
+          value={`mount /dev/vdX /mnt/${volumeLabel}`}
+          /* -- Clanode Change End -- */
           data-qa-mount
           label="Mount back onto the filesystem"
           hideLabel
