@@ -170,7 +170,9 @@ interface State {
   loading: boolean;
   cancelBackupsAlertOpen: boolean;
   enabling: boolean;
+  /* -- Clanode Change -- */
   showAutomaticBackupSettings: boolean;
+  /* -- Clanode Change End -- */
 }
 
 type CombinedProps = PreloadedProps &
@@ -218,7 +220,9 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
     loading: false,
     cancelBackupsAlertOpen: false,
     enabling: false,
+    /* -- Clanode Change -- */
     showAutomaticBackupSettings: false,
+    /* -- Clanode Change End -- */
   };
 
   windows: string[][] = [];
@@ -470,7 +474,7 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
     const { history, linodeID } = this.props;
     history.push(
       '/linodes/create' +
-        `?type=Snapshots&imageID=${backup.id}&linodeID=${linodeID}`
+        `?type=Images&imageID=${backup.id}&linodeID=${linodeID}`
     );
   };
 
@@ -590,7 +594,6 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
   SettingsForm = (): JSX.Element | null => {
     const { classes, backupsSchedule, permissions } = this.props;
     const { settingsForm } = this.state;
-    const { showAutomaticBackupSettings } = this.state;
     const getErrorFor = getAPIErrorFor(
       {
         day: 'backups.day',
@@ -625,80 +628,76 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
     });
 
     return (
-      <div>
-        {showAutomaticBackupSettings ? (
-          <Paper className={classes.paper}>
-            <Typography
-              variant="h2"
-              className={classes.subTitle}
-              data-qa-settings-heading
-            >
-              Settings
-            </Typography>
-            <Typography variant="body1" data-qa-settings-desc>
-              Configure when automatic backups are initiated. The Linode Backup
-              Service will generate a backup between the selected hours every
-              day, and will overwrite the previous daily backup. The selected
-              day is when the backup is promoted to the weekly slot. Up to two
-              weekly backups are saved.
-            </Typography>
-            <FormControl className={classes.chooseDay}>
-              <Select
-                textFieldProps={{
-                  dataAttrs: {
-                    'data-qa-weekday-select': true,
-                  },
-                }}
-                options={daySelection}
-                defaultValue={defaultDaySelection}
-                onChange={this.handleSelectBackupTime}
-                label="Day of Week"
-                placeholder="Choose a day"
-                isClearable={false}
-                menuPlacement="top"
-                name="Day of Week"
-                noMarginTop
-              />
-            </FormControl>
-            <FormControl>
-              <Select
-                textFieldProps={{
-                  dataAttrs: {
-                    'data-qa-time-select': true,
-                  },
-                }}
-                options={timeSelection}
-                onChange={this.handleSelectBackupWindow}
-                label="Time of Day"
-                placeholder="Choose a time"
-                isClearable={false}
-                defaultValue={defaultTimeSelection}
-                menuPlacement="top"
-                name="Time of Day"
-                noMarginTop
-              />
-              <FormHelperText>
-                Time displayed in {getUserTimezone().replace('_', ' ')}
-              </FormHelperText>
-            </FormControl>
-            <ActionsPanel className={classes.scheduleAction}>
-              <Button
-                buttonType="primary"
-                onClick={this.saveSettings}
-                disabled={
-                  isReadOnly(permissions) ||
-                  this.inputHasChanged(backupsSchedule, settingsForm)
-                }
-                loading={this.state.settingsForm.loading}
-                data-qa-schedule
-              >
-                Save Schedule
-              </Button>
-            </ActionsPanel>
-            {errorText && <FormHelperText error>{errorText}</FormHelperText>}
-          </Paper>
-        ) : null}
-      </div>
+      <Paper className={classes.paper}>
+        <Typography
+          variant="h2"
+          className={classes.subTitle}
+          data-qa-settings-heading
+        >
+          Settings
+        </Typography>
+        <Typography variant="body1" data-qa-settings-desc>
+          Configure when automatic backups are initiated. The Linode Backup
+          Service will generate a backup between the selected hours every day,
+          and will overwrite the previous daily backup. The selected day is when
+          the backup is promoted to the weekly slot. Up to two weekly backups
+          are saved.
+        </Typography>
+        <FormControl className={classes.chooseDay}>
+          <Select
+            textFieldProps={{
+              dataAttrs: {
+                'data-qa-weekday-select': true,
+              },
+            }}
+            options={daySelection}
+            defaultValue={defaultDaySelection}
+            onChange={this.handleSelectBackupTime}
+            label="Day of Week"
+            placeholder="Choose a day"
+            isClearable={false}
+            menuPlacement="top"
+            name="Day of Week"
+            noMarginTop
+          />
+        </FormControl>
+        <FormControl>
+          <Select
+            textFieldProps={{
+              dataAttrs: {
+                'data-qa-time-select': true,
+              },
+            }}
+            options={timeSelection}
+            onChange={this.handleSelectBackupWindow}
+            label="Time of Day"
+            placeholder="Choose a time"
+            isClearable={false}
+            defaultValue={defaultTimeSelection}
+            menuPlacement="top"
+            name="Time of Day"
+            noMarginTop
+          />
+          <FormHelperText>
+            Time displayed in {getUserTimezone().replace('_', ' ')}
+          </FormHelperText>
+        </FormControl>
+        <ActionsPanel className={classes.scheduleAction}>
+          <Button
+            buttonType="primary"
+            onClick={this.saveSettings}
+            disabled={
+              isReadOnly(permissions) ||
+              this.inputHasChanged(backupsSchedule, settingsForm)
+            }
+            loading={this.state.settingsForm.loading}
+            data-qa-schedule
+          >
+            Save Schedule
+          </Button>
+        </ActionsPanel>
+        {errorText && <FormHelperText error>{errorText}</FormHelperText>}
+      </Paper>
     );
   };
 
@@ -709,6 +708,10 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
     const { backups: backupsResponse } = this.state;
     const backups = aggregateBackups(backupsResponse);
 
+    /* -- Clanode Change -- */
+    const { showAutomaticBackupSettings } = this.state;
+    /* -- Clanode Change End -- */
+
     return (
       <React.Fragment>
         {disabled && <LinodePermissionsError />}
@@ -717,29 +720,41 @@ class _LinodeBackup extends React.Component<CombinedProps, State> {
         ) : (
           <Paper className={classes.paper} data-qa-backup-description>
             <Typography>
-              Automatic and manual backups will be listed here
+              {
+                /* -- Clanode Change -- */
+                /* Automatic and manual backups */ 'Backups will be listed here'
+                /* -- Clanode Change End -- */
+              }
             </Typography>
           </Paper>
         )}
         <this.SnapshotForm />
-        <this.SettingsForm />
-        <Button
-          buttonType="outlined"
-          className={classes.cancelButton}
-          disabled={disabled}
-          onClick={this.handleOpenBackupsAlert}
-          data-qa-cancel
-        >
-          Cancel Backups
-        </Button>
-        <Typography
-          className={classes.cancelCopy}
-          variant="body1"
-          data-qa-cancel-desc
-        >
-          Please note that when you cancel backups associated with this Linode,
-          this will remove all existing backups.
-        </Typography>
+        {
+          /* -- Clanode Change -- */
+          showAutomaticBackupSettings ? (
+            <>
+              <this.SettingsForm />
+              <Button
+                buttonType="outlined"
+                className={classes.cancelButton}
+                disabled={disabled}
+                onClick={this.handleOpenBackupsAlert}
+                data-qa-cancel
+              >
+                Cancel Backups
+              </Button>
+              <Typography
+                className={classes.cancelCopy}
+                variant="body1"
+                data-qa-cancel-desc
+              >
+                Please note that when you cancel backups associated with this
+                Linode, this will remove all existing backups.
+              </Typography>
+            </>
+          ) : null
+          /* -- Clanode Change End -- */
+        }
         <RestoreToLinodeDrawer
           open={this.state.restoreDrawer.open}
           linodeID={linodeID}

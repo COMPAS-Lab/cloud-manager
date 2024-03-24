@@ -35,7 +35,7 @@ import {
   deleteImage as _deleteImage,
   requestImages as _requestImages,
 } from 'src/store/image/image.requests';
-// import imageEvents from 'src/store/selectors/imageEvents';
+import imageEvents from 'src/store/selectors/imageEvents';
 import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
 import ImageRow, { ImageWithEvent } from './ImageRow';
 import { Handlers as ImageHandlers } from './ImagesActionMenu';
@@ -277,15 +277,6 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
     });
   };
 
-  const deployNewLinodeDist = (imageID: string) => {
-    const { history } = props;
-    history.push({
-      pathname: `/linodes/create/`,
-      search: `?type=Distributions&imageID=${imageID}`,
-      state: { selectedImageId: imageID },
-    });
-  };
-
   const deployNewLinode = (imageID: string) => {
     const { history } = props;
     history.push({
@@ -373,7 +364,6 @@ export const ImagesLanding: React.FC<CombinedProps> = (props) => {
 
   const handlers: ImageHandlers = {
     onRestore: openForRestore,
-    onDeployDist: deployNewLinodeDist,
     onDeploy: deployNewLinode,
     onEdit: openForEdit,
     onDelete: openDialog,
@@ -544,25 +534,24 @@ const mapDispatchToProps: MapDispatchToProps<ImageDispatch, {}> = (
 const withPrivateImages = connect(
   (state: ApplicationState): WithPrivateImages => {
     const { error, itemsById, lastUpdated, loading } = state.__resources.images;
-    // const events = imageEvents(state.events);
+    const events = imageEvents(state.events);
     const privateImagesWithEvents = Object.values(itemsById).reduce(
       (accum, thisImage) =>
         produce(accum, (draft) => {
-          draft.push(thisImage);
-          // if (!thisImage.is_public) {
-          //   // NB: the secondary_entity returns only the numeric portion of the image ID so we have to interpolate.
-          //   const matchingEvent = events.find(
-          //     (thisEvent) =>
-          //       `private/${thisEvent.secondary_entity?.id}` === thisImage.id ||
-          //       (`private/${thisEvent.entity?.id}` === thisImage.id &&
-          //         thisEvent.status === 'failed')
-          //   );
-          //   if (matchingEvent) {
-          //     draft.push({ ...thisImage, event: matchingEvent });
-          //   } else {
-          //     draft.push(thisImage);
-          //   }
-          // }
+          if (!thisImage.is_public) {
+            // NB: the secondary_entity returns only the numeric portion of the image ID so we have to interpolate.
+            const matchingEvent = events.find(
+              (thisEvent) =>
+                `private/${thisEvent.secondary_entity?.id}` === thisImage.id ||
+                (`private/${thisEvent.entity?.id}` === thisImage.id &&
+                  thisEvent.status === 'failed')
+            );
+            if (matchingEvent) {
+              draft.push({ ...thisImage, event: matchingEvent });
+            } else {
+              draft.push(thisImage);
+            }
+          }
         }),
       [] as ImageWithEvent[]
     );

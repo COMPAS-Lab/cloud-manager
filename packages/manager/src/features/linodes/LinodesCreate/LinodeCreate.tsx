@@ -197,7 +197,7 @@ export class LinodeCreate extends React.PureComponent<
     /** Get the query params as an object, excluding the "?" */
     const queryParams = getParamsFromUrl(location.search);
 
-    const _tabs = ['Distributions', 'StackScripts', 'Snapshots'];
+    const _tabs = ['Distributions', 'StackScripts', 'Images'];
 
     /** Will be -1 if the query param is not found */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -269,9 +269,9 @@ export class LinodeCreate extends React.PureComponent<
       routeName: `${this.props.match.url}?type=StackScripts`,
     },
     {
-      title: 'Snapshots',
+      title: 'Images',
       type: 'fromImage',
-      routeName: `${this.props.match.url}?type=Snapshots`,
+      routeName: `${this.props.match.url}?type=Images`,
     },
 
     // {
@@ -535,7 +535,7 @@ export class LinodeCreate extends React.PureComponent<
               <SafeTabPanel index={2}>
                 <FromImageContent
                   variant={'private'}
-                  imagePanelTitle="Choose a Snapshot"
+                  imagePanelTitle="Choose an Image"
                   imagesData={imagesData}
                   regionsData={regionsData!}
                   typesData={typesData!}
@@ -615,17 +615,11 @@ export class LinodeCreate extends React.PureComponent<
               errorText: hasErrorFor.label,
               disabled: userCannotCreateLinode,
             }}
-            /* -- Clanode Change -- */
-            /*tagsInputProps={
+            tagsInputProps={
               this.props.createType !== 'fromLinode'
                 ? tagsInputProps
                 : undefined
-            }*/
-            tagsInputProps={{
-              ...tagsInputProps,
-              hide: true,
-            }}
-            /* -- Clanode Change End -- */
+            }
             updateFor={[tags, label, errors]}
           />
           {/* Hide for backups and clone */}
