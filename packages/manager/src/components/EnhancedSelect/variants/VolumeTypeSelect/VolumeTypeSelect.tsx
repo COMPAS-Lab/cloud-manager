@@ -5,7 +5,7 @@ import { VolumeType } from '@linode/api-v4/lib/volumes';
 
 interface Props extends Omit<BaseSelectProps, 'onChange'> {
   handleSelection: (value: string) => void;
-  selectedType: string | null;
+  hardwareType: string | null;
   volumeTypes: VolumeType[];
   label?: string;
   helperText?: string;
@@ -26,7 +26,7 @@ const VolumeTypeSelect: React.FC<Props> = (props) => {
     isClearable,
     helperText,
     volumeTypes,
-    selectedType,
+    hardwareType,
     styles,
     required,
     width,
@@ -52,7 +52,7 @@ const VolumeTypeSelect: React.FC<Props> = (props) => {
       <Select
         isClearable={Boolean(isClearable)}
         value={
-          extendedVolumeTypes.find((type) => type.value === selectedType) ?? ''
+          extendedVolumeTypes.find((type) => type.value === hardwareType) ?? ''
         }
         label={label ?? 'Volume Type'}
         disabled={disabled}

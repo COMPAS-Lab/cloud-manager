@@ -11,7 +11,8 @@ import TableCell from 'src/components/TableCell';
 import TableRow from 'src/components/TableRow';
 /* -- Clanode Change -- */
 // import { formatRegion } from 'src/utilities';
-/* -- Clanode Change -- */
+/* -- Clanode Change End -- */
+import { ExtendedVolume } from './types';
 import VolumesActionMenu, { ActionHandlers } from './VolumesActionMenu';
 import SupportLink from 'src/components/SupportLink';
 import { Volume } from '@linode/api-v4/lib/volumes/types';
@@ -84,6 +85,7 @@ export const VolumeTableRow = (props: CombinedProps) => {
     tags,
     size,
     region,
+    hardware_type: hardwareType,
     filesystem_path: filesystemPath,
     linode_label,
     linode_id: linodeId,
@@ -136,7 +138,7 @@ export const VolumeTableRow = (props: CombinedProps) => {
         <TableCell data-qa-volume-region noWrap>
           {formattedRegion}
         </TableCell>
-      ) : null */
+      ) : null  */
       /* -- Clanode Change End -- */}
       <TableCell data-qa-volume-size>{size} GB</TableCell>
       {!isVolumesLanding ? (
@@ -171,6 +173,9 @@ export const VolumeTableRow = (props: CombinedProps) => {
           volumeTags={tags}
           size={size}
           label={label}
+          /* -- Clanode Change -- */
+          hardwareType={hardwareType}
+          /* -- Clanode Change End -- */
           openForEdit={openForEdit}
           openForResize={openForResize}
           openForClone={openForClone}

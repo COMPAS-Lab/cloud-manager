@@ -1,3 +1,4 @@
+import { VolumeType } from '@linode/api-v4/lib/volumes';
 import { ResizeVolumeSchema } from '@linode/validation/lib/volumes.schema';
 import { Formik } from 'formik';
 import * as React from 'react';
@@ -10,6 +11,7 @@ import {
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
 import NoticePanel from './NoticePanel';
+import PricePanel from './PricePanel';
 import SizeField from './SizeField';
 import VolumesActionsPanel from './VolumesActionsPanel';
 
@@ -20,6 +22,10 @@ interface Props {
   volumeLabel: string;
   readOnly?: boolean;
   onSuccess: (volumeLabel: string, message?: string) => void;
+  /* -- Clanode Change -- */
+  hardwareType: string;
+  volumeTypes: VolumeType[];
+  /* -- Clanode Change -- */
 }
 
 export const ResizeVolumeForm = (props: Props) => {
@@ -30,6 +36,10 @@ export const ResizeVolumeForm = (props: Props) => {
     volumeLabel,
     onSuccess,
     readOnly,
+    /* -- Clanode Change -- */
+    hardwareType,
+    volumeTypes,
+    /* -- Clanode Change End -- */
   } = props;
 
   const { mutateAsync: resizeVolume } = useResizeVolumeMutation();
@@ -102,6 +112,13 @@ export const ResizeVolumeForm = (props: Props) => {
               value={values.size}
               resize={volumeSize}
               disabled={readOnly}
+            />
+
+            <PricePanel
+              value={values.size}
+              currentSize={volumeSize}
+              hardwareType={hardwareType}
+              volumeTypes={volumeTypes}
             />
 
             <VolumesActionsPanel

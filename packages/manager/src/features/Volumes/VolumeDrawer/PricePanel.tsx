@@ -17,12 +17,12 @@ type ClassNames = 'root';
 //const getPrice = (size: number) => {
 const getPrice = (
   size: number,
-  selectedType?: string,
+  hardwareType?: string,
   volumeTypes?: VolumeType[]
 ) => {
-  const volumeType = selectedType
+  const volumeType = hardwareType
     ? volumeTypes?.find(
-        (volumeType) => volumeType.hardware_type === selectedType
+        (volumeType) => volumeType.hardware_type === hardwareType
       )
     : undefined;
   const monthlyCost = volumeType ? volumeType.price.monthly : 0;
@@ -33,17 +33,17 @@ const getPrice = (
 const getClampedPrice = (
   newSize: number,
   currentSize: number,
-  selectedType?: string,
+  hardwareType?: string,
   volumeTypes?: VolumeType[]
 ) =>
   newSize >= currentSize
     ? newSize <= MAX_VOLUME_SIZE
       ? // ? getPrice(newSize)
-        getPrice(newSize, selectedType, volumeTypes)
+        getPrice(newSize, hardwareType, volumeTypes)
       : // : getPrice(MAX_VOLUME_SIZE)
-        getPrice(MAX_VOLUME_SIZE, selectedType, volumeTypes)
+        getPrice(MAX_VOLUME_SIZE, hardwareType, volumeTypes)
     : // : getPrice(currentSize);
-      getPrice(currentSize, selectedType, volumeTypes);
+      getPrice(currentSize, hardwareType, volumeTypes);
 /* -- Clanode Change End -- */
 
 const styles = (theme: Theme) =>
@@ -57,7 +57,7 @@ interface Props {
   value: number;
   currentSize: number;
   /* -- Clanode Change -- */
-  selectedType?: string;
+  hardwareType?: string;
   volumeTypes?: VolumeType[];
   /* -- Clanode Change End -- */
 }
@@ -68,14 +68,14 @@ const PricePanel: React.FC<CombinedProps> = ({
   currentSize,
   value,
   /* -- Clanode Change -- */
-  selectedType,
+  hardwareType,
   volumeTypes,
   /* -- Clanode Change End -- */
   classes,
 }) => {
   /* -- Clanode Change -- */
   // const price = getClampedPrice(value, currentSize);
-  const price = getClampedPrice(value, currentSize, selectedType, volumeTypes);
+  const price = getClampedPrice(value, currentSize, hardwareType, volumeTypes);
   /* -- Clanode Change End -- */
 
   return (

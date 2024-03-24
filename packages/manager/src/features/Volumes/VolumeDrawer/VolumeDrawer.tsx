@@ -44,6 +44,9 @@ class VolumeDrawer extends React.PureComponent<CombinedProps> {
       volumeSize,
       volumeTags,
       volumePath,
+      /* -- Clanode Change -- */
+      hardwareType,
+      /* -- Clanode Change End -- */
       message,
       profile,
       grants,
@@ -75,15 +78,28 @@ class VolumeDrawer extends React.PureComponent<CombinedProps> {
         {mode === modes.RESIZING &&
           volumeId !== undefined &&
           volumeSize !== undefined &&
-          volumeLabel !== undefined && (
-            <ResizeVolumeForm
-              volumeId={volumeId}
-              volumeSize={volumeSize}
-              onClose={actions.closeDrawer}
-              volumeLabel={volumeLabel}
-              onSuccess={actions.openForResizeInstructions}
-              readOnly={readOnly}
-            />
+          volumeLabel !== undefined &&
+          /* -- Clanode Change -- */
+          hardwareType !== undefined && (
+            <UseQuery
+              queryKey="volume_types"
+              queryFn={getVolumeTypes}
+              options={volumeQueryOptions}
+            >
+              {(query) => (
+                <ResizeVolumeForm
+                  volumeId={volumeId}
+                  volumeSize={volumeSize}
+                  hardwareType={hardwareType}
+                  volumeTypes={query.data as VolumeType[]}
+                  onClose={actions.closeDrawer}
+                  volumeLabel={volumeLabel}
+                  onSuccess={actions.openForResizeInstructions}
+                  readOnly={readOnly}
+                />
+              )}
+            </UseQuery>
+            /* -- Clanode Change End -- */
           )}
         {mode === modes.CLONING &&
           volumeId !== undefined &&
@@ -196,6 +212,9 @@ interface StateProps {
   linodeLabel?: string;
   linodeRegion?: string;
   message?: string;
+  /* -- Clanode Change -- */
+  hardwareType?: string;
+  /* -- Clanode Change End -- */
 }
 
 const mapStateToProps: MapState<StateProps, {}> = (state) => {
@@ -211,6 +230,9 @@ const mapStateToProps: MapState<StateProps, {}> = (state) => {
     volumeTags,
     volumePath,
     message,
+    /* -- Clanode Change -- */
+    hardwareType,
+    /* -- Clanode Change End -- */
   } = state.volumeDrawer;
 
   return {
@@ -227,6 +249,9 @@ const mapStateToProps: MapState<StateProps, {}> = (state) => {
     volumeTags,
     volumePath,
     message,
+    /* -- Clanode Change -- */
+    hardwareType,
+    /* -- Clanode Change End -- */
   };
 };
 
