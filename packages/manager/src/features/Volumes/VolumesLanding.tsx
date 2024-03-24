@@ -76,7 +76,10 @@ interface DispatchProps {
   openForResize: (
     volumeId: number,
     volumeSize: number,
-    volumeLabel: string
+    volumeLabel: string,
+    /* -- Clanode Change -- */
+    hardwareType: string
+    /* -- Clanode Change End -- */
   ) => void;
   openForClone: (
     volumeId: number,
@@ -112,13 +115,13 @@ export const volumeHeaders = [
     dataColumn: 'label',
     sortable: true,
     widthPercent: /*40*/ 35,
-  } /*
-  {
+  },
+  /*{
     label: 'Region',
     dataColumn: 'region',
     sortable: true,
     widthPercent: 15,
-  },*/,
+  },*/
   {
     label: 'Size',
     dataColumn: 'size',
@@ -130,13 +133,6 @@ export const volumeHeaders = [
     dataColumn: 'Attached To',
     sortable: false,
     widthPercent: 30,
-  },
-  {
-    label: 'Action Menu',
-    visuallyHidden: true,
-    dataColumn: '',
-    sortable: false,
-    widthPercent: 10,
   },
   /* -- Clanode Change End -- */
 ];
@@ -389,9 +385,7 @@ export const VolumesLanding: React.FC<CombinedProps> = (props) => {
                 entity="volume"
                 headers={volumeHeaders}
                 isGroupedByTag={volumesAreGrouped}
-                /* -- Clanode Change -- */
-                toggleGroupByTag={/*toggleGroupVolumes*/ undefined}
-                /* -- Clanode Change End -- */
+                toggleGroupByTag={toggleGroupVolumes}
                 row={volumeRow}
                 initialOrder={{ order: 'asc', orderBy: 'label' }}
               />

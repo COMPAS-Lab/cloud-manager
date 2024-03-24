@@ -53,7 +53,9 @@ import ConfigSelect, {
 import LabelField from '../VolumeDrawer/LabelField';
 import NoticePanel from '../VolumeDrawer/NoticePanel';
 import SizeField from '../VolumeDrawer/SizeField';
+/* -- Clanode Change -- */
 import VolumeTypeSelect from 'src/components/EnhancedSelect/variants/VolumeTypeSelect/VolumeTypeSelect';
+/* -- Clanode Change End -- */
 
 const useStyles = makeStyles((theme: Theme) => ({
   copy: {
@@ -194,7 +196,9 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
           region,
           linode_id,
           config_id,
-          volume_type,
+          /* -- Clanode Change -- */
+          hardwareType,
+          /* -- Clanode Change End -- */
         } = values;
 
         setSubmitting(true);
@@ -218,7 +222,9 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
             config_id === initialValueDefaultId
               ? undefined
               : maybeCastToNumber(config_id),
-          hardware_type: volume_type,
+          /* -- Clanode Change -- */
+          hardware_type: hardwareType,
+          /* -- Clanode Change End -- */
         })
           .then(({ filesystem_path, label: volumeLabel }) => {
             if (hasSignedAgreement) {
@@ -344,7 +350,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                     name="size"
                     /* -- Clanode Change -- */
                     volumeTypes={volumeTypes}
-                    selectedType={values.volume_type}
+                    hardwareType={values.hardwareType}
                     /* -- Clanode Change End -- */
                     disabled={doesNotHavePermission}
                     error={touched.size ? errors.size : undefined}
@@ -360,12 +366,12 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
                     <VolumeTypeSelect
                       label="Volume Type"
                       volumeTypes={volumeTypes}
-                      selectedType={values.volume_type}
+                      hardwareType={values.hardwareType}
                       handleSelection={(value) =>
-                        setFieldValue('volume_type', value)
+                        setFieldValue('hardwareType', value)
                       }
                       errorText={
-                        touched.volume_type ? errors.volume_type : undefined
+                        touched.hardwareType ? errors.hardwareType : undefined
                       }
                       disabled={doesNotHavePermission}
                       isClearable={true}
@@ -495,7 +501,9 @@ interface FormState {
   region: string;
   linode_id: number;
   config_id: number;
-  volume_type: string;
+  /* -- Clanode Change -- */
+  hardwareType: string;
+  /* -- Clanode Change End -- */
 }
 
 const initialValues: FormState = {
@@ -504,7 +512,9 @@ const initialValues: FormState = {
   region: '',
   linode_id: initialValueDefaultId,
   config_id: initialValueDefaultId,
-  volume_type: 'hdd',
+  /* -- Clanode Change -- */
+  hardwareType: 'hdd',
+  /* -- Clanode Change End -- */
 };
 
 interface StateProps {
