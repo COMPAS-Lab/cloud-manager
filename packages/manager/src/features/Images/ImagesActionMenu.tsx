@@ -9,7 +9,6 @@ import InlineMenuAction from 'src/components/InlineMenuAction';
 
 export interface Handlers {
   onRestore: (imageID: string) => void;
-  onDeployDist: (imageID: string) => void;
   onDeploy: (imageID: string) => void;
   onEdit: (label: string, description: string, imageID: string) => void;
   onDelete: (label: string, imageID: string, status?: ImageStatus) => void;
@@ -39,13 +38,11 @@ export const ImagesActionMenu: React.FC<CombinedProps> = (props) => {
     status,
     event,
     onRestore,
-    onDeployDist,
     onDeploy,
     onEdit,
     onDelete,
     onRetry,
     onCancelFailed,
-    ...rest
   } = props;
   const actions: Action[] = React.useMemo(() => {
     const isDisabled = status && status !== 'available';
@@ -84,11 +81,7 @@ export const ImagesActionMenu: React.FC<CombinedProps> = (props) => {
               ? 'Image is not yet available for use.'
               : undefined,
             onClick: () => {
-              if (rest.is_public) {
-                onDeployDist(id);
-              } else {
-                onDeploy(id);
-              }
+              onDeploy(id);
             },
           },
           {
