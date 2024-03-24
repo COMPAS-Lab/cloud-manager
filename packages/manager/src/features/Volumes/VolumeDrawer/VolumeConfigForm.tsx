@@ -41,11 +41,15 @@ const VolumeConfigDrawer: React.FC<CombinedProps> = (props) => {
       <div className={classes.copySection}>
         <Typography variant="body1" data-qa-config-help-msg>
           To get started with a new volume, you&rsquo;ll want to create a
-          filesystem on it:
+          filesystem on it(the 'X' in vdX should be replaced by the letter of
+          your volume):
         </Typography>
         <CopyableTextField
           className={classes.copyField}
-          value={`mkfs.ext4 "${props.volumePath}"`}
+          /* -- Clanode Change -- */
+          // value={`mkfs.ext4 "${props.volumePath}"`}
+          value={`mkfs.ext4 "/dev/vdX"`}
+          /* -- Clanode Change End -- */
           data-qa-make-filesystem
           label="Create a Filesystem"
           hideLabel
@@ -71,7 +75,10 @@ const VolumeConfigDrawer: React.FC<CombinedProps> = (props) => {
         </Typography>
         <CopyableTextField
           className={classes.copyField}
-          value={`mount "${props.volumePath}" "/mnt/${props.volumeLabel}"`}
+          /* -- Clanode Change -- */
+          // value={`mount "${props.volumePath}" "/mnt/${props.volumeLabel}"`}
+          value={`mount "/dev/vdX" "/mnt/${props.volumeLabel}"`}
+          /* -- Clanode Change End -- */
           data-qa-mount
           label="Mount Volume"
           hideLabel
@@ -86,7 +93,10 @@ const VolumeConfigDrawer: React.FC<CombinedProps> = (props) => {
         </Typography>
         <CopyableTextField
           className={classes.copyField}
-          value={`${props.volumePath} /mnt/${props.volumeLabel} ext4 defaults,noatime,nofail 0 2`}
+          /* -- Clanode Change -- */
+          // value={`${props.volumePath} /mnt/${props.volumeLabel} ext4 defaults,noatime,nofail 0 2`}
+          value={`/dev/vdX /mnt/${props.volumeLabel} ext4 defaults,noatime,nofail 0 2`}
+          /* -- Clanode Change End -- */
           data-qa-boot-mount
           label="Mount every time your Linode boots"
           hideLabel
