@@ -21,6 +21,9 @@ const props: Props = {
   handleAttach: jest.fn(),
   handleDelete: jest.fn(),
   handleDetach: jest.fn(),
+  /* -- Clanode Change -- */
+  hardwareType: 'hdd',
+  /* -- Clanode Change End -- */
 };
 
 describe('Volume action menu', () => {

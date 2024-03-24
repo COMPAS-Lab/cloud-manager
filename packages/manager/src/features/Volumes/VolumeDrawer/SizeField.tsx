@@ -23,7 +23,7 @@ interface Props {
   onChange: (e: React.ChangeEvent<any>) => void;
   /* -- Clanode Change -- */
   volumeTypes?: VolumeType[];
-  selectedType?: string;
+  hardwareType?: string;
   /* -- Clanode Change End -- */
   disabled?: boolean;
   error?: string;
@@ -48,7 +48,7 @@ const SizeField: React.FC<CombinedProps> = (props) => {
     textFieldStyles,
     /* -- Clanode Change -- */
     volumeTypes,
-    selectedType,
+    hardwareType,
     /* -- Clanode Change End -- */
     ...rest
   } = props;
@@ -57,9 +57,9 @@ const SizeField: React.FC<CombinedProps> = (props) => {
     ? `This volume can range from ${resize} GB to ${MAX_VOLUME_SIZE} GB in size.`
     : undefined;
   /* -- Clanode Change -- */
-  const volumeType = selectedType
+  const volumeType = hardwareType
     ? volumeTypes?.find(
-        (volumeType) => volumeType.hardware_type === selectedType
+        (volumeType) => volumeType.hardware_type === hardwareType
       )
     : undefined;
   const monthlyCost = volumeType ? volumeType.price.monthly : 0;

@@ -15,6 +15,9 @@ export interface State {
   linodeRegion?: string;
   message?: string;
   origin?: Origin;
+  /* -- Clanode Change -- */
+  hardwareType?: string;
+  /* -- Clanode Change End -- */
 }
 
 const actionCreator = actionCreatorFactory(`@@manager/volumesDrawer`);
@@ -116,13 +119,25 @@ interface Resizing extends Action {
   volumeId: number;
   volumeSize: number;
   volumeLabel: string;
+  /* -- Clanode Change -- */
+  hardwareType: string;
+  /* -- Clanode Change End -- */
 }
 
 export const openForResize = (
   volumeId: number,
   volumeSize: number,
-  volumeLabel: string
-): Resizing => ({ type: RESIZING, volumeId, volumeSize, volumeLabel });
+  volumeLabel: string,
+  /* -- Clanode Change -- */
+  hardwareType: string
+  /* -- Clanode Change End -- */
+): Resizing => ({
+  type: RESIZING,
+  volumeId,
+  volumeSize,
+  volumeLabel,
+  hardwareType,
+});
 
 interface Cloning extends Action {
   type: typeof CLONING;
@@ -191,6 +206,9 @@ export const defaultState: State = {
   volumeLabel: undefined,
   volumeId: undefined,
   volumeSize: undefined,
+  /* -- Clanode Change -- */
+  hardwareType: 'hdd',
+  /* -- Clanode Change End -- */
 };
 
 type ActionTypes =

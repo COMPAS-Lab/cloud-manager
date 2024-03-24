@@ -23,9 +23,6 @@ export interface Props {
   onChange: (selected: Item[]) => void;
   disabled?: boolean;
   menuPlacement?: 'bottom' | 'top' | 'auto' | undefined;
-  /* -- Clanode Change -- */
-  hide?: boolean;
-  /* -- Clanode Change End -- */
 }
 
 const TagsInput: React.FC<Props> = (props) => {
@@ -38,9 +35,6 @@ const TagsInput: React.FC<Props> = (props) => {
     onChange,
     disabled,
     menuPlacement,
-    /* -- Clanode Change -- */
-    hide,
-    /* -- Clanode Change End -- */
   } = props;
 
   const [errors, setErrors] = React.useState<APIError[]>([]);
@@ -95,10 +89,6 @@ const TagsInput: React.FC<Props> = (props) => {
       tagError ||
       generalError ||
       (accountTagsError !== null && 'There was an error retrieving your tags.');
-
-  /* -- Clanode Change -- */
-  if (hide) return null;
-  /* -- Clanode Change End -- */
 
   return (
     <Select

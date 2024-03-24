@@ -61,7 +61,10 @@ interface DispatchProps {
   openForResize: (
     volumeId: number,
     volumeSize: number,
-    volumeLabel: string
+    volumeLabel: string,
+    /* -- Clanode Change -- */
+    hardwareType: string
+    /* -- Clanode Change End -- */
   ) => void;
   openForClone: (
     volumeId: number,
