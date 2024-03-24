@@ -304,14 +304,6 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
     });
   };
 
-  const deployNewLinodeDist = (imageID: string) => {
-    history.push({
-      pathname: `/linodes/create/`,
-      search: `?type=Distributions&imageID=${imageID}`,
-      state: { selectedImageId: imageID },
-    });
-  };
-
   const deployNewLinode = (imageID: string) => {
     history.push({
       pathname: `/linodes/create/`,
@@ -398,7 +390,6 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
 
   const handlers: ImageHandlers = {
     onRestore: openForRestore,
-    onDeployDist: deployNewLinodeDist,
     onDeploy: deployNewLinode,
     onEdit: openForEdit,
     onDelete: openDialog,
