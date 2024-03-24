@@ -56,6 +56,9 @@ const useStyles = makeStyles((theme: Theme) => ({
 
 interface Props {
   result: Item;
+  /* -- Clanode Change -- */
+  showRegion?: boolean;
+  /* -- Clanode Change End -- */
 }
 
 type CombinedProps = Props;
@@ -63,7 +66,7 @@ type CombinedProps = Props;
 export const ResultRow: React.FC<CombinedProps> = (props) => {
   const classes = useStyles();
 
-  const { result } = props;
+  const { result, showRegion } = props;
 
   return (
     <TableRow
@@ -82,7 +85,13 @@ export const ResultRow: React.FC<CombinedProps> = (props) => {
         <Typography variant="body1">{result.data.description}</Typography>
       </TableCell>
       <TableCell className={classes.regionCell}>
-        {result.data.region && <RegionIndicator region={result.data.region} />}
+        {
+          /* -- Clanode Change -- */
+          showRegion && result.data.region && (
+            <RegionIndicator region={result.data.region} />
+          )
+          /* -- Clanode Change End -- */
+        }
       </TableCell>
       <Hidden smDown>
         <TableCell className={classes.createdCell}>
