@@ -29,6 +29,11 @@ const useStyles = makeStyles((theme: Theme) => ({
       borderTop: 'none',
     },
   },
+  /* -- Clanode Change -- */
+  td: {
+    paddingLeft: theme.spacing(),
+  },
+  /* -- Clanode Change End -- */
   groupContainer: {
     [theme.breakpoints.up('md')]: {
       '& $tagHeaderRow > td': {
@@ -39,6 +44,9 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   tagHeader: {
     marginBottom: 2,
+    /* -- Clanode Change -- */
+    marginLeft: theme.spacing(),
+    /* -- Clanode Change End -- */
   },
   paginationCell: {
     paddingTop: 2,
@@ -116,6 +124,7 @@ export const GroupedEntitiesByTag: React.FC<CombinedProps> = (props) => {
                           </TableRow>
                           {paginatedData.map((thisEntity) => (
                             <RowComponent
+                              className={classes.td}
                               key={thisEntity.id}
                               {...thisEntity}
                               {...handlers}
