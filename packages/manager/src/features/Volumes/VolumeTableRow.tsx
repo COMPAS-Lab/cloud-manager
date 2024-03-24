@@ -12,7 +12,7 @@ import TableCell from 'src/components/TableCell';
 import TableRow from 'src/components/TableRow';
 /* -- Clanode Change -- */
 // import { formatRegion } from 'src/utilities';
-/* -- Clanode Change -- */
+/* -- Clanode Change End -- */
 import { ExtendedVolume } from './types';
 import VolumesActionMenu, { ActionHandlers } from './VolumesActionMenu';
 
@@ -155,11 +155,11 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
         </Grid>
       </TableCell>
       {/* -- Clanode Change -- */
-      /*region ? (
+      /* region ? (
         <TableCell data-qa-volume-region noWrap>
           {formattedRegion}
         </TableCell>
-      ) : null */
+      ) : null  */
       /* -- Clanode Change End -- */}
       <TableCell data-qa-volume-size>{size} GB</TableCell>
       {!isVolumesLanding ? (
@@ -190,6 +190,9 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
           volumeTags={tags}
           size={size}
           label={label}
+          /* -- Clanode Change -- */
+          hardwareType={hardwareType}
+          /* -- Clanode Change End -- */
           onEdit={openForEdit}
           onResize={openForResize}
           onClone={openForClone}

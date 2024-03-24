@@ -15,7 +15,10 @@ export interface ActionHandlers {
   openForResize: (
     volumeId: number,
     volumeSize: number,
-    volumeLabel: string
+    volumeLabel: string,
+    /* -- Clanode Change -- */
+    hardwareType: string
+    /* -- Clanode Change End -- */
   ) => void;
   openForClone: (
     volumeId: number,
@@ -46,6 +49,9 @@ interface Props extends ActionHandlers {
   volumeId: number;
   volumeLabel: string;
   volumeTags: string[];
+  /* -- Clanode Change -- */
+  hardwareType: string;
+  /* -- Clanode Change End -- */
   size: number;
 }
 
@@ -68,8 +74,12 @@ export const VolumesActionMenu: React.FC<CombinedProps> = (props) => {
   };
 
   const handleResize = () => {
-    const { onResize, volumeId, size, label } = props;
-    onResize(volumeId, size, label);
+    /* -- Clanode Change -- */
+    // const { onResize, volumeId, size, label } = props;
+    // onResize(volumeId, size, label);
+    const { onResize, volumeId, size, label, hardwareType } = props;
+    onResize(volumeId, size, label, hardwareType);
+    /* -- Clanode Change End -- */
   };
 
   // const handleClone = () => {

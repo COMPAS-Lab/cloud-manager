@@ -116,7 +116,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
       initialValues={initialValues}
       validationSchema={extendedCreateVolumeSchema}
       onSubmit={(values, { setSubmitting, setStatus, setErrors }) => {
-        const { label, size, config_id, tags, volume_type } = values;
+        const { label, size, config_id, tags, hardwareType } = values;
 
         setSubmitting(true);
 
@@ -130,7 +130,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
             // If the config_id still set to default value of -1, set this to undefined, so volume gets created on back-end according to the API logic
             config_id === -1 ? undefined : maybeCastToNumber(config_id),
           tags: tags.map((v) => v.value),
-          hardware_type: volume_type,
+          hardware_type: hardwareType,
         })
           .then(({ label: newLabel, filesystem_path }) => {
             resetEventsPolling();
@@ -251,9 +251,13 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               <VolumeTypeSelect
                 label="Volume Type"
                 volumeTypes={volumeTypes}
-                selectedType={values.volume_type}
-                handleSelection={(value) => setFieldValue('volume_type', value)}
-                errorText={touched.volume_type ? errors.volume_type : undefined}
+                hardwareType={values.hardwareType}
+                handleSelection={(value) =>
+                  setFieldValue('hardwareType', value)
+                }
+                errorText={
+                  touched.hardwareType ? errors.hardwareType : undefined
+                }
                 disabled={disabled}
                 isClearable={true}
                 helperText="Select the type of volume you wish to create."
@@ -287,9 +291,6 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               onChange={(selected) => setFieldValue('tags', selected)}
               value={values.tags}
               disabled={disabled}
-              /* -- Clanode Change -- */
-              hide={true}
-              /* -- Clanode Change End -- */
             />
             {
               /* -- Clanode Change -- */
@@ -297,7 +298,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
               <PricePanel
                 value={values.size}
                 currentSize={10}
-                selectedType={values.volume_type}
+                hardwareType={values.hardwareType}
                 volumeTypes={volumeTypes}
               />
               /* -- Clanode Change End -- */
@@ -325,7 +326,7 @@ interface FormState {
   linode_id: number;
   config_id: number;
   tags: _Tag[];
-  volume_type: string;
+  hardwareType: string;
 }
 
 const initialValues: FormState = {
@@ -335,7 +336,7 @@ const initialValues: FormState = {
   linode_id: -1,
   config_id: -1,
   tags: [],
-  volume_type: 'hdd',
+  hardwareType: 'hdd',
 };
 
 const styled = withStyles(styles);
