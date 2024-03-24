@@ -68,7 +68,12 @@ export const ResultGroup: React.FC<CombinedProps> = (props) => {
         <TableHead>
           <TableRow>
             <TableCell>Label</TableCell>
-            <TableCell>Region</TableCell>
+            {
+              /* -- Clanode Change -- */
+              // <TableCell>Region</TableCell>
+              <TableCell>{entity === 'Linodes' ? 'CPU Type' : ''}</TableCell>
+              /* -- Clanode Change End -- */
+            }
             <Hidden mdDown>
               <TableCell>Created</TableCell>
               <TableCell>Tags</TableCell>
@@ -77,7 +82,15 @@ export const ResultGroup: React.FC<CombinedProps> = (props) => {
         </TableHead>
         <TableBody>
           {initial.map((result, idx: number) => (
-            <ResultRow key={idx} result={result} data-qa-result-row-component />
+            /* -- Clanode Change -- */
+            // <ResultRow key={idx} result={result} data-qa-result-row-component />
+            <ResultRow
+              key={idx}
+              result={result}
+              showRegion={entity === 'Linodes'}
+              data-qa-result-row-component
+            />
+            /* -- Clanode Change End -- */
           ))}
           {showMore &&
             hidden.map((result, idx: number) => (
