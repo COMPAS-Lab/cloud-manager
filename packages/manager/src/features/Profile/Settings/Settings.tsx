@@ -59,7 +59,6 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
   };
   /* -- Clanode Change -- */
   const hideEmailNotifications = true;
-  const hideTypeToConfirm = true;
   /* -- Clanode Change End -- */
 
   return (
@@ -118,51 +117,43 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
           </Grid>
         </Grid>
       </Paper>
-      {
-        /* -- Clanode Change -- */
-        !hideTypeToConfirm ? (
-          <Paper className={classes.root}>
-            <Typography variant="h2" className={classes.title}>
-              Type-to-Confirm
-            </Typography>
-            <Typography variant="body1">
-              For some products and services, the type-to-confirm setting
-              requires entering the label before deletion.
-            </Typography>
-            <PreferenceToggle<boolean>
-              preferenceKey="type_to_confirm"
-              preferenceOptions={[true, false]}
-              localStorageKey="typeToConfirm"
-            >
-              {({
-                preference: istypeToConfirm,
-                togglePreference: toggleTypeToConfirm,
-              }: ToggleProps<boolean>) => {
-                return (
-                  <Grid container alignItems="center">
-                    <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Toggle
-                            onChange={toggleTypeToConfirm}
-                            checked={istypeToConfirm}
-                          />
-                        }
-                        label={`Type-to-confirm is${
-                          istypeToConfirm ? ' enabled' : ' disabled'
-                        }`}
+      <Paper className={classes.root}>
+        <Typography variant="h2" className={classes.title}>
+          Type-to-Confirm
+        </Typography>
+        <Typography variant="body1">
+          For some products and services, the type-to-confirm setting requires
+          entering the label before deletion.
+        </Typography>
+        <PreferenceToggle<boolean>
+          preferenceKey="type_to_confirm"
+          preferenceOptions={[true, false]}
+          localStorageKey="typeToConfirm"
+        >
+          {({
+            preference: istypeToConfirm,
+            togglePreference: toggleTypeToConfirm,
+          }: ToggleProps<boolean>) => {
+            return (
+              <Grid container alignItems="center">
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Toggle
+                        onChange={toggleTypeToConfirm}
+                        checked={istypeToConfirm}
                       />
-                    </Grid>
-                  </Grid>
-                );
-              }}
-            </PreferenceToggle>
-          </Paper>
-        ) : (
-          <></>
-        )
-        /* -- Clanode Change End -- */
-      }
+                    }
+                    label={`Type-to-confirm is${
+                      istypeToConfirm ? ' enabled' : ' disabled'
+                    }`}
+                  />
+                </Grid>
+              </Grid>
+            );
+          }}
+        </PreferenceToggle>
+      </Paper>
     </>
   );
 };
