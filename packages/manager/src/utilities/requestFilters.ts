@@ -27,8 +27,12 @@ export const generateNeqFilter = (
  */
 export const generatePollingFilter = (
   timestamp: string,
-  inIds: number[] = [],
-  neqIds: number[] = []
+  /* -- Clanode Change -- */
+  // inIds: number[] = [],
+  // neqIds: number[] = []
+  inIds: (string | number)[] = [],
+  neqIds: (string | number)[] = []
+  /* -- Clanode Change End -- */
 ) => {
   let filter: any = { created: { '+gte': timestamp } };
 
