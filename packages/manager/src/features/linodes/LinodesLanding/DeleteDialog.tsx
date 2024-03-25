@@ -2,6 +2,7 @@ import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
 import { compose } from 'recompose';
 import Typography from 'src/components/core/Typography';
+import { resetEventsPolling } from 'src/eventsPolling';
 import Notice from 'src/components/Notice';
 import TypeToConfirmDialog from 'src/components/TypeToConfirmDialog';
 
@@ -40,6 +41,9 @@ const DeleteLinodeDialog: React.FC<CombinedProps> = (props) => {
 
     handleDelete(linodeID)
       .then(() => {
+        /* -- Clanode Change -- */
+        resetEventsPolling();
+        /* -- Clanode Change -- */
         onClose();
       })
       .catch((e) => {
