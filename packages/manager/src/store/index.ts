@@ -147,6 +147,10 @@ import vlans, {
   State as VlanState,
 } from './vlans/vlans.reducer';
 
+/* -- Clanode Change -- */
+import firewallEvents from 'src/store/firewalls/firewalls.events';
+/* -- Clanode Change End -- */
+
 const reduxDevTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__;
 initReselectDevtools();
 
@@ -290,7 +294,10 @@ const enhancers = compose(
       nodeBalancerConfigEvents,
       volumeEvents,
       diskEvents,
-      linodeConfigEvents
+      linodeConfigEvents,
+      /* -- Clanode Change -- */
+      firewallEvents
+      /* -- Clanode Change End -- */
     )
   ),
   reduxDevTools ? reduxDevTools() : (f: any) => f

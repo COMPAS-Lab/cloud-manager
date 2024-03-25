@@ -102,6 +102,10 @@ export default (
 
     case 'user':
       return `/account/users/${label}/profile`;
+    /* -- Clanode Change -- */
+    case 'firewall':
+      return `/firewalls/${id}`;
+    /* -- Clanode Change End -- */
 
     default:
       return;

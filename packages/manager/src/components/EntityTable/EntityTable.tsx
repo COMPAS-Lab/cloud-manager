@@ -10,7 +10,9 @@ const useStyles = makeStyles(() => ({
   root: {
     '& td': {
       borderTop: 0,
-      paddingLeft: '15px',
+      /* -- Clanode Change -- */
+      // paddingLeft: '15px',
+      /* -- Clanode Change End -- */
       paddingRight: '15px',
     },
   },
