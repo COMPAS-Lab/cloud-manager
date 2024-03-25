@@ -5,6 +5,7 @@ import ActionsPanel from 'src/components/ActionsPanel';
 import Button from 'src/components/Button';
 import Dialog from 'src/components/ConfirmationDialog';
 import Typography from 'src/components/core/Typography';
+import { resetEventsPolling } from 'src/eventsPolling';
 
 interface Props {
   linodeID?: number;
@@ -40,6 +41,9 @@ const DeleteLinodeDialog: React.FC<CombinedProps> = (props) => {
     props
       .handleDelete(props.linodeID)
       .then(() => {
+        /* -- Clanode Change -- */
+        resetEventsPolling();
+        /* -- Clanode Change -- */
         props.onClose();
       })
       .catch((e) => {
