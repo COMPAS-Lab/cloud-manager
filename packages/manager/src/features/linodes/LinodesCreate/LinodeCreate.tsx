@@ -334,9 +334,14 @@ export class LinodeCreate extends React.PureComponent<
         ? this.props.tags.map((eachTag) => eachTag.label)
         : [],
       root_pass: this.props.password,
+      /* -- Clanode Change -- */
+      /* authorized_users: this.props.userSSHKeys
+        .filter((u) => u.selected)
+        .map((u) => u.username), */
       authorized_users: this.props.userSSHKeys
         .filter((u) => u.selected)
-        .map((u) => u.username),
+        .map((u) => u.keys[0]),
+      /* -- Clanode Change End -- */
       booted: true,
       backups_enabled: this.props.backupsEnabled,
       backup_id: this.props.selectedBackupID,
