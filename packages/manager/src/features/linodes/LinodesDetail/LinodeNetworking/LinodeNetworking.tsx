@@ -57,6 +57,9 @@ import { IPTypes } from './types';
 import ViewIPDrawer from './ViewIPDrawer';
 import ViewRangeDrawer from './ViewRangeDrawer';
 import ViewRDNSDrawer from './ViewRDNSDrawer';
+/* -- Clanode Change -- */
+import { resetEventsPolling } from 'src/eventsPolling';
+/* -- Clanode Change End -- */
 
 type ClassNames =
   | 'action'
@@ -202,7 +205,9 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
       IPRequestError: undefined,
       ipv6Error: undefined,
     });
-
+    /* -- Clanode Change -- */
+    resetEventsPolling();
+    /* -- Clanode Change End -- */
     const refreshIPv4 = getLinodeIPs(this.props.linode.id)
       .then((ips) => {
         const hasIPv6Range = ips.ipv6 && ips.ipv6.global.length > 0;
