@@ -60,7 +60,9 @@ export default (Component: React.ComponentType<any>) => {
        */
 
       if (isRestricted) {
-        const isCurrentUserSelected = isUserSelected(username, oldKeys);
+        /* -- Clanode Change -- */
+        // const isCurrentUserSelected = isUserSelected(username, oldKeys);
+        /* -- Clanode Change End -- */
         getAllSSHKeys()
           .then((response) => {
             const keys = response.data;
@@ -68,14 +70,26 @@ export default (Component: React.ComponentType<any>) => {
               return;
             }
             setSshError(undefined);
-            setUserSSHKeys([
+            /* -- Clanode Change -- */
+            /* setUserSSHKeys([
               createUserObject(
                 username,
                 userEmailAddress,
                 keys.map((k) => k.label),
                 isCurrentUserSelected
               ),
-            ]);
+            ]); */
+            setUserSSHKeys(
+              keys.map((key) =>
+                createUserObject(
+                  username,
+                  userEmailAddress,
+                  [key.label],
+                  isUserSelected(key.label, oldKeys)
+                )
+              )
+            );
+            /* -- Clanode Change End -- */
           })
           .catch(() => {
             setSshError('Unable to load SSH keys');
@@ -96,12 +110,24 @@ export default (Component: React.ComponentType<any>) => {
             setUserSSHKeys([
               ...users.reduce((cleanedUsers, user) => {
                 const keys = user.ssh_keys;
-                const isSelected = isUserSelected(user.username, oldKeys, keys);
-
-                return [
+                /* -- Clanode Change -- */
+                // const isSelected = isUserSelected(user.username, oldKeys, keys);
+                /* return [
                   ...cleanedUsers,
                   createUserObject(user.username, user.email, keys, isSelected),
+                ]; */
+                return [
+                  ...cleanedUsers,
+                  ...keys.map((key) =>
+                    createUserObject(
+                      user.username,
+                      user.email,
+                      [key],
+                      isUserSelected(key, oldKeys, [key])
+                    )
+                  ),
                 ];
+                /* -- Clanode Change End -- */
               }, []),
             ]);
           })
@@ -113,8 +139,14 @@ export default (Component: React.ComponentType<any>) => {
 
     const toggleSSHUserKeys = (username: string, result: boolean) =>
       setUserSSHKeys((prevUserSSHKeys) =>
-        prevUserSSHKeys.map((user) =>
-          username === user.username ? { ...user, selected: result } : user
+        prevUserSSHKeys.map(
+          (user) =>
+            /* -- Clanode Change -- */
+            // username === user.username ? { ...user, selected: result } : user
+            username === user.keys[0]
+              ? { ...user, selected: result }
+              : { ...user, selected: false }
+          /* -- Clanode Change End -- */
         )
       );
 
@@ -130,8 +162,12 @@ export default (Component: React.ComponentType<any>) => {
         email
       )}?d=mp&s=24`,
       selected,
+      /* -- Clanode Change -- */
+      /* onSSHKeyChange: (_: any, result: boolean) =>
+        toggleSSHUserKeys(username, result), */
       onSSHKeyChange: (_: any, result: boolean) =>
-        toggleSSHUserKeys(username, result),
+        toggleSSHUserKeys(keys[0], result),
+      /* -- Clanode Change End -- */
     });
 
     const isUserSelected = (

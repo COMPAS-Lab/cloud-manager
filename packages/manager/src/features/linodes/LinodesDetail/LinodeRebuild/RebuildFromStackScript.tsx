@@ -154,9 +154,14 @@ export const RebuildFromStackScript: React.FC<CombinedProps> = (props) => {
       stackscript_data: ss.udf_data,
       root_pass,
       image,
+      /* -- Clanode Change -- */
+      /* authorized_users: userSSHKeys
+        .filter((u) => u.selected)
+        .map((u) => u.username), */
       authorized_users: userSSHKeys
         .filter((u) => u.selected)
-        .map((u) => u.username),
+        .map((u) => u.keys[0]),
+      /* -- Clanode Change End -- */
     })
       .then((_) => {
         // Reset events polling since an in-progress event (rebuild) is happening.

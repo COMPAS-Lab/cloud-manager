@@ -1,6 +1,8 @@
 import * as React from 'react';
 import Button from 'src/components/Button';
-import CheckBox from 'src/components/CheckBox';
+/* -- Clanode Change -- */
+// import CheckBox from 'src/components/CheckBox';
+/* -- Clanode Change End -- */
 import { makeStyles, Theme } from 'src/components/core/styles';
 import TableBody from 'src/components/core/TableBody';
 import TableHead from 'src/components/core/TableHead';
@@ -14,6 +16,11 @@ import TableRowError from 'src/components/TableRowError';
 import SSHKeyCreationDrawer from 'src/features/Profile/SSHKeys/SSHKeyCreationDrawer';
 import { truncateAndJoinList } from 'src/utilities/stringUtils';
 
+/* -- Clanode Change -- */
+import FormControlLabel from 'src/components/core/FormControlLabel';
+import Radio from 'src/components/core/Radio';
+/* -- Clanode Change End -- */
+
 export const MAX_SSH_KEYS_DISPLAY = 100;
 
 const useStyles = makeStyles((theme: Theme) => ({
@@ -25,6 +32,12 @@ const useStyles = makeStyles((theme: Theme) => ({
     paddingLeft: theme.spacing(1),
     paddingRight: theme.spacing(1),
   },
+  /* -- Clanode Change -- */
+  radioButton: {
+    marginLeft: theme.spacing(2),
+    width: 50,
+  },
+  /* -- Clanode Change End -- */
   cellUser: {
     width: '30%',
   },
@@ -74,6 +87,20 @@ const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
   const [success, setSuccess] = React.useState<boolean>(false);
   const { disabled, error, onKeyAddSuccess, users } = props;
 
+  /* -- Clanode Change -- */
+  const [selectedSSHKey, setSelectedSSHKey] = React.useState<string>();
+
+  const handleKeySelected = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    key: string,
+    result: boolean
+  ) => {
+    usersWithKeys
+      .find((user) => user.keys[0] === key)
+      ?.onSSHKeyChange(e, result);
+    setSelectedSSHKey(key);
+  };
+  /* -- Clanode Change End -- */
   const handleKeyAddSuccess = () => {
     onKeyAddSuccess();
     setSuccess(true);
@@ -113,7 +140,52 @@ const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
           {error ? (
             <TableRowError colSpan={12} message={error} />
           ) : usersWithKeys.length > 0 ? (
+            /* -- Clanode Change -- */
             usersWithKeys.map(
+              (
+                { gravatarUrl, keys, onSSHKeyChange, selected, username },
+                idx
+              ) => (
+                <TableRow
+                  key={idx}
+                  data-qa-ssh-public-key
+                  data-testid="ssh-public-key"
+                >
+                  <TableCell className={classes.cellCheckbox}>
+                    <FormControlLabel
+                      value={keys[0]}
+                      label={''}
+                      control={
+                        <Radio
+                          className={classes.radioButton}
+                          checked={selected && selectedSSHKey === keys[0]}
+                          onChange={(e, result) => {
+                            handleKeySelected(e, keys[0], result);
+                          }}
+                          disabled={disabled}
+                        />
+                      }
+                      data-qa-radio={''}
+                    />
+                  </TableCell>
+                  <TableCell className={classes.cellUser}>
+                    <div className={classes.userWrapper}>
+                      <img
+                        src={gravatarUrl}
+                        className={classes.gravatar}
+                        alt={username}
+                      />
+                      {username}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {truncateAndJoinList(keys, MAX_SSH_KEYS_DISPLAY)}
+                  </TableCell>
+                </TableRow>
+              )
+            )
+          ) : (
+            /*usersWithKeys.map(
               ({ gravatarUrl, keys, onSSHKeyChange, selected, username }) => (
                 <TableRow
                   key={username}
@@ -145,8 +217,8 @@ const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
                   </TableCell>
                 </TableRow>
               )
-            )
-          ) : (
+            )*/
+            /* -- Clanode Change End -- */
             <TableRowEmptyState
               colSpan={12}
               message={"You don't have any SSH keys available."}
