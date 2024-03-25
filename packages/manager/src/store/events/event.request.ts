@@ -26,7 +26,10 @@ export const getEvents: ThunkActionCreator<Promise<Event[]>> = () => (
   } = getState().events;
 
   // Regardless of date created, we request events that are still in-progress.
-  const inIds = Object.keys(inProgressEvents).map((thisId) => +thisId);
+  /* -- Clanode Change -- */
+  // const inIds = Object.keys(inProgressEvents).map((thisId) => +thisId);
+  const inIds = Object.keys(inProgressEvents).map((thisId) => thisId);
+  /* -- Clanode Change End -- */
 
   // We need to keep polling the event for any database that is still creating.
   // The same event will change its status from `notification` to `finished`.
@@ -43,7 +46,10 @@ export const getEvents: ThunkActionCreator<Promise<Event[]>> = () => (
   // on or after the most recent created date, minus any events we've already requested.
   // This is to catch any events that may be "lost" if the request/query lands at just the
   // right moment such that we receive some events with a specific created date, but not all.
-  const neqIds: number[] = [];
+  /* -- Clanode Change -- */
+  // const neqIds: number[] = [];
+  const neqIds: (string | number)[] = [];
+  /* -- Clanode Change End -- */
   if (_events.length > 0) {
     _events.forEach((thisEvent) => {
       const thisEventCreated = parseAPIDate(thisEvent.created).valueOf();
