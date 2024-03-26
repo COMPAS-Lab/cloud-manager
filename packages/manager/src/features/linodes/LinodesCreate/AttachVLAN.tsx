@@ -2,17 +2,19 @@ import { Interface } from '@linode/api-v4/lib/linodes';
 import * as React from 'react';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import Typography from 'src/components/core/Typography';
-import ExternalLink from 'src/components/ExternalLink';
+/* -- Clanode Change -- */
+// import ExternalLink from 'src/components/ExternalLink';
 import Grid from 'src/components/Grid';
 import HelpIcon from 'src/components/HelpIcon';
 import { queryClient } from 'src/queries/base';
-import { ExtendedRegion, useRegionsQuery } from 'src/queries/regions';
+// import { ExtendedRegion, useRegionsQuery } from 'src/queries/regions';
 import { queryKey as vlansQueryKey } from 'src/queries/vlans';
-import arrayToList from 'src/utilities/arrayToDelimiterSeparatedList';
-import {
-  doesRegionSupportFeature,
-  regionsWithFeature,
-} from 'src/utilities/doesRegionSupportFeature';
+// import arrayToList from 'src/utilities/arrayToDelimiterSeparatedList';
+// import {
+//   doesRegionSupportFeature,
+//   regionsWithFeature,
+// } from 'src/utilities/doesRegionSupportFeature';
+/* -- Clanode Change End -- */
 import InterfaceSelect from '../LinodesDetail/LinodeSettings/InterfaceSelect';
 
 const useStyles = makeStyles((theme: Theme) => ({
@@ -51,7 +53,9 @@ const AttachVLAN: React.FC<CombinedProps> = (props) => {
     ipamAddress,
     ipamError,
     readOnly,
-    region,
+    /* -- Clanode Change -- */
+    // region,
+    /* -- Clanode Change End -- */
   } = props;
 
   const classes = useStyles();
@@ -61,7 +65,9 @@ const AttachVLAN: React.FC<CombinedProps> = (props) => {
     queryClient.invalidateQueries(vlansQueryKey);
   }, []);
 
-  const regions = useRegionsQuery().data ?? [];
+  /* -- Clanode Change -- */
+  /* const regions = useRegionsQuery().data ?? [];
+
   const selectedRegion = region || '';
 
   const regionSupportsVLANs = doesRegionSupportFeature(
@@ -77,7 +83,8 @@ const AttachVLAN: React.FC<CombinedProps> = (props) => {
   const regionalAvailabilityMessage = `VLANs are currently available in ${arrayToList(
     regionsThatSupportVLANs,
     ';'
-  )}.`;
+  )}.`; */
+  /* -- Clanode Change End -- */
 
   return (
     <>
@@ -86,7 +93,9 @@ const AttachVLAN: React.FC<CombinedProps> = (props) => {
       </Typography>
       <Grid container>
         <Grid item xs={12}>
-          <Typography>{regionalAvailabilityMessage}</Typography>
+          {
+            /* -- Clanode Change -- */
+            /* <Typography>{regionalAvailabilityMessage}</Typography>
           <Typography variant="body1" className={classes.paragraphBreak}>
             VLANs are used to create a private L2 Virtual Local Area Network
             between Linodes. A VLAN created or attached in this section will be
@@ -99,10 +108,26 @@ const AttachVLAN: React.FC<CombinedProps> = (props) => {
               hideIcon
             />
             .
-          </Typography>
+          </Typography> */
+            <>
+              <Typography variant="body1" className={classes.paragraphBreak}>
+                VLANs can be used to create Linodes that are connected to the
+                Lab Network of your respective lab.
+              </Typography>
+              <Typography variant="body1" className={classes.paragraphBreak}>
+                NOTE: The IP shown on the UI will not reflect the IP from your
+                lab's DHCP server.
+              </Typography>
+            </>
+            /* -- Clanode Change End -- */
+          }
           <InterfaceSelect
             slotNumber={1}
-            readOnly={readOnly || !regionSupportsVLANs || false}
+            /* -- Clanode Change -- */
+            // readOnly={readOnly || !regionSupportsVLANs || false}
+            // region={region}
+            readOnly={readOnly || false}
+            /* -- Clanode Change End -- */
             label={vlanLabel}
             labelError={labelError}
             purpose="vlan"
@@ -111,7 +136,6 @@ const AttachVLAN: React.FC<CombinedProps> = (props) => {
             handleChange={(newInterface: Interface) =>
               handleVLANChange(newInterface)
             }
-            region={region}
             fromAddonsPanel
           />
         </Grid>

@@ -96,6 +96,10 @@ const AddonsPanel: React.FC<CombinedProps> = (props) => {
   const showVlans =
     capabilities.includes('Vlans') && createType !== 'fromLinode';
 
+  /* -- Clanode Change -- */
+  const onlyShowVlans = true;
+  /* -- Clanode Change End -- */
+
   const isBareMetal = /metal/.test(selectedTypeID ?? '');
 
   const vlanDisabledReason = getVlanDisabledReason(
@@ -137,77 +141,82 @@ const AddonsPanel: React.FC<CombinedProps> = (props) => {
           />
         </Paper>
       ) : null}
-      <Paper className={classes.addons} data-qa-add-ons>
-        <Typography variant="h2" className={classes.title}>
-          Add-ons{' '}
-          {backupsDisabledReason ? (
-            <HelpIcon text={backupsDisabledReason} />
-          ) : null}
-        </Typography>
-        <Grid container>
-          <Grid item xs={12}>
-            <FormControlLabel
-              className={classes.label}
-              control={
-                <CheckBox
-                  checked={accountBackups || props.backups}
-                  onChange={changeBackups}
-                  disabled={accountBackups || disabled || isBareMetal}
-                  data-qa-check-backups={
-                    accountBackups
-                      ? 'auto backup enabled'
-                      : 'auto backup disabled'
-                  }
-                />
-              }
-              label={
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item>Backups</Grid>
-                  {renderBackupsPrice()}
-                </Grid>
-              }
-            />
-            <Typography variant="body1" className={classes.caption}>
-              {accountBackups ? (
-                <React.Fragment>
-                  You have enabled automatic backups for your account. This
-                  Linode will automatically have backups enabled. To change this
-                  setting, <Link to={'/account/settings'}>click here.</Link>
-                </React.Fragment>
-              ) : (
-                <React.Fragment>
-                  Three backup slots are executed and rotated automatically: a
-                  daily backup, a 2-7 day old backup, and an 8-14 day old
-                  backup. Plans are priced according to the Linode plan selected
-                  above.
-                </React.Fragment>
-              )}
+      {onlyShowVlans ? null : (
+        <>
+          <Paper className={classes.addons} data-qa-add-ons>
+            <Typography variant="h2" className={classes.title}>
+              Add-ons{' '}
+              {backupsDisabledReason ? (
+                <HelpIcon text={backupsDisabledReason} />
+              ) : null}
             </Typography>
-          </Grid>
-        </Grid>
-        {
-          /** /v4/linodes/instances/clone does *not* support the private IP flag */
-          hidePrivateIP ? null : (
             <Grid container>
               <Grid item xs={12}>
-                <Divider />
                 <FormControlLabel
                   className={classes.label}
                   control={
                     <CheckBox
-                      checked={props.privateIP}
-                      onChange={() => changePrivateIP()}
-                      data-qa-check-private-ip
-                      disabled={disabled}
+                      checked={accountBackups || props.backups}
+                      onChange={changeBackups}
+                      disabled={accountBackups || disabled || isBareMetal}
+                      data-qa-check-backups={
+                        accountBackups
+                          ? 'auto backup enabled'
+                          : 'auto backup disabled'
+                      }
                     />
                   }
-                  label="Private IP"
+                  label={
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item>Backups</Grid>
+                      {renderBackupsPrice()}
+                    </Grid>
+                  }
                 />
+                <Typography variant="body1" className={classes.caption}>
+                  {accountBackups ? (
+                    <React.Fragment>
+                      You have enabled automatic backups for your account. This
+                      Linode will automatically have backups enabled. To change
+                      this setting,{' '}
+                      <Link to={'/account/settings'}>click here.</Link>
+                    </React.Fragment>
+                  ) : (
+                    <React.Fragment>
+                      Three backup slots are executed and rotated automatically:
+                      a daily backup, a 2-7 day old backup, and an 8-14 day old
+                      backup. Plans are priced according to the Linode plan
+                      selected above.
+                    </React.Fragment>
+                  )}
+                </Typography>
               </Grid>
             </Grid>
-          )
-        }
-      </Paper>
+            {
+              /** /v4/linodes/instances/clone does *not* support the private IP flag */
+              hidePrivateIP ? null : (
+                <Grid container>
+                  <Grid item xs={12}>
+                    <Divider />
+                    <FormControlLabel
+                      className={classes.label}
+                      control={
+                        <CheckBox
+                          checked={props.privateIP}
+                          onChange={() => changePrivateIP()}
+                          data-qa-check-private-ip
+                          disabled={disabled}
+                        />
+                      }
+                      label="Private IP"
+                    />
+                  </Grid>
+                </Grid>
+              )
+            }
+          </Paper>
+        </>
+      )}
     </>
   );
 };

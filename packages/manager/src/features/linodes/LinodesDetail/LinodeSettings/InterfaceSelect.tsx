@@ -4,9 +4,9 @@ import Divider from 'src/components/core/Divider';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import Select, { Item } from 'src/components/EnhancedSelect/Select';
 import Grid from 'src/components/Grid';
-import TextField from 'src/components/TextField';
+// import TextField from 'src/components/TextField';
 import useVlansQuery from 'src/queries/vlans';
-import { sendLinodeCreateDocsEvent } from 'src/utilities/ga';
+// import { sendLinodeCreateDocsEvent } from 'src/utilities/ga';
 
 const useStyles = makeStyles((theme: Theme) => ({
   divider: {
@@ -25,6 +25,9 @@ const useStyles = makeStyles((theme: Theme) => ({
       flexDirection: 'column',
       minWidth: 'auto',
     },
+    /* -- Clanode Change -- */
+    minHeight: 100,
+    /* -- Clanode Change End -- */
   },
   vlanLabelField: {
     width: 202,
@@ -80,9 +83,11 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
     purpose,
     label,
     ipamAddress,
-    ipamError,
+    /* -- Clanode Change -- */
+    // ipamError,
     labelError,
-    region,
+    // region,
+    /* -- Clanode Change End -- */
     handleChange,
     fromAddonsPanel,
   } = props;
@@ -107,11 +112,13 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
   const { data: vlans, isLoading } = useVlansQuery();
   const vlanOptions =
     vlans
-      ?.filter((thisVlan) => {
+      /* -- Clanode Change -- */
+      /*? .filter((thisVlan) => {
         // If a region is provided, only show VLANs in the target region as options
         return region ? thisVlan.region === region : true;
-      })
-      .map((thisVlan) => ({
+      })*/
+      ?.map((thisVlan) => ({
+        /* -- Clanode Change End -- */
         label: thisVlan.label,
         value: thisVlan.label,
       })) ?? [];
@@ -129,8 +136,10 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
     });
   };
 
-  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    handleChange({ purpose, label, ipam_address: e.target.value });
+  /* -- Clanode Change -- */
+  /* const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    handleChange({ purpose, label, ipam_address: e.target.value }); */
+  /* -- Clanode Change End -- */
 
   const handleLabelChange = (selected: Item<string>) =>
     handleChange({
@@ -191,8 +200,12 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
                 errorText={labelError}
                 options={vlanOptions}
                 label="VLAN"
-                placeholder="Create or select a VLAN"
-                creatable
+                /* -- Clanode Change -- */
+                // placeholder="Create or select a VLAN"
+                //creatable
+                placeholder="Select a VLAN"
+                creatable={false}
+                /* -- Clanode Change End -- */
                 createOptionPosition="first"
                 value={
                   vlanOptions.find((thisVlan) => thisVlan.value === label) ??
@@ -202,14 +215,19 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
                 createNew={handleCreateOption}
                 isClearable
                 disabled={readOnly}
-                noOptionsMessage={() =>
-                  isLoading
-                    ? 'Loading...'
-                    : 'You have no VLANs in this region. Type to create one.'
+                noOptionsMessage={
+                  () =>
+                    isLoading
+                      ? 'Loading...'
+                      : /* -- Clanode Change -- */
+                        // : 'You have no VLANs in this region. Type to create one.'
+                        'No Options'
+                  /* -- Clanode Change End -- */
                 }
               />
             </Grid>
-            <Grid
+            {/* -- Clanode Change -- */
+            /* <Grid
               item
               xs={12}
               sm={fromAddonsPanel ? 6 : 12}
@@ -234,7 +252,8 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
                   value={ipamAddress}
                 />
               </div>
-            </Grid>
+            </Grid> */
+            /* -- Clanode Change End -- */}
           </Grid>
         </Grid>
       ) : null}

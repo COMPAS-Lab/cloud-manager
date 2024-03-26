@@ -44,6 +44,8 @@ import { getErrorMap } from 'src/utilities/errorUtils';
 import { filterCurrentTypes } from 'src/utilities/filterCurrentLinodeTypes';
 import { getParamsFromUrl } from 'src/utilities/queryParams';
 import SelectPlanPanel from './SelectPlanPanel';
+import AddonsPanel from './AddonsPanel';
+
 /* -- Clanode Change -- */
 // import FromAppsContent from './TabbedContent/FromAppsContent';
 // import FromBackupsContent from './TabbedContent/FromBackupsContent';
@@ -726,7 +728,7 @@ export class LinodeCreate extends React.PureComponent<
               requestKeys={requestKeys}
             />
           )}
-          {/* <AddonsPanel
+          <AddonsPanel
             data-qa-addons-panel
             backups={this.props.backupsEnabled}
             accountBackups={accountBackupsEnabled}
@@ -744,7 +746,7 @@ export class LinodeCreate extends React.PureComponent<
             labelError={hasErrorFor['interfaces[1].label']}
             ipamError={hasErrorFor['interfaces[1].ipam_address']}
             createType={this.props.createType}
-        />*/}
+          />
           <CheckoutSummary
             data-qa-checkout-bar
             heading={`Summary ${this.props.label}`}
