@@ -4,9 +4,13 @@ import Divider from 'src/components/core/Divider';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import Select, { Item } from 'src/components/EnhancedSelect/Select';
 import Grid from 'src/components/Grid';
-// import TextField from 'src/components/TextField';
 import useVlansQuery from 'src/queries/vlans';
+/* -- Clanode Change -- */
+import FormControlLabel from 'src/components/core/FormControlLabel';
+import Toggle from 'src/components/Toggle';
+// import TextField from 'src/components/TextField';
 // import { sendLinodeCreateDocsEvent } from 'src/utilities/ga';
+/* -- Clanode Change End -- */
 
 const useStyles = makeStyles((theme: Theme) => ({
   divider: {
@@ -92,7 +96,9 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
     fromAddonsPanel,
   } = props;
 
-  const [newVlan, setNewVlan] = React.useState('');
+  /* -- Clanode Change -- */
+  // const [newVlan, setNewVlan] = React.useState('');
+  /* -- Clanode Change End -- */
 
   const purposeOptions: Item<ExtendedPurpose>[] = [
     {
@@ -123,9 +129,10 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
         value: thisVlan.label,
       })) ?? [];
 
-  if (Boolean(newVlan)) {
+  /* -- Clanode Change -- */
+  /* if (Boolean(newVlan)) {
     vlanOptions.push({ label: newVlan, value: newVlan });
-  }
+  } */
 
   const handlePurposeChange = (selected: Item<InterfacePurpose>) => {
     const purpose = selected.value;
@@ -136,12 +143,17 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
     });
   };
 
-  /* -- Clanode Change -- */
   /* const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     handleChange({ purpose, label, ipam_address: e.target.value }); */
-  /* -- Clanode Change End -- */
+  const handleVlanToggle = (e: any, toggled: boolean) => {
+    handleChange({
+      purpose,
+      ipam_address: ipamAddress,
+      label: toggled ? vlanOptions[0].label : '',
+    });
+  };
 
-  const handleLabelChange = (selected: Item<string>) =>
+  /*const handleLabelChange = (selected: Item<string>) =>
     handleChange({
       purpose,
       ipam_address: ipamAddress,
@@ -155,7 +167,8 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
       ipam_address: ipamAddress,
       label: _newVlan,
     });
-  };
+  };*/
+  /* -- Clanode Change End -- */
 
   return (
     <Grid container>
@@ -194,18 +207,28 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
               xs={12}
               sm={fromAddonsPanel ? 6 : 12}
             >
-              <Select
+              {/* -- Clanode Change -- */}
+              <FormControlLabel
+                control={<Toggle onChange={handleVlanToggle} />}
+                label={
+                  labelError
+                    ? labelError
+                    : label
+                    ? 'VLAN Attached'
+                    : 'VLAN Not Attached'
+                }
+                disabled={isLoading}
+              />
+              {/*<Select
                 inputId={`vlan-label-${slotNumber}`}
                 className={fromAddonsPanel ? classes.vlanLabelField : ''}
                 errorText={labelError}
                 options={vlanOptions}
                 label="VLAN"
-                /* -- Clanode Change -- */
-                // placeholder="Create or select a VLAN"
-                //creatable
+                placeholder="Create or select a VLAN"
+                creatable
                 placeholder="Select a VLAN"
                 creatable={false}
-                /* -- Clanode Change End -- */
                 createOptionPosition="first"
                 value={
                   vlanOptions.find((thisVlan) => thisVlan.value === label) ??
@@ -219,12 +242,10 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
                   () =>
                     isLoading
                       ? 'Loading...'
-                      : /* -- Clanode Change -- */
-                        // : 'You have no VLANs in this region. Type to create one.'
-                        'No Options'
-                  /* -- Clanode Change End -- */
+                      : 'You have no VLANs in this region. Type to create one.'
                 }
-              />
+              /> */}
+              {/* -- Clanode Change End -- */}
             </Grid>
             {/* -- Clanode Change -- */
             /* <Grid

@@ -111,12 +111,12 @@ const AttachVLAN: React.FC<CombinedProps> = (props) => {
           </Typography> */
             <>
               <Typography variant="body1" className={classes.paragraphBreak}>
-                VLANs can be used to create Linodes that are connected to the
-                Lab Network of your respective lab.
+                Linodes can be connected to the VLAN/Lab Network of your
+                respective lab.
               </Typography>
               <Typography variant="body1" className={classes.paragraphBreak}>
-                NOTE: The IP shown on the UI will not reflect the IP from your
-                lab's DHCP server.
+                NOTE: The IP shown on the UI will not reflect the actual IP of
+                the Linode's VLAN interface.
               </Typography>
             </>
             /* -- Clanode Change End -- */
