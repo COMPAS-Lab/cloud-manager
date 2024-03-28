@@ -60,9 +60,11 @@ export const RegionOption: React.FC<CombinedProps> = (props) => {
             alignItems="center"
             justifyContent="flex-start"
           >
-            <Grid item className="py0">
+            {/* -- Clanode Change -- */
+            /* <Grid item className="py0">
               {data.flag && data.flag()}
-            </Grid>
+            </Grid> */
+            /* -- Clanode Change End -- */}
             <Grid item>{label} (Not available)</Grid>
           </Grid>
         </Tooltip>
@@ -73,9 +75,11 @@ export const RegionOption: React.FC<CombinedProps> = (props) => {
           alignItems="center"
           justifyContent="flex-start"
         >
-          <Grid item className="py0">
+          {/* -- Clanode Change -- */
+          /* <Grid item className="py0">
             {data.flag && data.flag()}
-          </Grid>
+          </Grid> */
+          /* -- Clanode Change End -- */}
           <Grid item>{label}</Grid>
         </Grid>
       )}
