@@ -118,12 +118,10 @@ export const REFRESH_INTERVAL = 60 * 30 * 1000;
 export const dcDisplayNames = {
   /* -- Clanode Change -- */
   nova: 'Nova',
-  E5450: 'E5450',
-  'E5-2680v4': 'E5-2680v4',
-  'E5-2695v4': 'E5-2965v4',
-  'E5-2620v4': 'E5-2620v4',
-  'E5-2620v3': 'E5-2620v3',
-  'E5-2670v3': 'E5-2670v3',
+  Any: 'Any',
+  Broadwell: 'Broadwell',
+  Haswell: 'Haswell',
+  Penryn: 'Penryn',
   /* -- Clanode Change End -- */
   // us-east-1 is for backwards-compatibility
   'us-east-1': 'Newark, NJ',

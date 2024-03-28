@@ -10,7 +10,9 @@ import US from 'flag-icons/flags/4x3/us.svg';
 import { groupBy } from 'ramda';
 import * as React from 'react';
 import { makeStyles, Theme } from 'src/components/core/styles';
-import SingleValue from 'src/components/EnhancedSelect/components/SingleValue';
+/* -- Clanode Change -- */
+// import SingleValue from 'src/components/EnhancedSelect/components/SingleValue';
+/* -- Clanode Change -- */
 import Select, {
   BaseSelectProps,
   GroupType,
@@ -112,6 +114,13 @@ export const getRegionOptions = (regions: ExtendedRegion[]) => {
   );
 };
 
+/* -- Clanode Change -- */
+const extractLabelValue = (regionItem: any) => {
+  if (!regionItem) return regionItem;
+  return { label: regionItem.label, value: regionItem.value };
+};
+/* -- Clanode Change End -- */
+
 export const getSelectedRegionById = (
   regionID: string,
   options: GroupType[]
@@ -189,15 +198,23 @@ const SelectRegionPanel: React.FC<Props> = (props) => {
     <div className={classes.root} style={{ width }}>
       <Select
         isClearable={Boolean(isClearable)} // Defaults to false if the prop isn't provided
-        value={getSelectedRegionById(selectedID || '', options) ?? ''}
+        /* -- Clanode Change --*/
+        // value={getSelectedRegionById(selectedID || '', options) ?? ''}
+        value={
+          extractLabelValue(getSelectedRegionById(selectedID || '', options)) ??
+          ''
+        }
         label={label ?? 'Region'}
         disabled={disabled}
-        /* -- Clanode Change --*/
         placeholder={`Select a ${label ?? 'Region'}`}
-        /* -- Clanode Change --*/
-        options={options}
+        options={options.reduce(
+          (accum, group) => [...accum, ...group.options.map(extractLabelValue)],
+          []
+        )}
         onChange={onChange}
-        components={{ Option: RegionOption, SingleValue }}
+        // components={{ Option: RegionOption, SingleValue }}
+        components={{ Option: RegionOption }}
+        /* -- Clanode Change End --*/
         isOptionDisabled={(option: RegionItem) =>
           Boolean(option.disabledMessage)
         }
