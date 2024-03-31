@@ -124,6 +124,9 @@ export interface LinodeIPsResponseIPV4 {
   private: IPAddress[];
   shared: IPAddress[];
   reserved: IPAddress[];
+  /* -- Clanode Change -- */
+  vlan?: IPAddress[];
+  /* -- Clanode Change End -- */
 }
 
 export interface LinodeIPsResponseIPV6 {

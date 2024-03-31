@@ -34,23 +34,19 @@ export const LinodeNetworkingActionMenu: React.FC<CombinedProps> = (props) => {
   const theme = useTheme<Theme>();
   const matchesMdDown = useMediaQuery(theme.breakpoints.down('lg'));
 
-  const {
-    onEdit,
-    onRemove,
-    ipType,
-    ipAddress,
-    readOnly,
-  } = props; /*
-  const showEdit =
+  const { onEdit, onRemove, ipType, ipAddress, readOnly } = props;
+  /* -- Clanode Change -- */
+  /* const showEdit =
     ipType !== 'IPv4 – Private' &&
     ipType !== 'IPv6 – Link Local' &&
     ipType !== 'IPv4 – Reserved (public)' &&
     ipType !== 'IPv4 – Reserved (private)'; */
 
-  /* -- Clanode Change -- */ const showEdit = false;
-  /* -- Clanode Change -- */
+  const showEdit = false;
 
-  const deletableIPTypes = ['IPv4 – Public', 'IPv4 – Private', 'IPv6 – Range'];
+  // const deletableIPTypes = ['IPv4 – Public', 'IPv4 – Private', 'IPv6 – Range'];
+  const deletableIPTypes = ['IPv4 – Public', 'IPv4 – VLAN', 'IPv6 – Range'];
+  /* -- Clanode Change End -- */
 
   // if we have a 116 we don't want to give the option to remove it
   const is116Range = ipAddress?.prefix === 116;
