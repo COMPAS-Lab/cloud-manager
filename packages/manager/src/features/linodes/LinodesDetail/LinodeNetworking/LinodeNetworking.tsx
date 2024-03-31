@@ -522,11 +522,6 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
     const publicIPs = pathOr([], ['ipv4', 'public'], linodeIPs);
     return publicIPs.length > 0;
   }
-  hasVlanIPAddress() {
-    const { linodeIPs } = this.state;
-    const vlanIPs = pathOr([], ['ipv4', 'vlan'], linodeIPs);
-    return vlanIPs.length > 0;
-  }
   /* -- Clanode Change End -- */
 
   renderErrorState = () => {
@@ -702,7 +697,6 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                 linodeID={linodeID}
                 hasPrivateIPAddress={this.hasPrivateIPAddress()}
                 hasPublicIPAddress={this.hasPublicIPAddress()}
-                hasVlanIPAddress={this.hasVlanIPAddress()}
                 hasVlan={Boolean(query.data?.length)}
                 onSuccess={this.refreshIPs}
                 readOnly={readOnly}
@@ -777,6 +771,9 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
       [...this.state.staticRanges, ...this.state.sharedRanges],
       this.state.linodeIPs
     );
+    /* -- Clanode Change -- */
+    // this.refreshIPs();
+    /* -- Clanode Change End -- */
 
     return (
       <div style={{ marginTop: 20 }}>
