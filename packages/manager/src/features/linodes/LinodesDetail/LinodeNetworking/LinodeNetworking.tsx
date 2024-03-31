@@ -59,6 +59,7 @@ import ViewRangeDrawer from './ViewRangeDrawer';
 import ViewRDNSDrawer from './ViewRDNSDrawer';
 /* -- Clanode Change -- */
 import { resetEventsPolling } from 'src/eventsPolling';
+import { UseVlansQueryComponent } from 'src/queries/vlans';
 /* -- Clanode Change End -- */
 
 type ClassNames =
@@ -509,6 +510,11 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
     const publicIPs = pathOr([], ['ipv4', 'public'], linodeIPs);
     return publicIPs.length > 0;
   }
+  hasVlanIPAddress() {
+    const { linodeIPs } = this.state;
+    const vlanIPs = pathOr([], ['ipv4', 'vlan'], linodeIPs);
+    return vlanIPs.length > 0;
+  }
   /* -- Clanode Change End -- */
 
   renderErrorState = () => {
@@ -666,16 +672,33 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
           onClose={this.closeViewRDNSDrawer}
           ips={ipsWithRDNS}
         />
-
-        <AddIPDrawer
+        {
+          /* -- Clanode Change -- */
+          /* <AddIPDrawer
           open={this.state.addIPDrawerOpen}
           onClose={this.closeAddIPDrawer}
           linodeID={linodeID}
           hasPrivateIPAddress={this.hasPrivateIPAddress()}
-          hasPublicIPAddress={this.hasPublicIPAddress()}
           onSuccess={this.refreshIPs}
           readOnly={readOnly}
-        />
+        /> */
+          <UseVlansQueryComponent>
+            {(query) => (
+              <AddIPDrawer
+                open={this.state.addIPDrawerOpen}
+                onClose={this.closeAddIPDrawer}
+                linodeID={linodeID}
+                hasPrivateIPAddress={this.hasPrivateIPAddress()}
+                hasPublicIPAddress={this.hasPublicIPAddress()}
+                hasVlanIPAddress={this.hasVlanIPAddress()}
+                hasVlan={Boolean(query.data?.length)}
+                onSuccess={this.refreshIPs}
+                readOnly={readOnly}
+              />
+            )}
+          </UseVlansQueryComponent>
+          /* -- Clanode Change End -- */
+        }
 
         <IPTransfer
           open={this.state.transferDialogOpen}
@@ -942,6 +965,9 @@ export const ipResponseToDisplayRows = (
   const ipDisplay = [
     ...mapIPv4Display(ipv4.public, 'Public'),
     ...mapIPv4Display(ipv4.private, 'Private'),
+    /* -- Clanode Change -- */
+    ...(ipv4.vlan ? mapIPv4Display(ipv4.vlan, 'VLAN') : []),
+    /* -- Clanode Change End -- */
     ...mapIPv4Display(ipv4.reserved, 'Reserved'),
     ...mapIPv4Display(ipv4.shared, 'Shared'),
   ];
@@ -988,7 +1014,8 @@ export const ipResponseToDisplayRows = (
 
 type ipKey =
   | 'Public'
-  | 'Private'
+  | 'Private' /* -- Clanode Change -- */
+  | 'VLAN' /* -- Clanode Change End -- */
   | 'Reserved'
   | 'Shared'
   | 'SLAAC'
