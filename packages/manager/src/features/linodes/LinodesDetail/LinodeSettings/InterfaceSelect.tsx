@@ -31,8 +31,11 @@ const useStyles = makeStyles((theme: Theme) => ({
     },
     /* -- Clanode Change -- */
     minHeight: 100,
-    /* -- Clanode Change End -- */
   },
+  vlanToggle: {
+    marginTop: 20,
+  },
+  /* -- Clanode Change End -- */
   vlanLabelField: {
     width: 202,
     height: 35,
@@ -209,13 +212,14 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
             >
               {/* -- Clanode Change -- */}
               <FormControlLabel
+                className={classes.vlanToggle}
                 control={<Toggle onChange={handleVlanToggle} />}
                 label={
                   labelError
                     ? labelError
                     : label
-                    ? 'VLAN Attached'
-                    : 'VLAN Not Attached'
+                    ? 'VLAN will be attached'
+                    : 'VLAN will not be attached'
                 }
                 disabled={isLoading}
               />
