@@ -96,7 +96,7 @@ const IPv6ExplanatoryCopy = {
 const tooltipCopy: Record<IPType, JSX.Element | null> = {
   /* -- Clanode Change -- */
   v4Public: /* null */ <>This Linode already has a public IP address.</>,
-  v4Vlan: <>This Linode already has a lab VLAN IP address.</>,
+  v4Vlan: <>You do not have a lab VLAN.</>,
   /* -- Clanode Change End -- */
   v4Private: <>This Linode already has a private IP address.</>,
 };
@@ -108,7 +108,6 @@ interface Props {
   hasPrivateIPAddress: boolean;
   /* -- Clanode Change -- */
   hasPublicIPAddress: boolean;
-  hasVlanIPAddress: boolean;
   hasVlan: boolean;
   /* -- Clanode Change End -- */
   onSuccess: () => Promise<void>[];
@@ -138,7 +137,6 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
     linodeID,
     hasPrivateIPAddress,
     hasPublicIPAddress,
-    hasVlanIPAddress,
     hasVlan,
     onSuccess,
     readOnly,
@@ -210,7 +208,7 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
     (selectedIPv4 === 'v4Private' && hasPrivateIPAddress) ||
     /* -- Clanode Change -- */
     (selectedIPv4 === 'v4Public' && hasPublicIPAddress) ||
-    (selectedIPv4 === 'v4Vlan' && (hasVlanIPAddress || !hasVlan)) ||
+    (selectedIPv4 === 'v4Vlan' && !hasVlan) ||
     /* -- Clanode Change End -- */
     !selectedIPv4 ||
     readOnly;
@@ -221,13 +219,8 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
     disabledIPv4 && selectedIPv4
       ? readOnly
         ? 'You do not have permission to modify this Linode.'
-        : /* -- Clanode Change -- */
-        selectedIPv4 === 'v4Vlan' && !hasVlan
-        ? 'You do not have a lab VLAN'
         : tooltipCopy[selectedIPv4]
-      : // : tooltipCopy[selectedIPv4]
-        /* -- Clanode Change End -- */
-        null;
+      : null;
 
   const buttonJSX = (type: 'IPv4' | 'IPv6') => {
     const IPv4 = type === 'IPv4';
