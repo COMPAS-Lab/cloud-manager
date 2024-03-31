@@ -33,13 +33,17 @@ const useStyles = makeStyles((theme: Theme) => ({
     marginTop: '0 !important',
   },
 }));
+/* -- Clanode Change -- */
+// type IPType = 'v4Public' | 'v4Private';
 
-type IPType = 'v4Public' | 'v4Private';
+type IPType = 'v4Public' | 'v4Private' | 'v4Vlan';
 
 const ipOptions: Item<IPType>[] = [
   { value: 'v4Public', label: 'Public' },
-  { value: 'v4Private', label: 'Private' },
+  //  { value: 'v4Private', label: 'Private' },
+  { value: 'v4Vlan', label: 'Lab VLAN' },
 ];
+/* -- Clanode Change End -- */
 
 const prefixOptions = [
   { value: '64', label: '/64' },
@@ -62,6 +66,7 @@ const explainerCopy: Record<IPType, JSX.Element> = {
       {' '}
     </>
   ),
+  v4Vlan: <> </>,
   /* -- Clanode Change End -- */
   v4Private: (
     <>
@@ -91,6 +96,7 @@ const IPv6ExplanatoryCopy = {
 const tooltipCopy: Record<IPType, JSX.Element | null> = {
   /* -- Clanode Change -- */
   v4Public: /* null */ <>This Linode already has a public IP address.</>,
+  v4Vlan: <>You do not have a lab VLAN.</>,
   /* -- Clanode Change End -- */
   v4Private: <>This Linode already has a private IP address.</>,
 };
@@ -102,6 +108,7 @@ interface Props {
   hasPrivateIPAddress: boolean;
   /* -- Clanode Change -- */
   hasPublicIPAddress: boolean;
+  hasVlan: boolean;
   /* -- Clanode Change End -- */
   onSuccess: () => Promise<void>[];
   readOnly: boolean;
@@ -130,6 +137,7 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
     linodeID,
     hasPrivateIPAddress,
     hasPublicIPAddress,
+    hasVlan,
     onSuccess,
     readOnly,
   } = props;
@@ -200,6 +208,7 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
     (selectedIPv4 === 'v4Private' && hasPrivateIPAddress) ||
     /* -- Clanode Change -- */
     (selectedIPv4 === 'v4Public' && hasPublicIPAddress) ||
+    (selectedIPv4 === 'v4Vlan' && !hasVlan) ||
     /* -- Clanode Change End -- */
     !selectedIPv4 ||
     readOnly;

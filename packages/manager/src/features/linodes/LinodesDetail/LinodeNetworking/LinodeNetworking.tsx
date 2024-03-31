@@ -59,6 +59,7 @@ import ViewRangeDrawer from './ViewRangeDrawer';
 import ViewRDNSDrawer from './ViewRDNSDrawer';
 /* -- Clanode Change -- */
 import { resetEventsPolling } from 'src/eventsPolling';
+import { UseVlansQueryComponent } from 'src/queries/vlans';
 /* -- Clanode Change End -- */
 
 type ClassNames =
@@ -678,16 +679,32 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
           onClose={this.closeViewRDNSDrawer}
           ips={ipsWithRDNS}
         />
-
-        <AddIPDrawer
+        {
+          /* -- Clanode Change -- */
+          /* <AddIPDrawer
           open={this.state.addIPDrawerOpen}
           onClose={this.closeAddIPDrawer}
           linodeID={linodeID}
           hasPrivateIPAddress={this.hasPrivateIPAddress()}
-          hasPublicIPAddress={this.hasPublicIPAddress()}
           onSuccess={this.refreshIPs}
           readOnly={readOnly}
-        />
+        /> */
+          <UseVlansQueryComponent>
+            {(query) => (
+              <AddIPDrawer
+                open={this.state.addIPDrawerOpen}
+                onClose={this.closeAddIPDrawer}
+                linodeID={linodeID}
+                hasPrivateIPAddress={this.hasPrivateIPAddress()}
+                hasPublicIPAddress={this.hasPublicIPAddress()}
+                hasVlan={Boolean(query.data?.length)}
+                onSuccess={this.refreshIPs}
+                readOnly={readOnly}
+              />
+            )}
+          </UseVlansQueryComponent>
+          /* -- Clanode Change End -- */
+        }
 
         <IPTransfer
           open={this.state.transferDialogOpen}
@@ -754,6 +771,9 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
       [...this.state.staticRanges, ...this.state.sharedRanges],
       this.state.linodeIPs
     );
+    /* -- Clanode Change -- */
+    // this.refreshIPs();
+    /* -- Clanode Change End -- */
 
     return (
       <div style={{ marginTop: 20 }}>
@@ -958,6 +978,9 @@ export const ipResponseToDisplayRows = (
   const ipDisplay = [
     ...mapIPv4Display(ipv4.public, 'Public'),
     ...mapIPv4Display(ipv4.private, 'Private'),
+    /* -- Clanode Change -- */
+    ...(ipv4.vlan ? mapIPv4Display(ipv4.vlan, 'VLAN') : []),
+    /* -- Clanode Change End -- */
     ...mapIPv4Display(ipv4.reserved, 'Reserved'),
     ...mapIPv4Display(ipv4.shared, 'Shared'),
   ];
@@ -1009,7 +1032,8 @@ export const ipResponseToDisplayRows = (
 
 type ipKey =
   | 'Public'
-  | 'Private'
+  | 'Private' /* -- Clanode Change -- */
+  | 'VLAN' /* -- Clanode Change End -- */
   | 'Reserved'
   | 'Shared'
   | 'SLAAC'

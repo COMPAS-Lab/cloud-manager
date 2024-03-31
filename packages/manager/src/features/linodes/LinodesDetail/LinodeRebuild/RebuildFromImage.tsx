@@ -106,9 +106,14 @@ export const RebuildFromImage: React.FC<CombinedProps> = (props) => {
     const params: RebuildRequest = {
       image,
       root_pass,
+      /* -- Clanode Change -- */
+      /* authorized_users: userSSHKeys
+        .filter((u) => u.selected)
+        .map((u) => u.username), */
       authorized_users: userSSHKeys
         .filter((u) => u.selected)
-        .map((u) => u.username),
+        .map((u) => u.keys[0]),
+      /* -- Clanode Change End -- */
     };
 
     // @todo: eventually this should be a dispatched action instead of a services library call

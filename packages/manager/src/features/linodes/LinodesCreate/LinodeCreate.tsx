@@ -43,6 +43,8 @@ import { getErrorMap } from 'src/utilities/errorUtils';
 import { filterCurrentTypes } from 'src/utilities/filterCurrentLinodeTypes';
 import { getParamsFromUrl } from 'src/utilities/queryParams';
 import SelectPlanPanel from './SelectPlanPanel';
+import AddonsPanel from './AddonsPanel';
+
 /* -- Clanode Change -- */
 // import FromAppsContent from './TabbedContent/FromAppsContent';
 // import FromBackupsContent from './TabbedContent/FromBackupsContent';
@@ -315,9 +317,14 @@ export class LinodeCreate extends React.PureComponent<
         ? this.props.tags.map((eachTag) => eachTag.label)
         : [],
       root_pass: this.props.password,
+      /* -- Clanode Change -- */
+      /* authorized_users: this.props.userSSHKeys
+        .filter((u) => u.selected)
+        .map((u) => u.username), */
       authorized_users: this.props.userSSHKeys
         .filter((u) => u.selected)
-        .map((u) => u.username),
+        .map((u) => u.keys[0]),
+      /* -- Clanode Change End -- */
       booted: true,
       backups_enabled: this.props.backupsEnabled,
       backup_id: this.props.selectedBackupID,
@@ -648,7 +655,7 @@ export class LinodeCreate extends React.PureComponent<
               requestKeys={requestKeys}
             />
           )}
-          {/* <AddonsPanel
+          <AddonsPanel
             data-qa-addons-panel
             backups={this.props.backupsEnabled}
             accountBackups={accountBackupsEnabled}
@@ -665,8 +672,8 @@ export class LinodeCreate extends React.PureComponent<
             selectedRegionID={this.props.selectedRegionID}
             labelError={hasErrorFor['interfaces[1].label']}
             ipamError={hasErrorFor['interfaces[1].ipam_address']}
-            createType={this.props.createType}  
-          /> */}
+            createType={this.props.createType}
+          />
           <CheckoutSummary
             data-qa-checkout-bar
             heading={`Summary ${this.props.label}`}

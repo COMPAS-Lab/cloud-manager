@@ -4,9 +4,13 @@ import Divider from 'src/components/core/Divider';
 import { makeStyles, Theme } from 'src/components/core/styles';
 import Select, { Item } from 'src/components/EnhancedSelect/Select';
 import Grid from 'src/components/Grid';
-import TextField from 'src/components/TextField';
 import useVlansQuery from 'src/queries/vlans';
-import { sendLinodeCreateDocsEvent } from 'src/utilities/ga';
+/* -- Clanode Change -- */
+import FormControlLabel from 'src/components/core/FormControlLabel';
+import Toggle from 'src/components/Toggle';
+// import TextField from 'src/components/TextField';
+// import { sendLinodeCreateDocsEvent } from 'src/utilities/ga';
+/* -- Clanode Change End -- */
 
 const useStyles = makeStyles((theme: Theme) => ({
   divider: {
@@ -25,7 +29,13 @@ const useStyles = makeStyles((theme: Theme) => ({
       flexDirection: 'column',
       minWidth: 'auto',
     },
+    /* -- Clanode Change -- */
+    minHeight: 100,
   },
+  vlanToggle: {
+    marginTop: 20,
+  },
+  /* -- Clanode Change End -- */
   vlanLabelField: {
     width: 202,
     height: 35,
@@ -80,14 +90,18 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
     purpose,
     label,
     ipamAddress,
-    ipamError,
+    /* -- Clanode Change -- */
+    // ipamError,
     labelError,
-    region,
+    // region,
+    /* -- Clanode Change End -- */
     handleChange,
     fromAddonsPanel,
   } = props;
 
-  const [newVlan, setNewVlan] = React.useState('');
+  /* -- Clanode Change -- */
+  // const [newVlan, setNewVlan] = React.useState('');
+  /* -- Clanode Change End -- */
 
   const purposeOptions: Item<ExtendedPurpose>[] = [
     {
@@ -107,18 +121,21 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
   const { data: vlans, isLoading } = useVlansQuery();
   const vlanOptions =
     vlans
-      ?.filter((thisVlan) => {
+      /* -- Clanode Change -- */
+      /*? .filter((thisVlan) => {
         // If a region is provided, only show VLANs in the target region as options
         return region ? thisVlan.region === region : true;
-      })
-      .map((thisVlan) => ({
+      })*/
+      ?.map((thisVlan) => ({
+        /* -- Clanode Change End -- */
         label: thisVlan.label,
         value: thisVlan.label,
       })) ?? [];
 
-  if (Boolean(newVlan)) {
+  /* -- Clanode Change -- */
+  /* if (Boolean(newVlan)) {
     vlanOptions.push({ label: newVlan, value: newVlan });
-  }
+  } */
 
   const handlePurposeChange = (selected: Item<InterfacePurpose>) => {
     const purpose = selected.value;
@@ -129,10 +146,17 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
     });
   };
 
-  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    handleChange({ purpose, label, ipam_address: e.target.value });
+  /* const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    handleChange({ purpose, label, ipam_address: e.target.value }); */
+  const handleVlanToggle = (e: any, toggled: boolean) => {
+    handleChange({
+      purpose,
+      ipam_address: ipamAddress,
+      label: toggled ? vlanOptions[0].label : '',
+    });
+  };
 
-  const handleLabelChange = (selected: Item<string>) =>
+  /*const handleLabelChange = (selected: Item<string>) =>
     handleChange({
       purpose,
       ipam_address: ipamAddress,
@@ -146,7 +170,8 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
       ipam_address: ipamAddress,
       label: _newVlan,
     });
-  };
+  };*/
+  /* -- Clanode Change End -- */
 
   return (
     <Grid container>
@@ -185,7 +210,20 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
               xs={12}
               sm={fromAddonsPanel ? 6 : 12}
             >
-              <Select
+              {/* -- Clanode Change -- */}
+              <FormControlLabel
+                className={classes.vlanToggle}
+                control={<Toggle onChange={handleVlanToggle} />}
+                label={
+                  labelError
+                    ? labelError
+                    : label
+                    ? 'VLAN will be attached'
+                    : 'VLAN will not be attached'
+                }
+                disabled={isLoading}
+              />
+              {/*<Select
                 inputId={`vlan-label-${slotNumber}`}
                 className={fromAddonsPanel ? classes.vlanLabelField : ''}
                 errorText={labelError}
@@ -193,6 +231,8 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
                 label="VLAN"
                 placeholder="Create or select a VLAN"
                 creatable
+                placeholder="Select a VLAN"
+                creatable={false}
                 createOptionPosition="first"
                 value={
                   vlanOptions.find((thisVlan) => thisVlan.value === label) ??
@@ -202,14 +242,17 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
                 createNew={handleCreateOption}
                 isClearable
                 disabled={readOnly}
-                noOptionsMessage={() =>
-                  isLoading
-                    ? 'Loading...'
-                    : 'You have no VLANs in this region. Type to create one.'
+                noOptionsMessage={
+                  () =>
+                    isLoading
+                      ? 'Loading...'
+                      : 'You have no VLANs in this region. Type to create one.'
                 }
-              />
+              /> */}
+              {/* -- Clanode Change End -- */}
             </Grid>
-            <Grid
+            {/* -- Clanode Change -- */
+            /* <Grid
               item
               xs={12}
               sm={fromAddonsPanel ? 6 : 12}
@@ -234,7 +277,8 @@ export const InterfaceSelect: React.FC<Props> = (props) => {
                   value={ipamAddress}
                 />
               </div>
-            </Grid>
+            </Grid> */
+            /* -- Clanode Change End -- */}
           </Grid>
         </Grid>
       ) : null}
