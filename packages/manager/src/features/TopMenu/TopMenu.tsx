@@ -14,6 +14,7 @@ import Help from './Help';
 import SearchBar from './SearchBar';
 import TopMenuIcon from './TopMenuIcon';
 import UserMenu from './UserMenu';
+import ProjectMenu from './ProjectMenu';
 
 const useStyles = makeStyles((theme: Theme) => ({
   appBar: {
@@ -113,6 +114,7 @@ const TopMenu: React.FC<PropsWithStyles> = (props) => {
           <Community className={classes.communityIcon} />
           */
           /* -- Clanode Change -- */}
+          <ProjectMenu />
           <NotificationButton />
           <UserMenu />
         </Toolbar>

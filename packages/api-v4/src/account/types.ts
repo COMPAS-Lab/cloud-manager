@@ -458,6 +458,21 @@ export interface MakePaymentData {
   payment_method_id?: number;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  domain_id: string;
+  description: string;
+  enabled: boolean;
+  parent_id: string;
+  is_domain: false;
+  tags: any[];
+  options: any;
+  links: {
+    self: string;
+  };
+}
+
 export type AccountLoginStatus = 'successful' | 'failed';
 
 export interface AccountLogin {
