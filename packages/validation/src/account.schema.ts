@@ -142,3 +142,8 @@ export const PromoCodeSchema = object({
     .min(1, 'Promo code must be between 1 and 32 characters.')
     .max(32, 'Promo code must be between 1 and 32 characters.'),
 });
+
+export const ProjectsSchema = object({
+  id: string().required('Project ID is needed'),
+  name: string().required('Project Name is needed'),
+});
