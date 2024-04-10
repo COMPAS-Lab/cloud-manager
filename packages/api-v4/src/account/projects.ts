@@ -2,20 +2,16 @@ import { API_ROOT } from '../constants';
 import Request, { setMethod, setURL } from '../request';
 import { Project } from './types';
 
-export const fetchProjects = () => {
+export const fetchProjects = (): Promise<Project[]> => {
   return Request<Project[]>(
     setURL(`${API_ROOT}/projects/list`),
-    setMethod('POST')
+    setMethod('GET')
   );
 };
 
-export const fetchProjectToken = (projectId: string) => {
-  try {
-    return Request(
-      setURL(`${API_ROOT}/project/token/${projectId}`),
-      setMethod('POST')
-    );
-  } catch (error) {
-    console.error('Error fetching project token:', error);
-  }
+export const fetchProjectToken = (projectId: string): Promise<string> => {
+  return Request<string>(
+    setURL(`${API_ROOT}/project/token/${projectId}`),
+    setMethod('GET')
+  );
 };

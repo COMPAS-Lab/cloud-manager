@@ -3,10 +3,12 @@ import React, { useEffect, useState } from 'react';
 import '@reach/menu-button/styles.css';
 // import KeyboardArrowDown from '@material-ui/icons/KeyboardArrowDown';
 import { makeStyles, Theme } from '@material-ui/core/styles';
-import { Snackbar } from '@material-ui/core';
-import Alert from '@material-ui/lab/Alert';
+import { useSnackbar } from 'notistack';
 
-import { fetchProjects, fetchProjectToken } from '@linode/api-v4/lib/account/projects';
+import {
+  fetchProjects,
+  fetchProjectToken,
+} from '@linode/api-v4/lib/account/projects';
 import { Project } from '@linode/api-v4/lib/account/types';
 
 const useStyles = makeStyles((theme: Theme) => ({
@@ -57,44 +59,44 @@ const useStyles = makeStyles((theme: Theme) => ({
 }));
 
 const ProjectMenu: React.FC = () => {
-    const classes = useStyles();
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [openSnackbar, setOpenSnackbar] = useState(false);
-    const [selectedProjectId, setSelectedProjectId] = useState('');
-    const [selectedProjectName, setSelectedProjectName] = useState('Select Project');
+  const classes = useStyles();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const { enqueueSnackbar } = useSnackbar();
+  const [selectedProjectId, setSelectedProjectId] = useState('');
 
-    useEffect(() => {
-      fetchProjects().then(response => {
+  useEffect(() => {
+    fetchProjects()
+      .then((response) => {
         setProjects(response);
-      }).catch(error => {
-        console.error("Error fetching projects:", error);
+      })
+      .catch((error) => {
+        enqueueSnackbar('Error fetching projects');
       });
-    }, []);
+  }, []);
 
-    const handleSelectProject = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const projectId = e.target.value;
-      const projectName = projects.find(project => project.id === projectId)?.name || 'Select Project';
-      setSelectedProjectId(projectId);
-      setSelectedProjectName(projectName);
-      console.log(selectedProjectName);
-      try {
-        const token = fetchProjectToken(selectedProjectId);
-        // window.localStorage.setItem('authentication/token', 'Bearer ' + token);
-        console.log("token: ", token);
-      } catch (error) {
-        console.error("Error in Changing Project:", error);
-      }
-      setOpenSnackbar(true);
+  const handleSelectProject = async (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const projectId = e.target.value;
+    //If the selected project is the current project, ignore
+    if (projectId === selectedProjectId) return;
+    const projectName =
+      projects.find((project) => project.id === projectId)?.name ||
+      'Select Project';
+    setSelectedProjectId(projectId);
+    try {
+      const token = await fetchProjectToken(projectId);
+      if (token) window.localStorage.setItem('authentication/token', token);
+      else throw new Error('Failed to fetch project token');
+    } catch (error) {
+      enqueueSnackbar('Error switching to project: ' + projectName);
+    }
+    enqueueSnackbar('Switched to project: ' + projectName);
+  };
 
-    };
-  
-    const handleCloseSnackbar = () => {
-      setOpenSnackbar(false);
-    };
-
-    return (
-      <>
-        {/* <Menu>
+  return (
+    <>
+      {/* <Menu>
             <MenuButton className={classes.button}>
                 {selectedProject || 'Select Project'} <KeyboardArrowDown className={classes.caret} />
             </MenuButton>
@@ -106,32 +108,21 @@ const ProjectMenu: React.FC = () => {
                 ))}
             </MenuList>
         </Menu> */}
-        <div>
-          <select
-            className={classes.select}
-            value={selectedProjectName}
-            onChange={handleSelectProject}
-          >
-            <option value="">Select Project</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <Snackbar
-          open={openSnackbar}
-          autoHideDuration={6000}
-          onClose={handleCloseSnackbar}
+      <div>
+        <select
+          className={classes.select}
+          value={selectedProjectId}
+          onChange={handleSelectProject}
         >
-          <Alert onClose={handleCloseSnackbar} severity="success">
-            Switched to project: {selectedProjectName}
-          </Alert>
-        </Snackbar>
-      </>
-    );
-  };
-  
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
+};
+
 export default ProjectMenu;
