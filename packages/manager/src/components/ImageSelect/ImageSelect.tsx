@@ -172,6 +172,7 @@ export const ImageSelect: React.FC<Props> = (props) => {
           <Grid container item direction="row">
             <Grid item xs={12}>
               <Select
+                isClearable={false}
                 disabled={disabled}
                 label="Images"
                 isLoading={_loading}

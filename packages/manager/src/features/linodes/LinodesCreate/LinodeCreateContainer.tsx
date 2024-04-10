@@ -78,7 +78,8 @@ import {
 } from 'src/queries/accountAgreements';
 import Button from 'src/components/Button';
 
-const DEFAULT_IMAGE = 'linode/debian11';
+const DEFAULT_IMAGE = '7127f41a-be1e-468d-b296-fb2d09ce549e';
+const DEFAULT_CPU_TYPE = 'Broadwell'
 
 interface State {
   selectedImageID?: string;
@@ -194,7 +195,7 @@ class LinodeCreateContainer extends React.PureComponent<CombinedProps, State> {
     ...defaultState,
     // These can be passed in as query params
     selectedTypeID: this.params.typeID,
-    selectedRegionID: this.params.regionID,
+    selectedRegionID: this.params.regionID ?? DEFAULT_CPU_TYPE,
     selectedImageID: this.params.imageID ?? DEFAULT_IMAGE,
     // @todo: Abstract and test. UPDATE 5/21/20: lol what does this mean
     selectedLinodeID: isNaN(+this.params.linodeID)

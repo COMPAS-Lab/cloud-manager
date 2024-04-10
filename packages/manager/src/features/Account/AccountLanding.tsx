@@ -14,9 +14,8 @@ import TabLinkList from 'src/components/TabLinkList';
 import TaxBanner from 'src/components/TaxBanner';
 import { akamaiBillingInvoiceText } from 'src/features/Billing/billingUtils';
 import { useAccount } from 'src/queries/account';
-/* -- Clanode Change -- */
-// import { getGrantData, useProfile } from 'src/queries/profile';
-/* -- Clanode Change End -- */
+import Users from '../Users';
+import { useProfile } from 'src/queries/profile';
 
 const Billing = React.lazy(
   () => import('src/features/Billing')
@@ -34,7 +33,7 @@ const MaintenanceLanding = React.lazy(
   const history = useHistory();
   const location = useLocation();
   /* -- Clanode Change -- */
-  // const { data: profile } = useProfile();
+  const { data: profile } = useProfile();
   const { data: account } = useAccount();
 
   // const grantData = getGrantData();
@@ -47,11 +46,11 @@ const MaintenanceLanding = React.lazy(
     {
       title: 'Billing Info',
       routeName: '/account/billing',
-    } /*
+    },
     {
       title: 'Users & Grants',
       routeName: '/account/users',
-    },
+    } /*
     {
       title: 'Service Transfers',
       routeName: '/account/service-transfers',
@@ -98,7 +97,7 @@ const MaintenanceLanding = React.lazy(
   };
 
   /* -- Clanode Change -- */
-  /*let*/ const idx = 0;
+  /*let*/ let idx = 0;
 
   // const isBillingTabSelected = location.pathname.match(/billing/);
   /* -- Clanode Change End -- */
@@ -144,11 +143,10 @@ const MaintenanceLanding = React.lazy(
             <SafeTabPanel index={idx}>
               <Billing />
             </SafeTabPanel>
-            {/* -- Clanode Change -- */
-            /*
             <SafeTabPanel index={++idx}>
               <Users isRestrictedUser={profile?.restricted || false} />
             </SafeTabPanel>
+            { /*
             <SafeTabPanel index={++idx}>
               <EntityTransfersLanding />
             </SafeTabPanel>
@@ -158,8 +156,7 @@ const MaintenanceLanding = React.lazy(
             <SafeTabPanel index={++idx}>
               <GlobalSettings />
             </SafeTabPanel>
-            */
-            /* -- Clanode Change End -- */}
+            */}
           </TabPanels>
         </React.Suspense>
       </Tabs>
