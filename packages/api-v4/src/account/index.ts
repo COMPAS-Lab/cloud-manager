@@ -15,3 +15,7 @@ export * from './promos';
 export * from './types';
 
 export * from './maintenance';
+
+/* -- Clanode Change -- */
+export * from './projects';
+/* -- Clanode Change End -- */
