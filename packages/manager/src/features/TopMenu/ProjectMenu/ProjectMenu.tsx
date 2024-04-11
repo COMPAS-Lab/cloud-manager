@@ -25,13 +25,13 @@ const useStyles = makeStyles((theme: Theme) => ({
       color: '#fff',
       padding: `2px 20px`,
       paddingRight: 12,
-      maxHeight: 34,
+      maxHeight: 30,
       position: 'relative',
       minHeight: `34px`,
       cursor: 'pointer',
       border: 'none',
       [theme.breakpoints.down('sm')]: {
-        maxHeight: 34,
+        maxHeight: 25,
         minWidth: 100,
       },
       '&:hover, &:focus': {
@@ -55,6 +55,10 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: 'white',
     padding: '10px',
     border: 'none',
+    fontSize: theme.typography.fontSize,
+    '&:focus': {
+      backgroundColor: theme.palette.primary.light,
+    },
   },
 }));
 
@@ -62,12 +66,22 @@ const ProjectMenu: React.FC = () => {
   const classes = useStyles();
   const [projects, setProjects] = useState<Project[]>([]);
   const { enqueueSnackbar } = useSnackbar();
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState(() => {
+    return window.localStorage.getItem('selectedProjectId') || '';
+  });
 
   useEffect(() => {
     fetchProjects()
       .then((response) => {
         setProjects(response);
+        if (
+          selectedProjectId &&
+          !response.some((project) => project.id === selectedProjectId)
+        ) {
+          // If the saved project ID is not found among the fetched projects, clear the localStorage
+          window.localStorage.removeItem('selectedProjectId');
+          setSelectedProjectId('');
+        }
       })
       .catch((error) => {
         enqueueSnackbar('Error fetching projects');
@@ -78,16 +92,19 @@ const ProjectMenu: React.FC = () => {
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
     const projectId = e.target.value;
-    //If the selected project is the current project, ignore
+    // If the selected project is the current project, ignore
     if (projectId === selectedProjectId) return;
     const projectName =
       projects.find((project) => project.id === projectId)?.name ||
       'Select Project';
     setSelectedProjectId(projectId);
+    window.localStorage.setItem('selectedProjectId', projectId);
     try {
       const token = await fetchProjectToken(projectId);
-      if (token) window.localStorage.setItem('authentication/token', token);
-      else throw new Error('Failed to fetch project token');
+      if (token) {
+        window.localStorage.setItem('authentication/token', token);
+        window.location.reload();
+      } else throw new Error('Failed to fetch project token');
     } catch (error) {
       enqueueSnackbar('Error switching to project: ' + projectName);
     }
@@ -108,19 +125,21 @@ const ProjectMenu: React.FC = () => {
                 ))}
             </MenuList>
         </Menu> */}
-      <div>
-        <select
-          className={classes.select}
-          value={selectedProjectId}
-          onChange={handleSelectProject}
-        >
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {projects.length > 1 && (
+        <div>
+          <select
+            className={classes.select}
+            value={selectedProjectId}
+            onChange={handleSelectProject}
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </>
   );
 };
