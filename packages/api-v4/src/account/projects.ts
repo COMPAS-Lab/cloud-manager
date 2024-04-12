@@ -2,6 +2,10 @@ import { API_ROOT } from '../constants';
 import Request, { setMethod, setURL } from '../request';
 import { Project } from './types';
 
+export const fetchCurrentProject = (): Promise<Project> => {
+  return Request<Project>(setURL(`${API_ROOT}/project`), setMethod('GET'));
+};
+
 export const fetchProjects = (): Promise<Project[]> => {
   return Request<Project[]>(
     setURL(`${API_ROOT}/projects/list`),
