@@ -79,7 +79,7 @@ import { getRegionIDFromLinodeID } from './utilities';
 import Button from 'src/components/Button';
 
 const DEFAULT_IMAGE = '7127f41a-be1e-468d-b296-fb2d09ce549e';
-const DEFAULT_CPU_TYPE = 'Broadwell'
+const DEFAULT_CPU_TYPE = 'Any';
 
 interface State {
   selectedImageID?: string;
