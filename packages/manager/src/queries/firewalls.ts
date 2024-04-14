@@ -48,8 +48,10 @@ export const useAllFirewallsQuery = (enabled: boolean = true) => {
     { enabled }
   );
 };
-
-type MutateFirewall = { id: number; payload: Partial<Firewall> };
+/* -- Clanode Change -- */
+// type MutateFirewall = { id: number; payload: Partial<Firewall> };
+type MutateFirewall = { id: number | string; payload: Partial<Firewall> };
+/* -- Clanode Change End -- */
 
 // @TODO: Refactor so these are combined?
 export const useMutateFirewall = () => {

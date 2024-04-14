@@ -75,7 +75,10 @@ export const createFirewall = (data: CreateFirewallPayload) =>
  *
  */
 export const updateFirewall = (
-  firewallID: number,
+  /* -- Clanode Change -- */
+  // firewallID: number,
+  firewallID: number | string,
+  /* -- Clanode Change End -- */
   data: UpdateFirewallPayload
 ) =>
   Request<Firewall>(

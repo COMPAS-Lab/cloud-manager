@@ -100,7 +100,10 @@ export const FirewallDetail: React.FC<CombinedProps> = (props) => {
       reset();
     }
     return updateFirewall({
-      id: Number(thisFirewallId),
+      /* -- Clanode Change -- */
+      id: thisFirewallId,
+      // id: Number(thisFirewallId),
+      /* -- Clanode Change End -- */
       payload: { label: newLabel },
     });
   };
