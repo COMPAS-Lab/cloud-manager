@@ -29,6 +29,9 @@ import curriedFirewallRuleEditorReducer, {
 } from './firewallRuleEditor';
 import FirewallRuleTable from './FirewallRuleTable';
 import { Category, parseFirewallRuleError } from './shared';
+/* -- Clanode Change -- */
+import { resetEventsPolling } from 'src/eventsPolling';
+/* -- Clanode Change End -- */
 
 const useStyles = makeStyles((theme: Theme) => ({
   copy: {
@@ -208,6 +211,9 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
         // Reset editor state.
         inboundDispatch({ type: 'RESET', rules: _rules.inbound ?? [] });
         outboundDispatch({ type: 'RESET', rules: _rules.outbound ?? [] });
+        /* -- Clanode Change -- */
+        resetEventsPolling();
+        /* -- Clanode Change End -- */
       })
       .catch((err) => {
         setSubmitting(false);
