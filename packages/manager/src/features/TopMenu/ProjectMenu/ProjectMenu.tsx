@@ -21,12 +21,18 @@ export interface ExtendedProject extends Project {
 const useStyles = makeStyles((theme: Theme) => ({
   container: {
     marginLeft: theme.spacing(1),
-    minWidth: '150px',
+    minWidth: '250px',
   },
   select: {
     backgroundColor: theme.palette.primary.main,
     fontWeight: 'bold',
     color: 'white',
+    '& option': {
+      color: 'black',
+    },
+    '& .react-select__single-value': {
+      color: 'white !important',
+    },
     border: 'none',
     fontSize: theme.typography.fontSize,
     '&:focus': {
@@ -43,13 +49,16 @@ const ProjectMenu: React.FC = () => {
   useEffect(() => {
     Promise.all([fetchCurrentProject(), fetchProjects()])
       .then(([project, projects]) => {
+        const sortedProjects = [...projects].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
         setSelectedProject({
           ...project,
           value: project.id,
           label: project.name,
         });
         setProjects(
-          projects.map((proj) => ({
+          sortedProjects.map((proj) => ({
             ...proj,
             value: proj.id,
             label: proj.name,
