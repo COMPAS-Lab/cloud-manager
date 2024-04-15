@@ -384,7 +384,11 @@ export const eventMessageCreators: { [index: string]: CreatorsForStatus } = {
     notification: (e) => `Linode ${e.entity!.label} has been deleted.`,
   },
   linode_deleteip: {
-    notification: (e) => `An IP was deleted from Linode ${e.entity!.id}`,
+    /* -- Clanode Change -- */
+    // notification: (e) => `An IP was deleted from Linode ${e.entity!.id}`,
+    notification: (e) =>
+      `An IP was deleted from Linode ${e.entity?.label ?? ''}`,
+    /* -- Clanode Change End -- */
   },
   linode_migrate: {
     scheduled: (e) =>
