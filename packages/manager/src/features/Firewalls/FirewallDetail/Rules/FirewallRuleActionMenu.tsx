@@ -27,14 +27,14 @@ const FirewallRuleActionMenu: React.FC<CombinedProps> = (props) => {
   } = props;
 
   const actions: Action[] = [
-    {
+    /* -- Clanode Changes -- */
+    /* {
       title: 'Edit',
       disabled,
       onClick: () => {
         triggerOpenRuleDrawerForEditing(idx);
       },
-    },
-    /* -- Clanode Changes -- */
+    }, */
     // {
     //   title: 'Clone',
     //   disabled,

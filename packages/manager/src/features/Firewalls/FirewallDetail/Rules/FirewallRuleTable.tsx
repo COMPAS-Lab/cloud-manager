@@ -441,7 +441,10 @@ const FirewallRuleTableRow: React.FC<FirewallRuleTableRowProps> = React.memo(
             className={classes.dragIcon}
             aria-label="Drag indicator icon"
           />
-          {label || (
+          {
+            label || ''
+            /* -- Clanode Change -- */
+            /* (
             <button
               className={classes.addLabelButton}
               style={{
@@ -452,7 +455,9 @@ const FirewallRuleTableRow: React.FC<FirewallRuleTableRowProps> = React.memo(
             >
               Add a label
             </button>
-          )}{' '}
+            )*/
+            /* -- Clanode Change End -- */
+          }{' '}
         </Grid>
         <Hidden lgDown>
           <Grid
