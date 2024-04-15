@@ -17,6 +17,9 @@ import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import AddDeviceDrawer from './AddDeviceDrawer';
 import FirewallDevicesTable from './FirewallDevicesTable';
 import RemoveDeviceDialog from './RemoveDeviceDialog';
+/* -- Clanode Change -- */
+import { resetEventsPolling } from 'src/eventsPolling';
+/* -- Clanode Change End -- */
 
 const useStyles = makeStyles((theme: Theme) => ({
   copy: {
@@ -101,6 +104,9 @@ const FirewallLinodesLanding: React.FC<CombinedProps> = (props) => {
     })
       .then((_) => {
         handleClose();
+        /* -- Clanode Change -- */
+        resetEventsPolling();
+        /* -- Clanode Change End -- */
       })
       .catch((errorResponse) => {
         /**
@@ -136,9 +142,18 @@ const FirewallLinodesLanding: React.FC<CombinedProps> = (props) => {
   };
 
   const handleRemoveDevice = () => {
-    _submitDialog(dialog.entityID).catch((e) =>
+    /* -- Clanode Change -- */
+    /*_submitDialog(dialog.entityID).catch((e) =>
       handleError(getAPIErrorOrDefault(e, 'Error removing Device')[0].reason)
-    );
+    );*/
+    _submitDialog(dialog.entityID)
+      .then((_) => {
+        resetEventsPolling();
+      })
+      .catch((e) =>
+        handleError(getAPIErrorOrDefault(e, 'Error removing Device')[0].reason)
+      );
+    /* -- Clanode Change End -- */
   };
 
   return (

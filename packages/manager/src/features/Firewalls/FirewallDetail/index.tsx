@@ -20,6 +20,10 @@ import { useProfile, useGrants } from 'src/queries/profile';
 import { useFirewallQuery, useMutateFirewall } from 'src/queries/firewalls';
 import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
 
+/* -- Clanode Change -- */
+import { resetEventsPolling } from 'src/eventsPolling';
+/* -- Clanode Change End -- */
+
 const FirewallRulesLanding = React.lazy(
   () => import('./Rules/FirewallRulesLanding')
 );
@@ -99,13 +103,19 @@ export const FirewallDetail: React.FC<CombinedProps> = (props) => {
     if (error) {
       reset();
     }
-    return updateFirewall({
-      /* -- Clanode Change -- */
-      id: thisFirewallId,
-      // id: Number(thisFirewallId),
-      /* -- Clanode Change End -- */
+    /* -- Clanode Change -- */
+    /* return updateFirewall({
+      id: Number(thisFirewallId),
       payload: { label: newLabel },
+    }); */
+    return updateFirewall({
+      id: thisFirewallId,
+      payload: { label: newLabel },
+    }).then((res) => {
+      resetEventsPolling();
+      return res;
     });
+    /* -- Clanode Change End -- */
   };
 
   const resetEditableLabel = () => {
