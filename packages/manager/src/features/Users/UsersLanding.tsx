@@ -180,9 +180,9 @@ const UsersLanding: React.FC<Props> = (props) => {
         {!matchesSmDown && (
           <TableCell data-qa-user-email>{user.email}</TableCell>
         )}
-        <TableCell data-qa-user-restriction>
+        {/* <TableCell data-qa-user-restriction>
           {user.restricted ? 'Limited' : 'Full'}
-        </TableCell>
+        </TableCell> */}
         <TableCell actionCell>
           <ActionMenu username={user.username} onDelete={onUsernameDelete} />
         </TableCell>
@@ -251,7 +251,7 @@ const UsersLanding: React.FC<Props> = (props) => {
             {!matchesSmDown && (
               <TableCell data-qa-email-column>Email Address</TableCell>
             )}
-            <TableCell data-qa-restriction-column>Account Access</TableCell>
+            {/* <TableCell data-qa-restriction-column>Account Access</TableCell> */}
             <TableCell />
           </TableRow>
         </TableHead>
