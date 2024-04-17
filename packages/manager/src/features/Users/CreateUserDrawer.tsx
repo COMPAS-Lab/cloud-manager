@@ -136,7 +136,7 @@ class CreateUserDrawer extends React.Component<CombinedProps, State> {
           }
           control={
             <Toggle
-              checked={!restricted}
+              checked={restricted}
               onChange={this.onChangeRestricted}
               data-qa-create-restricted
             />
