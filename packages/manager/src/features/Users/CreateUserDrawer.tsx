@@ -55,14 +55,14 @@ class CreateUserDrawer extends React.Component<CombinedProps, State> {
       onClose,
       history: { push },
     } = this.props;
-    const { username, email, restricted } = this.state;
+    const { email, restricted } = this.state;
     this.setState({ errors: [], submitting: true });
-    createUser({ username, email, restricted })
+    createUser({ username: email, email, restricted })
       .then((user: User) => {
         this.setState({ submitting: false });
         onClose();
         if (user.restricted) {
-          push(`/account/users/${username}/permissions`, {
+          push(`/account/users/${email}/permissions`, {
             newUsername: user.username,
           });
         }
@@ -97,7 +97,7 @@ class CreateUserDrawer extends React.Component<CombinedProps, State> {
 
   render() {
     const { open, onClose } = this.props;
-    const { username, email, restricted, errors, submitting } = this.state;
+    const { email, restricted, errors, submitting } = this.state;
 
     const hasErrorFor = getAPIErrorsFor(
       { username: 'Username', email: 'Email' },
@@ -108,14 +108,15 @@ class CreateUserDrawer extends React.Component<CombinedProps, State> {
     return (
       <Drawer open={open} onClose={onClose} title="Add a User">
         {generalError && <Notice error text={generalError} />}
-        <TextField
+        {/* <TextField
+          style={{display: 'none'}}
           label="Username"
           value={username}
           required
           onChange={this.onChangeUsername}
           errorText={hasErrorFor('username')}
           data-qa-create-username
-        />
+        /> */}
         <TextField
           label="Email"
           type="email"
@@ -129,10 +130,10 @@ class CreateUserDrawer extends React.Component<CombinedProps, State> {
           style={{ marginTop: 8 }}
           label={
             restricted
-              ? `This user will have limited access to account features.
-              This can be changed later.`
-              : `This user will have full access to account features.
-              This can be changed later.`
+              ? `This user will have Manager access to account features.
+              This can be changed later in User permissions.`
+              : `This user will have Member access to account features.
+              This can be changed later in User permissions.`
           }
           control={
             <Toggle
@@ -143,10 +144,7 @@ class CreateUserDrawer extends React.Component<CombinedProps, State> {
           }
         />
         <div style={{ marginTop: 8 }}>
-          <Notice
-            warning
-            text="The user will be sent an email to set their password"
-          />
+          <Notice warning text="Please input the email id of user" />
         </div>
         <ActionsPanel>
           <Button buttonType="secondary" onClick={onClose} data-qa-cancel>
