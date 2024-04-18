@@ -1,5 +1,5 @@
 import * as React from 'react';
-// import { useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ActionMenu, { Action } from 'src/components/ActionMenu';
 import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
 import InlineMenuAction from 'src/components/InlineMenuAction';
@@ -13,7 +13,7 @@ interface Props {
 type CombinedProps = Props;
 
 const UsersActionMenu: React.FC<CombinedProps> = (props) => {
-  // const history = useHistory();
+  const history = useHistory();
   const theme = useTheme<Theme>();
   const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -29,13 +29,13 @@ const UsersActionMenu: React.FC<CombinedProps> = (props) => {
     //     history.push(`/account/users/${username}`);
     //   },
     // },
-    // {
-    //   disabled: true,
-    //   title: 'User Permissions',
-    //   onClick: () => {
-    //     history.push(`/account/users/${username}/permissions`);
-    //   },
-    // },
+    {
+      disabled: false,
+      title: 'User Permissions',
+      onClick: () => {
+        history.push(`/account/users/${username}/permissions`);
+      },
+    },
     {
       disabled: username === profileUsername,
       title: 'Delete',

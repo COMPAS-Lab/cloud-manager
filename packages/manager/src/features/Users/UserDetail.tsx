@@ -58,10 +58,10 @@ const UserDetail: React.FC = () => {
 
   const tabs = [
     /* NB: These must correspond to the routes inside the Switch */
-    {
-      title: 'User Profile',
-      routeName: `/account/users/${usernameParam}/profile`,
-    },
+    // {
+    //   title: 'User Profile',
+    //   routeName: `/account/users/${usernameParam}/profile`,
+    // },
     {
       title: 'User Permissions',
       routeName: `/account/users/${usernameParam}/permissions`,
@@ -238,6 +238,13 @@ const UserDetail: React.FC = () => {
         )}
         <TabPanels>
           <SafeTabPanel index={0}>
+            <UserPermissions
+              currentUser={profile?.username}
+              username={username}
+              clearNewUser={clearNewUser}
+            />
+          </SafeTabPanel>
+          <SafeTabPanel index={0}>
             <UserProfile
               username={username}
               email={email}
@@ -253,13 +260,6 @@ const UserDetail: React.FC = () => {
               profileErrors={profileErrors}
               originalUsername={originalUsername}
               originalEmail={originalEmail}
-            />
-          </SafeTabPanel>
-          <SafeTabPanel index={1}>
-            <UserPermissions
-              currentUser={profile?.username}
-              username={username}
-              clearNewUser={clearNewUser}
             />
           </SafeTabPanel>
         </TabPanels>

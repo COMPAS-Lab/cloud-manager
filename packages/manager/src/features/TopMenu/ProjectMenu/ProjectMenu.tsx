@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
-// import { Menu, MenuButton, MenuList, MenuItem } from '@reach/menu-button';
 import '@reach/menu-button/styles.css';
-// import KeyboardArrowDown from '@material-ui/icons/KeyboardArrowDown';
 import { makeStyles, Theme } from '@material-ui/core/styles';
 import { useSnackbar } from 'notistack';
 import Select from 'src/components/EnhancedSelect/Select';
@@ -26,7 +24,7 @@ const useStyles = makeStyles((theme: Theme) => ({
   select: {
     backgroundColor: theme.palette.primary.main,
     fontWeight: 'bold',
-    color: 'white',
+    color: 'white !important',
     '& option': {
       color: 'black',
     },
