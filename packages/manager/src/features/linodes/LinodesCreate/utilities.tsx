@@ -73,6 +73,8 @@ export const gpuPlanText = (useTypography?: boolean): JSX.Element => {
   return (
     <>
       {gpuPlanTextSegments[0]}
+      {/* -- Clanode Change -- */
+      /*
       <a
         href="https://www.linode.com/docs/platform/linode-gpu/getting-started-with-gpu/"
         target="_blank"
@@ -82,6 +84,8 @@ export const gpuPlanText = (useTypography?: boolean): JSX.Element => {
         {` `}Here is a guide
       </a>{' '}
       {gpuPlanTextSegments[1]}
+      */
+      /* -- Clanode Change End -- */}
     </>
   );
 };
