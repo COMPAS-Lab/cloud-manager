@@ -201,6 +201,11 @@ class UserPermissions extends React.Component<CombinedProps, State> {
               restricted: false,
             });
           }
+          if ((grants.global as any).manager_role) {
+            this.setState({ restricted: false });
+          } else {
+            this.setState({ restricted: true });
+          }
         })
         .catch((errResponse) => {
           this.setState({
@@ -354,12 +359,14 @@ class UserPermissions extends React.Component<CombinedProps, State> {
 
   onChangeRestricted = () => {
     const { username } = this.props;
+    const { restricted } = this.state;
+    const email = username;
     this.setState({
       errors: [],
       loadingGrants: true,
     });
     if (username) {
-      updateUser(username, { restricted: !this.state.restricted })
+      updateUser(username, { email, restricted })
         .then((user) => {
           this.setState({
             restricted: user.restricted,
@@ -436,7 +443,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     }
 
     return (
-      <div className={classes.section}>
+      <div className={classes.section} style={{ display: 'none' }}>
         <Grid container className={classes.section} data-qa-billing-section>
           <Grid item>
             <Typography variant="h3" data-qa-permissions-header="billing">
@@ -481,7 +488,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     const { classes } = this.props;
     return (
       <ActionsPanel
-        display="flex"
+        display="none"
         alignItems="center"
         justifyContent="flex-end"
         className={classes.section}
@@ -505,7 +512,11 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     const { classes } = this.props;
     const { grants, isSavingGlobal } = this.state;
     return (
-      <Paper className={classes.globalSection} data-qa-global-section>
+      <Paper
+        className={classes.globalSection}
+        data-qa-global-section
+        style={{ display: 'none' }}
+      >
         <Typography
           variant="h2"
           data-qa-permissions-header="Global Permissions"
@@ -595,7 +606,11 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     });
 
     return (
-      <Paper className={classes.globalSection} data-qa-entity-section>
+      <Paper
+        className={classes.globalSection}
+        data-qa-entity-section
+        style={{ display: 'none' }}
+      >
         <Grid container justifyContent="space-between" alignItems="center">
           <Grid item>
             <Typography
@@ -687,7 +702,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
     return (
       <Paper className={classes.unrestrictedRoot}>
         <Typography data-qa-unrestricted-msg>
-          This user has unrestricted access to the account.
+          This user has Member access to the account.
         </Typography>
       </Paper>
     );
@@ -709,7 +724,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
               variant="h2"
               data-qa-restrict-access={restricted}
             >
-              Full Account Access:
+              Manager Access:
             </Typography>
           </Grid>
           <Grid item>
@@ -729,7 +744,7 @@ class UserPermissions extends React.Component<CombinedProps, State> {
             />
           </Grid>
         </Grid>
-        {restricted ? this.renderPermissions() : this.renderUnrestricted()}
+        {!restricted ? this.renderPermissions() : this.renderUnrestricted()}
       </React.Fragment>
     );
   };

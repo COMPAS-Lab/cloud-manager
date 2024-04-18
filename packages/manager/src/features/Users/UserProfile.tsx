@@ -106,10 +106,11 @@ const UserProfile: React.FC<Props> = (props) => {
           className={classes.title}
           variant="h2"
           data-qa-profile-header
+          style={{ display: 'none' }}
         >
           User Profile
         </Typography>
-        <Paper className={classes.wrapper}>
+        <Paper className={classes.wrapper} style={{ display: 'none' }}>
           {accountSuccess && (
             <Notice success spacingBottom={0}>
               Username updated successfully
@@ -137,7 +138,7 @@ const UserProfile: React.FC<Props> = (props) => {
             </Button>
           </ActionsPanel>
         </Paper>
-        <Paper className={classes.wrapper}>
+        <Paper className={classes.wrapper} style={{ display: 'none' }}>
           {profileSuccess && (
             <Notice success spacingBottom={0}>
               Email updated successfully
@@ -206,7 +207,7 @@ const UserProfile: React.FC<Props> = (props) => {
 
   const renderDeleteSection = () => {
     return (
-      <Paper className={classes.wrapper}>
+      <Paper className={classes.wrapper} style={{ display: 'none' }}>
         <Typography variant="h2" data-qa-delete-user-header>
           Delete User
         </Typography>
