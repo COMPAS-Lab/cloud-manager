@@ -264,15 +264,17 @@ const AddIPDrawer: React.FC<CombinedProps> = (props) => {
           className={classes.radioButtons}
           data-qa-ip-options-radio-group
         >
-          {ipOptions.map((option, idx) => (
-            <FormControlLabel
-              key={idx}
-              value={option.value}
-              label={option.label}
-              control={<Radio />}
-              data-qa-radio={option.label}
-            />
-          ))}
+          {ipOptions
+            .filter((option) => (option.value === 'v4Vlan' ? hasVlan : true))
+            .map((option, idx) => (
+              <FormControlLabel
+                key={idx}
+                value={option.value}
+                label={option.label}
+                control={<Radio />}
+                data-qa-radio={option.label}
+              />
+            ))}
         </RadioGroup>
         {selectedIPv4 && (
           <Typography variant="body1" className={classes.copy}>
