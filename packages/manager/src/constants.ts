@@ -143,9 +143,9 @@ export const dcDisplayNames = {
   /* -- Clanode Change -- */
   nova: 'Nova',
   Any: 'Any',
-  Broadwell: 'Broadwell',
-  Haswell: 'Haswell',
-  Penryn: 'Penryn',
+  'Intel Broadwell': 'Intel Broadwell',
+  'Intel Haswell': 'Intel Haswell',
+  'Intel Penryn': 'Intel Penryn',
   /* -- Clanode Change End -- */
   // us-east-1 is for backwards-compatibility
   'us-east-1': 'Newark, NJ',
