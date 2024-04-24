@@ -44,14 +44,27 @@ export class InfoPanel extends React.Component<CombinedProps> {
     return (
       <Paper className={classes.root} data-qa-label-header>
         {error && <Notice text={error} error />}
-        <TextField
-          {...(labelFieldProps || {
-            label: 'Label',
-            placeholder: 'Enter a label',
-          })}
-          data-qa-label-input
-        />
-        {tagsInputProps && <TagsInput {...tagsInputProps} />}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '16px',
+          }}
+        >
+          <div style={{ width: '48%' }}>
+            <TextField
+              {...(labelFieldProps || {
+                label: 'Label',
+                placeholder: 'Enter a label',
+              })}
+              data-qa-label-input
+            />
+          </div>
+          <div style={{ width: '48%' }}>
+            {tagsInputProps && <TagsInput {...tagsInputProps} />}
+          </div>
+        </div>
       </Paper>
     );
   }
