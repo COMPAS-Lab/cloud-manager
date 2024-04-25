@@ -17,13 +17,13 @@ import SectionErrorBoundary from 'src/components/SectionErrorBoundary';
 import { resetEventsPolling } from 'src/eventsPolling';
 import useExtendedLinode from 'src/hooks/useExtendedLinode';
 import usePrevious from 'src/hooks/usePrevious';
-import { useAllVolumesQuery } from 'src/queries/volumes';
+// import { useAllVolumesQuery } from 'src/queries/volumes';
 import { MapState } from 'src/store/types';
 import createDevicesFromStrings, {
   DevicesAsStrings,
 } from 'src/utilities/createDevicesFromStrings';
 import LinodePermissionsError from '../LinodePermissionsError';
-import DeviceSelection, { ExtendedDisk } from './DeviceSelection';
+import { /* DeviceSelection, */ ExtendedDisk } from './DeviceSelection';
 import RescueDescription from './RescueDescription';
 
 const useStyles = makeStyles((theme: Theme) => ({
@@ -155,11 +155,11 @@ const LinodeRescue: React.FC<CombinedProps> = (props) => {
       {diskError ? (
         <div>
           <ErrorState errorText="There was an error retrieving Disks information." />
-        </div>
-      ) : volumesError ? (
+        </div> /*: volumesError ? (
         <div>
           <ErrorState errorText="There was an error retrieving Volumes information." />
         </div>
+      ) */
       ) : (
         <div>
           <Paper className={classes.root}>

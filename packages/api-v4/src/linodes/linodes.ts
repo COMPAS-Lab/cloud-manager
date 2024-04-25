@@ -33,7 +33,7 @@ export const getLinode = (linodeId: number) =>
  *
  * Generates a token which can be used to authenticate with LISH.
  *
- * @param linodeId { number } The id of the Linode.
+ * @param linodeId { string } The id of the Linode.
  */
 export const getLinodeLishToken = (linodeId: number) =>
   Request<{ lish_token: string }>(

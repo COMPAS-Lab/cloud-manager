@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import '@reach/menu-button/styles.css';
-import { makeStyles, Theme } from '@material-ui/core/styles';
+import { makeStyles, Theme } from 'src/components/core/styles';
 import { useSnackbar } from 'notistack';
 import Select from 'src/components/EnhancedSelect/Select';
 

@@ -44,10 +44,8 @@ const AttachVolumeValidationSchema = object({
   /* -- Clanode Change -- */
   /* volume_id: number()
     .min(0, 'Volume is required.')
-    .required('Volume is required.')*/ 
-  volume_id: string()
-    .min('', 'Volume is required.')
-    .required('Volume is required.'),
+    .required('Volume is required.')*/
+  volume_id: string().required('Volume is required.'),
   /* -- Clanode Change End -- */
   config_id: number()
     .min(0, 'Config is required.')

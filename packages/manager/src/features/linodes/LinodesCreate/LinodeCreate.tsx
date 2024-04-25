@@ -70,7 +70,7 @@ import {
   WithTypesRegionsAndImages,
 } from './types';
 import EUAgreementCheckbox from 'src/features/Account/Agreements/EUAgreementCheckbox';
-import SMTPRestrictionText from 'src/features/linodes/SMTPRestrictionText';
+// import SMTPRestrictionText from 'src/features/linodes/SMTPRestrictionText';
 import { CheckoutSummary } from 'src/components/CheckoutSummary/CheckoutSummary';
 import Button from 'src/components/Button';
 import Box from 'src/components/core/Box';
@@ -604,7 +604,6 @@ export class LinodeCreate extends React.PureComponent<
               regions={regionsData!}
               handleSelection={this.props.updateRegionID}
               selectedID={this.props.selectedRegionID}
-              copy="Determine the best location for your server."
               updateFor={[this.props.selectedRegionID, regionsData, errors]}
               disabled={userCannotCreateLinode}
               helperText={this.props.regionHelperText}
@@ -726,13 +725,13 @@ export class LinodeCreate extends React.PureComponent<
                 [classes.messageGroupMaxWidth]: !!showAgreement,
               })}
             >
-              <SMTPRestrictionText style={{ display: 'none' }}>
+              {/*<SMTPRestrictionText>
                 {({ text }) => (
                   <Grid item xs={12}>
                     {text}
                   </Grid>
                 )}
-              </SMTPRestrictionText>
+              </SMTPRestrictionText>*/}
               {showAgreement ? (
                 <EUAgreementCheckbox
                   checked={signedAgreement}

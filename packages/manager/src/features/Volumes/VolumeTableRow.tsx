@@ -12,7 +12,6 @@ import TableRow from 'src/components/TableRow';
 /* -- Clanode Change -- */
 // import { formatRegion } from 'src/utilities';
 /* -- Clanode Change End -- */
-import { ExtendedVolume } from './types';
 import VolumesActionMenu, { ActionHandlers } from './VolumesActionMenu';
 import SupportLink from 'src/components/SupportLink';
 import { Volume } from '@linode/api-v4/lib/volumes/types';
