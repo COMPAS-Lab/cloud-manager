@@ -135,14 +135,7 @@ const CreateVolumeForm: React.FC<CombinedProps> = (props) => {
   const classes = useStyles();
   /* -- Clanode Change -- */
   // const { onSuccess, origin, history, regions } = props;
-  const {
-    onSuccess,
-    createVolume,
-    origin,
-    history,
-    regions,
-    volumeTypes,
-  } = props;
+  const { onSuccess, origin, history, regions, volumeTypes } = props;
   /* -- Clanode Change End -- */
 
   const { data: profile } = useProfile();

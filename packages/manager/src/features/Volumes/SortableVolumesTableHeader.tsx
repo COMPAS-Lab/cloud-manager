@@ -39,6 +39,7 @@ const SortableTableHeader: React.FC<CombinedProps> = (props) => {
         </TableSortCell>
         {isVolumesLanding && (
           <TableSortCell
+            style={{ display: 'none' }}
             data-qa-volume-region-header={order}
             active={isActive('region')}
             label="region"

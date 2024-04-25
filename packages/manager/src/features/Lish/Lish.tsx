@@ -1,18 +1,16 @@
 import * as React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import CircleProgress from 'src/components/CircleProgress';
-// import TabPanels from 'src/components/core/ReachTabPanels';
-// import Tabs from 'src/components/core/ReachTabs';
+import TabPanels from 'src/components/core/ReachTabPanels';
+import Tabs from 'src/components/core/ReachTabs';
 import { Theme, makeStyles } from 'src/components/core/styles';
 import ErrorState from 'src/components/ErrorState';
-// import SafeTabPanel from 'src/components/SafeTabPanel';
-// import TabLinkList from 'src/components/TabLinkList';
-// import { Tab } from 'src/components/TabLinkList/TabLinkList';
+import SafeTabPanel from 'src/components/SafeTabPanel';
+import TabLinkList from 'src/components/TabLinkList';
+import { Tab } from 'src/components/TabLinkList/TabLinkList';
 import { useLinodeLishTokenQuery, useLinodeQuery } from 'src/queries/linodes';
-// import Glish from './Glish';
-// import Weblish from './Weblish';
-
-type ClassNames = 'tabs' | 'progress' | 'notFound' | 'lish';
+import Glish from './Glish';
+import Weblish from './Weblish';
 
 const AUTH_POLLING_INTERVAL = 2000;
 
@@ -59,7 +57,7 @@ const Lish = () => {
   const history = useHistory();
 
   const { linodeId, type } = useParams<{ linodeId: string; type: string }>();
-  const id = Number(linodeId);
+  const id = linodeId as any;
 
   const {
     data: linode,
@@ -144,10 +142,45 @@ const Lish = () => {
       />
     );
   }
-  window.location.href = token; //Clanode
+  if (token) window.location.href = token; //Clanode
   return (
     // eslint-disable-next-line react/jsx-no-useless-fragment
-    <React.Fragment></React.Fragment>
+    <React.Fragment>
+      {linode && token && (
+        <Tabs
+          style={{ display: 'none' }}
+          className={classes.tabs}
+          onChange={navToURL}
+          index={
+            type &&
+            tabs.findIndex((tab) => tab.title.toLocaleLowerCase() === type) !==
+              -1
+              ? tabs.findIndex((tab) => tab.title.toLocaleLowerCase() === type)
+              : 0
+          }
+        >
+          <TabLinkList tabs={tabs} />
+          <TabPanels>
+            <SafeTabPanel index={0} data-qa-tab="Weblish">
+              <Weblish
+                token={token}
+                linode={linode}
+                refreshToken={refreshToken}
+              />
+            </SafeTabPanel>
+            {!isBareMetal && (
+              <SafeTabPanel index={1} data-qa-tab="Glish">
+                <Glish
+                  token={token}
+                  linode={linode}
+                  refreshToken={refreshToken}
+                />
+              </SafeTabPanel>
+            )}
+          </TabPanels>
+        </Tabs>
+      )}
+    </React.Fragment>
   );
 };
 

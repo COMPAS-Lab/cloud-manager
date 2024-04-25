@@ -12,7 +12,6 @@ import ExternalLink from 'src/components/ExternalLink';
 import { GravatarByEmail } from 'src/components/GravatarByEmail';
 import HelpIcon from 'src/components/HelpIcon';
 import Link from 'src/components/Link';
-import Notice from 'src/components/Notice';
 import { SingleTextFieldForm } from 'src/components/SingleTextFieldForm/SingleTextFieldForm';
 import { useMutateProfile, useProfile } from 'src/queries/profile';
 import { ApplicationState } from 'src/store';
@@ -117,36 +116,39 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
 
   return (
     <Paper>
-      {/* -- Clanode Change -- */
-      hideGravatar ? null : (
-      <Box className={classes.profile} display="flex" style={{ gap: 16 }}>
-        <GravatarByEmail
-          email={profile?.email ?? ''}
-          className={classes.gravatar}
-        />
-        <div>
-          <Typography className={classes.profileTitle} variant="h2">
-            Profile photo
-            <HelpIcon
-              classes={{ popper: classes.tooltip }}
-              className={classes.helpIcon}
-              interactive
-              text={helpIconText}
+      {
+        /* -- Clanode Change -- */
+        hideGravatar ? null : (
+          <Box className={classes.profile} display="flex" style={{ gap: 16 }}>
+            <GravatarByEmail
+              email={profile?.email ?? ''}
+              className={classes.gravatar}
             />
-          </Typography>
-          <Typography className={classes.profileCopy} variant="body1">
-            Create, upload, and manage your globally recognized avatar from a
-            single place with Gravatar.
-          </Typography>
-          <ExternalLink
-            className={classes.addImageLink}
-            link="https://en.gravatar.com/"
-            text={'Manage photo'}
-            fixedIcon
-          />
-        </div>
-      </Box>)
-      /* -- Clanode Change End -- */}
+            <div>
+              <Typography className={classes.profileTitle} variant="h2">
+                Profile photo
+                <HelpIcon
+                  classes={{ popper: classes.tooltip }}
+                  className={classes.helpIcon}
+                  interactive
+                  text={helpIconText}
+                />
+              </Typography>
+              <Typography className={classes.profileCopy} variant="body1">
+                Create, upload, and manage your globally recognized avatar from
+                a single place with Gravatar.
+              </Typography>
+              <ExternalLink
+                className={classes.addImageLink}
+                link="https://en.gravatar.com/"
+                text={'Manage photo'}
+                fixedIcon
+              />
+            </div>
+          </Box>
+        )
+        /* -- Clanode Change End -- */
+      }
       <SingleTextFieldForm
         key={usernameResetToken}
         label="Username"
@@ -188,14 +190,16 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
         inputRef={emailRef}
         type="email"
       />
-      {/* -- Clanode Change -- */
-      hideTimezone ? null : (
-        <>
-          <Divider spacingTop={24} spacingBottom={16} />
-          <TimezoneForm loggedInAsCustomer={loggedInAsCustomer} /> 
-        </>
-      )
-      /* -- Clanode Change End -- */}
+      {
+        /* -- Clanode Change -- */
+        hideTimezone ? null : (
+          <>
+            <Divider spacingTop={24} spacingBottom={16} />
+            <TimezoneForm loggedInAsCustomer={loggedInAsCustomer} />
+          </>
+        )
+        /* -- Clanode Change End -- */
+      }
     </Paper>
   );
 };

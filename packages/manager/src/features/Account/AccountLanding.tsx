@@ -9,14 +9,15 @@ import LandingHeader, {
 import SafeTabPanel from 'src/components/SafeTabPanel';
 import SuspenseLoader from 'src/components/SuspenseLoader';
 import TabLinkList from 'src/components/TabLinkList';
-import { useAccount } from 'src/queries/account';
+// import { useAccount } from 'src/queries/account';
 import Users from '../Users';
 import { useProfile } from 'src/queries/profile';
-import AccountLogins from './AccountLogins';
+// import AccountLogins from './AccountLogins';
 
-const Billing = React.lazy(
-  () => import('src/features/Billing')
-); /*
+const Billing = React.lazy(() => import('src/features/Billing'));
+
+/* -- Clanode Change -- */
+/*
 const EntityTransfersLanding = React.lazy(
   () => import('src/features/EntityTransfers/EntityTransfersLanding')
 );
@@ -25,18 +26,19 @@ const GlobalSettings = React.lazy(() => import('./GlobalSettings'));
 const MaintenanceLanding = React.lazy(
   () => import('./Maintenance/MaintenanceLanding')
 );
-*/ /* -- Clanode Change End -- */
-/* -- Clanode Change -- */ const AccountLanding: React.FC = () => {
+*/
+/* -- Clanode Change End -- */
+const AccountLanding: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
-  /* -- Clanode Change -- */
   const { data: profile } = useProfile();
-  const { data: account } = useAccount();
+  /* -- Clanode Change -- */
+  // const { data: account } = useAccount();
 
   // const grantData = getGrantData();
   // const accountAccessGrant = grantData?.global?.account_access;
   // const readOnlyAccountAccess = accountAccessGrant === 'read_only';
-  const isAkamaiAccount = account?.billing_source === 'akamai';
+  // const isAkamaiAccount = account?.billing_source === 'akamai';
   /* -- Clanode Change End -- */
 
   const tabs = [
@@ -138,7 +140,7 @@ const MaintenanceLanding = React.lazy(
             <SafeTabPanel index={++idx}>
               <Users isRestrictedUser={profile?.restricted || false} />
             </SafeTabPanel>
-            { /*
+            {/*
             <SafeTabPanel index={++idx}>
               <AccountLogins />
             </SafeTabPanel>
