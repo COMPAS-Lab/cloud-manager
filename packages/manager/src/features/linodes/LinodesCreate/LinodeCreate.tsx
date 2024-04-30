@@ -125,7 +125,7 @@ interface Props {
   backupsMonthlyPrice?: number | null;
   updateLinodeID: (id: number, diskSize?: number | undefined) => void;
   updateDiskSize: (size: number) => void;
-  label: string;
+  label: string | null;
   updateLabel: (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -221,6 +221,12 @@ export class LinodeCreate extends React.PureComponent<
           : 0,
       planKey: v4(),
     };
+
+    if (this.props.label) {
+      this.props.updateLabel({
+        target: { value: '' },
+      } as React.ChangeEvent<HTMLInputElement>);
+    }
   }
 
   mounted: boolean = false;
