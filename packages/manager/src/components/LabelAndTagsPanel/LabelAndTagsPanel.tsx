@@ -58,6 +58,11 @@ export class InfoPanel extends React.Component<CombinedProps> {
                 label: 'Label',
                 placeholder: 'Enter a label',
               })}
+              placeholder={
+                labelFieldProps && labelFieldProps.value === ''
+                  ? 'Enter a label'
+                  : (labelFieldProps?.value || '').toString()
+              }
               data-qa-label-input
             />
           </div>
