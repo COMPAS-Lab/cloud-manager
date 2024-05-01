@@ -88,8 +88,9 @@ export const CreateLinodeSchema = object({
   stackscript_data,
   booted: boolean().notRequired(),
   label: string()
+    .ensure()
+    .required('Linode Label is required')
     .transform((v) => (v === '' ? undefined : v))
-    .notRequired()
     .min(3, 'Label must contain between 3 and 32 characters.')
     .max(32, 'Label must contain between 3 and 32 characters.'),
   tags: array().of(string()).notRequired(),

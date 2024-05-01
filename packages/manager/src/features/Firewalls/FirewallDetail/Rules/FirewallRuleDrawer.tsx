@@ -409,7 +409,7 @@ const FirewallRuleForm: React.FC<FirewallRuleFormProps> = React.memo(
       return (
         addressOptions.find(
           (thisOption) => thisOption.value === values.addresses
-        ) || null
+        ) || { label: 'All IPv4', value: 'allIPv4' }
       );
     }, [values]);
 
