@@ -29,6 +29,7 @@ export interface Account {
   active_promotions: ActivePromotion[];
   capabilities: AccountCapability[];
   euuid: string;
+  non_recurring_balance?: number;
 }
 
 export type BillingSource = 'linode' | 'akamai';

@@ -6,7 +6,7 @@ import {
   Payment,
   TaxSummary,
 } from '@linode/api-v4/lib/account';
-import { pathOr } from 'ramda';
+// import { pathOr } from 'ramda';
 import formatDate from 'src/utilities/formatDate';
 
 /**
@@ -43,7 +43,7 @@ export const createPaymentsTable = (doc: JSPDF, payment: Payment) => {
     head: [['Description', 'Date', 'Amount']],
     body: [
       [
-        { content: 'Payment: Thank You' },
+        { content: payment.id },
         { content: formatDate(payment.date, { displayTime: true }) },
         { content: `$${Number(payment.usd).toFixed(2)}` },
       ],
@@ -75,46 +75,45 @@ export const createInvoiceItemsTable = (doc: JSPDF, items: InvoiceItem[]) => {
   autoTable(doc, {
     startY: 155,
     styles: {
-      lineWidth: 1,
+      lineWidth: 0,
     },
     headStyles: {
       fillColor: '#444444',
     },
-    head: [
-      [
-        'Description',
-        'From',
-        'To',
-        'Quantity',
-        'Unit Price',
-        'Amount',
-        'Tax',
-        'Total',
-      ],
-    ],
+    head: [['Description', 'From', 'To', 'Hours', 'Price', 'Total']],
     body: items.map((item) => {
       const [toDate, toTime] = formatDateForTable(item.to || '');
       const [fromDate, fromTime] = formatDateForTable(item.from || '');
       return [
         {
-          styles: { fontSize: 8, cellWidth: 85, overflow: 'linebreak' },
+          styles: { fontSize: 8, cellWidth: 150, overflow: 'linebreak' },
           content: formatDescription(item.label),
         },
         {
-          styles: { fontSize: 8, cellWidth: 50, overflow: 'linebreak' },
-          content: item.from ? `${fromDate}\n${fromTime}` : '',
+          styles: { fontSize: 8, cellWidth: 65, overflow: 'linebreak' },
+          content: item.from ? `${fromDate} ${fromTime}` : '',
         },
         {
-          styles: { fontSize: 8, cellWidth: 50, overflow: 'linebreak' },
-          content: item.to ? `${toDate}\n${toTime}` : '',
+          styles: { fontSize: 8, cellWidth: 65, overflow: 'linebreak' },
+          content: item.to ? `${toDate} ${toTime}` : '',
         },
         {
-          styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
+          styles: {
+            halign: 'center',
+            fontSize: 8,
+            cellWidth: 35,
+            overflow: 'linebreak',
+          },
           content: item.quantity || '',
         },
         {
-          styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
-          content: item.unit_price || '',
+          styles: {
+            halign: 'center',
+            fontSize: 8,
+            cellWidth: 35,
+            overflow: 'linebreak',
+          },
+          content: '$' + item.unit_price || '',
         },
         /**
          * We do number conversion here because some older invoice items
@@ -122,14 +121,14 @@ export const createInvoiceItemsTable = (doc: JSPDF, items: InvoiceItem[]) => {
          *
          * The API team will fix this in ARB-1607.
          */
-        {
-          styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
-          content: `$${Number(item.amount).toFixed(2)}`,
-        },
-        {
-          styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
-          content: `$${Number(item.tax).toFixed(2)}`,
-        },
+        // {
+        //   styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
+        //   content: `$${Number(item.amount).toFixed(2)}`,
+        // },
+        // {
+        //   styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
+        //   content: `$${Number(item.tax).toFixed(2)}`,
+        // },
         {
           styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
           content: `$${Number(item.total).toFixed(2)}`,
@@ -154,7 +153,13 @@ const getTaxSummaryBody = (taxSummary: TaxSummary[]) => {
 /**
  * Creates the totals table for Invoice PDF
  */
-export const createInvoiceTotalsTable = (doc: JSPDF, invoice: Invoice) => {
+export const createInvoiceTotalsTable = (
+  doc: JSPDF,
+  invoice: Invoice,
+  balance: number,
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  NRbalance: Number
+) => {
   autoTable(doc, {
     styles: {
       halign: 'right',
@@ -185,6 +190,8 @@ export const createInvoiceTotalsTable = (doc: JSPDF, invoice: Invoice) => {
       ...getTaxSummaryBody(invoice.tax_summary),
       ['Tax Subtotal (USD)', `$${Number(invoice.tax).toFixed(2)}`],
       [`Total (USD)`, `$${Number(invoice.total).toFixed(2)}`],
+      [`Monthly Credits Left (USD)`, `$${Number(balance).toFixed(2)}`],
+      [`Non-Expiring Credits Left(USD)`, `$${Number(NRbalance).toFixed(2)}`],
     ],
     willDrawCell: (data: CellHookData) => {
       const pageWidth = doc.internal.pageSize.width;
@@ -227,14 +234,16 @@ export const createFooter = (doc: JSPDF, font: string) => {
   });
 };
 
-const truncateLabel = (label: string) => {
-  return label.length > 20 ? `${label.substr(0, 20)}...` : label;
-};
+// const truncateLabel = (label: string) => {
+//   return label.length > 20 ? `${label.substr(0, 20)}...` : label;
+// };
 
 const formatDescription = (desc?: string) => {
   if (!desc) {
     return 'No Description';
   }
+
+  return desc;
 
   /**
    * The description will look one of three ways
@@ -249,43 +258,43 @@ const formatDescription = (desc?: string) => {
    *    Storage Volume - volume (1234) - 20 GB
    */
 
-  const isBackup = /^Backup/.test(desc);
-  const isVolume = /^Storage/.test(desc);
+  // const isBackup = /^Backup/.test(desc);
+  // const isVolume = /^Storage/.test(desc);
 
   /** create an array like ["Backup service", "Linode 2GB", "MyLinode (1234)"] */
-  const descChunks = desc ? desc.split(' - ') : [];
+  // const descChunks = desc ? desc.split(' - ') : [];
 
-  if (descChunks.length < 2) {
-    /** in this case, it's probably a manual payment from admin */
-    // return desc;
-    return truncateLabel(desc);
-  }
+  // if (descChunks.length < 2) {
+  //   /** in this case, it's probably a manual payment from admin */
+  //   // return desc;
+  //   return truncateLabel(desc);
+  // }
 
-  if (isVolume) {
-    const [volLabel, volID] = descChunks[1].split(' ');
-    return `${descChunks[0]}\r\n${truncateLabel(volLabel)} ${pathOr(
-      '',
-      [2],
-      descChunks
-    )}\r\n${volID}`;
-  }
+  // if (isVolume) {
+  //   const [volLabel, volID] = descChunks[1].split(' ');
+  //   return `${descChunks[0]}\r\n${truncateLabel(volLabel)} ${pathOr(
+  //     '',
+  //     [2],
+  //     descChunks
+  //   )}\r\n${volID}`;
+  // }
 
-  if (isBackup) {
-    const base = `${descChunks[0]}\r\n${descChunks[1]}`;
-    if (descChunks.length >= 3) {
-      /**
-       * Backup labels can take 2 forms:
-       * Backup Service - Linode 4GB - my_label (12686081)
-       * Backup Service - Linode 8GB
-       * If we arrive here, we're dealing with the former.
-       */
-      const [backupLabel, backupID] = descChunks[2].split(' ');
-      return `${base}\r\n${truncateLabel(backupLabel)}\r\n${backupID}`;
-    }
-    return base;
-  }
+  // if (isBackup) {
+  //   const base = `${descChunks[0]}\r\n${descChunks[1]}`;
+  //   if (descChunks.length >= 3) {
+  //     /**
+  //      * Backup labels can take 2 forms:
+  //      * Backup Service - Linode 4GB - my_label (12686081)
+  //      * Backup Service - Linode 8GB
+  //      * If we arrive here, we're dealing with the former.
+  //      */
+  //     const [backupLabel, backupID] = descChunks[2].split(' ');
+  //     return `${base}\r\n${truncateLabel(backupLabel)}\r\n${backupID}`;
+  //   }
+  //   return base;
+  // }
 
-  const [entityLabel, entityID] = descChunks[1].split(' ');
-  const cleanedType = descChunks[0].replace(/\(pending upgrade\)/, '');
-  return `${cleanedType}\r\n${truncateLabel(entityLabel)}\r\n${entityID}`;
+  // const [entityLabel, entityID] = descChunks[1].split(' ');
+  // const cleanedType = descChunks[0].replace(/\(pending upgrade\)/, '');
+  // return `${cleanedType}\r\n${truncateLabel(entityLabel)}\r\n${entityID}`;
 };
