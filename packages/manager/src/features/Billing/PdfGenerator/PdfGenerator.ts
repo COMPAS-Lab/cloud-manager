@@ -137,7 +137,7 @@ export const printInvoice = (
   taxBanner: FlagSet['taxBanner']
 ): PdfResult => {
   try {
-    const itemsPerPage = 12;
+    const itemsPerPage = 25;
     const date = formatDate(invoice.date, { displayTime: true });
     /* -- Clanode Change -- */
     // const invoiceId = invoice.id;
@@ -207,7 +207,14 @@ export const printInvoice = (
       }
     });
 
-    createInvoiceTotalsTable(doc, invoice);
+    createInvoiceTotalsTable(
+      doc,
+      invoice,
+      account.balance,
+      typeof account.non_recurring_balance === 'undefined'
+        ? 0
+        : account.non_recurring_balance
+    );
     /* -- Clanode Change -- */
     // createFooter(doc, baseFont);
     /* -- Clanode Change End -- */
