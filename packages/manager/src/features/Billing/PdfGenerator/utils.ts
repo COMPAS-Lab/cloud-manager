@@ -113,7 +113,7 @@ export const createInvoiceItemsTable = (doc: JSPDF, items: InvoiceItem[]) => {
             cellWidth: 35,
             overflow: 'linebreak',
           },
-          content: item.unit_price || '',
+          content: '$' + item.unit_price || '',
         },
         /**
          * We do number conversion here because some older invoice items
