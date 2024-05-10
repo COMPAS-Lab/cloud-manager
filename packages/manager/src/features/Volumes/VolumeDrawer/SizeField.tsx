@@ -54,7 +54,7 @@ const SizeField: React.FC<CombinedProps> = (props) => {
   } = props;
 
   const helperText = resize
-    ? `This volume can range from ${resize} GB to ${MAX_VOLUME_SIZE} GB in size.`
+    ? `This volume can range from ${resize} GiB to ${MAX_VOLUME_SIZE} GiB in size.`
     : undefined;
   /* -- Clanode Change -- */
   const volumeType = hardwareType
@@ -80,7 +80,7 @@ const SizeField: React.FC<CombinedProps> = (props) => {
         errorText={error}
         helperText={helperText}
         InputProps={{
-          endAdornment: <InputAdornment position="end"> GB </InputAdornment>,
+          endAdornment: <InputAdornment position="end"> GiB </InputAdornment>,
         }}
         onBlur={onBlur}
         onChange={onChange}
@@ -91,7 +91,7 @@ const SizeField: React.FC<CombinedProps> = (props) => {
       />
       <FormHelperText>
         {resize || isFromLinode ? (
-          'The size of the new volume in GB.'
+          'The size of the new volume in GiB.'
         ) : (
           <span className={classes.createVolumeText}>${price}/month</span>
         )}
