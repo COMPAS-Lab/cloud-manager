@@ -161,7 +161,7 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
         </TableCell>
       ) : null  */
       /* -- Clanode Change End -- */}
-      <TableCell data-qa-volume-size>{size} GB</TableCell>
+      <TableCell data-qa-volume-size>{size} GiB</TableCell>
       {!isVolumesLanding ? (
         <Hidden xsDown>
           <TableCell className={classes.volumePath} data-qa-fs-path>

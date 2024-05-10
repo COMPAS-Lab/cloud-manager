@@ -96,7 +96,7 @@ export const MAX_VOLUME_SIZE = 10240;
 
 /* -- Clanode Change -- */
 export const MIN_VOLUME_SIZE = 1;
-export const CREATE_VOLUME_DESCRIPTION = `A single Volume can range from ${MIN_VOLUME_SIZE} to ${MAX_VOLUME_SIZE} GB in size.`;
+export const CREATE_VOLUME_DESCRIPTION = `A single Volume can range from ${MIN_VOLUME_SIZE} to ${MAX_VOLUME_SIZE} GiB in size.`;
 /* -- Clanode Change End -- */
 /**
  * The lowest interval at which to make an Events request. This is later multiplied by the pollIteration
