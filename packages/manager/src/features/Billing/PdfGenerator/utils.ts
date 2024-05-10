@@ -14,6 +14,12 @@ import formatDate from 'src/utilities/formatDate';
  */
 export const pageMargin = 30;
 
+const formatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+});
+
 const formatDateForTable = (date: string): [string, string] => {
   if (!date) {
     // Probably the to or from value is null (this is the case with credits/promos)
@@ -45,7 +51,7 @@ export const createPaymentsTable = (doc: JSPDF, payment: Payment) => {
       [
         { content: payment.id },
         { content: formatDate(payment.date, { displayTime: true }) },
-        { content: `$${Number(payment.usd).toFixed(2)}` },
+        { content: `${formatter.format(Math.abs(Number(payment.usd)))}` },
       ],
     ],
   });
@@ -63,7 +69,10 @@ export const createPaymentsTotalsTable = (doc: JSPDF, payment: Payment) => {
       fillColor: '#444444',
     },
     body: [
-      ['Payment Total (USD)        ', `$${Number(payment.usd).toFixed(2)}`],
+      [
+        'Payment Total (USD)        ',
+        `${formatter.format(Math.abs(Number(payment.usd)))}`,
+      ],
     ],
   });
 };
@@ -131,7 +140,7 @@ export const createInvoiceItemsTable = (doc: JSPDF, items: InvoiceItem[]) => {
         // },
         {
           styles: { halign: 'center', fontSize: 8, overflow: 'linebreak' },
-          content: `$${Number(item.total).toFixed(2)}`,
+          content: `${formatter.format(Math.abs(Number(item.total)))}`,
         },
       ];
     }),
@@ -186,12 +195,21 @@ export const createInvoiceTotalsTable = (
     pageBreak: 'avoid',
     rowPageBreak: 'avoid',
     body: [
-      ['Subtotal (USD)', `$${Number(invoice.subtotal).toFixed(2)}`],
+      [
+        'Subtotal (USD)',
+        `${formatter.format(Math.abs(Number(invoice.subtotal)))}`,
+      ],
       ...getTaxSummaryBody(invoice.tax_summary),
       ['Tax Subtotal (USD)', `$${Number(invoice.tax).toFixed(2)}`],
-      [`Total (USD)`, `$${Number(invoice.total).toFixed(2)}`],
-      [`Monthly Credits Left (USD)`, `$${Number(balance).toFixed(2)}`],
-      [`Non-Expiring Credits Left(USD)`, `$${Number(NRbalance).toFixed(2)}`],
+      [`Total (USD)`, `${formatter.format(Math.abs(Number(invoice.total)))}`],
+      [
+        `Monthly Credits Left (USD)`,
+        `${formatter.format(Math.abs(Number(balance)))}`,
+      ],
+      [
+        `Non-Expiring Credits Left (USD)`,
+        `${formatter.format(Math.abs(Number(NRbalance)))}`,
+      ],
     ],
     willDrawCell: (data: CellHookData) => {
       const pageWidth = doc.internal.pageSize.width;
