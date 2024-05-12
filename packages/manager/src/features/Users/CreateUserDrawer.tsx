@@ -71,7 +71,7 @@ class CreateUserDrawer extends React.Component<CombinedProps, State> {
       .catch((errResponse) => {
         const errors = getAPIErrorOrDefault(
           errResponse,
-          'Error creating user.'
+          'Please contact Administrator, if you are unable to add new user'
         );
         this.setState({ errors, submitting: false });
       });
