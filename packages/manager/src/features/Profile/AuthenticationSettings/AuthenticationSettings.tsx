@@ -96,20 +96,11 @@ export const AuthenticationSettings: React.FC = () => {
             <>
               <Divider spacingTop={22} spacingBottom={16} />
               <TrustedDevices />
-              {ipAllowlisting ? (
-                <SecuritySettings
-                  updateProfile={updateProfile}
-                  onSuccess={onAllowlistingDisable}
-                  updateProfileError={profileUpdateError || undefined}
-                  ipAllowlistingEnabled={ipAllowlisting}
-                  data-qa-allowlisting-form
-                />
-              ) : null}
             </>
           ) : null}
         </Paper>
       ) : null}
-    </div>
+    </>
   );
 };
 

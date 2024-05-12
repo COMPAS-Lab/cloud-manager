@@ -71,7 +71,7 @@ const LinodeDetailHeader: React.FC<CombinedProps> = (props) => {
     path: '/linodes/:linodeId/:subpath?',
   });
 
-  const matchedLinodeId = Number(match?.params?.linodeId ?? 0);
+  const matchedLinodeId = (match?.params?.linodeId as any) ?? 0;
 
   const notifications = useNotifications();
 

@@ -474,6 +474,8 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
     />
   );
 
+  const flag = false;
+
   return (
     <React.Fragment>
       <DocumentTitleSegment segment="Images" />
@@ -547,73 +549,76 @@ export const ImagesLanding: React.FC<CombinedProps> = () => {
           eventCategory="Custom Images Table"
         />
       </Paper>
-      {/* <Paper className={classes.imageTable}>
-        <div className={classes.imageTableHeader}>
-          <Typography variant="h3">Recovery Images</Typography>
-          <Typography className={classes.imageTableSubheader}>
-            These are images we automatically capture when Linode disks are
-            deleted. They will be deleted after the indicated expiration date.
-          </Typography>
-        </div>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableSortCell
-                active={automaticImagesOrderBy === 'label'}
-                direction={automaticImagesOrder}
-                label="label"
-                handleClick={handleAutomaticImagesOrderChange}
-              >
-                Image
-              </TableSortCell>
-              <Hidden smDown>
-                <TableCell>Status</TableCell>
-              </Hidden>
-              <Hidden smDown>
+
+      {flag ? (
+        <Paper className={classes.imageTable}>
+          <div className={classes.imageTableHeader}>
+            <Typography variant="h3">Recovery Images</Typography>
+            <Typography className={classes.imageTableSubheader}>
+              These are images we automatically capture when Linode disks are
+              deleted. They will be deleted after the indicated expiration date.
+            </Typography>
+          </div>
+          <Table>
+            <TableHead>
+              <TableRow>
                 <TableSortCell
-                  active={automaticImagesOrderBy === 'created'}
+                  active={automaticImagesOrderBy === 'label'}
                   direction={automaticImagesOrder}
-                  label="created"
+                  label="label"
                   handleClick={handleAutomaticImagesOrderChange}
                 >
-                  Created
+                  Image
                 </TableSortCell>
-              </Hidden>
-              <TableSortCell
-                active={automaticImagesOrderBy === 'size'}
-                direction={automaticImagesOrder}
-                label="size"
-                handleClick={handleAutomaticImagesOrderChange}
-              >
-                Size
-              </TableSortCell>
-              <Hidden smDown>
-                <TableCell>Expires</TableCell>
-              </Hidden>
-              <TableCell></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {automaticImagesData.length > 0
-              ? automaticImagesData.map((automaticImage) => (
-                  <ImageRow
-                    key={automaticImage.id}
-                    {...automaticImage}
-                    {...handlers}
-                  />
-                ))
-              : noAutomaticImages}
-          </TableBody>
-        </Table>
-        <PaginationFooter
-          count={automaticImages?.results ?? 0}
-          handlePageChange={paginationForAutomaticImages.handlePageChange}
-          handleSizeChange={paginationForAutomaticImages.handlePageSizeChange}
-          page={paginationForAutomaticImages.page}
-          pageSize={paginationForAutomaticImages.pageSize}
-          eventCategory="Recovery Images Table"
-        />
-      </Paper> */}
+                <Hidden smDown>
+                  <TableCell>Status</TableCell>
+                </Hidden>
+                <Hidden smDown>
+                  <TableSortCell
+                    active={automaticImagesOrderBy === 'created'}
+                    direction={automaticImagesOrder}
+                    label="created"
+                    handleClick={handleAutomaticImagesOrderChange}
+                  >
+                    Created
+                  </TableSortCell>
+                </Hidden>
+                <TableSortCell
+                  active={automaticImagesOrderBy === 'size'}
+                  direction={automaticImagesOrder}
+                  label="size"
+                  handleClick={handleAutomaticImagesOrderChange}
+                >
+                  Size
+                </TableSortCell>
+                <Hidden smDown>
+                  <TableCell>Expires</TableCell>
+                </Hidden>
+                <TableCell></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {automaticImagesData.length > 0
+                ? automaticImagesData.map((automaticImage) => (
+                    <ImageRow
+                      key={automaticImage.id}
+                      {...automaticImage}
+                      {...handlers}
+                    />
+                  ))
+                : noAutomaticImages}
+            </TableBody>
+          </Table>
+          <PaginationFooter
+            count={automaticImages?.results ?? 0}
+            handlePageChange={paginationForAutomaticImages.handlePageChange}
+            handleSizeChange={paginationForAutomaticImages.handlePageSizeChange}
+            page={paginationForAutomaticImages.page}
+            pageSize={paginationForAutomaticImages.pageSize}
+            eventCategory="Recovery Images Table"
+          />
+        </Paper>
+      ) : null}
       {renderImageDrawer()}
       <ConfirmationDialog
         open={dialog.open}
