@@ -242,9 +242,9 @@ export const createFooter = (doc: JSPDF, font: string) => {
   doc.setFont(font);
 
   const footerText =
-    `249 Arch St. - Philadelphia, PA 19106\r\n` +
-    `USA\r\n` +
-    'P:855-4-LINODE (855-454-6633) F:609-380-7200 W:https://www.linode.com\r\n';
+    `COMPAS Lab, Department of Computer Science\r\n` +
+    `Stony Brook University\r\n` +
+    'https://clanode.compas.cs.stonybrook.edu/\r\n';
 
   doc.text(footerText, left, top, {
     charSpace: 0.75,
