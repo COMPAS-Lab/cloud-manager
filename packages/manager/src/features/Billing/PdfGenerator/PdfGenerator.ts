@@ -200,7 +200,7 @@ export const printInvoice = (
 
       createInvoiceItemsTable(doc, itemsChunk);
       /* -- Clanode Change -- */
-      //createFooter(doc, baseFont);
+      createFooter(doc, baseFont);
       /* -- Clanode Change End -- */
       if (index < itemsChunks.length - 1) {
         doc.addPage();
@@ -216,7 +216,7 @@ export const printInvoice = (
         : account.non_recurring_balance
     );
     /* -- Clanode Change -- */
-    // createFooter(doc, baseFont);
+    createFooter(doc, baseFont);
     /* -- Clanode Change End -- */
 
     doc.save(`invoice-${date}.pdf`);
