@@ -95,9 +95,9 @@ export const allocateIp = (payload: any) =>
  * @param payload.assignments { Object[] } The ID of the Region in which these
  * assignments are to take place. All IPs and Linodes must exist in this Region.
  */
-export const assignAddresses = (payload: IPAssignmentPayload) =>
+export const assignAddresses = (payload: IPAssignmentPayload, linodeId: any) =>
   Request<{}>(
-    setURL(`${API_ROOT}/networking/ips/assign`),
+    setURL(`${API_ROOT}/linode/instances/${linodeId}/iptransfer`),
     setMethod('POST'),
     setData(payload, assignAddressesSchema)
   );

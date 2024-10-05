@@ -144,11 +144,12 @@ const LinodeNetworkingIPTransferPanel: React.FC<CombinedProps> = (props) => {
     linodeRegion,
     open,
     onClose,
+    refreshIPs,
     readOnly,
   } = props;
   const classes = useStyles();
   const [ips, setIPs] = React.useState<IPRowState>(
-    props.ipAddresses.reduce(
+    ipAddresses.reduce(
       (acc, ip) => ({
         ...acc,
         [ip]: defaultState(ip, linodeID),
@@ -217,13 +218,13 @@ const LinodeNetworkingIPTransferPanel: React.FC<CombinedProps> = (props) => {
       when(
         () => isSwapping(mode),
         compose(
-          setSelectedIP(ip, firstLinode.ipv4[0]),
+          setSelectedIP(ip, firstLinode.publicIPs![0]),
           updateSelectedLinodesIPs(ip, () => {
             const linodeIPv6Ranges = getLinodeIPv6Ranges(
               ipv6RangesData?.data,
               firstLinode.ipv6
             );
-            return [...firstLinode.ipv4, ...linodeIPv6Ranges];
+            return [...firstLinode.publicIPs!, ...linodeIPv6Ranges];
           })
         )
       )
@@ -245,22 +246,22 @@ const LinodeNetworkingIPTransferPanel: React.FC<CombinedProps> = (props) => {
         compose(
           /** We need to find and return the newly selected Linode's IPs. */
           updateSelectedLinodesIPs(ip, () => {
-            const linode = linodes.find((l) => l.id === Number(e.value));
+            const linode = linodes.find((l) => l.id === e.value);
             if (linode) {
               const linodeIPv6Ranges = getLinodeIPv6Ranges(
                 ipv6RangesData?.data,
                 linode?.ipv6
               );
-              return [...linode.ipv4, ...linodeIPv6Ranges];
+              return [...linode.publicIPs!, ...linodeIPv6Ranges];
             }
             return [];
           }),
 
           /** We need to find the selected Linode's IPs and return the first. */
           updateSelectedIP(ip, () => {
-            const linode = linodes.find((l) => l.id === Number(e.value));
-            if (linode) {
-              return linode.ipv4[0];
+            const linode = linodes.find((l) => l.id === e.value);
+            if (linode && linode.publicIPs!.length > 0) {
+              return linode.publicIPs![0];
             }
             return undefined;
           })
@@ -325,8 +326,12 @@ const LinodeNetworkingIPTransferPanel: React.FC<CombinedProps> = (props) => {
     );
   };
 
-  const linodeSelect = ({ sourceIP, selectedLinodeID }: Move) => {
-    const linodeList = linodes.map((l) => {
+  const linodeSelect = ({ mode, sourceIP, selectedLinodeID }: Move) => {
+    const filteredLinodes = linodes.filter(
+      (l) => !(isSwapping(mode) && l.publicIPs!.length <= 0)
+    );
+
+    const linodeList = filteredLinodes.map((l) => {
       return { label: l.label, value: l.id };
     });
 
@@ -428,16 +433,34 @@ const LinodeNetworkingIPTransferPanel: React.FC<CombinedProps> = (props) => {
     setError(undefined);
     setSuccessMessage('');
 
-    assignAddresses(createRequestData(ips, props.linodeRegion))
-      .then(() => {
+    // if (isNoneState(ipState)) {
+    //   setError("Please select an Action before clicking Save");
+    //   setSubmitting(false);
+    //   return;
+    // }
+
+    const requestDataObject = createRequestData(ips, linodeRegion);
+    if (requestDataObject.assignments.length == 0) {
+      setSubmitting(false);
+      setError([
+        {
+          reason: 'Please select an Action',
+        },
+      ]);
+      return;
+    }
+
+    assignAddresses(createRequestData(ips, linodeRegion), linodeID)
+      .then(async () => {
         // Refresh Linodes in the region in which the changes were made.
-        return Promise.all(props.refreshIPs())
+        setSubmitting(false);
+        Promise.all(refreshIPs())
           .then(() => {
-            setSubmitting(false);
             setError(undefined);
             setSuccessMessage('IP transferred successfully.');
             // get updated route_target for ipv6 ranges
             queryClient.invalidateQueries(ipv6RangeQueryKey);
+            onClose();
           })
           .catch((err) => {
             setError(
@@ -446,7 +469,6 @@ const LinodeNetworkingIPTransferPanel: React.FC<CombinedProps> = (props) => {
                 'Unable to refresh IPs. Please reload the screen.'
               )
             );
-            setSubmitting(false);
           });
       })
       .catch((err) => {

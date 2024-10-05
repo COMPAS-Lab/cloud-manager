@@ -46,7 +46,7 @@ export const useLinodesByIdQuery = (
   return useQuery<LinodeData, APIError[]>(
     [queryKey, params, filter],
     () => getLinodesRequest(params, filter),
-    { ...queryPresets.longLived, enabled }
+    { ...queryPresets.shortLived, enabled }
   );
 };
 
