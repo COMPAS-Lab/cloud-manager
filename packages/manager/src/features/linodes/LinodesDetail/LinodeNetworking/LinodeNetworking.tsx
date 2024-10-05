@@ -212,7 +212,6 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
     const refreshIPv4 = getLinodeIPs(this.props.linode.id)
       .then((ips) => {
         const hasIPv6Range = ips.ipv6 && ips.ipv6.global.length > 0;
-
         const shouldSetIPv6Loading = this.state.initialLoading;
         this.setState({ linodeIPs: ips, initialLoading: false });
         // If this user is assigned an IPv6 range in the DC this Linode resides
@@ -606,11 +605,11 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
     const publicIPs = uniq<string>(
       pathOr([], ['ipv4', 'public'], linodeIPs).map((i: IPAddress) => i.address)
     );
-    const privateIPs = uniq<string>(
-      pathOr([], ['ipv4', 'private'], linodeIPs).map(
-        (i: IPAddress) => i.address
-      )
-    );
+    // const privateIPs = uniq<string>(
+    //   pathOr([], ['ipv4', 'private'], linodeIPs).map(
+    //     (i: IPAddress) => i.address
+    //   )
+    // );
     const sharedIPs = uniq<string>(
       pathOr([], ['ipv4', 'shared'], linodeIPs).map((i: IPAddress) => i.address)
     );
@@ -714,7 +713,7 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
           refreshIPs={this.refreshIPs}
           ipAddresses={[
             ...publicIPs,
-            ...privateIPs,
+            // ...privateIPs,
             ...this.state.staticRanges.map(
               (range) => `${range.range}/${range.prefix}`
             ),
@@ -782,15 +781,15 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
           isSecondary
           // @todo: Clean these props when EntityHeader is refactored.
           body={
-            <Hidden mdUp>
-              <div style={{ padding: 5 }}>
+            <div style={{ padding: 5 }}>
+              <Hidden mdUp>
+                <Button
+                  onClick={this.openTransferDialog}
+                  buttonType="secondary"
+                >
+                  IP Transfer
+                </Button>
                 <Hidden xsDown>
-                  <Button
-                    onClick={this.openTransferDialog}
-                    buttonType="secondary"
-                  >
-                    IP Transfer
-                  </Button>
                   <Button
                     style={{ marginRight: 16 }}
                     onClick={this.openSharingDialog}
@@ -803,17 +802,13 @@ class LinodeNetworking extends React.Component<CombinedProps, State> {
                   label="Add an IP Address"
                   onClick={this.openAddIPDrawer}
                 />
-              </div>
-            </Hidden>
+              </Hidden>
+            </div>
           }
           actions={
             <Hidden smDown>
               <div style={{ padding: 5 }}>
                 <Button
-                  style={{
-                    /* -- Clanode Change -- */ display:
-                      'none' /* -- Clanode Change End -- */,
-                  }}
                   onClick={this.openTransferDialog}
                   buttonType="secondary"
                 >

@@ -29,6 +29,13 @@ export interface Linode {
   specs: LinodeSpecs;
   watchdog_enabled: boolean;
   tags: string[];
+  publicIPs?: string[];
+  privateIPs?: string[];
+}
+
+export interface ipv4 {
+  public: string[];
+  private: string[];
 }
 
 export interface LinodeAlerts {
