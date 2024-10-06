@@ -15,7 +15,7 @@ export const useLinodeFirewalls = (linodeID: number) =>
   useQuery<ResourcePage<Firewall>, APIError[]>(
     [queryKey, linodeID],
     () => getLinodeFirewalls(linodeID),
-    queryPresets.oneTimeFetch
+    queryPresets.shortLived
   );
 
 /* -- Clanode Change -- */

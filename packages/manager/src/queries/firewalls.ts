@@ -79,10 +79,15 @@ export const updateFirewallRules = (id: number, rules: FirewallRules) => {
   return _updateFirewallRules(id, rules).then((updatedRules) => {
     queryClient.setQueryData<ItemsByID<Firewall>>(
       queryKey,
-      (oldData: ItemsByID<Firewall>) => ({
-        ...oldData,
-        [id]: { ...oldData[id], rules: updatedRules },
-      })
+      (oldData: ItemsByID<Firewall>) => {
+        if (oldData && oldData[id]) {
+          return {
+            ...oldData,
+            [id]: { ...oldData[id], rules: updatedRules },
+          };
+        }
+        return oldData;
+      }
     );
     return updatedRules;
   });

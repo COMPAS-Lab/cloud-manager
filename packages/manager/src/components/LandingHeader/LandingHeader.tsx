@@ -18,6 +18,7 @@ export interface Props extends Omit<HeaderProps, 'actions'> {
   body?: JSX.Element;
   docsLink?: string;
   onAddNew?: () => void;
+  createRules?: (type: string) => void;
   entity?: string;
   createButtonWidth?: number;
   createButtonText?: string;
@@ -38,6 +39,7 @@ export const LandingHeader: React.FC<Props> = (props) => {
   const {
     docsLink,
     onAddNew,
+    createRules,
     entity,
     extraActions,
     createButtonWidth,
@@ -66,6 +68,36 @@ export const LandingHeader: React.FC<Props> = (props) => {
             {createButtonText ?? `Create ${entity}`}
           </Button>
         )}
+
+        {createRules && (
+          <>
+            <Button
+              buttonType="primary"
+              className={classes.button}
+              loading={loading}
+              onClick={() => {
+                createRules('inbound');
+              }}
+              style={{ width: createButtonWidth ?? defaultCreateButtonWidth }}
+              disabled={disabledCreateButton}
+            >
+              Add an Inbound Rule
+            </Button>
+
+            <Button
+              buttonType="primary"
+              className={classes.button}
+              loading={loading}
+              onClick={() => {
+                createRules('outbound');
+              }}
+              style={{ width: createButtonWidth ?? defaultCreateButtonWidth }}
+              disabled={disabledCreateButton}
+            >
+              Add an Outbound Rule
+            </Button>
+          </>
+        )}
       </>
     ),
     [
@@ -83,7 +115,7 @@ export const LandingHeader: React.FC<Props> = (props) => {
   return (
     <EntityHeader
       isLanding
-      actions={extraActions || onAddNew ? actions : undefined}
+      actions={extraActions || onAddNew || createRules ? actions : undefined}
       docsLink={docsLink}
       breadcrumbProps={breadcrumbProps}
       {...props}
