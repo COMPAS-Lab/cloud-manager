@@ -15,8 +15,6 @@ import FirewallRuleDrawer, {
 import {
   Category,
   parseFirewallRuleError,
-  // parseFirewallRuleError,
-  // parseFirewallRuleError
 } from 'src/features/Firewalls/FirewallDetail/Rules/shared';
 import {
   CreateFirewallPayload,
@@ -25,10 +23,7 @@ import {
   FirewallRuleType,
 } from '@linode/api-v4/lib/firewalls/types';
 import { stripExtendedFields } from '../../../Firewalls/FirewallDetail/Rules/firewallRuleEditor';
-// import { updateFirewallRules } from 'src/queries/firewalls';
 import { APIError } from '@linode/api-v4/lib/types';
-// import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-// import { resetEventsPolling } from 'src/eventsPolling';
 import Notice from 'src/components/Notice';
 import { updateFirewallRules, useCreateFirewall } from 'src/queries/firewalls';
 import { queryKey, useProfile } from 'src/queries/profile';
