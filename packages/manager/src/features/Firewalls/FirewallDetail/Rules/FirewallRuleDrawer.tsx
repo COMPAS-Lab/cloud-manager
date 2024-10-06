@@ -61,6 +61,7 @@ interface Props {
   category: Category;
   mode: Mode;
   isOpen: boolean;
+  loading?: boolean;
   onClose: () => void;
   onSubmit: (category: 'inbound' | 'outbound', rule: FirewallRuleType) => void;
   ruleToModify?: ExtendedFirewallRule;
@@ -79,7 +80,7 @@ interface Form {
 export type CombinedProps = Props;
 
 const FirewallRuleDrawer: React.FC<CombinedProps> = (props) => {
-  const { isOpen, onClose, category, mode, ruleToModify } = props;
+  const { isOpen, onClose, category, mode, ruleToModify, loading } = props;
 
   // Custom IPs are tracked separately from the form. The <MultipleIPs />
   // component consumes this state. We use this on form submission if the
@@ -104,6 +105,12 @@ const FirewallRuleDrawer: React.FC<CombinedProps> = (props) => {
       setIPs([{ address: '' }]);
     }
   }, [mode, isOpen, ruleToModify]);
+
+  React.useEffect(() => {
+    if (loading === false) {
+      onClose();
+    }
+  }, [loading]);
 
   const title =
     mode === 'create' ? `Add an ${capitalize(category)} Rule` : 'Edit Rule';
@@ -156,7 +163,7 @@ const FirewallRuleDrawer: React.FC<CombinedProps> = (props) => {
     }
 
     props.onSubmit(category, payload);
-    onClose();
+    // onClose();
   };
 
   return (
@@ -178,6 +185,7 @@ const FirewallRuleDrawer: React.FC<CombinedProps> = (props) => {
               presetPorts={presetPorts}
               setPresetPorts={setPresetPorts}
               mode={mode}
+              loading={loading ? loading : false}
               ruleErrors={ruleToModify?.errors}
               {...formikProps}
             />
@@ -214,6 +222,7 @@ interface FirewallRuleFormProps extends FormikProps<Form> {
   addressesLabel: string;
   mode: Mode;
   category: Category;
+  loading?: boolean;
   ruleErrors?: FirewallRuleError[];
 }
 
@@ -243,6 +252,7 @@ const FirewallRuleForm: React.FC<FirewallRuleFormProps> = React.memo(
       setFieldError,
       touched,
       category,
+      loading,
     } = props;
 
     const hasCustomInput = presetPorts.some(
@@ -553,6 +563,7 @@ const FirewallRuleForm: React.FC<FirewallRuleFormProps> = React.memo(
             buttonType="primary"
             onClick={() => handleSubmit()}
             disabled={!formTouched}
+            loading={loading ? loading : false}
             data-qa-submit
           >
             {mode === 'create' ? 'Add Rule' : 'Add Changes'}
