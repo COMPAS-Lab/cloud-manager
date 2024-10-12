@@ -210,6 +210,7 @@ const LinodeFirewallsLanding: React.FC<CombinedProps> = (props) => {
         devices: {
           linodes: [linodeId],
         },
+        addDefaultRules: false,
       });
     }
 

@@ -57,6 +57,7 @@ export interface CreateFirewallPayload {
     linodes?: number[];
     nodebalancers?: number[];
   };
+  addDefaultRules?: boolean;
 }
 
 export interface UpdateFirewallPayload {
