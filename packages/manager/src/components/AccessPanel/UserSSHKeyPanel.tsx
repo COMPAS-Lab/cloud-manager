@@ -101,10 +101,11 @@ const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
     setSelectedSSHKey(key);
   };
   /* -- Clanode Change End -- */
-  const handleKeyAddSuccess = () => {
+  const handleKeyAddSuccess = (key: string) => {
     onKeyAddSuccess();
     setSuccess(true);
     setDrawerOpen(false);
+    setSelectedSSHKey(key);
   };
 
   const handleOpenDrawer = () => {
@@ -115,6 +116,12 @@ const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
   const usersWithKeys = users
     ? users.filter((thisUser) => thisUser.keys.length > 0)
     : [];
+
+  React.useEffect(() => {
+    usersWithKeys
+      .find((user) => user.keys[0] === selectedSSHKey)
+      ?.onSSHKeyChange({} as React.ChangeEvent<HTMLInputElement>, true);
+  }, [usersWithKeys]);
 
   return (
     <React.Fragment>

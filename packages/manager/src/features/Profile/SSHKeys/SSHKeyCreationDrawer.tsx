@@ -11,7 +11,7 @@ import getAPIErrorFor from 'src/utilities/getAPIErrorFor';
 
 interface Props {
   open: boolean;
-  onSuccess: () => void;
+  onSuccess: (key: string) => void;
   onCancel: () => void;
 }
 
@@ -126,7 +126,7 @@ export class SSHKeyCreationDrawer extends React.PureComponent<
     createSSHKey({ label, ssh_key: sshKey })
       .then((_) => {
         this.setState({ submitting: false });
-        this.props.onSuccess();
+        this.props.onSuccess(label);
       })
       .catch((error) => {
         this.setState({
