@@ -1,71 +1,41 @@
-import { Linode } from '@linode/api-v4/lib/linodes';
-import { APIError } from '@linode/api-v4/lib/types';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
-import { isEmpty } from 'ramda';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { connect, MapDispatchToProps } from 'react-redux';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import { AnyAction } from 'redux';
-import { ThunkDispatch } from 'redux-thunk';
-import CircleProgress from 'src/components/CircleProgress';
-import ErrorState from 'src/components/ErrorState';
-import TagImportDrawer from 'src/features/TagImport';
-import { useReduxLoad } from 'src/hooks/useReduxLoad';
-import { ApplicationState } from 'src/store';
-import { handleOpen } from 'src/store/backupDrawer';
-import getEntitiesWithGroupsToImport, {
-  GroupedEntitiesForImport,
-} from 'src/store/selectors/getEntitiesWithGroupsToImport';
-import { getLinodesWithoutBackups } from 'src/store/selectors/getLinodesWithBackups';
-import { openDrawer as openGroupDrawer } from 'src/store/tagImportDrawer';
-import { MapState } from 'src/store/types';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import shouldDisplayGroupImport from 'src/utilities/shouldDisplayGroupImportCTA';
-import AutoBackups from './AutoBackups';
-import EnableManaged from './EnableManaged';
-import EnableObjectStorage from './EnableObjectStorage';
-import ImportGroupsAsTags from './ImportGroupsAsTags';
-import NetworkHelper from './NetworkHelper';
-import CloseAccountSetting from './CloseAccountSetting';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
 import {
   useAccountSettings,
   useMutateAccountSettings,
-} from 'src/queries/accountSettings';
+} from 'src/queries/account/settings';
+import { useAllLinodesQuery } from 'src/queries/linodes/linodes';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
-interface StateProps {
-  linodesWithoutBackups: Linode[];
-  entitiesWithGroupsToImport: GroupedEntitiesForImport;
-}
+import { BackupDrawer } from '../Backups';
+import AutoBackups from './AutoBackups';
+import CloseAccountSetting from './CloseAccountSetting';
+import { EnableManaged } from './EnableManaged';
+import NetworkHelper from './NetworkHelper';
+import { ObjectStorageSettings } from './ObjectStorageSettings';
 
-interface DispatchProps {
-  actions: {
-    openImportDrawer: () => void;
-    openBackupsDrawer: () => void;
-  };
-}
+import type { APIError } from '@linode/api-v4';
 
-type CombinedProps = StateProps &
-  DispatchProps &
-  WithSnackbarProps &
-  RouteComponentProps<{}>;
-
-const GlobalSettings: React.FC<CombinedProps> = (props) => {
-  const {
-    actions: { openBackupsDrawer, openImportDrawer },
-    linodesWithoutBackups,
-    entitiesWithGroupsToImport,
-  } = props;
+const GlobalSettings = () => {
+  const [isBackupsDrawerOpen, setIsBackupsDrawerOpen] = React.useState(false);
 
   const {
     data: accountSettings,
-    isLoading: accountSettingsLoading,
     error: accountSettingsError,
+    isLoading: accountSettingsLoading,
   } = useAccountSettings();
 
-  const { mutateAsync: updateAccount } = useMutateAccountSettings();
+  const { data: linodes } = useAllLinodesQuery();
 
-  const { _loading } = useReduxLoad(['linodes']);
+  const hasLinodesWithoutBackups =
+    linodes?.some((linode) => !linode.backups.enabled) ?? false;
+
+  const { enqueueSnackbar } = useSnackbar();
+
+  const { mutateAsync: updateAccount } = useMutateAccountSettings();
 
   const displayError = (errors: APIError[] | undefined) => {
     if (!errors) {
@@ -76,14 +46,15 @@ const GlobalSettings: React.FC<CombinedProps> = (props) => {
       'There was an error updating your account settings.'
     )[0].reason;
 
-    return props.enqueueSnackbar(errorText, {
+    return enqueueSnackbar(errorText, {
       variant: 'error',
     });
   };
 
-  if (accountSettingsLoading || _loading) {
+  if (accountSettingsLoading) {
     return <CircleProgress />;
   }
+
   if (accountSettingsError) {
     return (
       <ErrorState
@@ -96,12 +67,7 @@ const GlobalSettings: React.FC<CombinedProps> = (props) => {
     return null;
   }
 
-  const {
-    backups_enabled,
-    managed,
-    network_helper,
-    object_storage,
-  } = accountSettings;
+  const { backups_enabled, managed, network_helper } = accountSettings;
 
   const toggleAutomaticBackups = () => {
     updateAccount({ backups_enabled: !backups_enabled }).catch(displayError);
@@ -114,47 +80,25 @@ const GlobalSettings: React.FC<CombinedProps> = (props) => {
   return (
     <div>
       <AutoBackups
-        isManagedCustomer={managed}
         backups_enabled={backups_enabled}
+        hasLinodesWithoutBackups={hasLinodesWithoutBackups}
+        isManagedCustomer={managed}
         onChange={toggleAutomaticBackups}
-        openBackupsDrawer={openBackupsDrawer}
-        hasLinodesWithoutBackups={!isEmpty(linodesWithoutBackups)}
+        openBackupsDrawer={() => setIsBackupsDrawerOpen(true)}
       />
       <NetworkHelper
-        onChange={toggleNetworkHelper}
         networkHelperEnabled={network_helper}
+        onChange={toggleNetworkHelper}
       />
-      <EnableObjectStorage object_storage={object_storage} />
+      <ObjectStorageSettings />
       <EnableManaged isManaged={managed} />
-      {shouldDisplayGroupImport(entitiesWithGroupsToImport) && (
-        <ImportGroupsAsTags openDrawer={openImportDrawer} />
-      )}
       <CloseAccountSetting />
-
-      <TagImportDrawer />
+      <BackupDrawer
+        onClose={() => setIsBackupsDrawerOpen(false)}
+        open={isBackupsDrawerOpen}
+      />
     </div>
   );
 };
-const mapStateToProps: MapState<StateProps, {}> = (state) => ({
-  linodesWithoutBackups: getLinodesWithoutBackups(state.__resources),
-  entitiesWithGroupsToImport: getEntitiesWithGroupsToImport(state),
-});
-const mapDispatchToProps: MapDispatchToProps<DispatchProps, {}> = (
-  dispatch: ThunkDispatch<ApplicationState, undefined, AnyAction>
-) => {
-  return {
-    actions: {
-      openBackupsDrawer: () => dispatch(handleOpen()),
-      openImportDrawer: () => dispatch(openGroupDrawer()),
-    },
-  };
-};
 
-const connected = connect(mapStateToProps, mapDispatchToProps);
-
-const enhanced = compose<CombinedProps, {}>(
-  connected,
-  withSnackbar
-)(GlobalSettings);
-
-export default enhanced;
+export default GlobalSettings;

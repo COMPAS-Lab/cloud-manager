@@ -1,77 +1,19 @@
-import {
+import { useFlags } from 'src/hooks/useFlags';
+import { useAccountBetaQuery } from 'src/queries/account/betas';
+import { getBetaStatus } from 'src/utilities/betaUtils';
+import { sortByVersion } from 'src/utilities/sort-by';
+
+import type { Account } from '@linode/api-v4/lib/account';
+import type {
+  KubeNodePoolResponse,
   KubernetesCluster,
   KubernetesVersion,
 } from '@linode/api-v4/lib/kubernetes';
-import { LinodeType } from '@linode/api-v4/lib/linodes';
-import { HIGH_AVAILABILITY_PRICE } from 'src/constants';
-import { pluralize } from 'src/utilities/pluralize';
-import { ExtendedCluster, ExtendedPoolNode, PoolNodeWithPrice } from './types';
-
+import type { Region } from '@linode/api-v4/lib/regions';
+import type { ExtendedType } from 'src/utilities/extendType';
 export const nodeWarning = `We recommend a minimum of 3 nodes in each Node Pool to avoid downtime during upgrades and maintenance.`;
 export const nodesDeletionWarning = `All nodes will be deleted and new nodes will be created to replace them.`;
 export const localStorageWarning = `Any local storage (such as \u{2019}hostPath\u{2019} volumes) will be erased.`;
-
-export const getMonthlyPrice = (
-  type: string,
-  count: number,
-  types: LinodeType[]
-) => {
-  if (!types) {
-    return 0;
-  }
-  const thisType = types.find((t: LinodeType) => t.id === type);
-  return thisType ? (thisType.price.monthly ?? 0) * count : 0;
-};
-
-export const getTotalClusterPrice = (
-  pools: PoolNodeWithPrice[],
-  highAvailability: boolean = false
-) => {
-  const price = pools.reduce((accumulator, node) => {
-    return node.queuedForDeletion
-      ? accumulator // If we're going to delete it, don't include it in the cost
-      : accumulator + node.totalMonthlyPrice;
-  }, 0);
-
-  return highAvailability ? price + (HIGH_AVAILABILITY_PRICE || 0) : price;
-};
-
-export const addPriceToNodePool = (
-  pool: ExtendedPoolNode,
-  typesData: LinodeType[]
-) => ({
-  ...pool,
-  totalMonthlyPrice: getMonthlyPrice(pool.type, pool.count, typesData),
-});
-
-/**
- * Usually when displaying or editing clusters, we need access
- * to pricing information as well as statistics, which aren't
- * returned from the API and must be computed.
- */
-export const extendCluster = (
-  cluster: KubernetesCluster,
-  pools: ExtendedPoolNode[],
-  types: LinodeType[]
-): ExtendedCluster => {
-  // Identify which pools belong to this cluster and add pricing information.
-  const _pools = pools.reduce((accum, thisPool) => {
-    return thisPool.clusterID === cluster.id
-      ? [...accum, addPriceToNodePool(thisPool, types)]
-      : accum;
-  }, []);
-  const { CPU, RAM, Storage } = getTotalClusterMemoryCPUAndStorage(
-    _pools,
-    types
-  );
-  return {
-    ...cluster,
-    node_pools: _pools,
-    totalMemory: RAM,
-    totalCPU: CPU,
-    totalStorage: Storage,
-  };
-};
 
 interface ClusterData {
   CPU: number;
@@ -80,52 +22,56 @@ interface ClusterData {
 }
 
 export const getTotalClusterMemoryCPUAndStorage = (
-  pools: ExtendedPoolNode[],
-  types: LinodeType[]
+  pools: KubeNodePoolResponse[],
+  types: ExtendedType[]
 ) => {
   if (!types || !pools) {
-    return { RAM: 0, CPU: 0, Storage: 0 };
+    return { CPU: 0, RAM: 0, Storage: 0 };
   }
 
   return pools.reduce(
-    (accumulator: ClusterData, thisPool: ExtendedPoolNode) => {
+    (accumulator: ClusterData, thisPool: KubeNodePoolResponse) => {
       const thisType = types.find(
-        (type: LinodeType) => type.id === thisPool.type
+        (type: ExtendedType) => type.id === thisPool.type
       );
       if (!thisType) {
         return accumulator;
       }
       return {
-        RAM: accumulator.RAM + thisType.memory * thisPool.count,
         CPU: accumulator.CPU + thisType.vcpus * thisPool.count,
+        RAM: accumulator.RAM + thisType.memory * thisPool.count,
         Storage: accumulator.Storage + thisType.disk * thisPool.count,
       };
     },
-    { RAM: 0, CPU: 0, Storage: 0 }
+    { CPU: 0, RAM: 0, Storage: 0 }
   );
 };
 
-export const getTotalNodesInCluster = (pools: PoolNodeWithPrice[]): number =>
-  pools.reduce((accum, thisPool) => {
-    return accum + thisPool.count;
-  }, 0);
+export const getDescriptionForCluster = (
+  cluster: KubernetesCluster,
+  regions: Region[]
+) => {
+  const region = regions.find((r) => r.id === cluster.region);
+  const description: string[] = [
+    `Kubernetes ${cluster.k8s_version}`,
+    region?.label ?? cluster.region,
+  ];
 
-export const getDescriptionForCluster = (cluster: ExtendedCluster) => {
-  if (!cluster.node_pools) {
-    return '';
+  if (cluster.control_plane.high_availability) {
+    description.push(`High Availability`);
   }
-  const nodes = getTotalNodesInCluster(cluster.node_pools);
-  return `${pluralize('node', 'nodes', nodes)}, ${pluralize(
-    'CPU core',
-    'CPU cores',
-    cluster.totalCPU
-  )}, ${cluster.totalMemory / 1024} GB RAM`;
+
+  return description.join(', ');
 };
 
 export const getNextVersion = (
   currentVersion: string,
   versions: KubernetesVersion[]
 ) => {
+  if (versions.length === 0) {
+    return null;
+  }
+
   const versionStrings = versions.map((v) => v.id).sort();
   const currentIdx = versionStrings.findIndex(
     (thisVersion) => currentVersion === thisVersion
@@ -149,4 +95,92 @@ export const getNextVersion = (
     return null;
   }
   return versionStrings[currentIdx + 1];
+};
+
+export const getKubeHighAvailability = (
+  account: Account | undefined,
+  cluster?: KubernetesCluster | null
+) => {
+  const showHighAvailability = account?.capabilities.includes(
+    'LKE HA Control Planes'
+  );
+
+  const isClusterHighlyAvailable = Boolean(
+    showHighAvailability && cluster?.control_plane.high_availability
+  );
+
+  return {
+    isClusterHighlyAvailable,
+    showHighAvailability,
+  };
+};
+
+export const useAPLAvailability = () => {
+  const flags = useFlags();
+
+  // Only fetch the account beta if the APL flag is enabled
+  const { data: beta, isLoading } = useAccountBetaQuery(
+    'apl',
+    Boolean(flags.apl)
+  );
+
+  const showAPL = beta !== undefined && getBetaStatus(beta) === 'active';
+
+  return { isLoading: flags.apl && isLoading, showAPL };
+};
+
+export const getKubeControlPlaneACL = (
+  account: Account | undefined,
+  cluster?: KubernetesCluster | null
+) => {
+  const showControlPlaneACL = account?.capabilities.includes(
+    'LKE Network Access Control List (IP ACL)'
+  );
+
+  const isClusterControlPlaneACLd = Boolean(
+    showControlPlaneACL && cluster?.control_plane.acl
+  );
+
+  return {
+    isClusterControlPlaneACLd,
+    showControlPlaneACL,
+  };
+};
+
+/**
+ * Retrieves the latest version from an array of version objects.
+ *
+ * This function sorts an array of objects containing version information and returns the object
+ * with the highest version number. The sorting is performed in ascending order based on the
+ * `value` property of each object, and the last element of the sorted array, which represents
+ * the latest version, is returned.
+ *
+ * @param {{label: string, value: string}[]} versions - An array of objects with `label` and `value`
+ *                                                      properties where `value` is a version string.
+ * @returns {{label: string, value: string}} Returns the object with the highest version number.
+ *                                           If the array is empty, returns an default fallback object.
+ *
+ * @example
+ * // Returns the latest version object
+ * getLatestVersion([
+ *   { label: 'Version 1.1', value: '1.1' },
+ *   { label: 'Version 2.0', value: '2.0' }
+ * ]);
+ * // Output: { label: '2.0', value: '2.0' }
+ */
+export const getLatestVersion = (
+  versions: { label: string; value: string }[]
+): { label: string; value: string } => {
+  const sortedVersions = versions.sort((a, b) => {
+    return sortByVersion(a.value, b.value, 'asc');
+  });
+
+  const latestVersion = sortedVersions.pop();
+
+  if (!latestVersion) {
+    // Return a default fallback object
+    return { label: '', value: '' };
+  }
+
+  return { label: `${latestVersion.value}`, value: `${latestVersion.value}` };
 };

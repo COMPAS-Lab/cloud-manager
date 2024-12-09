@@ -7,7 +7,7 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
+import { Filter, Params, ResourcePage as Page } from '../types';
 import { Token, TokenRequest } from './types';
 
 /**
@@ -16,7 +16,7 @@ import { Token, TokenRequest } from './types';
  * Returns a paginated list of Personal Access Tokens currently active for your User.
  *
  */
-export const getPersonalAccessTokens = (params?: any, filters?: any) =>
+export const getPersonalAccessTokens = (params?: Params, filters?: Filter) =>
   Request<Page<Token>>(
     setMethod('GET'),
     setParams(params),
@@ -33,7 +33,10 @@ export const getPersonalAccessTokens = (params?: any, filters?: any) =>
  *
  */
 export const getPersonalAccessToken = (id: number) =>
-  Request<Token>(setMethod('GET'), setURL(`${API_ROOT}/profile/tokens/${id}`));
+  Request<Token>(
+    setMethod('GET'),
+    setURL(`${API_ROOT}/profile/tokens/${encodeURIComponent(id)}`)
+  );
 
 /**
  * createPersonalAccessToken
@@ -75,7 +78,7 @@ export const updatePersonalAccessToken = (
   data: Partial<TokenRequest>
 ) =>
   Request<Token>(
-    setURL(`${API_ROOT}/profile/tokens/${tokenId}`),
+    setURL(`${API_ROOT}/profile/tokens/${encodeURIComponent(tokenId)}`),
     setMethod('PUT'),
     setData(data, createPersonalAccessTokenSchema)
   );
@@ -90,6 +93,6 @@ export const updatePersonalAccessToken = (
  */
 export const deletePersonalAccessToken = (tokenId: number) =>
   Request<{}>(
-    setURL(`${API_ROOT}/profile/tokens/${tokenId}`),
+    setURL(`${API_ROOT}/profile/tokens/${encodeURIComponent(tokenId)}`),
     setMethod('DELETE')
   );

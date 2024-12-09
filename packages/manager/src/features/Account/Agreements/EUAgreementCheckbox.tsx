@@ -1,35 +1,56 @@
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material';
 import * as React from 'react';
-import CheckBox from 'src/components/CheckBox';
-import Box from 'src/components/core/Box';
-import Typography from 'src/components/core/Typography';
-import Link from 'src/components/Link';
+
+import { Checkbox } from 'src/components/Checkbox';
+import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
 
 interface Props {
-  className?: string;
   centerCheckbox?: boolean;
   checked: boolean;
+  className?: string;
   onChange: (
     event: React.ChangeEvent<HTMLInputElement>,
     checked: boolean
   ) => void;
 }
 
-const EUAgreementCheckbox: React.FC<Props> = (props) => {
-  const { checked, onChange, className, centerCheckbox } = props;
+export const EUAgreementCheckbox = (props: Props) => {
+  const { centerCheckbox, checked, className, onChange } = props;
+  const theme = useTheme();
 
   const checkboxStyle = centerCheckbox
-    ? { marginLeft: -8 }
-    : { marginLeft: -8, marginTop: -5 };
+    ? {}
+    : {
+        marginTop: '-5px',
+      };
 
   return (
     <Box
-      display="flex"
-      flexDirection="row"
+      sx={{
+        [theme.breakpoints.down('md')]: {
+          marginLeft: theme.spacing(1),
+          marginRight: theme.spacing(1),
+        },
+      }}
       alignItems={centerCheckbox ? 'center' : 'flex-start'}
       className={className}
+      data-testid="eu-agreement-checkbox"
+      display="flex"
+      flexDirection="row"
     >
-      <CheckBox checked={checked} onChange={onChange} style={checkboxStyle} />
-      <Typography style={{ marginLeft: 4 }}>
+      <Checkbox
+        checked={checked}
+        id="gdpr-checkbox"
+        onChange={onChange}
+        sx={checkboxStyle}
+      />
+      <Typography
+        component="label"
+        htmlFor="gdpr-checkbox"
+        style={{ marginLeft: 16 }}
+      >
         I have read and agree to the{' '}
         <Link to="https://www.linode.com/legal-privacy/">
           Linode Privacy Policy
@@ -44,5 +65,3 @@ const EUAgreementCheckbox: React.FC<Props> = (props) => {
     </Box>
   );
 };
-
-export default EUAgreementCheckbox;

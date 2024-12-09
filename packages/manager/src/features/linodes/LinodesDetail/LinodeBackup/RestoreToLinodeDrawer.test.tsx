@@ -1,27 +1,32 @@
 import * as React from 'react';
+
+import { backupFactory, linodeFactory } from 'src/factories';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
 import { renderWithTheme } from 'src/utilities/testHelpers';
-import { CombinedProps, RestoreToLinodeDrawer } from './RestoreToLinodeDrawer';
+
+import { RestoreToLinodeDrawer } from './RestoreToLinodeDrawer';
 
 describe('RestoreToLinodeDrawer', () => {
-  const props: CombinedProps = {
-    open: true,
-    linodeID: 1234,
-    linodeRegion: 'us-east',
-    backupCreated: '12 hours ago',
-    onClose: jest.fn(),
-    onSubmit: jest.fn(),
-    linodesData: [],
-    linodesLastUpdated: 0,
-    linodesLoading: false,
-    getLinodes: jest.fn(),
-    linodesResults: 0,
-  };
-
   it('renders without crashing', async () => {
-    const { findByText } = renderWithTheme(
-      <RestoreToLinodeDrawer {...props} />
+    server.use(
+      http.get('*/linode/instances/1', () => {
+        return HttpResponse.json(
+          linodeFactory.build({ backups: { enabled: true }, id: 1 })
+        );
+      })
     );
 
-    await findByText(/Restore Backup from/);
+    const backup = backupFactory.build({ created: '2023-05-03T04:00:47' });
+
+    const { getByText } = renderWithTheme(
+      <RestoreToLinodeDrawer
+        backup={backup}
+        linodeId={1}
+        onClose={vi.fn()}
+        open={true}
+      />
+    );
+
+    getByText(`Restore Backup from ${backup.created}`);
   });
 });

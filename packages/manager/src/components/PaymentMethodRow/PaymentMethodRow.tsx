@@ -1,86 +1,88 @@
+import { Box, Paper } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
-import { PaymentMethod } from '@linode/api-v4/lib/account/types';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Paper from 'src/components/core/Paper';
-import Grid from 'src/components/Grid';
-import Chip from 'src/components/core/Chip';
-import CreditCard from 'src/features/Billing/BillingPanels/BillingSummary/PaymentDrawer/CreditCard';
-import ThirdPartyPayment from './ThirdPartyPayment';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { makeDefaultPaymentMethod } from '@linode/api-v4/lib';
-import { useSnackbar } from 'notistack';
-import { queryClient } from 'src/queries/base';
-import { queryKey } from 'src/queries/accountPayment';
 
-export const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginBottom: theme.spacing(),
-    padding: 0,
-  },
-  actions: {
-    marginLeft: 'auto',
-    '& button': {
-      margin: 0,
-    },
-  },
-  item: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  container: {
-    flexWrap: 'nowrap',
-  },
-}));
+import { ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { Chip } from 'src/components/Chip';
+import CreditCard from 'src/features/Billing/BillingPanels/BillingSummary/PaymentDrawer/CreditCard';
+import { useMakeDefaultPaymentMethodMutation } from 'src/queries/account/payment';
+
+import { ThirdPartyPayment } from './ThirdPartyPayment';
+
+import type { PaymentMethod } from '@linode/api-v4/lib/account/types';
+import type { Action } from 'src/components/ActionMenu/ActionMenu';
 
 interface Props {
-  paymentMethod: PaymentMethod;
+  /**
+   * Whether the user is a child user.
+   */
+  isChildUser?: boolean | undefined;
+  /**
+   * Whether the user is a restricted user.
+   */
+  isRestrictedUser?: boolean | undefined;
+  /**
+   * Function called when the delete button in the Action Menu is pressed.
+   */
   onDelete: () => void;
+  /**
+   * Payment method type and data.
+   */
+  paymentMethod: PaymentMethod;
 }
 
-const PaymentMethodRow: React.FC<Props> = (props) => {
-  const { paymentMethod, onDelete } = props;
-  const { type, is_default } = paymentMethod;
-  const classes = useStyles();
+/**
+ * The `PaymentMethodRow` displays the given payment method and supports various actions for each payment method. It can be used
+ * for credit cards, Google Pay, and PayPal.
+ */
+export const PaymentMethodRow = (props: Props) => {
+  const theme = useTheme();
+  const { isRestrictedUser, onDelete, paymentMethod } = props;
+  const { is_default, type } = paymentMethod;
   const history = useHistory();
   const { enqueueSnackbar } = useSnackbar();
 
-  const makeDefault = (id: number) => {
-    makeDefaultPaymentMethod(id)
-      .then(() => queryClient.invalidateQueries(`${queryKey}-all`))
-      .catch((errors) =>
-        enqueueSnackbar(
-          errors[0]?.reason || 'Unable to change your default payment method.',
-          { variant: 'error' }
-        )
-      );
+  const {
+    mutateAsync: makePaymentMethodDefault,
+  } = useMakeDefaultPaymentMethodMutation(props.paymentMethod.id);
+
+  const makeDefault = () => {
+    makePaymentMethodDefault().catch((errors) =>
+      enqueueSnackbar(
+        errors[0]?.reason || 'Unable to change your default payment method.',
+        { variant: 'error' }
+      )
+    );
   };
 
   const actions: Action[] = [
     {
-      title: 'Make a Payment',
+      disabled: isRestrictedUser,
       onClick: () => {
         history.push({
           pathname: '/account/billing/make-payment/',
           state: { paymentMethod },
         });
       },
+      title: 'Make a Payment',
     },
     {
+      disabled: isRestrictedUser || paymentMethod.is_default,
+      onClick: makeDefault,
       title: 'Make Default',
-      disabled: paymentMethod.is_default,
       tooltip: paymentMethod.is_default
         ? 'This is already your default payment method.'
         : undefined,
-      onClick: () => makeDefault(paymentMethod.id),
     },
     {
+      disabled: isRestrictedUser || paymentMethod.is_default,
+      onClick: onDelete,
       title: 'Delete',
-      disabled: paymentMethod.is_default,
       tooltip: paymentMethod.is_default
         ? 'You cannot remove this payment method without setting a new default first.'
         : undefined,
-      onClick: onDelete,
     },
   ];
 
@@ -94,33 +96,51 @@ const PaymentMethodRow: React.FC<Props> = (props) => {
     }
   };
 
+  const sxBoxFlex = {
+    alignItems: 'center',
+    display: 'flex',
+  };
+
   return (
     <Paper
-      className={classes.root}
-      variant="outlined"
-      data-testid={`payment-method-row-${paymentMethod.id}`}
+      sx={{
+        '&&': {
+          // TODO: Remove "&&" when Paper has been refactored
+          padding: 0,
+        },
+        '&:not(:last-of-type)': {
+          marginBottom: theme.spacing(),
+        },
+      }}
       data-qa-payment-row={type}
+      data-testid={`payment-method-row-${paymentMethod.id}`}
+      variant="outlined"
     >
-      <Grid container className={classes.container}>
-        <Grid item className={classes.item}>
+      <Box sx={sxBoxFlex}>
+        <Box sx={{ ...sxBoxFlex, paddingRight: theme.spacing(2) }}>
           {paymentMethod.type === 'credit_card' ? (
             <CreditCard creditCard={paymentMethod.data} />
           ) : (
             <ThirdPartyPayment paymentMethod={paymentMethod} />
           )}
-        </Grid>
-        <Grid item className={classes.item} style={{ paddingRight: 0 }}>
-          {is_default && <Chip label="DEFAULT" component="span" size="small" />}
-        </Grid>
-        <Grid item className={classes.actions}>
+        </Box>
+        <Box sx={sxBoxFlex}>
+          {is_default && <Chip component="span" label="DEFAULT" size="small" />}
+        </Box>
+        <Box
+          sx={{
+            '& button': {
+              margin: 0,
+            },
+            marginLeft: 'auto',
+          }}
+        >
           <ActionMenu
             actionsList={actions}
             ariaLabel={getActionMenuAriaLabel(paymentMethod)}
           />
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Paper>
   );
 };
-
-export default PaymentMethodRow;

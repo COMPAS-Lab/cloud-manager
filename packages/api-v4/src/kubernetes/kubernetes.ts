@@ -1,5 +1,5 @@
 import { createKubeClusterSchema } from '@linode/validation/lib/kubernetes.schema';
-import { API_ROOT } from '../constants';
+import { API_ROOT, BETA_API_ROOT } from '../constants';
 import Request, {
   setData,
   setMethod,
@@ -7,14 +7,15 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
-import {
+import type { Filter, Params, ResourcePage as Page, PriceType } from '../types';
+import type {
   CreateKubeClusterPayload,
   KubeConfigResponse,
   KubernetesCluster,
   KubernetesEndpointResponse,
   KubernetesDashboardResponse,
   KubernetesVersion,
+  KubernetesControlPlaneACLPayload,
 } from './types';
 
 /**
@@ -22,7 +23,7 @@ import {
  *
  * Gets a list of a user's Kubernetes clusters
  */
-export const getKubernetesClusters = (params?: any, filters?: any) =>
+export const getKubernetesClusters = (params?: Params, filters?: Filter) =>
   Request<Page<KubernetesCluster>>(
     setMethod('GET'),
     setParams(params),
@@ -38,7 +39,18 @@ export const getKubernetesClusters = (params?: any, filters?: any) =>
 export const getKubernetesCluster = (clusterID: number) =>
   Request<KubernetesCluster>(
     setMethod('GET'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterID}`)
+    setURL(`${API_ROOT}/lke/clusters/${encodeURIComponent(clusterID)}`)
+  );
+
+/**
+ * getKubernetesClusterBeta
+ *
+ * Return details about a single Kubernetes cluster from beta API
+ */
+export const getKubernetesClusterBeta = (clusterID: number) =>
+  Request<KubernetesCluster>(
+    setMethod('GET'),
+    setURL(`${BETA_API_ROOT}/lke/clusters/${encodeURIComponent(clusterID)}`)
   );
 
 /**
@@ -46,12 +58,30 @@ export const getKubernetesCluster = (clusterID: number) =>
  *
  * Create a new cluster.
  */
-export const createKubernetesCluster = (data: CreateKubeClusterPayload) =>
-  Request<KubernetesCluster>(
+export const createKubernetesCluster = (data: CreateKubeClusterPayload) => {
+  return Request<KubernetesCluster>(
     setMethod('POST'),
     setURL(`${API_ROOT}/lke/clusters`),
     setData(data, createKubeClusterSchema)
   );
+};
+
+/**
+ * createKubernetesClustersBeta
+ *
+ * Create a new cluster with the BETA api whenever feature flag for APL is enabled
+ * and APL is set to enabled in the UI
+ *
+ * duplicated function of createKubernetesCluster
+ * necessary to call BETA_API_ROOT in a seperate function based on feature flag
+ */
+export const createKubernetesClusterBeta = (data: CreateKubeClusterPayload) => {
+  return Request<KubernetesCluster>(
+    setMethod('POST'),
+    setURL(`${BETA_API_ROOT}/lke/clusters`),
+    setData(data, createKubeClusterSchema)
+  );
+};
 
 /**
  * updateKubernetesCluster
@@ -64,7 +94,7 @@ export const updateKubernetesCluster = (
 ) =>
   Request<KubernetesCluster>(
     setMethod('PUT'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterID}`),
+    setURL(`${API_ROOT}/lke/clusters/${encodeURIComponent(clusterID)}`),
     setData(data)
   );
 
@@ -76,7 +106,7 @@ export const updateKubernetesCluster = (
 export const deleteKubernetesCluster = (clusterID: number) =>
   Request<{}>(
     setMethod('DELETE'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterID}`)
+    setURL(`${API_ROOT}/lke/clusters/${encodeURIComponent(clusterID)}`)
   );
 
 /**
@@ -90,7 +120,9 @@ export const deleteKubernetesCluster = (clusterID: number) =>
 export const getKubeConfig = (clusterId: number) =>
   Request<KubeConfigResponse>(
     setMethod('GET'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterId}/kubeconfig`)
+    setURL(
+      `${API_ROOT}/lke/clusters/${encodeURIComponent(clusterId)}/kubeconfig`
+    )
   );
 
 /**
@@ -103,7 +135,9 @@ export const getKubeConfig = (clusterId: number) =>
 export const resetKubeConfig = (clusterId: number) =>
   Request<{}>(
     setMethod('DELETE'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterId}/kubeconfig`)
+    setURL(
+      `${API_ROOT}/lke/clusters/${encodeURIComponent(clusterId)}/kubeconfig`
+    )
   );
 
 /** getKubernetesVersions
@@ -112,7 +146,7 @@ export const resetKubeConfig = (clusterId: number) =>
  *
  */
 
-export const getKubernetesVersions = (params?: any, filters?: any) =>
+export const getKubernetesVersions = (params?: Params, filters?: Filter) =>
   Request<Page<KubernetesVersion>>(
     setMethod('GET'),
     setXFilter(filters),
@@ -129,7 +163,7 @@ export const getKubernetesVersions = (params?: any, filters?: any) =>
 export const getKubernetesVersion = (versionID: string) =>
   Request<KubernetesVersion>(
     setMethod('GET'),
-    setURL(`${API_ROOT}/lke/versions/${versionID}`)
+    setURL(`${API_ROOT}/lke/versions/${encodeURIComponent(versionID)}`)
   );
 
 /** getKubernetesClusterEndpoint
@@ -138,10 +172,18 @@ export const getKubernetesVersion = (versionID: string) =>
  *
  */
 
-export const getKubernetesClusterEndpoints = (clusterID: number) =>
+export const getKubernetesClusterEndpoints = (
+  clusterID: number,
+  params?: Params,
+  filters?: Filter
+) =>
   Request<Page<KubernetesEndpointResponse>>(
     setMethod('GET'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterID}/api-endpoints`)
+    setXFilter(filters),
+    setParams(params),
+    setURL(
+      `${API_ROOT}/lke/clusters/${encodeURIComponent(clusterID)}/api-endpoints`
+    )
   );
 
 /** getKubernetesClusterDashboard
@@ -152,7 +194,9 @@ export const getKubernetesClusterEndpoints = (clusterID: number) =>
 export const getKubernetesClusterDashboard = (clusterID: number) =>
   Request<KubernetesDashboardResponse>(
     setMethod('GET'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterID}/dashboard`)
+    setURL(
+      `${API_ROOT}/lke/clusters/${encodeURIComponent(clusterID)}/dashboard`
+    )
   );
 
 /** recycleClusterNodes
@@ -164,5 +208,51 @@ export const getKubernetesClusterDashboard = (clusterID: number) =>
 export const recycleClusterNodes = (clusterID: number) =>
   Request<{}>(
     setMethod('POST'),
-    setURL(`${API_ROOT}/lke/clusters/${clusterID}/recycle`)
+    setURL(`${API_ROOT}/lke/clusters/${encodeURIComponent(clusterID)}/recycle`)
+  );
+
+/**
+ * getKubernetesTypes
+ *
+ * Returns a paginated list of available Kubernetes types; used for dynamic pricing.
+ */
+export const getKubernetesTypes = (params?: Params) =>
+  Request<Page<PriceType>>(
+    setURL(`${API_ROOT}/lke/types`),
+    setMethod('GET'),
+    setParams(params)
+  );
+
+/**
+ * getKubernetesClusterControlPlaneACL
+ *
+ * Return control plane access list about a single Kubernetes cluster
+ */
+export const getKubernetesClusterControlPlaneACL = (clusterId: number) =>
+  Request<KubernetesControlPlaneACLPayload>(
+    setMethod('GET'),
+    setURL(
+      `${API_ROOT}/lke/clusters/${encodeURIComponent(
+        clusterId
+      )}/control_plane_acl`
+    )
+  );
+
+/**
+ * updateKubernetesClusterControlPlaneACL
+ *
+ * Update an existing ACL from a single Kubernetes cluster.
+ */
+export const updateKubernetesClusterControlPlaneACL = (
+  clusterID: number,
+  data: Partial<KubernetesControlPlaneACLPayload>
+) =>
+  Request<KubernetesControlPlaneACLPayload>(
+    setMethod('PUT'),
+    setURL(
+      `${API_ROOT}/lke/clusters/${encodeURIComponent(
+        clusterID
+      )}/control_plane_acl`
+    ),
+    setData(data)
   );

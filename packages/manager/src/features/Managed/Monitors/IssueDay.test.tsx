@@ -1,13 +1,15 @@
-import * as React from 'react';
-import { IssueDay, Props } from './IssueDay';
-import { renderWithTheme } from 'src/utilities/testHelpers';
 import { DateTime } from 'luxon';
+import * as React from 'react';
+
+import { renderWithTheme } from 'src/utilities/testHelpers';
+
+import { IssueDay, IssueDayProps } from './IssueDay';
 
 describe('IssueDay', () => {
   it('should include basic Monitor actions', () => {
     const date = DateTime.fromISO('2020-10-01');
-    const props: Props = {
-      day: date.toISO(),
+    const props: IssueDayProps = {
+      day: date.toISO()!,
       issues: [],
     };
     const { getByText } = renderWithTheme(<IssueDay {...props} />);

@@ -1,19 +1,15 @@
-import { Grant } from '@linode/api-v4/lib/account';
-import { getVolumes, Volume } from '@linode/api-v4/lib/volumes';
 import * as React from 'react';
-import { compose } from 'recompose';
-import FormControl from 'src/components/core/FormControl';
-import FormHelperText from 'src/components/core/FormHelperText';
-import EnhancedSelect, { Item } from 'src/components/EnhancedSelect/Select';
-import withProfile, { ProfileProps } from 'src/components/withProfile';
-import { getGrants } from 'src/features/Profile/permissionsHelpers';
-import { debounce } from 'throttle-debounce';
+
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { useInfiniteVolumesQuery } from 'src/queries/volumes/volumes';
 
 interface Props {
+  disabled?: boolean;
   error?: string;
-  onChange: (linodeId: number) => void;
   name: string;
   onBlur: (e: any) => void;
+  onChange: (volumeId: null | number) => void;
+  region?: string;
   value: number;
   region: string;
   disabled?: boolean;

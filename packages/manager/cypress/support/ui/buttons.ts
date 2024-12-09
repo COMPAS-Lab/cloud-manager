@@ -3,6 +3,21 @@
  */
 export const button = {
   /**
+   * Finds a button by the value of a given attribute.
+   *
+   * @param attributeName - Attribute to compare against.
+   * @param attributeValue - Expected value for attribute.
+   *
+   * @returns Cypress chainable.
+   */
+  findByAttribute: (
+    attributeName: string,
+    attributeValue: string
+  ): Cypress.Chainable => {
+    return cy.get(`button[${attributeName}="${attributeValue}"]`);
+  },
+
+  /**
    * Finds a button by its title.
    *
    * Most buttons in Cloud Manager have a child `<span />` element containing
@@ -15,21 +30,6 @@ export const button = {
    */
   findByTitle: (buttonTitle: string): Cypress.Chainable => {
     return cy.findByText(buttonTitle).closest('button');
-  },
-
-  /**
-   * Finds a button by the value of a given attribute.
-   *
-   * @param attributeName - Attribute to compare against.
-   * @param attributeValue - Expected value for attribute.
-   *
-   * @returns Cypress chainable.
-   */
-  findByAttribute: (
-    attributeName: string,
-    attributeValue: string
-  ): Cypress.Chainable => {
-    return cy.get(`button[${attributeName}="${attributeValue}"`);
   },
 };
 

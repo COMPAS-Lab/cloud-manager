@@ -1,18 +1,20 @@
 import { EntityTransfer } from '@linode/api-v4/lib/entity-transfers';
 import * as React from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
+
+import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import usePagination from 'src/hooks/usePagination';
+import { usePagination } from 'src/hooks/usePagination';
 import {
   TRANSFER_FILTERS,
   useEntityTransfersQuery,
 } from 'src/queries/entityTransfers';
-import TransfersTable from '../TransfersTable';
-import CreateTransferSuccessDialog from './CreateTransferSuccessDialog';
-import TransferControls from './TransferControls';
-import CircleProgress from 'src/components/CircleProgress';
 
-export const EntityTransfersLanding: React.FC<{}> = (_) => {
+import { TransfersTable } from '../TransfersTable';
+import { CreateTransferSuccessDialog } from './CreateTransferSuccessDialog';
+import { TransferControls } from './TransferControls';
+
+export const EntityTransfersLanding = () => {
   const [successDialogOpen, setSuccessDialogOpen] = React.useState(true);
   const [transfer, setTransfer] = React.useState<EntityTransfer | undefined>(
     undefined
@@ -42,22 +44,25 @@ export const EntityTransfersLanding: React.FC<{}> = (_) => {
 
   const paginationPendingTransfers = usePagination(
     initialPage,
+    pendingTransfersTablePreferenceKey,
     pendingTransfersTablePreferenceKey
   );
   const paginationReceivedTransfers = usePagination(
     initialPage,
+    receivedTransfersTablePreferenceKey,
     receivedTransfersTablePreferenceKey
   );
   const paginationSentTransfers = usePagination(
     initialPage,
+    sentTransfersTablePreferenceKey,
     sentTransfersTablePreferenceKey
   );
 
   // Fetch the Pending Transfers
   const {
     data: pendingTransfersData,
-    isLoading: pendingTransfersLoading,
     error: pendingTransfersError,
+    isLoading: pendingTransfersLoading,
   } = useEntityTransfersQuery(
     {
       page: paginationPendingTransfers.page,
@@ -73,8 +78,8 @@ export const EntityTransfersLanding: React.FC<{}> = (_) => {
   // Fetch the Received Transfers
   const {
     data: receivedTransfersData,
-    isLoading: receivedTransfersLoading,
     error: receivedTransfersError,
+    isLoading: receivedTransfersLoading,
   } = useEntityTransfersQuery(
     {
       page: paginationReceivedTransfers.page,
@@ -91,8 +96,8 @@ export const EntityTransfersLanding: React.FC<{}> = (_) => {
   // Fetch the Sent Transfers
   const {
     data: sentTransfersData,
-    isLoading: sentTransfersLoading,
     error: sentTransfersError,
+    isLoading: sentTransfersLoading,
   } = useEntityTransfersQuery(
     {
       page: paginationSentTransfers.page,
@@ -109,8 +114,8 @@ export const EntityTransfersLanding: React.FC<{}> = (_) => {
       <TransferControls />
       <CreateTransferSuccessDialog
         isOpen={successDialogOpen}
-        transfer={transfer}
         onClose={handleCloseSuccessDialog}
+        transfer={transfer}
       />
       {pendingTransfersLoading ||
       receivedTransfersLoading ||
@@ -120,47 +125,45 @@ export const EntityTransfersLanding: React.FC<{}> = (_) => {
         <>
           {pendingTransfersResults > 0 ? (
             <TransfersTable
-              transferType="pending"
-              error={pendingTransfersError}
-              isLoading={pendingTransfersLoading}
-              transfers={pendingTransfers}
-              results={pendingTransfersResults}
-              page={paginationPendingTransfers.page}
-              pageSize={paginationPendingTransfers.pageSize}
-              handlePageChange={paginationPendingTransfers.handlePageChange}
               handlePageSizeChange={
                 paginationPendingTransfers.handlePageSizeChange
               }
+              error={pendingTransfersError}
+              handlePageChange={paginationPendingTransfers.handlePageChange}
+              isLoading={pendingTransfersLoading}
+              page={paginationPendingTransfers.page}
+              pageSize={paginationPendingTransfers.pageSize}
+              results={pendingTransfersResults}
+              transferType="pending"
+              transfers={pendingTransfers}
             />
           ) : null}
           <TransfersTable
-            transferType="received"
-            error={receivedTransfersError}
-            isLoading={receivedTransfersLoading}
-            transfers={receivedTransfers}
-            results={receivedTransfersResults}
-            page={paginationReceivedTransfers.page}
-            pageSize={paginationReceivedTransfers.pageSize}
-            handlePageChange={paginationReceivedTransfers.handlePageChange}
             handlePageSizeChange={
               paginationReceivedTransfers.handlePageSizeChange
             }
+            error={receivedTransfersError}
+            handlePageChange={paginationReceivedTransfers.handlePageChange}
+            isLoading={receivedTransfersLoading}
+            page={paginationReceivedTransfers.page}
+            pageSize={paginationReceivedTransfers.pageSize}
+            results={receivedTransfersResults}
+            transferType="received"
+            transfers={receivedTransfers}
           />
           <TransfersTable
-            transferType="sent"
             error={sentTransfersError}
-            isLoading={sentTransfersLoading}
-            transfers={sentTransfers}
-            results={sentTransfersResults}
-            page={paginationSentTransfers.page}
-            pageSize={paginationSentTransfers.pageSize}
             handlePageChange={paginationSentTransfers.handlePageChange}
             handlePageSizeChange={paginationSentTransfers.handlePageSizeChange}
+            isLoading={sentTransfersLoading}
+            page={paginationSentTransfers.page}
+            pageSize={paginationSentTransfers.pageSize}
+            results={sentTransfersResults}
+            transferType="sent"
+            transfers={sentTransfers}
           />
         </>
       )}
     </div>
   );
 };
-
-export default EntityTransfersLanding;

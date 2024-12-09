@@ -1,4 +1,7 @@
-import { createObjectStorageKeysSchema } from '@linode/validation/lib/objectStorageKeys.schema';
+import {
+  createObjectStorageKeysSchema,
+  updateObjectStorageKeysSchema,
+} from '@linode/validation/lib/objectStorageKeys.schema';
 import { API_ROOT } from '../constants';
 import Request, {
   setData,
@@ -7,11 +10,11 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
+import { Filter, Params, ResourcePage as Page } from '../types';
 import {
   ObjectStorageKey,
-  ObjectStorageKeyRequest,
-  UpdateObjectStorageKeyRequest,
+  CreateObjectStorageKeyPayload,
+  UpdateObjectStorageKeyPayload,
 } from './types';
 
 /**
@@ -19,7 +22,7 @@ import {
  *
  * Gets a list of a user's Object Storage Keys
  */
-export const getObjectStorageKeys = (params?: any, filters?: any) =>
+export const getObjectStorageKeys = (params?: Params, filters?: Filter) =>
   Request<Page<ObjectStorageKey>>(
     setMethod('GET'),
     setParams(params),
@@ -32,7 +35,7 @@ export const getObjectStorageKeys = (params?: any, filters?: any) =>
  *
  * Creates an Object Storage key
  */
-export const createObjectStorageKeys = (data: ObjectStorageKeyRequest) =>
+export const createObjectStorageKeys = (data: CreateObjectStorageKeyPayload) =>
   Request<ObjectStorageKey>(
     setMethod('POST'),
     setURL(`${API_ROOT}/object-storage/keys`),
@@ -46,12 +49,12 @@ export const createObjectStorageKeys = (data: ObjectStorageKeyRequest) =>
  */
 export const updateObjectStorageKey = (
   id: number,
-  data: UpdateObjectStorageKeyRequest
+  data: UpdateObjectStorageKeyPayload
 ) =>
   Request<ObjectStorageKey>(
     setMethod('PUT'),
-    setURL(`${API_ROOT}/object-storage/keys/${id}`),
-    setData(data, createObjectStorageKeysSchema)
+    setURL(`${API_ROOT}/object-storage/keys/${encodeURIComponent(id)}`),
+    setData(data, updateObjectStorageKeysSchema)
   );
 
 /**
@@ -62,5 +65,5 @@ export const updateObjectStorageKey = (
 export const revokeObjectStorageKey = (id: number) =>
   Request<ObjectStorageKey>(
     setMethod('DELETE'),
-    setURL(`${API_ROOT}/object-storage/keys/${id}`)
+    setURL(`${API_ROOT}/object-storage/keys/${encodeURIComponent(id)}`)
   );

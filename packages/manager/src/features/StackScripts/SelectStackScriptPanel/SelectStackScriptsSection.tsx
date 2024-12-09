@@ -1,51 +1,57 @@
 import { Image } from '@linode/api-v4/lib/images';
 import { StackScript } from '@linode/api-v4/lib/stackscripts';
 import * as React from 'react';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableCell from 'src/components/core/TableCell';
-import TableRow from 'src/components/TableRow';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { TableBody } from 'src/components/TableBody';
+import { TableRow } from 'src/components/TableRow';
+import { useProfile } from 'src/queries/profile/profile';
 import { formatDate } from 'src/utilities/formatDate';
 import { truncate } from 'src/utilities/truncate';
+
+import { StyledStackScriptSectionTableCell } from '../CommonStackScript.styles';
 import StackScriptSelectionRow from './StackScriptSelectionRow';
 
-const useStyles = makeStyles(() => ({
-  loadingWrapper: {
-    border: 0,
-    paddingTop: 100,
-  },
-}));
-
-export interface Props {
-  onSelect: (s: StackScript) => void;
-  selectedId?: number;
-  data: StackScript[];
-  isSorting: boolean;
-  publicImages: Record<string, Image>;
+interface Props {
   currentUser: string;
+  data: StackScript[];
   disabled?: boolean;
+  isSorting: boolean;
+  onSelect: (s: StackScript) => void;
+  openStackScriptDetailsDialog: (stackscriptId: number) => void;
+  publicImages: Record<string, Image>;
+  selectedId?: number;
 }
 
-type CombinedProps = Props;
+export const SelectStackScriptsSection = (props: Props) => {
+  const {
+    data,
+    disabled,
+    isSorting,
+    onSelect,
+    openStackScriptDetailsDialog,
+    selectedId,
+  } = props;
 
-export const SelectStackScriptsSection: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { onSelect, selectedId, data, isSorting, disabled } = props;
+  const { data: profile } = useProfile();
 
   const selectStackScript = (s: StackScript) => (
     <StackScriptSelectionRow
+      updated={formatDate(s.updated, {
+        displayTime: false,
+        timezone: profile?.timezone,
+      })}
+      checked={selectedId === s.id}
+      deploymentsActive={s.deployments_active}
+      description={truncate(s.description, 100)}
+      disabled={disabled}
       key={s.id}
       label={s.label}
-      stackScriptUsername={s.username}
-      description={truncate(s.description, 100)}
-      deploymentsActive={s.deployments_active}
-      updated={formatDate(s.updated, { displayTime: false })}
       onSelect={() => onSelect(s)}
-      checked={selectedId === s.id}
-      updateFor={[selectedId === s.id, classes]}
+      openStackScriptDetailsDialog={openStackScriptDetailsDialog}
       stackScriptID={s.id}
-      disabled={disabled}
+      stackScriptUsername={s.username}
+      updateFor={[selectedId === s.id]}
     />
   );
 
@@ -55,13 +61,11 @@ export const SelectStackScriptsSection: React.FC<CombinedProps> = (props) => {
         data && data.map(selectStackScript)
       ) : (
         <TableRow>
-          <TableCell colSpan={5} className={classes.loadingWrapper}>
+          <StyledStackScriptSectionTableCell colSpan={5}>
             <CircleProgress />
-          </TableCell>
+          </StyledStackScriptSectionTableCell>
         </TableRow>
       )}
     </TableBody>
   );
 };
-
-export default SelectStackScriptsSection as React.FC<Props>;

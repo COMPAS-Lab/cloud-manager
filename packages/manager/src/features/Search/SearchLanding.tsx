@@ -1,133 +1,174 @@
+import Grid from '@mui/material/Unstable_Grid2';
+import { createLazyRoute } from '@tanstack/react-router';
 import { equals } from 'ramda';
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import Error from 'src/assets/icons/error.svg';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import H1Header from 'src/components/H1Header';
-import Notice from 'src/components/Notice';
-import { REFRESH_INTERVAL } from 'src/constants';
-import reloadableWithRouter from 'src/features/linodes/LinodesDetail/reloadableWithRouter';
-import useAPISearch from 'src/features/Search/useAPISearch';
-import useAccountManagement from 'src/hooks/useAccountManagement';
-import { useReduxLoad } from 'src/hooks/useReduxLoad';
-import { useAllDomainsQuery } from 'src/queries/domains';
-import {
-  useObjectStorageBuckets,
-  useObjectStorageClusters,
-} from 'src/queries/objectStorage';
-import { ErrorObject } from 'src/store/selectors/entitiesErrors';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { getQueryParam } from 'src/utilities/queryParams';
 import { debounce } from 'throttle-debounce';
-import ResultGroup from './ResultGroup';
-import './searchLanding.css';
-import { emptyResults } from './utils';
-import withStoreSearch, { SearchProps } from './withStoreSearch';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: 0,
-    '&.MuiGrid-container': {
-      width: 'calc(100% + 16px)',
-    },
-  },
-  headline: {
-    marginBottom: theme.spacing(),
-    [theme.breakpoints.down('sm')]: {
-      marginLeft: theme.spacing(),
-    },
-  },
-  emptyResultWrapper: {
-    padding: `${theme.spacing(10)}px ${theme.spacing(4)}px`,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyResult: {
-    padding: `${theme.spacing(10)}px ${theme.spacing(4)}px`,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    [theme.breakpoints.down('sm')]: {
-      padding: theme.spacing(4),
-    },
-  },
-  errorIcon: {
-    width: 60,
-    height: 60,
-    color: theme.palette.text.primary,
-    marginBottom: theme.spacing(4),
-  },
-}));
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { useAPISearch } from 'src/features/Search/useAPISearch';
+import { useIsLargeAccount } from 'src/hooks/useIsLargeAccount';
+import { useAllDatabasesQuery } from 'src/queries/databases/databases';
+import { useAllDomainsQuery } from 'src/queries/domains';
+import { useAllFirewallsQuery } from 'src/queries/firewalls';
+import { useAllImagesQuery } from 'src/queries/images';
+import { useAllKubernetesClustersQuery } from 'src/queries/kubernetes';
+import { useAllLinodesQuery } from 'src/queries/linodes/linodes';
+import { useAllNodeBalancersQuery } from 'src/queries/nodebalancers';
+import { useObjectStorageBuckets } from 'src/queries/object-storage/queries';
+import { isBucketError } from 'src/queries/object-storage/requests';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { useSpecificTypes } from 'src/queries/types';
+import { useAllVolumesQuery } from 'src/queries/volumes/volumes';
+import { formatLinode } from 'src/store/selectors/getSearchEntities';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+import { extendTypesQueryResult } from 'src/utilities/extendType';
+import { isNilOrEmpty } from 'src/utilities/isNilOrEmpty';
+import { isNotNullOrUndefined } from 'src/utilities/nullOrUndefined';
+import { getQueryParamFromQueryString } from 'src/utilities/queryParams';
+
+import { getImageLabelForLinode } from '../Images/utils';
+import { ResultGroup } from './ResultGroup';
+import './searchLanding.css';
+import {
+  StyledError,
+  StyledGrid,
+  StyledH1Header,
+  StyledRootGrid,
+  StyledStack,
+} from './SearchLanding.styles';
+import { emptyResults } from './utils';
+import withStoreSearch from './withStoreSearch';
+
+import type { SearchProps } from './withStoreSearch';
+import type { RouteComponentProps } from 'react-router-dom';
+import { useIsDatabasesEnabled } from '../Databases/utilities';
 
 const displayMap = {
-  linodes: 'Linodes',
+  buckets: 'Buckets',
+  databases: 'Databases',
   domains: 'Domains',
-  volumes: 'Volumes',
-  nodebalancers: 'NodeBalancers',
+  firewalls: 'Firewalls',
   images: 'Images',
   kubernetesClusters: 'Kubernetes',
-  buckets: 'Buckets',
+  linodes: 'Linodes',
+  nodebalancers: 'NodeBalancers',
+  volumes: 'Volumes',
 };
 
-export type CombinedProps = SearchProps & RouteComponentProps<{}>;
+export interface SearchLandingProps
+  extends SearchProps,
+    RouteComponentProps<{}> {}
 
-const splitWord = (word: any) => {
-  word = word.split('');
-  for (let i = 0; i < word.length; i += 2) {
-    word[i] = <span key={i}>{word[i]}</span>;
-  }
-  return word;
-};
+export const SearchLanding = (props: SearchLandingProps) => {
+  const { entities, search, searchResultsByEntity } = props;
+  const { data: regions } = useRegionsQuery();
 
-export const SearchLanding: React.FC<CombinedProps> = (props) => {
-  const { entities, errors, search, searchResultsByEntity } = props;
+  const isLargeAccount = useIsLargeAccount();
+  const { isDatabasesEnabled } = useIsDatabasesEnabled();
 
-  const classes = useStyles();
-  const { _isLargeAccount } = useAccountManagement();
+  // We only want to fetch all entities if we know they
+  // are not a large account. We do this rather than `!isLargeAccount`
+  // because we don't want to fetch all entities if isLargeAccount is loading (undefined).
+  const shouldFetchAllEntities = isLargeAccount === false;
 
-  const {
-    data: objectStorageClusters,
-    isLoading: areClustersLoading,
-    error: objectStorageClustersError,
-  } = useObjectStorageClusters(!_isLargeAccount);
+  const shouldMakeDBRequests =
+    shouldFetchAllEntities && Boolean(isDatabasesEnabled);
 
+  /*
+   @TODO OBJ Multicluster:'region' will become required, and the
+   'cluster' field will be deprecated once the feature is fully rolled out in production.
+   As part of the process of cleaning up after the 'objMultiCluster' feature flag, we will
+   remove 'cluster' and retain 'regions'.
+  */
   const {
     data: objectStorageBuckets,
+    error: bucketsError,
     isLoading: areBucketsLoading,
-  } = useObjectStorageBuckets(objectStorageClusters, !_isLargeAccount);
+  } = useObjectStorageBuckets(shouldFetchAllEntities);
+
+  /*
+  @TODO DBaaS: Change the passed argument to 'shouldFetchAllEntities' and
+  remove 'isDatabasesEnabled' once DBaaS V2 is fully rolled out.
+  */
+  const {
+    data: databases,
+    error: databasesError,
+    isLoading: areDatabasesLoading,
+  } = useAllDatabasesQuery(shouldMakeDBRequests);
 
   const {
     data: domains,
     error: domainsError,
     isLoading: areDomainsLoading,
-  } = useAllDomainsQuery(!_isLargeAccount);
+  } = useAllDomainsQuery(shouldFetchAllEntities);
+
+  const {
+    data: firewalls,
+    error: firewallsError,
+    isLoading: areFirewallsLoading,
+  } = useAllFirewallsQuery(shouldFetchAllEntities);
+
+  const {
+    data: kubernetesClusters,
+    error: kubernetesClustersError,
+    isLoading: areKubernetesClustersLoading,
+  } = useAllKubernetesClustersQuery(shouldFetchAllEntities);
+
+  const {
+    data: nodebalancers,
+    error: nodebalancersError,
+    isLoading: areNodeBalancersLoading,
+  } = useAllNodeBalancersQuery(shouldFetchAllEntities);
+
+  const {
+    data: volumes,
+    error: volumesError,
+    isLoading: areVolumesLoading,
+  } = useAllVolumesQuery({}, {}, shouldFetchAllEntities);
+
+  const {
+    data: _privateImages,
+    error: imagesError,
+    isLoading: areImagesLoading,
+  } = useAllImagesQuery({}, { is_public: false }, shouldFetchAllEntities); // We want to display private images (i.e., not Debian, Ubuntu, etc. distros)
+
+  const { data: publicImages } = useAllImagesQuery(
+    {},
+    { is_public: true },
+    shouldFetchAllEntities
+  );
+
+  const {
+    data: linodes,
+    error: linodesError,
+    isLoading: areLinodesLoading,
+  } = useAllLinodesQuery({}, {}, shouldFetchAllEntities);
+
+  const typesQuery = useSpecificTypes(
+    (linodes ?? []).map((linode) => linode.type).filter(isNotNullOrUndefined)
+  );
+  const types = extendTypesQueryResult(typesQuery);
+
+  const searchableLinodes = (linodes ?? []).map((linode) => {
+    const imageLabel = getImageLabelForLinode(linode, publicImages ?? []);
+    return formatLinode(linode, types, imageLabel);
+  });
 
   const [apiResults, setAPIResults] = React.useState<any>({});
-  const [apiError, setAPIError] = React.useState<string | null>(null);
+  const [apiError, setAPIError] = React.useState<null | string>(null);
   const [apiSearchLoading, setAPILoading] = React.useState<boolean>(false);
 
   let query = '';
   let queryError = false;
   try {
-    query = getQueryParam(props.location.search, 'query');
+    query = getQueryParamFromQueryString(props.location.search, 'query');
   } catch {
     queryError = true;
   }
 
-  const { _loading: reduxLoading } = useReduxLoad(
-    ['linodes', 'volumes', 'nodeBalancers', 'images', 'kubernetes'],
-    REFRESH_INTERVAL,
-    !_isLargeAccount
-  );
-
-  const { searchAPI } = useAPISearch();
+  const { searchAPI } = useAPISearch(!isNilOrEmpty(query));
 
   const _searchAPI = React.useRef(
     debounce(500, false, (_searchText: string) => {
@@ -149,136 +190,160 @@ export const SearchLanding: React.FC<CombinedProps> = (props) => {
   ).current;
 
   React.useEffect(() => {
-    if (_isLargeAccount) {
+    if (isLargeAccount) {
       _searchAPI(query);
     } else {
-      search(query, objectStorageBuckets?.buckets ?? [], domains ?? []);
+      search(
+        query,
+        objectStorageBuckets?.buckets ?? [],
+        domains ?? [],
+        volumes ?? [],
+        kubernetesClusters ?? [],
+        _privateImages ?? [],
+        regions ?? [],
+        searchableLinodes ?? [],
+        nodebalancers ?? [],
+        firewalls ?? [],
+        databases ?? []
+      );
     }
   }, [
     query,
     entities,
     search,
-    _isLargeAccount,
+    isLargeAccount,
     _searchAPI,
     objectStorageBuckets,
     domains,
+    volumes,
+    kubernetesClusters,
+    _privateImages,
+    regions,
+    nodebalancers,
+    linodes,
+    firewalls,
+    databases,
   ]);
 
-  const getErrorMessage = (errors: ErrorObject): string => {
-    const errorString: string[] = [];
-    if (errors.linodes) {
-      errorString.push('Linodes');
-    }
-    if (domainsError) {
-      errorString.push('Domains');
-    }
-    if (errors.volumes) {
-      errorString.push('Volumes');
-    }
-    if (errors.nodebalancers) {
-      errorString.push('NodeBalancers');
-    }
-    if (errors.images) {
-      errorString.push('Images');
-    }
-    if (errors.kubernetes) {
-      errorString.push('Kubernetes');
-    }
-    if (objectStorageClustersError) {
-      errorString.push('Object Storage');
-    }
-    if (objectStorageBuckets?.errors && !objectStorageClustersError) {
-      const regionsWithErrors = objectStorageBuckets.errors
-        .map((e) => e.cluster.region)
-        .join(', ');
-      errorString.push(`Object Storage in ${regionsWithErrors}`);
-    }
+  const getErrorMessage = () => {
+    const errorConditions: [unknown, string][] = [
+      [linodesError, 'Linodes'],
+      [bucketsError, 'Buckets'],
+      [domainsError, 'Domains'],
+      [volumesError, 'Volumes'],
+      [imagesError, 'Images'],
+      [nodebalancersError, 'NodeBalancers'],
+      [kubernetesClustersError, 'Kubernetes'],
+      [firewallsError, 'Firewalls'],
+      [databasesError, 'Databases'],
+      [
+        objectStorageBuckets && objectStorageBuckets.errors.length > 0,
+        `Object Storage in ${objectStorageBuckets?.errors
+          .map((e) => (isBucketError(e) ? e.cluster.region : e.endpoint.region))
+          .join(', ')}`,
+      ],
+    ];
 
-    const joined = errorString.join(', ');
-    return `Could not retrieve search results for: ${joined}`;
+    const matchingConditions = errorConditions.filter(
+      (condition) => condition[0]
+    );
+
+    if (matchingConditions.length > 0) {
+      return `Could not retrieve search results for: ${matchingConditions
+        .map((condition) => condition[1])
+        .join(', ')}`;
+    } else {
+      return false;
+    }
   };
 
-  const finalResults = _isLargeAccount ? apiResults : searchResultsByEntity;
+  const finalResults = isLargeAccount ? apiResults : searchResultsByEntity;
 
   const resultsEmpty = equals(finalResults, emptyResults);
 
-  const loading =
-    reduxLoading ||
-    areBucketsLoading ||
-    areClustersLoading ||
-    areDomainsLoading;
+  const loading = isLargeAccount
+    ? apiSearchLoading
+    : areLinodesLoading ||
+      areBucketsLoading ||
+      areDomainsLoading ||
+      areVolumesLoading ||
+      areKubernetesClustersLoading ||
+      areImagesLoading ||
+      areNodeBalancersLoading ||
+      areFirewallsLoading ||
+      areDatabasesLoading;
+
+  const errorMessage = getErrorMessage();
 
   return (
-    <Grid container className={classes.root} direction="column">
-      <Grid item>
+    <StyledRootGrid container direction="column" spacing={2}>
+      <Grid>
         {!resultsEmpty && !loading && (
-          <H1Header
+          <StyledH1Header
             title={`Search Results ${query && `for "${query}"`}`}
-            className={classes.headline}
           />
         )}
       </Grid>
-      {errors.hasErrors && (
-        <Grid item>
-          <Notice error text={getErrorMessage(errors)} />
+      {errorMessage && (
+        <Grid>
+          <Notice text={errorMessage} variant="error" />
         </Grid>
       )}
       {apiError && (
-        <Grid item>
-          <Notice error text={apiError} />
+        <Grid>
+          <Notice text={apiError} variant="error" />
         </Grid>
       )}
       {queryError && (
-        <Grid item>
-          <Notice error text="Invalid query" />
+        <Grid>
+          <Notice text="Invalid query" variant="error" />
         </Grid>
       )}
       {(loading || apiSearchLoading) && (
-        <Grid item data-qa-search-loading data-testid="loading">
+        <Grid data-qa-search-loading data-testid="loading">
           <CircleProgress />
         </Grid>
       )}
       {resultsEmpty && !loading && (
-        <Grid item data-qa-empty-state className={classes.emptyResultWrapper}>
-          <div className={classes.emptyResult}>
-            <Error className={classes.errorIcon} />
+        <StyledGrid data-qa-empty-state>
+          <StyledStack>
+            <StyledError />
             <Typography style={{ marginBottom: 16 }}>
               You searched for ...
             </Typography>
-            <Typography className="resultq">
-              {query && splitWord(query)}
+            <Typography className="resultq">{query}</Typography>
+            <Typography className="nothing" style={{ marginTop: 56 }}>
+              Sorry, no results for this one.
             </Typography>
-            <Typography style={{ marginTop: 56 }} className="nothing">
-              Sorry, no results for this one
-            </Typography>
-          </div>
-        </Grid>
+          </StyledStack>
+        </StyledGrid>
       )}
       {!loading && (
-        <Grid item>
-          {Object.keys(finalResults).map((entityType, idx: number) => (
-            <ResultGroup
-              key={idx}
-              entity={displayMap[entityType]}
-              results={finalResults[entityType]}
-              groupSize={100}
-            />
-          ))}
+        <Grid sx={{ padding: 0 }}>
+          {Object.keys(finalResults).map(
+            (entityType: keyof typeof displayMap, idx: number) => (
+              <ResultGroup
+                entity={displayMap[entityType]}
+                groupSize={100}
+                key={idx}
+                results={finalResults[entityType]}
+              />
+            )
+          )}
         </Grid>
       )}
-    </Grid>
+    </StyledRootGrid>
   );
 };
 
-const reloaded = reloadableWithRouter((routePropsOld, routePropsNew) => {
-  // reload if we're on the search landing
-  // and we enter a new term to search for
-  return routePropsOld.location.search !== routePropsNew.location.search;
+const EnhancedSearchLanding = withStoreSearch()(SearchLanding);
+
+export const searchLandingLazyRoute = createLazyRoute('/search')({
+  component: React.lazy(() =>
+    import('./SearchLanding').then(() => ({
+      default: (props: any) => <EnhancedSearchLanding {...props} />,
+    }))
+  ),
 });
 
-const enhanced = compose<CombinedProps, {}>(
-  reloaded,
-  withStoreSearch()
-)(SearchLanding);
-
-export default enhanced;
+export default EnhancedSearchLanding;

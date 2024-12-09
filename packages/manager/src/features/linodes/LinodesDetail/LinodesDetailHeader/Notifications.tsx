@@ -1,31 +1,36 @@
 import { Notification } from '@linode/api-v4/lib/account';
-import { LinodeStatus } from '@linode/api-v4/lib/linodes';
 import * as React from 'react';
-import { compose } from 'recompose';
-import MaintenanceBanner from 'src/components/MaintenanceBanner';
-import ProductNotification from 'src/components/ProductNotification';
-import { useAllAccountMaintenanceQuery } from 'src/queries/accountMaintenance';
-import { Maintenance } from 'src/store/linodes/linodes.helpers';
-import { withNotifications } from 'src/store/notification/notification.containers';
-import { withLinodeDetailContext } from '../linodeDetailContext';
-import MigrationNotification from './MigrationNotification';
+import { useParams } from 'react-router-dom';
 
-type CombinedProps = ContextProps & { requestNotifications: () => void };
+import { MaintenanceBanner } from 'src/components/MaintenanceBanner/MaintenanceBanner';
+import { ProductNotification } from 'src/components/ProductNotification/ProductNotification';
+import { useAllAccountMaintenanceQuery } from 'src/queries/account/maintenance';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
+import { useLinodeQuery } from 'src/queries/linodes/linodes';
 
-const Notifications: React.FC<CombinedProps> = (props) => {
-  const {
-    requestNotifications,
-    linodeNotifications,
-    linodeId,
-    linodeStatus,
-  } = props;
+import { MigrationNotification } from './MigrationNotification';
 
-  const { data: accountMaintenanceData } = useAllAccountMaintenanceQuery();
+const Notifications = () => {
+  const { linodeId } = useParams<{ linodeId: string }>();
+  const { data: linode } = useLinodeQuery(Number(linodeId));
+
+  const { data: notifications, refetch } = useNotificationsQuery();
+
+  const linodeNotifications = notifications?.filter(
+    (notification) =>
+      notification.entity?.type === 'linode' &&
+      notification.entity.id === Number(linodeId)
+  );
+
+  const { data: accountMaintenanceData } = useAllAccountMaintenanceQuery(
+    {},
+    { status: { '+or': ['pending, started'] } }
+  );
 
   const maintenanceForThisLinode = accountMaintenanceData?.find(
     (thisMaintenance) =>
       thisMaintenance.entity.type === 'linode' &&
-      thisMaintenance.entity.id === linodeId
+      thisMaintenance.entity.id === linode?.id
   );
 
   const generateNotificationBody = (notification: Notification) => {
@@ -38,16 +43,16 @@ const Notifications: React.FC<CombinedProps> = (props) => {
       case 'migration_pending':
       case 'migration_scheduled':
         /** don't show any banner if the migration is in progress */
-        if (linodeStatus === 'migrating') {
+        if (linode?.status === 'migrating') {
           return null;
         }
         return (
           <MigrationNotification
-            linodeID={linodeId}
-            requestNotifications={requestNotifications}
+            linodeID={Number(linode?.id)}
+            migrationTime={notification.when}
             notificationMessage={notification.message}
             notificationType={notification.type}
-            migrationTime={notification.when}
+            requestNotifications={refetch}
           />
         );
       default:
@@ -62,7 +67,7 @@ const Notifications: React.FC<CombinedProps> = (props) => {
 
   return (
     <>
-      {linodeNotifications.map((n, idx) => {
+      {linodeNotifications?.map((n, idx) => {
         return (
           <React.Fragment key={idx}>
             {generateNotificationBody(n)}
@@ -79,23 +84,4 @@ const Notifications: React.FC<CombinedProps> = (props) => {
   );
 };
 
-interface ContextProps {
-  linodeNotifications: Notification[];
-  linodeId: number;
-  linodeStatus: LinodeStatus;
-  maintenance: Maintenance;
-}
-
-const enhanced = compose<CombinedProps, {}>(
-  withLinodeDetailContext<ContextProps>(({ linode }) => ({
-    linodeNotifications: linode._notifications,
-    linodeId: linode.id,
-    linodeStatus: linode.status,
-    maintenance: linode.maintenance,
-  })),
-  withNotifications(undefined, ({ requestNotifications }) => ({
-    requestNotifications,
-  }))
-);
-
-export default enhanced(Notifications);
+export default Notifications;

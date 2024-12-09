@@ -1,44 +1,48 @@
-import {
-  AccessType,
-  ObjectStorageBucket,
-  ObjectStorageKey,
-  ObjectStorageKeyRequest,
-  Scope,
-} from '@linode/api-v4/lib/object-storage';
 import { createObjectStorageKeysSchema } from '@linode/validation/lib/objectStorageKeys.schema';
 import { Formik } from 'formik';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import { useAccountSettings } from 'src/queries/accountSettings';
-import {
-  useObjectStorageBuckets,
-  useObjectStorageClusters,
-} from 'src/queries/objectStorage';
-import EnableObjectStorageModal from '../EnableObjectStorageModal';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Drawer } from 'src/components/Drawer';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
+import { useAccountSettings } from 'src/queries/account/settings';
+import { useObjectStorageBuckets } from 'src/queries/object-storage/queries';
+
+import { EnableObjectStorageModal } from '../EnableObjectStorageModal';
 import { confirmObjectStorage } from '../utilities';
-import LimitedAccessControls from './LimitedAccessControls';
-import { MODE } from './types';
-export interface Props {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (values: ObjectStorageKeyRequest, formikProps: any) => void;
+import { LimitedAccessControls } from './LimitedAccessControls';
+
+import type { MODE } from './types';
+import type {
+  CreateObjectStorageKeyPayload,
+  ObjectStorageBucket,
+  ObjectStorageKey,
+  ObjectStorageKeyBucketAccess,
+  ObjectStorageKeyBucketAccessPermissions,
+  UpdateObjectStorageKeyPayload,
+} from '@linode/api-v4/lib/object-storage';
+import type { FormikProps } from 'formik';
+
+export interface AccessKeyDrawerProps {
+  isRestrictedUser: boolean;
   mode: MODE;
   // If the mode is 'editing', we should have an ObjectStorageKey to edit
   objectStorageKey?: ObjectStorageKey;
-  isRestrictedUser: boolean;
+  onClose: () => void;
+  onSubmit: (
+    values: CreateObjectStorageKeyPayload | UpdateObjectStorageKeyPayload,
+    formikProps: FormikProps<CreateObjectStorageKeyPayload>
+  ) => void;
+  open: boolean;
 }
 
-type CombinedProps = Props;
-
 interface FormState {
+  bucket_access: ObjectStorageKeyBucketAccess[] | null;
   label: string;
-  bucket_access: Scope[] | null;
 }
 
 /**
@@ -47,7 +51,10 @@ interface FormState {
  * bucket_access in the shape the API will expect,
  * sorted by cluster.
  */
-export const sortByCluster = (a: Scope, b: Scope) => {
+export const sortByCluster = (
+  a: ObjectStorageKeyBucketAccess,
+  b: ObjectStorageKeyBucketAccess
+) => {
   if (a.cluster > b.cluster) {
     return 1;
   }
@@ -57,37 +64,39 @@ export const sortByCluster = (a: Scope, b: Scope) => {
   return 0;
 };
 
-export const getDefaultScopes = (buckets: ObjectStorageBucket[]): Scope[] =>
+export const getDefaultScopes = (
+  buckets: ObjectStorageBucket[]
+): ObjectStorageKeyBucketAccess[] =>
   buckets
     .map((thisBucket) => ({
-      cluster: thisBucket.cluster,
       bucket_name: thisBucket.label,
-      permissions: 'none' as AccessType,
+      cluster: thisBucket.cluster,
+      permissions: 'none' as ObjectStorageKeyBucketAccessPermissions,
+      region: thisBucket.region ?? '',
     }))
     .sort(sortByCluster);
 
-export const AccessKeyDrawer: React.FC<CombinedProps> = (props) => {
+export const AccessKeyDrawer = (props: AccessKeyDrawerProps) => {
   const {
     isRestrictedUser,
-    open,
-    onClose,
-    onSubmit,
     mode,
     objectStorageKey,
+    onClose,
+    onSubmit,
+    open,
   } = props;
 
-  const {
-    data: objectStorageClusters,
-    isLoading: areClustersLoading,
-  } = useObjectStorageClusters();
-  const {
-    data: objectStorageBucketsResponse,
-    isLoading: areBucketsLoading,
-    error: bucketsError,
-  } = useObjectStorageBuckets(objectStorageClusters);
   const { data: accountSettings } = useAccountSettings();
 
+  const {
+    data: objectStorageBucketsResponse,
+    error: bucketsError,
+    isLoading: areBucketsLoading,
+  } = useObjectStorageBuckets();
+
   const buckets = objectStorageBucketsResponse?.buckets || [];
+
+  const hasBuckets = buckets?.length > 0;
 
   const hidePermissionsTable =
     bucketsError || objectStorageBucketsResponse?.buckets.length === 0;
@@ -111,50 +120,70 @@ export const AccessKeyDrawer: React.FC<CombinedProps> = (props) => {
     !createMode && objectStorageKey ? objectStorageKey.label : '';
 
   const initialValues: FormState = {
-    label: initialLabelValue,
     bucket_access: getDefaultScopes(buckets),
+    label: initialLabelValue,
   };
 
-  const handleSubmit = (values: ObjectStorageKeyRequest, formikProps: any) => {
+  const handleSubmit = (
+    values: CreateObjectStorageKeyPayload,
+    formikProps: FormikProps<CreateObjectStorageKeyPayload>
+  ) => {
     // If the user hasn't toggled the Limited Access button,
     // don't include any bucket_access information in the payload.
 
     // If any/all values are 'none', don't include them in the response.
-    const access = values.bucket_access ?? [];
-    const payload = limitedAccessChecked
-      ? {
-          ...values,
-          bucket_access: access.filter(
-            (thisAccess) => thisAccess.permissions !== 'none'
-          ),
-        }
-      : { ...values, bucket_access: null };
+    let payload = {};
+    if (
+      mode === 'creating' &&
+      values?.bucket_access !== null &&
+      limitedAccessChecked
+    ) {
+      const access = values?.bucket_access ?? [];
+      payload = {
+        ...values,
+        bucket_access: access.filter(
+          (thisAccess) => thisAccess.permissions !== 'none'
+        ),
+      };
+    } else {
+      payload = { ...values, bucket_access: null };
+    }
 
+    if (mode === 'editing') {
+      payload = {
+        label: values.label,
+      };
+    }
     return onSubmit(payload, formikProps);
   };
 
   return (
-    <Drawer title={title} open={open} onClose={onClose} wide={createMode}>
-      {areBucketsLoading || areClustersLoading ? (
+    <Drawer
+      onClose={onClose}
+      open={open}
+      title={title}
+      wide={createMode && hasBuckets}
+    >
+      {areBucketsLoading ? (
         <CircleProgress />
       ) : (
         <Formik
           initialValues={initialValues}
-          validationSchema={createObjectStorageKeysSchema}
-          validateOnChange={false}
-          validateOnBlur={true}
           onSubmit={handleSubmit}
+          validateOnBlur={true}
+          validateOnChange={false}
+          validationSchema={createObjectStorageKeysSchema}
         >
           {(formikProps) => {
             const {
-              values,
               errors,
-              handleChange,
               handleBlur,
+              handleChange,
               handleSubmit,
-              setFieldValue,
               isSubmitting,
+              setFieldValue,
               status,
+              values,
             } = formikProps;
 
             const beforeSubmit = () => {
@@ -165,7 +194,9 @@ export const AccessKeyDrawer: React.FC<CombinedProps> = (props) => {
               );
             };
 
-            const handleScopeUpdate = (newScopes: Scope[]) => {
+            const handleScopeUpdate = (
+              newScopes: ObjectStorageKeyBucketAccess[]
+            ) => {
               setFieldValue('bucket_access', newScopes);
             };
 
@@ -178,14 +209,19 @@ export const AccessKeyDrawer: React.FC<CombinedProps> = (props) => {
             return (
               <>
                 {status && (
-                  <Notice key={status} text={status} error data-qa-error />
+                  <Notice
+                    data-qa-error
+                    key={status}
+                    text={status}
+                    variant="error"
+                  />
                 )}
 
                 {isRestrictedUser && (
                   <Notice
-                    error
                     important
                     text="You don't have bucket_access to create an Access Key. Please contact an account administrator for details."
+                    variant="error"
                   />
                 )}
 
@@ -193,65 +229,65 @@ export const AccessKeyDrawer: React.FC<CombinedProps> = (props) => {
                 {createMode && (
                   <Typography>
                     Generate an Access Key for use with an{' '}
-                    <a
-                      href="https://linode.com/docs/platform/object-storage/how-to-use-object-storage/#object-storage-tools"
-                      target="_blank"
-                      aria-describedby="external-site"
-                      rel="noopener noreferrer"
+                    <Link
                       className="h-u"
+                      to="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-object-storage#object-storage-tools"
                     >
                       S3-compatible client
-                    </a>
+                    </Link>
                     .
                   </Typography>
                 )}
 
+                {!hasBuckets ? (
+                  <Typography sx={{ paddingTop: '10px' }}>
+                    This key will have unlimited access to all buckets on your
+                    account. The option to create a limited access key is only
+                    available after creating one or more buckets.
+                  </Typography>
+                ) : null}
+
                 <TextField
-                  name="label"
-                  label="Label"
                   data-qa-add-label
-                  value={values.label}
+                  disabled={isRestrictedUser || mode === 'viewing'}
                   error={!!errors.label}
                   errorText={errors.label}
-                  onChange={handleChange}
+                  label="Label"
+                  name="label"
                   onBlur={handleBlur}
-                  disabled={isRestrictedUser || mode === 'viewing'}
+                  onChange={handleChange}
+                  value={values.label}
                 />
                 {createMode && !hidePermissionsTable ? (
                   <LimitedAccessControls
-                    mode={mode}
                     bucket_access={values.bucket_access}
-                    updateScopes={handleScopeUpdate}
-                    handleToggle={handleToggleAccess}
                     checked={limitedAccessChecked}
+                    handleToggle={handleToggleAccess}
+                    mode={mode}
+                    updateScopes={handleScopeUpdate}
                   />
                 ) : null}
-                <ActionsPanel>
-                  <Button
-                    buttonType="secondary"
-                    onClick={onClose}
-                    data-qa-cancel
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    buttonType="primary"
-                    disabled={
+                <ActionsPanel
+                  primaryButtonProps={{
+                    'data-testid': 'submit',
+                    disabled:
                       isRestrictedUser ||
                       (mode !== 'creating' &&
-                        values.label === initialLabelValue)
-                    }
-                    loading={isSubmitting}
-                    onClick={beforeSubmit}
-                    data-qa-submit
-                  >
-                    {createMode ? 'Create Access Key' : 'Save Changes'}
-                  </Button>
-                </ActionsPanel>
+                        values.label === initialLabelValue),
+                    label: createMode ? 'Create Access Key' : 'Save Changes',
+                    loading: isSubmitting,
+                    onClick: beforeSubmit,
+                  }}
+                  secondaryButtonProps={{
+                    'data-testid': 'cancel',
+                    label: 'Cancel',
+                    onClick: onClose,
+                  }}
+                />
                 <EnableObjectStorageModal
-                  open={dialogOpen}
-                  onClose={() => setDialogOpen(false)}
                   handleSubmit={handleSubmit}
+                  onClose={() => setDialogOpen(false)}
+                  open={dialogOpen}
                 />
               </>
             );
@@ -261,5 +297,3 @@ export const AccessKeyDrawer: React.FC<CombinedProps> = (props) => {
     </Drawer>
   );
 };
-
-export default React.memo(AccessKeyDrawer);

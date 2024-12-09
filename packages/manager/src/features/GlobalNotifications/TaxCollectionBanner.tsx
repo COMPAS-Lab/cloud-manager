@@ -1,40 +1,42 @@
+import { DateTime } from 'luxon';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
-import Button from 'src/components/Button';
-import Box from 'src/components/core/Box';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import { useDismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
-import Link from 'src/components/Link';
-import Notice from 'src/components/Notice';
+
+import { Button } from 'src/components/Button/Button';
+import { DismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
+import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
 import { useFlags } from 'src/hooks/useFlags';
-import { useAccount } from 'src/queries/account';
+import { useAccount } from 'src/queries/account/account';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  button: {
-    marginLeft: theme.spacing(2),
-    minWidth: 140,
-    whiteSpace: 'nowrap',
-  },
-}));
-
-const TaxCollectionBanner: React.FC<{}> = () => {
-  const classes = useStyles();
+export const TaxCollectionBanner = () => {
   const history = useHistory();
   const flags = useFlags();
 
   const { data: account } = useAccount();
-  const { hasDismissedBanner, handleDismiss } = useDismissibleBanner(
-    'tax-collection-banner'
-  );
 
-  const bannerDate = flags.taxCollectionBanner?.date ?? '';
+  const countryDateString = flags.taxCollectionBanner?.date ?? '';
   const bannerHasAction = flags.taxCollectionBanner?.action ?? false;
-  const bannerRegions = flags.taxCollectionBanner?.regions ?? [];
+  const bannerRegions =
+    flags.taxCollectionBanner?.regions?.map((region) => {
+      if (typeof region === 'string') {
+        return region;
+      }
+      return region.name;
+    }) ?? [];
 
-  if (!account || hasDismissedBanner || !bannerDate) {
+  if (!account || !countryDateString) {
     return null;
   }
+
+  const regionDateString = flags.taxCollectionBanner?.regions?.find(
+    (region) => region.name === account.state
+  )?.date;
+
+  const bannerDateString = regionDateString ?? countryDateString;
+  const bannerDate = DateTime.fromFormat(bannerDateString, 'LLLL dd yyyy');
+  const isBannerDateWithinFiveWeeksPrior =
+    bannerDate.plus({ days: 35 }) <= DateTime.now();
 
   /**
    * If bannerRegions is empty, display the banner for everyone in the country
@@ -49,34 +51,36 @@ const TaxCollectionBanner: React.FC<{}> = () => {
   const isUserInTaxableRegion =
     bannerRegions.length > 0 && bannerRegions.includes(account.state);
 
-  return isEntireCountryTaxable || isUserInTaxableRegion ? (
-    <Notice warning important dismissible onClose={handleDismiss}>
-      <Box
-        display="flex"
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="space-between"
-      >
-        <Typography>
-          Starting {bannerDate}, tax may be applied to your Linode services. For
-          more information, please see the{' '}
-          <Link to="https://www.linode.com/docs/platform/billing-and-support/tax-information/">
-            Tax Information Guide
-          </Link>
-          .
-        </Typography>
-        {bannerHasAction ? (
-          <Button
-            buttonType="primary"
-            className={classes.button}
-            onClick={() => history.push('/account/billing/edit')}
-          >
-            Update Tax ID
-          </Button>
-        ) : null}
-      </Box>
-    </Notice>
+  const actionButton = bannerHasAction ? (
+    <Button
+      sx={(theme) => ({
+        marginLeft: theme.spacing(2),
+        minWidth: '140px',
+        whiteSpace: 'nowrap',
+      })}
+      buttonType="primary"
+      onClick={() => history.push('/account/billing/edit')}
+    >
+      Update Tax ID
+    </Button>
+  ) : undefined;
+
+  return (isEntireCountryTaxable || isUserInTaxableRegion) &&
+    !isBannerDateWithinFiveWeeksPrior ? (
+    <DismissibleBanner
+      actionButton={actionButton}
+      important
+      preferenceKey="tax-collection-banner"
+      variant="warning"
+    >
+      <Typography>
+        Starting {bannerDateString}, tax may be applied to your Linode services.
+        For more information, please see the{' '}
+        <Link to="https://techdocs.akamai.com/cloud-computing/docs/tax-information">
+          Tax Information Guide
+        </Link>
+        .
+      </Typography>
+    </DismissibleBanner>
   ) : null;
 };
-
-export default TaxCollectionBanner;

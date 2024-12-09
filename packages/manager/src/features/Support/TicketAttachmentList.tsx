@@ -1,46 +1,17 @@
-import InsertDriveFile from '@material-ui/icons/InsertDriveFile';
-import InsertPhoto from '@material-ui/icons/InsertPhoto';
+import InsertDriveFile from '@mui/icons-material/InsertDriveFile';
+import InsertPhoto from '@mui/icons-material/InsertPhoto';
+import Grid from '@mui/material/Unstable_Grid2';
 import { isEmpty, slice } from 'ramda';
 import * as React from 'react';
-import { compose, withStateHandlers } from 'recompose';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import ShowMoreExpansion from 'src/components/ShowMoreExpansion';
-import TicketAttachmentRow from './TicketAttachmentRow';
 
-type ClassNames = 'root' | 'attachmentPaperWrapper';
+import { ShowMoreExpansion } from 'src/components/ShowMoreExpansion';
+import { Typography } from 'src/components/Typography';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      marginLeft: theme.spacing(7),
-      maxWidth: 600,
-      [theme.breakpoints.down('xs')]: {
-        marginLeft: theme.spacing(5),
-        width: 'calc(100% - 32px)',
-      },
-    },
-    attachmentPaperWrapper: {
-      overflowX: 'auto',
-    },
-  });
-
-interface ToggleProps {
-  showMoreAttachments: boolean;
-  toggle: (e: React.MouseEvent<HTMLDivElement>) => (t: boolean) => boolean;
-}
+import { TicketAttachmentRow } from './TicketAttachmentRow';
 
 interface Props {
   attachments: string[];
 }
-
-type CombinedProps = Props & ToggleProps & WithStyles<ClassNames>;
 
 export const addIconsToAttachments = (attachments: string[] = []) => {
   const extensions = ['jpg', 'jpeg', 'png', 'bmp', 'tiff'];
@@ -55,8 +26,12 @@ export const addIconsToAttachments = (attachments: string[] = []) => {
   });
 };
 
-export const TicketAttachmentList: React.FC<CombinedProps> = (props) => {
-  const { attachments, classes, showMoreAttachments, toggle } = props;
+export const TicketAttachmentList = ({ attachments }: Props) => {
+  const [showMoreAttachments, setShowMoreAttachments] = React.useState(false);
+
+  const toggle = () => {
+    setShowMoreAttachments((prev) => !prev);
+  };
 
   if (isEmpty(attachments)) {
     return null;
@@ -65,8 +40,24 @@ export const TicketAttachmentList: React.FC<CombinedProps> = (props) => {
   const icons = addIconsToAttachments(attachments);
 
   return (
-    <Grid item container justifyContent="flex-start" className={classes.root}>
-      <Grid item className={classes.attachmentPaperWrapper}>
+    <Grid
+      sx={(theme) => ({
+        marginLeft: theme.spacing(6),
+        marginTop: theme.spacing(),
+        maxWidth: 600,
+        [theme.breakpoints.down('sm')]: {
+          marginLeft: theme.spacing(5),
+          width: 'calc(100% - 32px)',
+        },
+      })}
+      container
+      justifyContent="flex-start"
+    >
+      <Grid
+        sx={{
+          overflowX: 'auto',
+        }}
+      >
         <Typography variant="h3">Attachments</Typography>
         <TicketAttachmentRow
           attachments={slice(0, 5, attachments)}
@@ -75,10 +66,10 @@ export const TicketAttachmentList: React.FC<CombinedProps> = (props) => {
         {attachments.length > 5 && (
           // eslint-disable-next-line jsx-a11y/click-events-have-key-events
           <div
-            onClick={toggle}
-            style={{ display: 'inline-block' }}
             data-qa-attachment-toggle
+            onClick={toggle}
             role="button"
+            style={{ display: 'inline-block' }}
             tabIndex={0}
           >
             <ShowMoreExpansion
@@ -98,19 +89,3 @@ export const TicketAttachmentList: React.FC<CombinedProps> = (props) => {
     </Grid>
   );
 };
-
-const styled = withStyles(styles);
-
-const enhanced = compose<CombinedProps, Props>(
-  withStateHandlers(
-    { showMoreAttachments: false },
-    {
-      toggle: ({ showMoreAttachments }) => () => ({
-        showMoreAttachments: !showMoreAttachments,
-      }),
-    }
-  ),
-  styled
-)(TicketAttachmentList);
-
-export default enhanced;

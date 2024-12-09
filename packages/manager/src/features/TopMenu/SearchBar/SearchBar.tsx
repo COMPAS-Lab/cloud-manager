@@ -1,37 +1,43 @@
-import Close from '@material-ui/icons/Close';
-import Search from '@material-ui/icons/Search';
+import Close from '@mui/icons-material/Close';
+import Search from '@mui/icons-material/Search';
 import { take } from 'ramda';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { components } from 'react-select';
-import { compose } from 'recompose';
-import IconButton from 'src/components/core/IconButton';
-import EnhancedSelect, { Item } from 'src/components/EnhancedSelect/Select';
-import { REFRESH_INTERVAL } from 'src/constants';
-import withTypes, { WithTypesProps } from 'src/containers/types.container';
-import withImages, { WithImages } from 'src/containers/withImages.container';
-import withStoreSearch, {
-  SearchProps,
-} from 'src/features/Search/withStoreSearch';
-import useAPISearch from 'src/features/Search/useAPISearch';
-import useAccountManagement from 'src/hooks/useAccountManagement';
-import { ReduxEntity, useReduxLoad } from 'src/hooks/useReduxLoad';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { sendSearchBarUsedEvent } from 'src/utilities/ga';
 import { debounce } from 'throttle-debounce';
-import styled, { StyleProps } from './SearchBar.styles';
-import SearchSuggestion from './SearchSuggestion';
-import {
-  useObjectStorageBuckets,
-  useObjectStorageClusters,
-} from 'src/queries/objectStorage';
-import { useAllDomainsQuery } from 'src/queries/domains';
 
-type CombinedProps = WithTypesProps &
-  WithImages &
-  SearchProps &
-  StyleProps &
-  RouteComponentProps<{}>;
+import EnhancedSelect from 'src/components/EnhancedSelect/Select';
+import { useIsDatabasesEnabled } from 'src/features/Databases/utilities';
+import { getImageLabelForLinode } from 'src/features/Images/utils';
+import { useAPISearch } from 'src/features/Search/useAPISearch';
+import withStoreSearch from 'src/features/Search/withStoreSearch';
+import { useIsLargeAccount } from 'src/hooks/useIsLargeAccount';
+import { useAllDatabasesQuery } from 'src/queries/databases/databases';
+import { useAllDomainsQuery } from 'src/queries/domains';
+import { useAllFirewallsQuery } from 'src/queries/firewalls';
+import { useAllImagesQuery } from 'src/queries/images';
+import { useAllKubernetesClustersQuery } from 'src/queries/kubernetes';
+import { useAllLinodesQuery } from 'src/queries/linodes/linodes';
+import { useAllNodeBalancersQuery } from 'src/queries/nodebalancers';
+import { useObjectStorageBuckets } from 'src/queries/object-storage/queries';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { useSpecificTypes } from 'src/queries/types';
+import { useAllVolumesQuery } from 'src/queries/volumes/volumes';
+import { formatLinode } from 'src/store/selectors/getSearchEntities';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+import { extendTypesQueryResult } from 'src/utilities/extendType';
+import { isNilOrEmpty } from 'src/utilities/isNilOrEmpty';
+import { isNotNullOrUndefined } from 'src/utilities/nullOrUndefined';
+import { getQueryParamsFromQueryString } from 'src/utilities/queryParams';
+
+import {
+  StyledIconButton,
+  StyledSearchBarWrapperDiv,
+} from './SearchBar.styles';
+import { SearchSuggestion } from './SearchSuggestion';
+
+import type { Item } from 'src/components/EnhancedSelect/Select';
+import type { SearchProps } from 'src/features/Search/withStoreSearch';
 
 const Control = (props: any) => <components.Control {...props} />;
 
@@ -39,7 +45,7 @@ const Control = (props: any) => <components.Control {...props} />;
  * This doesn't share the same shape as the rest of the results, so should use
  * the default styling. */
 const Option = (props: any) => {
-  return ['redirect', 'info', 'error'].includes(props.value) ? (
+  return ['error', 'info', 'redirect'].includes(props.value) ? (
     <components.Option {...props} />
   ) : (
     <SearchSuggestion {...props} />
@@ -50,65 +56,95 @@ const Option = (props: any) => {
 export const selectStyles = {
   control: (base: any) => ({
     ...base,
-    backgroundColor: '#f4f4f4',
+    backgroundColor: 'pink',
+    border: 0,
     margin: 0,
     width: '100%',
-    border: 0,
-  }),
-  input: (base: any) => ({ ...base, margin: 0, width: '100%', border: 0 }),
-  selectContainer: (base: any) => ({
-    ...base,
-    width: '100%',
-    margin: 0,
-    border: 0,
   }),
   dropdownIndicator: () => ({ display: 'none' }),
-  placeholder: (base: any) => ({ ...base, color: 'blue' }),
+  input: (base: any) => ({ ...base, border: 0, margin: 0, width: '100%' }),
   menu: (base: any) => ({ ...base, maxWidth: '100% !important' }),
+  placeholder: (base: any) => ({
+    ...base,
+    color: base?.palette?.text?.primary,
+    fontSize: '0.875rem',
+  }),
+  selectContainer: (base: any) => ({
+    ...base,
+    border: 0,
+    margin: 0,
+    width: '100%',
+  }),
 };
 
-const searchDeps: ReduxEntity[] = [
-  'linodes',
-  'nodeBalancers',
-  'images',
-  'volumes',
-  'kubernetes',
-];
-
-export const SearchBar: React.FC<CombinedProps> = (props) => {
-  const { classes, combinedResults, entitiesLoading, search } = props;
-
+const SearchBar = (props: SearchProps) => {
+  const { combinedResults, entitiesLoading, search } = props;
   const [searchText, setSearchText] = React.useState<string>('');
+  const [value, setValue] = React.useState<Item | null>(null);
   const [searchActive, setSearchActive] = React.useState<boolean>(false);
   const [menuOpen, setMenuOpen] = React.useState<boolean>(false);
-
   const [apiResults, setAPIResults] = React.useState<any[]>([]);
-  const [apiError, setAPIError] = React.useState<string | null>(null);
+  const [apiError, setAPIError] = React.useState<null | string>(null);
   const [apiSearchLoading, setAPILoading] = React.useState<boolean>(false);
+  const history = useHistory();
+  const isLargeAccount = useIsLargeAccount(searchActive);
+  const { isDatabasesEnabled } = useIsDatabasesEnabled();
 
-  const { _isLargeAccount } = useAccountManagement();
+  // Only request things if the search bar is open/active and we
+  // know if the account is large or not
+  const shouldMakeRequests =
+    searchActive && isLargeAccount !== undefined && !isLargeAccount;
 
-  // Only request things if the search bar is open/active.
-  const shouldMakeRequests = searchActive && !_isLargeAccount;
+  const shouldMakeDBRequests =
+    shouldMakeRequests && Boolean(isDatabasesEnabled);
 
-  const { data: objectStorageClusters } = useObjectStorageClusters(
-    shouldMakeRequests
-  );
+  const { data: regions } = useRegionsQuery();
 
   const { data: objectStorageBuckets } = useObjectStorageBuckets(
-    objectStorageClusters,
     shouldMakeRequests
   );
 
   const { data: domains } = useAllDomainsQuery(shouldMakeRequests);
+  const { data: clusters } = useAllKubernetesClustersQuery(shouldMakeRequests);
+  const { data: volumes } = useAllVolumesQuery({}, {}, shouldMakeRequests);
+  const { data: nodebalancers } = useAllNodeBalancersQuery(shouldMakeRequests);
+  const { data: firewalls } = useAllFirewallsQuery(shouldMakeRequests);
 
-  const { _loading } = useReduxLoad(
-    searchDeps,
-    REFRESH_INTERVAL,
+  /*
+  @TODO DBaaS: Change the passed argument to 'shouldMakeRequests' and
+  remove 'isDatabasesEnabled' once DBaaS V2 is fully rolled out.
+  */
+  const { data: databases } = useAllDatabasesQuery(shouldMakeDBRequests);
+
+  const { data: _privateImages, isLoading: imagesLoading } = useAllImagesQuery(
+    {},
+    { is_public: false }, // We want to display private images (i.e., not Debian, Ubuntu, etc. distros)
+    shouldMakeRequests
+  );
+  const { data: publicImages } = useAllImagesQuery(
+    {},
+    { is_public: true },
+    searchActive
+  );
+  const { data: linodes, isLoading: linodesLoading } = useAllLinodesQuery(
+    {},
+    {},
     shouldMakeRequests
   );
 
-  const { searchAPI } = useAPISearch();
+  const typesQuery = useSpecificTypes(
+    (linodes ?? []).map((linode) => linode.type).filter(isNotNullOrUndefined),
+    shouldMakeRequests
+  );
+
+  const extendedTypes = extendTypesQueryResult(typesQuery);
+
+  const searchableLinodes = (linodes ?? []).map((linode) => {
+    const imageLabel = getImageLabelForLinode(linode, publicImages ?? []);
+    return formatLinode(linode, extendedTypes, imageLabel);
+  });
+
+  const { searchAPI } = useAPISearch(!isNilOrEmpty(searchText));
 
   const _searchAPI = React.useRef(
     debounce(500, false, (_searchText: string) => {
@@ -132,21 +168,55 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
   const buckets = objectStorageBuckets?.buckets || [];
 
   React.useEffect(() => {
+    const { pathname, search } = history.location;
+    const query = getQueryParamsFromQueryString(search);
+
+    if (pathname !== '/search') {
+      setValue(null);
+    } else if (pathname === '/search' && Object.keys(query).length > 0) {
+      const q = query.query;
+      if (!q) {
+        return;
+      }
+
+      setValue({ label: q, value: q });
+    }
+  }, [history.location]);
+
+  React.useEffect(() => {
     // We can't store all data for large accounts for client side search,
     // so use the API's filtering instead.
-    if (_isLargeAccount) {
+    if (isLargeAccount) {
       _searchAPI(searchText);
     } else {
-      search(searchText, buckets, domains ?? []);
+      search(
+        searchText,
+        buckets,
+        domains ?? [],
+        volumes ?? [],
+        clusters ?? [],
+        _privateImages ?? [],
+        regions ?? [],
+        searchableLinodes ?? [],
+        nodebalancers ?? [],
+        firewalls ?? [],
+        databases ?? []
+      );
     }
   }, [
-    _loading,
+    imagesLoading,
     search,
     searchText,
     _searchAPI,
-    _isLargeAccount,
+    isLargeAccount,
     objectStorageBuckets,
     domains,
+    volumes,
+    _privateImages,
+    regions,
+    nodebalancers,
+    firewalls,
+    databases,
   ]);
 
   const handleSearchChange = (_searchText: string): void => {
@@ -170,6 +240,11 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
     setMenuOpen(true);
   };
 
+  const onFocus = () => {
+    setSearchActive(true);
+    setValue(null);
+  };
+
   const onSelect = (item: Item) => {
     if (!item || item.label === '') {
       return;
@@ -182,23 +257,22 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
     const text = item?.data?.searchText ?? '';
 
     if (item.value === 'redirect') {
-      props.history.push({
+      history.push({
         pathname: `/search`,
         search: `?query=${encodeURIComponent(text)}`,
       });
       return;
     }
-    sendSearchBarUsedEvent();
-    props.history.push(item.data.path);
+    history.push(item.data.path);
   };
 
   const onKeyDown = (e: any) => {
     if (
-      e.keyCode === 13 &&
+      e.key === 'Enter' &&
       searchText !== '' &&
       (!combinedResults || combinedResults.length < 1)
     ) {
-      props.history.push({
+      history.push({
         pathname: `/search`,
         search: `?query=${encodeURIComponent(searchText)}`,
       });
@@ -207,7 +281,7 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
   };
 
   const guidanceText = () => {
-    if (_isLargeAccount) {
+    if (isLargeAccount) {
       // This fancy stuff won't work if we're using API
       // based search; don't confuse users by displaying this.
       return undefined;
@@ -228,9 +302,9 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
   };
 
   const finalOptions = createFinalOptions(
-    _isLargeAccount ? apiResults : combinedResults,
+    isLargeAccount ? apiResults : combinedResults,
     searchText,
-    _loading || apiSearchLoading,
+    isLargeAccount ? apiSearchLoading : linodesLoading || imagesLoading,
     // Ignore "Unauthorized" errors, since these will always happen on LKE
     // endpoints for restricted users. It's not really an "error" in this case.
     // We still want these users to be able to use the search feature.
@@ -239,27 +313,23 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
 
   return (
     <React.Fragment>
-      <IconButton
-        color="inherit"
+      <StyledIconButton
         aria-label="open menu"
+        color="inherit"
         onClick={toggleSearch}
-        className={classes.navIconHide}
+        size="large"
       >
         <Search />
-      </IconButton>
-      <div
-        className={`
-          ${classes.root}
-          ${searchActive ? 'active' : ''}
-        `}
-      >
-        <Search className={classes.icon} data-qa-search-icon />
-        <label htmlFor="main-search" className="visually-hidden">
+      </StyledIconButton>
+      <StyledSearchBarWrapperDiv className={searchActive ? 'active' : ''}>
+        <Search
+          data-qa-search-icon
+          sx={{ color: '#c9cacb', fontSize: '2rem' }}
+        />
+        <label className="visually-hidden" htmlFor="main-search">
           Main search
         </label>
         <EnhancedSelect
-          label="Main search"
-          hideLabel
           blurInputOnSelect
           options={finalOptions}
           onChange={onSelect}
@@ -271,39 +341,48 @@ export const SearchBar: React.FC<CombinedProps> = (props) => {
             /* -- Clanode Change End -- */
           }
           components={{ Control, Option }}
-          styles={selectStyles}
-          openMenuOnFocus={false}
-          openMenuOnClick={false}
           filterOption={filterResults}
-          isLoading={entitiesLoading}
+          guidance={guidanceText()}
+          hideLabel
           isClearable={false}
+          isLoading={entitiesLoading}
           isMulti={false}
+          label="Main search"
+          menuIsOpen={menuOpen}
+          onChange={onSelect}
+          onFocus={onFocus}
+          onInputChange={handleSearchChange}
+          onKeyDown={onKeyDown}
           onMenuClose={onClose}
           onMenuOpen={onOpen}
-          value={false}
-          menuIsOpen={menuOpen}
-          guidance={guidanceText()}
+          openMenuOnClick={false}
+          openMenuOnFocus={false}
+          options={finalOptions}
+          placeholder="Search Products, IP Addresses, Tags..."
+          styles={selectStyles}
+          value={value}
         />
-        <IconButton
-          color="inherit"
+        <StyledIconButton
           aria-label="close menu"
+          color="inherit"
           onClick={toggleSearch}
-          className={classes.navIconHide}
+          size="large"
         >
-          <Close className={classes.close} />
-        </IconButton>
-      </div>
+          <Close
+            sx={(theme) => ({
+              '& > span': {
+                padding: 2,
+              },
+              '&:hover, &:focus': {
+                color: theme.palette.primary.main,
+              },
+            })}
+          />
+        </StyledIconButton>
+      </StyledSearchBarWrapperDiv>
     </React.Fragment>
   );
 };
-
-export default compose<CombinedProps, {}>(
-  withTypes,
-  withRouter,
-  withImages(),
-  withStoreSearch(),
-  styled
-)(SearchBar) as React.ComponentType<{}>;
 
 export const createFinalOptions = (
   results: Item[],
@@ -312,25 +391,24 @@ export const createFinalOptions = (
   error: boolean = false
 ) => {
   const redirectOption = {
-    value: 'redirect',
     data: {
       searchText,
     },
     label: `View search results page for "${searchText}"`,
+    value: 'redirect',
   };
 
   const loadingResults = {
-    value: 'info',
     label: 'Loading results...',
+    value: 'info',
   };
 
   const searchError = {
-    value: 'error',
     label: 'Error retrieving search results',
+    value: 'error',
   };
 
   // Results aren't final as we're loading data
-
   if (loading) {
     return [redirectOption, loadingResults];
   }
@@ -351,13 +429,15 @@ export const createFinalOptions = (
 
   // MORE THAN 20 RESULTS:
   const lastOption = {
-    value: 'redirect',
     data: {
       searchText,
     },
     label: `View all ${results.length} results for "${searchText}"`,
+    value: 'redirect',
   };
 
   const first20Results = take(20, results);
   return [redirectOption, ...first20Results, lastOption];
 };
+
+export default withStoreSearch()(SearchBar);

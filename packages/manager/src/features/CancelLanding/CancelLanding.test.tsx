@@ -1,7 +1,8 @@
-import '@testing-library/jest-dom/extend-expect';
 import { fireEvent, render } from '@testing-library/react';
 import * as React from 'react';
+
 import { wrapWithTheme } from 'src/utilities/testHelpers';
+
 import { CancelLanding } from './CancelLanding';
 
 const realLocation = window.location;
@@ -33,13 +34,12 @@ describe('CancelLanding', () => {
   it('navigates to the survey link when the button is clicked', () => {
     // Mock window.location.assign.
     // See this blog post: https://remarkablemark.org/blog/2018/11/17/mock-window-location/
-    const mockAssign = jest.fn();
+    const mockAssign = vi.fn();
     delete (window as Partial<Window>).location;
     // eslint-disable-next-line
     window.location = { ...realLocation, assign: mockAssign };
 
     const survey_link = 'https://linode.com';
-
     const { getByTestId } = render(
       wrapWithTheme(<CancelLanding />, {
         MemoryRouter: {

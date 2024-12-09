@@ -1,9 +1,9 @@
+import actionCreatorFactory from 'typescript-fsa';
+
 import {
   LongviewNotification,
   LongviewResponse,
-} from 'src/features/Longview/request.types.ts';
-
-import actionCreatorFactory from 'typescript-fsa';
+} from 'src/features/Longview/request.types';
 
 export const actionCreator = actionCreatorFactory(`@@manager/longview/stats`);
 

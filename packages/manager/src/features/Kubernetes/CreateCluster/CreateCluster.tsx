@@ -1,183 +1,208 @@
-import {
-  CreateKubeClusterPayload,
-  createKubernetesCluster,
-  PoolNodeRequest,
-} from '@linode/api-v4/lib/kubernetes';
-import { APIError } from '@linode/api-v4/lib/types';
+import { Box, Paper } from '@linode/ui';
+import { Divider } from '@mui/material';
+import Grid from '@mui/material/Unstable_Grid2';
+import { createLazyRoute } from '@tanstack/react-router';
 import { pick, remove, update } from 'ramda';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import { compose } from 'recompose';
-import Breadcrumb from 'src/components/Breadcrumb';
-import Grid from 'src/components/core/Grid';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import DocsLink from 'src/components/DocsLink';
+import { useHistory } from 'react-router-dom';
+
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { DocsLink } from 'src/components/DocsLink/DocsLink';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import RegionSelect from 'src/components/EnhancedSelect/variants/RegionSelect';
-import ErrorState from 'src/components/ErrorState';
-import Notice from 'src/components/Notice';
-import { regionHelperText } from 'src/components/SelectRegionPanel/SelectRegionPanel';
-import TextField from 'src/components/TextField';
-import withTypes, { WithTypesProps } from 'src/containers/types.container';
+import { ErrorMessage } from 'src/components/ErrorMessage';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { Notice } from 'src/components/Notice/Notice';
+import { RegionSelect } from 'src/components/RegionSelect/RegionSelect';
+import { RegionHelperText } from 'src/components/SelectRegionPanel/RegionHelperText';
+import { Stack } from 'src/components/Stack';
+import { TextField } from 'src/components/TextField';
+import {
+  getKubeControlPlaneACL,
+  getKubeHighAvailability,
+  getLatestVersion,
+  useAPLAvailability,
+} from 'src/features/Kubernetes/kubeUtils';
+import { useAccount } from 'src/queries/account/account';
 import {
   reportAgreementSigningError,
   useMutateAccountAgreements,
-} from 'src/queries/accountAgreements';
-import { useKubernetesVersionQuery } from 'src/queries/kubernetesVersion';
-import { useRegionsQuery } from 'src/queries/regions';
+} from 'src/queries/account/agreements';
+import {
+  useCreateKubernetesClusterBetaMutation,
+  useCreateKubernetesClusterMutation,
+  useKubernetesTypesQuery,
+  useKubernetesVersionQuery,
+} from 'src/queries/kubernetes';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { useAllTypes } from 'src/queries/types';
 import { getAPIErrorOrDefault, getErrorMap } from 'src/utilities/errorUtils';
+import { extendType } from 'src/utilities/extendType';
 import { filterCurrentTypes } from 'src/utilities/filterCurrentLinodeTypes';
-import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
-import { getMonthlyPrice } from '.././kubeUtils';
-import { PoolNodeWithPrice } from '.././types';
+import { stringToExtendedIP } from 'src/utilities/ipUtils';
+import { plansNoticesUtils } from 'src/utilities/planNotices';
+import { DOCS_LINK_LABEL_DC_PRICING } from 'src/utilities/pricing/constants';
+import { UNKNOWN_PRICE } from 'src/utilities/pricing/constants';
+import { getDCSpecificPriceByType } from 'src/utilities/pricing/dynamicPricing';
+import { scrollErrorIntoViewV2 } from 'src/utilities/scrollErrorIntoViewV2';
+
 import KubeCheckoutBar from '../KubeCheckoutBar';
-import NodePoolPanel from './NodePoolPanel';
+import { ApplicationPlatform } from './ApplicationPlatform';
+import { ControlPlaneACLPane } from './ControlPlaneACLPane';
+import {
+  StyledDocsLinkContainer,
+  StyledFieldWithDocsStack,
+  useStyles,
+} from './CreateCluster.styles';
+import { HAControlPlane } from './HAControlPlane';
+import { NodePoolPanel } from './NodePoolPanel';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    '& .mlMain': {
-      maxWidth: '100%',
-      flexBasis: '100%',
-      [theme.breakpoints.up('lg')]: {
-        maxWidth: '78.8%',
-        flexBasis: '78.8%',
-      },
-    },
-    '& .mlSidebar': {
-      position: 'static',
-      width: '100%',
-      flexBasis: '100%',
-      maxWidth: '100%',
-      [theme.breakpoints.up('lg')]: {
-        position: 'sticky',
-        maxWidth: '21.2%',
-        flexBasis: '21.2%',
-      },
-    },
-  },
-  sidebar: {
-    marginTop: '0px !important',
-    paddingTop: '0px !important',
-    background: 'none',
-    [theme.breakpoints.down('md')]: {
-      padding: `${theme.spacing(3)}px !important`,
-      marginTop: `${theme.spacing(3)}px !important`,
-      background: theme.color.white,
-    },
-    [theme.breakpoints.down('sm')]: {
-      padding: `${theme.spacing()}px !important`,
-    },
-  },
-  inner: {
-    '& > div': {
-      marginBottom: theme.spacing(2),
-    },
-    '& label': {
-      color: theme.color.headline,
-      fontWeight: 600,
-      lineHeight: '1.33rem',
-      letterSpacing: '0.25px',
-      margin: 0,
-    },
-  },
-  inputWidth: {
-    maxWidth: 440,
-    '& .react-select__menu': {
-      maxWidth: 440,
-    },
-  },
-  regionSubtitle: {
-    '& p': {
-      fontWeight: 500,
-      lineHeight: '1.43rem',
-      margin: 0,
-      maxWidth: '100%',
-    },
-    '& .MuiInput-root': {
-      maxWidth: 440,
-    },
-    '& .react-select__menu': {
-      maxWidth: 440,
-    },
-  },
-}));
+import type {
+  CreateKubeClusterPayload,
+  CreateNodePoolData,
+  KubeNodePoolResponse,
+} from '@linode/api-v4/lib/kubernetes';
+import type { APIError } from '@linode/api-v4/lib/types';
+import type { ExtendedIP } from 'src/utilities/ipUtils';
 
-type CombinedProps = RouteComponentProps<{}> & WithTypesProps;
-
-export const CreateCluster: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { typesData: allTypes, typesLoading, typesError } = props;
-
-  const { data, error: regionsError } = useRegionsQuery();
-  const regionsData = data ?? [];
-
-  // Only want to use current types here.
-  const typesData = filterCurrentTypes(allTypes);
-
-  // Only include regions that have LKE capability
-  const filteredRegions = React.useMemo(() => {
-    return regionsData
-      ? regionsData.filter((thisRegion) =>
-          thisRegion.capabilities.includes('Kubernetes')
-        )
-      : [];
-  }, [regionsData]);
-
-  const [selectedRegion, setSelectedRegion] = React.useState<string>('');
-  const [nodePools, setNodePools] = React.useState<PoolNodeWithPrice[]>([]);
+export const CreateCluster = () => {
+  const { classes } = useStyles();
+  const [selectedRegionId, setSelectedRegionId] = React.useState<
+    string | undefined
+  >();
+  const [nodePools, setNodePools] = React.useState<KubeNodePoolResponse[]>([]);
   const [label, setLabel] = React.useState<string | undefined>();
-  const [highAvailability, setHighAvailability] = React.useState<boolean>(
-    false
-  );
-  const [version, setVersion] = React.useState<Item<string> | undefined>();
+  const [version, setVersion] = React.useState<string | undefined>();
   const [errors, setErrors] = React.useState<APIError[] | undefined>();
   const [submitting, setSubmitting] = React.useState<boolean>(false);
   const [hasAgreed, setAgreed] = React.useState<boolean>(false);
+  const formContainerRef = React.useRef<HTMLDivElement>(null);
   const { mutateAsync: updateAccountAgreements } = useMutateAccountAgreements();
+  const [highAvailability, setHighAvailability] = React.useState<boolean>();
+  const [controlPlaneACL, setControlPlaneACL] = React.useState<boolean>(false);
+  const [apl_enabled, setApl_enabled] = React.useState<boolean>(false);
+
+  const { data, error: regionsError } = useRegionsQuery();
+  const regionsData = data ?? [];
+  const history = useHistory();
+  const { data: account } = useAccount();
+  const { showAPL } = useAPLAvailability();
+  const { showHighAvailability } = getKubeHighAvailability(account);
+  const { showControlPlaneACL } = getKubeControlPlaneACL(account);
+  const [ipV4Addr, setIPv4Addr] = React.useState<ExtendedIP[]>([
+    stringToExtendedIP(''),
+  ]);
+  const [ipV6Addr, setIPv6Addr] = React.useState<ExtendedIP[]>([
+    stringToExtendedIP(''),
+  ]);
+
+  const {
+    data: kubernetesHighAvailabilityTypesData,
+    isError: isErrorKubernetesTypes,
+    isLoading: isLoadingKubernetesTypes,
+  } = useKubernetesTypesQuery();
+
+  const lkeHAType = kubernetesHighAvailabilityTypesData?.find(
+    (type) => type.id === 'lke-ha'
+  );
+
+  const {
+    data: allTypes,
+    error: typesError,
+    isLoading: typesLoading,
+  } = useAllTypes();
+
+  // Only want to use current types here.
+  const typesData = filterCurrentTypes(allTypes?.map(extendType));
+
+  const {
+    mutateAsync: createKubernetesCluster,
+  } = useCreateKubernetesClusterMutation();
+
+  const {
+    mutateAsync: createKubernetesClusterBeta,
+  } = useCreateKubernetesClusterBetaMutation();
+
   const {
     data: versionData,
     isError: versionLoadError,
   } = useKubernetesVersionQuery();
+
   const versions = (versionData ?? []).map((thisVersion) => ({
-    value: thisVersion.id,
     label: thisVersion.id,
+    value: thisVersion.id,
   }));
 
   React.useEffect(() => {
-    if (filteredRegions.length === 1 && !selectedRegion) {
-      setSelectedRegion(filteredRegions[0].id);
+    if (versions.length > 0) {
+      setVersion(getLatestVersion(versions).value);
     }
-  }, [filteredRegions, selectedRegion]);
+  }, [versionData]);
 
   const createCluster = () => {
-    const {
-      history: { push },
-    } = props;
+    if (ipV4Addr.some((ip) => ip.error) || ipV6Addr.some((ip) => ip.error)) {
+      scrollErrorIntoViewV2(formContainerRef);
+      return;
+    }
 
+    const { push } = history;
     setErrors(undefined);
     setSubmitting(true);
 
-    const k8s_version = version ? version.value : undefined;
-
-    /**
-     * We need to remove the monthly price, which is used for client-side
-     * calculations, and send only type and count to the API.
-     */
     const node_pools = nodePools.map(
       pick(['type', 'count'])
-    ) as PoolNodeRequest[];
+    ) as CreateNodePoolData[];
 
-    const payload: CreateKubeClusterPayload = {
-      control_plane: { high_availability: highAvailability },
-      region: selectedRegion,
-      node_pools,
-      label,
-      k8s_version,
+    const _ipv4 = ipV4Addr
+      .map((ip) => {
+        return ip.address;
+      })
+      .filter((ip) => ip !== '');
+
+    const _ipv6 = ipV6Addr
+      .map((ip) => {
+        return ip.address;
+      })
+      .filter((ip) => ip !== '');
+
+    const addressIPv4Payload = {
+      ...(_ipv4.length > 0 && { ipv4: _ipv4 }),
     };
 
-    createKubernetesCluster(payload)
+    const addressIPv6Payload = {
+      ...(_ipv6.length > 0 && { ipv6: _ipv6 }),
+    };
+
+    let payload: CreateKubeClusterPayload = {
+      control_plane: {
+        acl: {
+          enabled: controlPlaneACL,
+          'revision-id': '',
+          ...(controlPlaneACL && // only send the IPs if we are enabling IPACL
+            (_ipv4.length > 0 || _ipv6.length > 0) && {
+              addresses: {
+                ...addressIPv4Payload,
+                ...addressIPv6Payload,
+              },
+            }),
+        },
+        high_availability: highAvailability ?? false,
+      },
+      k8s_version: version,
+      label,
+      node_pools,
+      region: selectedRegionId,
+    };
+
+    if (showAPL) {
+      payload = { ...payload, apl_enabled };
+    }
+
+    const createClusterFn = showAPL
+      ? createKubernetesClusterBeta
+      : createKubernetesCluster;
+
+    createClusterFn(payload)
       .then((cluster) => {
         push(`/kubernetes/clusters/${cluster.id}`);
         if (hasAgreed) {
@@ -190,24 +215,19 @@ export const CreateCluster: React.FC<CombinedProps> = (props) => {
       .catch((err) => {
         setErrors(getAPIErrorOrDefault(err, 'Error creating your cluster'));
         setSubmitting(false);
-        scrollErrorIntoView();
+        scrollErrorIntoViewV2(formContainerRef);
       });
   };
 
   const toggleHasAgreed = () => setAgreed((prevHasAgreed) => !prevHasAgreed);
 
-  const addPool = (pool: PoolNodeWithPrice) => {
+  const addPool = (pool: KubeNodePoolResponse) => {
     setNodePools([...nodePools, pool]);
   };
 
-  const updatePool = (poolIdx: number, updatedPool: PoolNodeWithPrice) => {
+  const updatePool = (poolIdx: number, updatedPool: KubeNodePoolResponse) => {
     const updatedPoolWithPrice = {
       ...updatedPool,
-      totalMonthlyPrice: getMonthlyPrice(
-        updatedPool.type,
-        updatedPool.count,
-        props.typesData || []
-      ),
     };
     setNodePools(update(poolIdx, updatedPoolWithPrice, nodePools));
   };
@@ -218,141 +238,191 @@ export const CreateCluster: React.FC<CombinedProps> = (props) => {
   };
 
   const updateLabel = (newLabel: string) => {
-    /**
-     * If the new label is an empty string, use undefined.
-     * This allows it to pass Yup validation.
-     */
+    // If the new label is an empty string, use undefined. This allows it to pass Yup validation.
     setLabel(newLabel ? newLabel : undefined);
   };
 
+  const highAvailabilityPrice = getDCSpecificPriceByType({
+    regionId: selectedRegionId,
+    type: lkeHAType,
+  });
+
   const errorMap = getErrorMap(
-    ['region', 'node_pools', 'label', 'k8s_version', 'versionLoad'],
+    [
+      'region',
+      'node_pools',
+      'label',
+      'k8s_version',
+      'versionLoad',
+      'control_plane',
+    ],
     errors
   );
 
-  const selectedID = selectedRegion || null;
+  const generalError = errorMap.none;
+
+  const {
+    hasSelectedRegion,
+    isPlanPanelDisabled,
+    isSelectedRegionEligibleForPlan,
+  } = plansNoticesUtils({
+    regionsData,
+    selectedRegionID: selectedRegionId,
+  });
 
   if (typesError || regionsError || versionLoadError) {
-    /**
-     * This information is necessary to create a Cluster.
-     * Otherwise, show an error state.
-     */
-
+    // This information is necessary to create a Cluster. Otherwise, show an error state.
     return <ErrorState errorText="An unexpected error occurred." />;
   }
 
   return (
-    <Grid container className={classes.root}>
+    <Grid className={classes.root} container ref={formContainerRef}>
       <DocumentTitleSegment segment="Create a Kubernetes Cluster" />
-      <Grid
-        container
-        className="m0"
-        alignItems="center"
-        justifyContent="space-between"
-      >
-        <Grid item className="p0">
-          <Breadcrumb
-            pathname={location.pathname}
-            labelTitle="Create Cluster"
-            labelOptions={{ noCap: true }}
-          />
-        </Grid>
-        <Grid item className="p0">
-          <DocsLink href="https://www.linode.com/docs/kubernetes/deploy-and-manage-a-cluster-with-linode-kubernetes-engine-a-tutorial/" />
-        </Grid>
-      </Grid>
-
-      <Grid item className={`mlMain py0`}>
-        {errorMap.none && <Notice error text={errorMap.none} />}
+      <LandingHeader
+        docsLabel="Docs"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-lke-linode-kubernetes-engine"
+        title="Create Cluster"
+      />
+      <Grid className={`mlMain py0`}>
+        {generalError && (
+          <Notice variant="error">
+            <ErrorMessage
+              entity={{ type: 'lkecluster_id' }}
+              formPayloadValues={{ node_pools: nodePools }}
+              message={generalError}
+            />
+          </Notice>
+        )}
         <Paper data-qa-label-header>
-          <div className={classes.inner}>
-            <Grid item>
-              <TextField
-                className={classes.inputWidth}
-                data-qa-label-input
-                errorText={errorMap.label}
-                label="Cluster Label"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  updateLabel(e.target.value)
-                }
-                value={label || ''}
-              />
-            </Grid>
-            <Grid item>
+          <TextField
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              updateLabel(e.target.value)
+            }
+            data-qa-label-input
+            errorText={errorMap.label}
+            label="Cluster Label"
+            value={label || ''}
+          />
+          <Divider sx={{ marginTop: 4 }} />
+          <StyledFieldWithDocsStack>
+            <Stack>
               <RegionSelect
-                className={classes.regionSubtitle}
-                errorText={errorMap.region}
-                handleSelection={(regionID: string) =>
-                  setSelectedRegion(regionID)
-                }
-                regions={filteredRegions}
-                selectedID={selectedID}
                 textFieldProps={{
-                  helperText: regionHelperText(),
+                  helperText: <RegionHelperText mb={2} />,
                   helperTextPosition: 'top',
                 }}
+                currentCapability="Kubernetes"
+                disableClearable
+                errorText={errorMap.region}
+                onChange={(e, region) => setSelectedRegionId(region.id)}
+                regions={regionsData}
+                value={selectedRegionId}
               />
-            </Grid>
-            <Grid item>
-              <Select
-                className={classes.inputWidth}
-                label="Kubernetes Version"
-                value={version || null}
-                errorText={errorMap.k8s_version}
-                options={versions}
-                placeholder={' '}
-                onChange={(selected: Item<string>) => setVersion(selected)}
-                isClearable={false}
+            </Stack>
+            <StyledDocsLinkContainer>
+              <DocsLink
+                href="https://www.linode.com/pricing"
+                label={DOCS_LINK_LABEL_DC_PRICING}
               />
-            </Grid>
-          </div>
-          <Grid item>
-            <NodePoolPanel
-              types={typesData || []}
-              apiError={errorMap.node_pools}
-              typesLoading={typesLoading}
-              typesError={
-                typesError
-                  ? getAPIErrorOrDefault(
-                      typesError,
-                      'Error loading Linode type information.'
-                    )[0].reason
-                  : undefined
-              }
-              addNodePool={(pool: PoolNodeWithPrice) => addPool(pool)}
-              updateFor={[
-                nodePools,
-                typesData,
-                errorMap,
-                typesLoading,
-                classes,
-              ]}
-              isOnCreate
-            />
-          </Grid>
+            </StyledDocsLinkContainer>
+          </StyledFieldWithDocsStack>
+          <Divider sx={{ marginTop: 4 }} />
+          <Autocomplete
+            onChange={(_, selected) => {
+              setVersion(selected?.value);
+            }}
+            disableClearable={!!version}
+            errorText={errorMap.k8s_version}
+            label="Kubernetes Version"
+            options={versions}
+            placeholder={' '}
+            value={versions.find((v) => v.value === version) ?? null}
+          />
+          {showAPL && (
+            <>
+              <Divider sx={{ marginTop: 4 }} />
+              <StyledFieldWithDocsStack>
+                <Stack>
+                  <ApplicationPlatform
+                    setAPL={setApl_enabled}
+                    setHighAvailability={setHighAvailability}
+                  />
+                </Stack>
+              </StyledFieldWithDocsStack>
+            </>
+          )}
+          <Divider sx={{ marginTop: showAPL ? 1 : 4 }} />
+          {showHighAvailability && (
+            <Box data-testid="ha-control-plane">
+              <HAControlPlane
+                highAvailabilityPrice={
+                  isErrorKubernetesTypes || !highAvailabilityPrice
+                    ? UNKNOWN_PRICE
+                    : highAvailabilityPrice
+                }
+                isAPLEnabled={apl_enabled}
+                isErrorKubernetesTypes={isErrorKubernetesTypes}
+                isLoadingKubernetesTypes={isLoadingKubernetesTypes}
+                selectedRegionId={selectedRegionId}
+                setHighAvailability={setHighAvailability}
+              />
+            </Box>
+          )}
+          {showControlPlaneACL && (
+            <>
+              <Divider />
+              <ControlPlaneACLPane
+                handleIPv4Change={(newIpV4Addr: ExtendedIP[]) => {
+                  setIPv4Addr(newIpV4Addr);
+                }}
+                handleIPv6Change={(newIpV6Addr: ExtendedIP[]) => {
+                  setIPv6Addr(newIpV6Addr);
+                }}
+                enableControlPlaneACL={controlPlaneACL}
+                errorText={errorMap.control_plane}
+                ipV4Addr={ipV4Addr}
+                ipV6Addr={ipV6Addr}
+                setControlPlaneACL={setControlPlaneACL}
+              />
+            </>
+          )}
+          <Divider sx={{ marginBottom: 4 }} />
+          <NodePoolPanel
+            typesError={
+              typesError
+                ? getAPIErrorOrDefault(
+                    typesError,
+                    'Error loading Linode type information.'
+                  )[0].reason
+                : undefined
+            }
+            addNodePool={(pool: KubeNodePoolResponse) => addPool(pool)}
+            apiError={errorMap.node_pools}
+            hasSelectedRegion={hasSelectedRegion}
+            isAPLEnabled={apl_enabled}
+            isPlanPanelDisabled={isPlanPanelDisabled}
+            isSelectedRegionEligibleForPlan={isSelectedRegionEligibleForPlan}
+            regionsData={regionsData}
+            selectedRegionId={selectedRegionId}
+            types={typesData || []}
+            typesLoading={typesLoading}
+          />
         </Paper>
       </Grid>
       <Grid
-        item
         className={`mlSidebar ${classes.sidebar}`}
         data-testid="kube-checkout-bar"
       >
         <KubeCheckoutBar
-          pools={nodePools}
-          createCluster={createCluster}
-          submitting={submitting}
-          updatePool={updatePool}
-          removePool={removePool}
-          typesData={typesData || []}
-          highAvailability={highAvailability}
-          setHighAvailability={setHighAvailability}
-          region={selectedRegion}
-          hasAgreed={hasAgreed}
-          toggleHasAgreed={toggleHasAgreed}
+          highAvailabilityPrice={
+            isErrorKubernetesTypes || !highAvailabilityPrice
+              ? UNKNOWN_PRICE
+              : highAvailabilityPrice
+          }
           updateFor={[
             hasAgreed,
             highAvailability,
-            selectedRegion,
+            selectedRegionId,
             nodePools,
             submitting,
             typesData,
@@ -361,12 +431,23 @@ export const CreateCluster: React.FC<CombinedProps> = (props) => {
             createCluster,
             classes,
           ]}
+          createCluster={createCluster}
+          hasAgreed={hasAgreed}
+          highAvailability={highAvailability}
+          pools={nodePools}
+          region={selectedRegionId}
+          regionsData={regionsData}
+          removePool={removePool}
+          showHighAvailability={showHighAvailability}
+          submitting={submitting}
+          toggleHasAgreed={toggleHasAgreed}
+          updatePool={updatePool}
         />
       </Grid>
     </Grid>
   );
 };
 
-const enhanced = compose<CombinedProps, {}>(withRouter, withTypes);
-
-export default enhanced(CreateCluster);
+export const createClusterLazyRoute = createLazyRoute('/kubernetes/create')({
+  component: CreateCluster,
+});

@@ -1,189 +1,120 @@
-import Close from '@material-ui/icons/Close';
-import classNames from 'classnames';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
+
 import Error from 'src/assets/icons/alert.svg';
 import Check from 'src/assets/icons/check.svg';
-import Flag from 'src/assets/icons/flag.svg';
 import Warning from 'src/assets/icons/warning.svg';
-import {
-  makeStyles,
-  Theme,
-  withTheme,
-  WithTheme,
-} from 'src/components/core/styles';
-import Typography, { TypographyProps } from 'src/components/core/Typography';
-import Grid, { GridProps } from 'src/components/Grid';
+import { Typography } from 'src/components/Typography';
 
-export const useStyles = makeStyles((theme: Theme) => ({
-  '@keyframes fadeIn': {
-    from: {
-      opacity: 0,
-    },
-    to: {
-      opacity: 1,
-    },
-  },
-  root: {
-    display: 'flex',
-    alignItems: 'center',
-    borderRadius: 1,
-    fontSize: '1rem',
-    marginBottom: theme.spacing(2),
-    maxWidth: '100%',
-    padding: '4px 16px',
-    paddingRight: 18,
-    position: 'relative',
-    '& + .notice': {
-      marginTop: `${theme.spacing()}px !important`,
-    },
-    '& $important': {
-      backgroundColor: theme.bg.bgPaper,
-    },
-    '& $error': {
-      borderLeftColor: theme.color.red,
-    },
-  },
-  important: {
-    backgroundColor: theme.bg.bgPaper,
-    padding: theme.spacing(2),
-    paddingRight: 18,
-    '& $noticeText': {
-      fontFamily: theme.font.normal,
-    },
-  },
-  icon: {
-    color: 'white',
-    position: 'absolute',
-    left: -25, // This value must be static regardless of theme selection
-  },
-  closeIcon: {
-    ...theme.applyLinkStyles,
-    display: 'flex',
-    color: theme.textColors.tableStatic,
-    marginLeft: 20,
-  },
-  inner: {
-    width: '100%',
-    '& p': {
-      fontSize: '1rem',
-    },
-  },
-  breakWords: {
-    '& $noticeText': {
-      wordBreak: 'break-all',
-    },
-  },
-  noticeText: {
-    fontFamily: theme.font.bold,
-    fontSize: '1rem',
-    lineHeight: '20px',
-  },
-  error: {
-    animation: '$fadeIn 225ms linear forwards',
-    borderLeft: `5px solid ${theme.palette.status.errorDark}`,
-    '&$important': {
-      borderLeftWidth: 32,
-    },
-  },
-  errorList: {
-    borderLeft: `5px solid ${theme.palette.status.errorDark}`,
-  },
-  warning: {
-    animation: '$fadeIn 225ms linear forwards',
-    borderLeft: `5px solid ${theme.palette.status.warningDark}`,
-    '&$important': {
-      borderLeftWidth: 32,
-    },
-    '& $icon': {
-      color: '#555',
-    },
-  },
-  warningList: {
-    borderLeft: `5px solid ${theme.palette.status.warningDark}`,
-  },
-  success: {
-    animation: '$fadeIn 225ms linear forwards',
-    borderLeft: `5px solid ${theme.palette.status.successDark}`,
-    '&$important': {
-      borderLeftWidth: 32,
-    },
-  },
-  successList: {
-    borderLeft: `5px solid ${theme.palette.status.successDark}`,
-  },
-  flag: {
-    marginRight: theme.spacing(2),
-  },
-  informational: {
-    animation: '$fadeIn 225ms linear forwards',
-    borderLeft: `5px solid ${theme.palette.primary.main}`,
-    '&$important': {
-      borderLeftWidth: 32,
-    },
-  },
-  informationalList: {
-    borderLeft: `5px solid ${theme.palette.primary.main}`,
-  },
-}));
+import { useStyles } from './Notice.styles';
 
-interface Props extends GridProps {
-  text?: string;
-  error?: boolean;
+import type { Grid2Props } from '@mui/material/Unstable_Grid2';
+import type { TypographyProps } from 'src/components/Typography';
+
+export type NoticeVariant =
+  | 'error'
+  | 'info'
+  | 'marketing'
+  | 'success'
+  | 'warning';
+
+export interface NoticeProps extends Grid2Props {
+  /**
+   * If true, the error will be treated as "static" and will not be included in the error group.
+   * This will essentially disable the scroll to error behavior.
+   * **Note:** This only applies to notice variants of "error".
+   */
+  bypassValidation?: boolean;
+  /**
+   * The data-qa attribute to apply to the root element.
+   */
+  dataTestId?: string;
+  /**
+   * The error group this error belongs to. This is used to scroll to the error when the user clicks on the error.
+   */
   errorGroup?: string;
+  /**
+   * If true, an icon will be displayed to the left of the error, reflecting the variant of the error.
+   */
   important?: boolean;
-  warning?: boolean;
-  success?: boolean;
-  typeProps?: TypographyProps;
-  className?: string;
-  flag?: boolean;
-  notificationList?: boolean;
-  spacingTop?: 0 | 4 | 8 | 12 | 16 | 24;
+  /**
+   * The amount of spacing to apply to the bottom of the error.
+   */
   spacingBottom?: 0 | 4 | 8 | 12 | 16 | 20 | 24 | 32;
+  /**
+   * The amount of spacing to apply to the left of the error.
+   */
   spacingLeft?: number;
-  breakWords?: boolean;
-  onClick?: (e: React.MouseEvent<HTMLElement>) => void;
-  // Dismissible Props
-  dismissible?: boolean;
-  onClose?: () => void;
-  informational?: boolean;
+  /**
+   * The amount of spacing to apply to the top of the error.
+   */
+  spacingTop?: 0 | 4 | 8 | 12 | 16 | 24 | 32;
+  /**
+   * The text to display in the error. If this is not provided, props.children will be used.
+   */
+  text?: string;
+  /**
+   * Props to apply to the Typography component that wraps the error text.
+   */
+  typeProps?: TypographyProps;
+  /**
+   * The variant of the error. This will determine the color treatment of the error.
+   */
+  variant?: NoticeVariant;
 }
 
-type CombinedProps = Props & WithTheme;
+/**
+## Usage
 
-const Notice: React.FC<CombinedProps> = (props) => {
+- Appear within the page or modal
+- Might be triggered by user action
+- Typically used to alert the user to a new service, limited availability, or a potential consequence of the action being taken
+- Consider using a [Dismissible Banner](/docs/components-notifications-dismissible-banners--beta-banner) if it’s not critical information
+
+## Types of Notices:
+
+- Success/Marketing (green line)
+- Info (blue line)
+- Error/critical (red line)
+- Warning (yellow line)
+ */
+export const Notice = (props: NoticeProps) => {
   const {
-    className,
-    important,
-    text,
-    dismissible,
-    error,
-    breakWords,
-    errorGroup,
-    warning,
-    success,
-    typeProps,
+    bypassValidation = false,
     children,
-    flag,
-    notificationList,
+    className,
+    dataTestId,
+    errorGroup,
+    important,
     onClick,
-    onClose,
-    spacingTop,
     spacingBottom,
     spacingLeft,
-    informational,
+    spacingTop,
+    sx,
+    text,
+    typeProps,
+    variant,
   } = props;
 
-  const classes = useStyles();
+  const { classes, cx } = useStyles();
 
   const innerText = text ? (
     <Typography
       {...typeProps}
-      onClick={onClick}
       className={`${classes.noticeText} noticeText`}
+      onClick={onClick}
     >
       {text}
     </Typography>
   ) : null;
+
+  const variantMap = {
+    error: variant === 'error',
+    info: variant === 'info',
+    marketing: variant === 'marketing',
+    success: variant === 'success',
+    warning: variant === 'warning',
+  };
 
   /**
    * There are some cases where the message
@@ -202,71 +133,65 @@ const Notice: React.FC<CombinedProps> = (props) => {
       children
     );
 
-  const errorScrollClassName = errorGroup
+  const errorScrollClassName = bypassValidation
+    ? ''
+    : errorGroup
     ? `error-for-scroll-${errorGroup}`
     : `error-for-scroll`;
 
-  const dataAttributes = !props.error
+  const dataAttributes = !variantMap.error
     ? {
         'data-qa-notice': true,
       }
     : {
-        'data-qa-notice': true,
         'data-qa-error': true,
+        'data-qa-notice': true,
       };
 
   return (
     <Grid
-      item
-      className={classNames({
-        [classes.root]: true,
+      className={cx({
+        [classes.error]: variantMap.error,
+        [classes.errorList]: variantMap.error,
         [classes.important]: important,
-        [errorScrollClassName]: error,
-        [classes.breakWords]: breakWords,
-        [classes.error]: error && !notificationList,
-        [classes.errorList]: error && notificationList,
-        [classes.success]: success && !notificationList,
-        [classes.successList]: success && notificationList,
-        [classes.warning]: warning && !notificationList,
-        [classes.warningList]: warning && notificationList,
-        [classes.informational]: informational && !notificationList,
-        [classes.informationalList]: informational && notificationList,
+        [classes.info]: variantMap.info,
+        [classes.infoList]: variantMap.info,
+        [classes.marketing]: variantMap.marketing,
+        [classes.root]: true,
+        [classes.success]: variantMap.success,
+        [classes.successList]: variantMap.success,
+        [classes.warning]: variantMap.warning,
+        [classes.warningList]: variantMap.warning,
+        [errorScrollClassName]: variantMap.error,
         notice: true,
         ...(className && { [className]: true }),
       })}
-      style={{
-        marginTop: spacingTop !== undefined ? spacingTop : 0,
-        marginBottom: spacingBottom !== undefined ? spacingBottom : 24,
-        marginLeft: spacingLeft !== undefined ? spacingLeft : 0,
-      }}
+      data-testid={`notice${variant ? `-${variant}` : ''}${
+        important ? '-important' : ''
+      }`}
+      sx={(theme) => ({
+        marginBottom:
+          spacingBottom !== undefined ? `${spacingBottom}px` : theme.spacing(3),
+        marginLeft: spacingLeft !== undefined ? `${spacingLeft}px` : 0,
+        marginTop: spacingTop !== undefined ? `${spacingTop}px` : 0,
+        sx,
+      })}
       {...dataAttributes}
       role="alert"
     >
-      {flag && (
-        <Grid item>
-          <Flag className={classes.flag} />
-        </Grid>
-      )}
       {important &&
-        ((success && <Check className={classes.icon} data-qa-success-img />) ||
-          (warning && (
+        ((variantMap.success && (
+          <Check className={classes.icon} data-qa-success-img />
+        )) ||
+          ((variantMap.warning || variantMap.info) && (
             <Warning className={classes.icon} data-qa-warning-img />
           )) ||
-          (error && <Error className={classes.icon} data-qa-error-img />))}
-      <div className={classes.inner}>{innerText || _children}</div>
-      {dismissible && (
-        <Grid item className={classes.closeIcon}>
-          <Close
-            style={{
-              cursor: 'pointer',
-            }}
-            onClick={onClose}
-            data-testid="notice-dismiss"
-          />
-        </Grid>
-      )}
+          (variantMap.error && (
+            <Error className={classes.icon} data-qa-error-img />
+          )))}
+      <div className={classes.inner} data-testid={dataTestId}>
+        {innerText || _children}
+      </div>
     </Grid>
   );
 };
-
-export default withTheme(Notice);

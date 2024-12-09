@@ -1,134 +1,103 @@
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
+import { IconButton } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 
-type ClassNames =
-  | 'root'
-  | 'navIconHide'
-  | 'close'
-  | 'textfieldContainer'
-  | 'textfield'
-  | 'input'
-  | 'icon';
+export const StyledIconButton = styled(IconButton, {
+  label: 'StyledIconButton',
+})(({ theme }) => ({
+  '& > span': {
+    justifyContent: 'flex-end',
+  },
+  '& svg': {
+    height: 25,
+    width: 25,
+  },
+  '&:hover, &:focus': {
+    color: '#c1c1c0',
+  },
+  backgroundColor: 'inherit',
+  border: 'none',
+  color: '#c9c7c7',
+  cursor: 'pointer',
+  padding: theme.spacing(),
+  position: 'relative',
+  [theme.breakpoints.up('md')]: {
+    display: 'none',
+  },
+  top: 1,
+}));
 
-export type StyleProps = WithStyles<ClassNames>;
-
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      position: 'relative' /* for search results */,
-      height: 34,
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      backgroundColor: theme.bg.app,
-      borderRadius: 3,
-      padding: theme.spacing(1),
-      marginLeft: theme.spacing(1),
-      transition: theme.transitions.create(['opacity']),
-      [theme.breakpoints.down('sm')]: {
-        backgroundColor: theme.bg.white,
-        position: 'absolute',
-        width: 'calc(100% - 100px)',
-        zIndex: -1,
-        left: 0,
-        visibility: 'hidden',
-        opacity: 0,
-        margin: 0,
-        '&.active': {
-          visibility: 'visible',
-          opacity: 1,
-          zIndex: 3,
-        },
-      },
-      [theme.breakpoints.down('xs')]: {
-        width: '100%',
-      },
-      '& .react-select__menu-list': {
-        padding: 0,
-        overflowX: 'hidden',
-      },
-      '& .react-select__control': {
-        backgroundColor: 'transparent',
-      },
-      '& .react-select__value-container': {
-        overflow: 'hidden',
-        '& p': {
-          fontSize: '0.875rem',
-          overflow: 'visible',
-        },
-      },
-      '& .react-select__indicators': {
-        display: 'none',
-      },
-      '& .react-select__menu': {
-        marginTop: 12,
-        boxShadow: `0 0 10px ${theme.color.boxShadowDark}`,
-        maxHeight: 350,
-        overflowY: 'auto',
-        border: 0,
-        borderRadius: 4,
-      },
+export const StyledSearchBarWrapperDiv = styled('div', {
+  label: 'StyledSearchBarWrapperDiv',
+})(({ theme }) => ({
+  '& > div .react-select__control': {
+    '&:hover': {
+      borderColor: 'transparent',
     },
-    navIconHide: {
-      cursor: 'pointer',
-      color: '#c9c7c7',
-      border: 'none',
-      padding: theme.spacing(),
-      backgroundColor: 'inherit',
-      '&:hover, &:focus': {
-        color: '#c1c1c0',
-      },
-      position: 'relative',
-      top: 1,
-      '& > span': {
-        justifyContent: 'flex-end',
-      },
-      '& svg': {
-        width: 25,
-        height: 25,
-      },
-      [theme.breakpoints.up('md')]: {
-        display: 'none',
-      },
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+  },
+  '& > div .react-select__control--is-focused:hover': {
+    borderColor: 'transparent',
+  },
+  '& > div .react-select__indicators': {
+    display: 'none',
+  },
+  '& > div .react-select__menu': {
+    border: 0,
+    borderRadius: 4,
+    boxShadow: `0 0 10px ${theme.color.boxShadowDark}`,
+    marginTop: 12,
+    maxHeight: 350,
+    overflowY: 'auto',
+  },
+  '& > div .react-select__menu-list': {
+    overflowX: 'hidden',
+    padding: 0,
+  },
+  '& > div .react-select__value-container': {
+    '& p': {
+      fontSize: '0.875rem',
+      overflow: 'visible',
     },
-    close: {
-      '& > span': {
-        padding: 2,
-      },
-      '&:hover, &:focus': {
-        color: theme.palette.primary.main,
-      },
+    overflow: 'hidden',
+  },
+  '& svg': {
+    height: 20,
+    width: 20,
+  },
+  '&.active': {
+    ...theme.inputStyles.focused,
+    '&:hover': {
+      ...theme.inputStyles.focused,
     },
-    icon: {
-      color: '#c9cacb',
-      fontSize: '2rem',
+  },
+  '&:hover': {
+    ...theme.inputStyles.hover,
+  },
+  ...theme.inputStyles.default,
+  alignItems: 'center',
+  display: 'flex',
+  flex: 1,
+  height: 34,
+  marginLeft: theme.spacing(1),
+  padding: theme.spacing(1),
+  position: 'relative', // for search results
+  [theme.breakpoints.down('md')]: {
+    '&.active': {
+      opacity: 1,
+      visibility: 'visible',
+      zIndex: 3,
     },
-    textfieldContainer: {
-      width: '100%',
-      [theme.breakpoints.down('sm')]: {},
-    },
-    textfield: {
-      margin: 0,
-      flex: 1,
-      minHeight: 'initial',
-      '& input:focus': {
-        outline: '1px dotted #606469',
-      },
-    },
-    input: {
-      maxWidth: '100%',
-      border: 0,
-      background: 'transparent',
-      '& input': {
-        transition: theme.transitions.create(['opacity']),
-        fontSize: '1.0em',
-        [theme.breakpoints.down('sm')]: {},
-      },
-    },
-  });
-
-export default withStyles(styles);
+    left: 0,
+    margin: 0,
+    opacity: 0,
+    position: 'absolute',
+    visibility: 'hidden',
+    width: 'calc(100% - 100px)',
+    zIndex: -1,
+  },
+  [theme.breakpoints.down('sm')]: {
+    width: '100%',
+  },
+  transition: theme.transitions.create(['opacity']),
+}));

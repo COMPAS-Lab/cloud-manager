@@ -1,48 +1,62 @@
+import KeyboardArrowRight from '@mui/icons-material/KeyboardArrowRight';
+import Collapse from '@mui/material/Collapse';
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import KeyboardArrowRight from '@material-ui/icons/KeyboardArrowRight';
-import Button from 'src/components/Button';
-import Collapse from 'src/components/core/Collapse';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    paddingLeft: 0,
-    paddingRight: 0,
-    backgroundColor: 'transparent !important',
-    display: 'flex',
-    alignItems: 'center',
-    fontFamily: theme.font.bold,
-    width: 'auto',
-    color: theme.color.headline,
-    transition: theme.transitions.create('color'),
-    '&:hover': {
-      color: theme.palette.primary.main,
-      '& $caret': {
-        color: theme.palette.primary.light,
+import { Button } from 'src/components/Button/Button';
+
+const useStyles = makeStyles<void, 'caret'>()(
+  (theme: Theme, _params, classes) => ({
+    caret: {
+      '&.rotate': {
+        transform: 'rotate(90deg)',
+        transition: 'transform .3s ease-in-out',
       },
+      color: theme.palette.primary.main,
+      fontSize: 28,
+      marginRight: theme.spacing(0.5),
+      transition: 'transform .1s ease-in-out',
     },
-  },
-  caret: {
-    color: theme.palette.primary.main,
-    marginRight: theme.spacing(1) / 2,
-    fontSize: 28,
-    transition: 'transform .1s ease-in-out',
-    '&.rotate': {
-      transition: 'transform .3s ease-in-out',
-      transform: 'rotate(90deg)',
+    root: {
+      '&:hover': {
+        [`& .${classes.caret}`]: {
+          color: theme.palette.primary.light,
+        },
+        color: theme.palette.primary.main,
+      },
+      alignItems: 'center',
+      backgroundColor: 'transparent !important',
+      color: theme.color.headline,
+      display: 'flex',
+      fontFamily: theme.font.bold,
+      paddingLeft: 0,
+      paddingRight: 0,
+      transition: theme.transitions.create('color'),
+      width: 'auto',
     },
-  },
-}));
+  })
+);
 
-interface Props {
-  name: string;
+export interface ShowMoreExpansionProps {
+  /**
+   * The content that will be shown when the component is expanded.
+   */
+  children?: JSX.Element;
+  /**
+   * Whether or not the component should be expanded by default.
+   */
   defaultExpanded?: boolean;
+  /**
+   * The text that appears in the clickabe button to show more content.
+   */
+  name: string;
 }
 
-const ShowMoreExpansion: React.FC<Props> = (props) => {
-  const { name, defaultExpanded, children } = props;
+export const ShowMoreExpansion = (props: ShowMoreExpansionProps) => {
+  const { children, defaultExpanded, name } = props;
 
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   const [open, setOpen] = React.useState<boolean>(defaultExpanded || false);
 
@@ -53,13 +67,13 @@ const ShowMoreExpansion: React.FC<Props> = (props) => {
   return (
     <React.Fragment>
       <Button
-        className={classes.root}
-        aria-haspopup="true"
-        role="button"
         aria-expanded={open ? 'true' : 'false'}
+        aria-haspopup="true"
+        className={classes.root}
         data-qa-show-more-expanded={open ? 'true' : 'false'}
-        onClick={handleNameClick}
         data-qa-show-more-toggle
+        onClick={handleNameClick}
+        role="button"
       >
         {open ? (
           <KeyboardArrowRight className={classes.caret + ' rotate'} />
@@ -68,11 +82,9 @@ const ShowMoreExpansion: React.FC<Props> = (props) => {
         )}
         <div>{name}</div>
       </Button>
-      <Collapse in={open} className={open ? 'pOpen' : ''}>
+      <Collapse className={open ? 'pOpen' : ''} in={open}>
         {open ? <div>{children}</div> : null}
       </Collapse>
     </React.Fragment>
   );
 };
-
-export default ShowMoreExpansion;

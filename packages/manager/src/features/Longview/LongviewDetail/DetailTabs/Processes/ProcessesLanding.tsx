@@ -1,10 +1,10 @@
 import { APIError } from '@linode/api-v4/lib/types';
+import Grid from '@mui/material/Unstable_Grid2';
 import { prop, sortBy } from 'ramda';
 import * as React from 'react';
-import Box from 'src/components/core/Box';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import TextField from 'src/components/TextField';
+
+import { DocumentTitleSegment } from 'src/components/DocumentTitle';
+import { TextField } from 'src/components/TextField';
 import {
   LongviewProcesses,
   WithStartAndEnd,
@@ -12,31 +12,17 @@ import {
 import { statAverage, statMax } from 'src/features/Longview/shared/utilities';
 import { escapeRegExp } from 'src/utilities/escapeRegExp';
 import { isToday as _isToday } from 'src/utilities/isToday';
-import TimeRangeSelect from '../../../shared/TimeRangeSelect';
-import { useGraphs } from '../OverviewGraphs/useGraphs';
-import ProcessesGraphs from './ProcessesGraphs';
-import ProcessesTable, { ExtendedProcess } from './ProcessesTable';
-import { Process } from './types';
-import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
-  },
-  filterInput: {
-    width: 300,
-  },
-  selectTimeRange: {
-    width: 200,
-  },
-}));
+import { StyledItemGrid } from '../CommonStyles.styles';
+import { useGraphs } from '../OverviewGraphs/useGraphs';
+import { ProcessesGraphs } from './ProcessesGraphs';
+import { ProcessesTable, ExtendedProcess } from './ProcessesTable';
+import { Process } from './types';
+import { StyledBox, StyledTimeRangeSelect } from './ProcessesLanding.styles';
 
 interface Props {
-  clientID?: number;
   clientAPIKey?: string;
+  clientID?: number;
   lastUpdated?: number;
   lastUpdatedError?: APIError[];
   timezone: string;
@@ -59,12 +45,11 @@ export const filterResults = (
   );
 };
 
-const ProcessesLanding: React.FC<Props> = (props) => {
+export const ProcessesLanding = React.memo((props: Props) => {
   const { clientAPIKey, lastUpdated, lastUpdatedError, timezone } = props;
-  const classes = useStyles();
 
   // Text input for filtering processes by name or user.
-  const [inputText, setInputText] = React.useState<string | undefined>();
+  const [inputText, setInputText] = React.useState<string>();
 
   // The selected process row.
   const [selectedProcess, setSelectedProcess] = React.useState<Process | null>(
@@ -73,17 +58,17 @@ const ProcessesLanding: React.FC<Props> = (props) => {
 
   // For the TimeRangeSelect.
   const [time, setTimeBox] = React.useState<WithStartAndEnd>({
-    start: 0,
     end: 0,
+    start: 0,
   });
   const handleStatsChange = (start: number, end: number) => {
-    setTimeBox({ start, end });
+    setTimeBox({ end, start });
   };
 
   const isToday = _isToday(time.start, time.end);
 
   // We get all the data needed for the table and Graphs in one request.
-  const { data, loading, error, request } = useGraphs(
+  const { data, error, loading, request } = useGraphs(
     ['processes'],
     clientAPIKey,
     time.start,
@@ -128,62 +113,55 @@ const ProcessesLanding: React.FC<Props> = (props) => {
     <>
       <DocumentTitleSegment segment="Processes" />
       <Grid container spacing={4}>
-        <Grid item xs={12} lg={7}>
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            className={classes.root}
-          >
+        <StyledItemGrid lg={7} xs={12}>
+          <StyledBox display="flex" justifyContent="space-between">
             <TextField
-              className={classes.filterInput}
-              placeholder="Filter by process or user..."
-              label="Filter by process or user"
-              hideLabel
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setInputText(e.target.value)
               }
-            />
-            <TimeRangeSelect
-              handleStatsChange={handleStatsChange}
-              defaultValue={'Past 30 Minutes'}
-              label="Select Time Range"
-              className={classes.selectTimeRange}
               hideLabel
+              label="Filter by process or user"
+              placeholder="Filter by process or user..."
+              sx={{ width: '300px' }}
             />
-          </Box>
+            <StyledTimeRangeSelect
+              defaultValue={'Past 30 Minutes'}
+              handleStatsChange={handleStatsChange}
+              hideLabel
+              label="Select Time Range"
+            />
+          </StyledBox>
           <ProcessesTable
-            processesData={memoizedFilteredData}
+            error={lastUpdatedError?.[0]?.reason || error}
             // It's correct to set loading to `true` when
             // processes.lastUpdated === 0. The reason we do this is to avoid
             // a state where we haven't made the request to get processes yet
             // (since we're waiting on lastUpdated) and thus processes.loading
             // is `false` but we don't have any data to show. Instead of showing
+            processesData={memoizedFilteredData}
             // an empty state, we want to show a loader.
             processesLoading={loading || lastUpdated === 0}
-            error={lastUpdatedError?.[0]?.reason || error}
             selectedProcess={selectedProcess}
             setSelectedProcess={setSelectedProcess}
           />
-        </Grid>
-        <Grid item xs={12} lg={5}>
+        </StyledItemGrid>
+        <StyledItemGrid lg={5} xs={12}>
           <ProcessesGraphs
+            clientAPIKey={clientAPIKey || ''}
+            error={lastUpdatedError?.[0]?.reason || error}
+            isToday={isToday}
+            lastUpdated={lastUpdated}
             processesData={data}
             processesLoading={loading || lastUpdated === 0}
-            error={lastUpdatedError?.[0]?.reason || error}
             selectedProcess={selectedProcess}
-            timezone={timezone}
             time={time}
-            isToday={isToday}
-            clientAPIKey={clientAPIKey || ''}
-            lastUpdated={lastUpdated}
+            timezone={timezone}
           />
-        </Grid>
+        </StyledItemGrid>
       </Grid>
     </>
   );
-};
-
-export default React.memo(ProcessesLanding);
+});
 
 export const extendData = (
   processesData: LongviewProcesses
@@ -200,18 +178,19 @@ export const extendData = (
     const { longname, ...users } = processesData.Processes![processName];
 
     Object.keys(users).forEach((user) => {
+      // @ts-expect-error The types are completely wrong. They don't account for "user"
       const userProcess = processesData.Processes![processName][user];
 
       extendedData.push({
-        id: `${processName}-${user}`,
-        name: processName,
-        user,
-        maxCount: statMax(userProcess.count),
+        averageCPU: statAverage(userProcess.cpu),
         averageIO:
           statAverage(userProcess.ioreadkbytes) +
           statAverage(userProcess.iowritekbytes),
-        averageCPU: statAverage(userProcess.cpu),
         averageMem: statAverage(userProcess.mem),
+        id: `${processName}-${user}`,
+        maxCount: statMax(userProcess.count),
+        name: processName,
+        user,
       });
     });
   });

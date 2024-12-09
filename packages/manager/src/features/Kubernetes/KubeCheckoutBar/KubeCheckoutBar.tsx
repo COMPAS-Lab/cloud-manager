@@ -1,118 +1,180 @@
+import { Box } from '@linode/ui';
+import { Typography, styled } from '@mui/material';
 import * as React from 'react';
-import CheckoutBar from 'src/components/CheckoutBar';
-import Divider from 'src/components/core/Divider';
-import Notice from 'src/components/Notice';
-import renderGuard from 'src/components/RenderGuard';
-import { HIGH_AVAILABILITY_PRICE } from 'src/constants';
-import EUAgreementCheckbox from 'src/features/Account/Agreements/EUAgreementCheckbox';
-import { useAccount } from 'src/queries/account';
-import { useAccountAgreements } from 'src/queries/accountAgreements';
-import { useProfile } from 'src/queries/profile';
-import { ExtendedType } from 'src/store/linodeType/linodeType.reducer';
-import { isEURegion } from 'src/utilities/formatRegion';
-import { getTotalClusterPrice, nodeWarning } from '../kubeUtils';
-import { PoolNodeWithPrice } from '../types';
-import HACheckbox from './HACheckbox';
-import NodePoolSummary from './NodePoolSummary';
+
+import { CheckoutBar } from 'src/components/CheckoutBar/CheckoutBar';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Divider } from 'src/components/Divider';
+import { Notice } from 'src/components/Notice/Notice';
+import { RenderGuard } from 'src/components/RenderGuard';
+import { EUAgreementCheckbox } from 'src/features/Account/Agreements/EUAgreementCheckbox';
+import { useAccountAgreements } from 'src/queries/account/agreements';
+import { useProfile } from 'src/queries/profile/profile';
+import { useSpecificTypes } from 'src/queries/types';
+import { extendTypesQueryResult } from 'src/utilities/extendType';
+import { getGDPRDetails } from 'src/utilities/formatRegion';
+import { LKE_CREATE_CLUSTER_CHECKOUT_MESSAGE } from 'src/utilities/pricing/constants';
+import {
+  getKubernetesMonthlyPrice,
+  getTotalClusterPrice,
+} from 'src/utilities/pricing/kubernetes';
+
+import { nodeWarning } from '../kubeUtils';
+import { NodePoolSummary } from './NodePoolSummary';
+
+import type { KubeNodePoolResponse, Region } from '@linode/api-v4';
 
 export interface Props {
-  pools: PoolNodeWithPrice[];
-  submitting: boolean;
-  typesData: ExtendedType[];
   createCluster: () => void;
-  updatePool: (poolIdx: number, updatedPool: PoolNodeWithPrice) => void;
-  removePool: (poolIdx: number) => void;
-  highAvailability: boolean;
-  setHighAvailability: (ha: boolean) => void;
-  region: string | undefined;
   hasAgreed: boolean;
+  highAvailability?: boolean;
+  highAvailabilityPrice: string;
+  pools: KubeNodePoolResponse[];
+  region: string | undefined;
+  regionsData: Region[];
+  removePool: (poolIdx: number) => void;
+  showHighAvailability: boolean | undefined;
+  submitting: boolean;
   toggleHasAgreed: () => void;
+  updatePool: (poolIdx: number, updatedPool: KubeNodePoolResponse) => void;
 }
 
-export const KubeCheckoutBar: React.FC<Props> = (props) => {
+export const KubeCheckoutBar = (props: Props) => {
   const {
-    pools,
-    submitting,
     createCluster,
-    removePool,
-    typesData,
-    updatePool,
-    highAvailability,
-    setHighAvailability,
-    region,
     hasAgreed,
+    highAvailability,
+    highAvailabilityPrice,
+    pools,
+    region,
+    regionsData,
+    removePool,
+    showHighAvailability,
+    submitting,
     toggleHasAgreed,
+    updatePool,
   } = props;
 
   // Show a warning if any of the pools have fewer than 3 nodes
   const showWarning = pools.some((thisPool) => thisPool.count < 3);
 
   const { data: profile } = useProfile();
-  const { data: account } = useAccount();
   const { data: agreements } = useAccountAgreements();
+  const typesQuery = useSpecificTypes(pools.map((pool) => pool.type));
+  const types = extendTypesQueryResult(typesQuery);
+  const isLoading = typesQuery.some((query) => query.isLoading);
 
-  const showGDPRCheckbox =
-    isEURegion(region) &&
-    !profile?.restricted &&
-    agreements?.eu_model === false;
+  const { showGDPRCheckbox } = getGDPRDetails({
+    agreements,
+    profile,
+    regions: regionsData,
+    selectedRegionId: region,
+  });
 
   const needsAPool = pools.length < 1;
+
+  const gdprConditions = !hasAgreed && showGDPRCheckbox;
+
+  const haConditions =
+    highAvailability === undefined &&
+    showHighAvailability &&
+    highAvailabilityPrice !== undefined;
+
   const disableCheckout = Boolean(
-    needsAPool || (!hasAgreed && showGDPRCheckbox)
+    needsAPool || gdprConditions || haConditions || !region
   );
 
-  const capabilities = account?.capabilities ?? [];
-  const showHighAvalibility =
-    HIGH_AVAILABILITY_PRICE !== undefined &&
-    capabilities.includes('LKE HA Control Planes');
+  if (isLoading) {
+    return <CircleProgress />;
+  }
 
   return (
     <CheckoutBar
-      data-qa-checkout-bar
-      heading="Cluster Summary"
-      calculatedPrice={getTotalClusterPrice(pools, highAvailability)}
-      isMakingRequest={submitting}
-      disabled={disableCheckout}
-      onDeploy={createCluster}
-      submitText="Create Cluster"
       agreement={
         showGDPRCheckbox ? (
           <EUAgreementCheckbox checked={hasAgreed} onChange={toggleHasAgreed} />
         ) : undefined
       }
+      calculatedPrice={
+        region
+          ? getTotalClusterPrice({
+              highAvailabilityPrice: highAvailability
+                ? Number(highAvailabilityPrice)
+                : undefined,
+              pools,
+              region,
+              types: types ?? [],
+            })
+          : undefined
+      }
+      data-qa-checkout-bar
+      disabled={disableCheckout}
+      heading="Cluster Summary"
+      isMakingRequest={submitting}
+      onDeploy={createCluster}
+      priceSelectionText={LKE_CREATE_CLUSTER_CHECKOUT_MESSAGE}
+      submitText="Create Cluster"
     >
       <>
         {pools.map((thisPool, idx) => (
           <NodePoolSummary
-            key={idx}
-            nodeCount={thisPool.count}
+            poolType={
+              types?.find((thisType) => thisType.id === thisPool.type) || null
+            }
+            price={
+              region
+                ? getKubernetesMonthlyPrice({
+                    count: thisPool.count,
+                    region,
+                    type: thisPool.type,
+                    types: types ?? [],
+                  })
+                : undefined
+            }
             updateNodeCount={(updatedCount: number) =>
               updatePool(idx, { ...thisPool, count: updatedCount })
             }
+            key={idx}
+            nodeCount={thisPool.count}
             onRemove={() => removePool(idx)}
-            price={thisPool.totalMonthlyPrice}
-            poolType={
-              typesData.find((thisType) => thisType.id === thisPool.type) ||
-              null
-            }
           />
         ))}
-        {showHighAvalibility ? (
-          <>
-            <Divider dark spacingTop={16} spacingBottom={12} />
-            <HACheckbox
-              checked={highAvailability}
-              onChange={(e) => setHighAvailability(e.target.checked)}
-            />
-            <Divider dark spacingTop={16} spacingBottom={0} />
-          </>
-        ) : null}
+        <Divider dark spacingBottom={0} spacingTop={16} />
         {showWarning && (
-          <Notice warning important text={nodeWarning} spacingTop={16} />
+          <Notice
+            important
+            spacingTop={16}
+            text={nodeWarning}
+            variant="warning"
+          />
         )}
+        {region && highAvailability ? (
+          <StyledHABox>
+            <StyledHAHeader>
+              High Availability (HA) Control Plane
+            </StyledHAHeader>
+            <Typography>{`$${highAvailabilityPrice}/month`}</Typography>
+            <Divider dark spacingBottom={0} spacingTop={16} />
+          </StyledHABox>
+        ) : undefined}
       </>
     </CheckoutBar>
   );
 };
 
-export default renderGuard(KubeCheckoutBar);
+export default RenderGuard(KubeCheckoutBar);
+
+const StyledHAHeader = styled(Typography, {
+  label: 'StyledHAHeader',
+})(({ theme }) => ({
+  fontFamily: theme.font.bold,
+  fontSize: '16px',
+  paddingBottom: theme.spacing(0.5),
+  paddingTop: theme.spacing(0.5),
+}));
+
+const StyledHABox = styled(Box, {
+  label: 'StyledHABox',
+})(({ theme }) => ({
+  marginTop: theme.spacing(2),
+}));

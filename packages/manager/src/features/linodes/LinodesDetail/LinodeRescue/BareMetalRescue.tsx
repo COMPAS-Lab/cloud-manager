@@ -1,25 +1,34 @@
 import { rescueMetalLinode } from '@linode/api-v4/lib/linodes/actions';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { resetEventsPolling } from 'src/eventsPolling';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { useEventsPollingActions } from 'src/queries/events/events';
+import { useLinodeQuery } from 'src/queries/linodes/linodes';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import RescueDescription from './RescueDescription';
+
+import { RescueDescription } from './RescueDescription';
 
 interface Props {
-  linodeID: number;
-  linodeLabel: string;
   isOpen: boolean;
+  linodeId: number | undefined;
+  linodeLabel: string | undefined;
   onClose: () => void;
 }
 
-export const BareMetalRescue: React.FC<Props> = (props) => {
-  const { isOpen, onClose, linodeID, linodeLabel } = props;
+export const BareMetalRescue = (props: Props) => {
+  const { isOpen, linodeId, linodeLabel, onClose } = props;
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const { enqueueSnackbar } = useSnackbar();
+
+  const { isLoading: isLoadingLinodes } = useLinodeQuery(
+    linodeId ?? -1,
+    linodeId !== undefined && isOpen
+  );
+
+  const { checkForNewEvents } = useEventsPollingActions();
 
   React.useEffect(() => {
     if (isOpen) {
@@ -31,13 +40,13 @@ export const BareMetalRescue: React.FC<Props> = (props) => {
   const handleSubmit = () => {
     setError(undefined);
     setLoading(true);
-    rescueMetalLinode(linodeID)
+    rescueMetalLinode(linodeId ?? -1)
       .then(() => {
         setLoading(false);
         enqueueSnackbar('Linode rescue started.', {
           variant: 'info',
         });
-        resetEventsPolling();
+        checkForNewEvents();
         onClose();
       })
       .catch((err) => {
@@ -49,27 +58,30 @@ export const BareMetalRescue: React.FC<Props> = (props) => {
   };
 
   const actions = () => (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={onClose} data-qa-cancel>
-        Cancel
-      </Button>
-      <Button buttonType="primary" onClick={handleSubmit} loading={loading}>
-        Reboot into Rescue Mode
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        'data-qa-form-data-loading': loading || isLoadingLinodes,
+        label: 'Reboot into Rescue Mode',
+        loading,
+        onClick: handleSubmit,
+      }}
+      secondaryButtonProps={{
+        'data-testid': 'cancel',
+        label: 'Cancel',
+        onClick: onClose,
+      }}
+    />
   );
 
   return (
     <ConfirmationDialog
-      title={`Rescue Linode ${linodeLabel}`}
-      open={isOpen}
-      onClose={onClose}
       actions={actions}
       error={error}
+      onClose={onClose}
+      open={isOpen}
+      title={`Rescue Linode ${linodeLabel ?? ''}`}
     >
-      <RescueDescription linodeId={linodeID} isBareMetal />
+      {linodeId ? <RescueDescription isBareMetal linodeId={linodeId} /> : null}
     </ConfirmationDialog>
   );
 };
-
-export default BareMetalRescue;

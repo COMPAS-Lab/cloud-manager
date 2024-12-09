@@ -1,16 +1,20 @@
-import { objectStorageClusterFactory } from 'src/factories';
-import { objectStorageClusterToExtendedRegion } from './ClusterSelect';
+import React from 'react';
 
-const regions = require('src/cachedData/regions.json');
+import { renderWithTheme } from 'src/utilities/testHelpers';
 
-describe('objectStorageClusterToExtendedRegion', () => {
-  it('transforms a list of OBJ clusters to a list of extended regions', () => {
-    const clusters = objectStorageClusterFactory.buildList(2);
-    const result = objectStorageClusterToExtendedRegion(clusters, regions.data);
-    expect(result.length).toBe(clusters.length);
-    result.forEach((thisExtendedRegion) => {
-      expect(thisExtendedRegion).toHaveProperty('country');
-      expect(thisExtendedRegion).toHaveProperty('display');
-    });
+import ClusterSelect from './ClusterSelect';
+
+vi.mock('src/components/EnhancedSelect/Select');
+
+describe('ClusterSelect', () => {
+  it('Renders a select with object storage clusters', () => {
+    const { getByText } = renderWithTheme(
+      <ClusterSelect
+        onBlur={() => null}
+        onChange={() => null}
+        selectedCluster={''}
+      />
+    );
+    getByText('Region');
   });
 });

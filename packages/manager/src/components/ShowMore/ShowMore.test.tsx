@@ -1,32 +1,27 @@
-import { shallow } from 'enzyme';
-import * as React from 'react';
+import { screen } from '@testing-library/react';
+import React from 'react';
 
-import Chip from 'src/components/core/Chip';
-import { ShowMore } from './ShowMore';
+import { ShowMore } from 'src/components/ShowMore/ShowMore';
+import { renderWithTheme } from 'src/utilities/testHelpers';
 
-const mockRender = jest.fn();
-const classes = {
-  chip: '',
-  label: '',
-  popover: '',
-  link: '',
-};
+const mockRender = vi.fn();
 
 const props = {
-  classes,
+  ariaItemType: 'items',
   items: ['a', 'b'],
   render: mockRender,
-  ariaItemType: 'items',
 };
 
 describe('ShowMore', () => {
-  const wrapper = shallow(<ShowMore {...props} />);
+  beforeEach(() => {
+    renderWithTheme(<ShowMore {...props} />);
+  });
 
   it('should call provided render function with items.', () => {
     expect(mockRender).toHaveBeenCalledWith(['a', 'b']);
   });
 
   it('should render a chip with items.length', () => {
-    expect(wrapper.containsMatchingElement(<Chip label="+2" />)).toBeTruthy();
+    expect(screen.getByText('+2')).toBeInTheDocument();
   });
 });

@@ -1,17 +1,17 @@
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import Typography from 'src/components/core/Typography';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Typography } from 'src/components/Typography';
 
 export interface Props {
-  isOpen: boolean;
-  error?: string | JSX.Element;
-  submitting: boolean;
   currentPlan: string;
-  targetPlan: string;
+  error?: JSX.Element | string;
+  isOpen: boolean;
   onClose: () => void;
   onResize: () => void;
+  submitting: boolean;
+  targetPlan: string;
 }
 
 const renderActions = (
@@ -20,46 +20,41 @@ const renderActions = (
   onResize: () => void
 ) => {
   return (
-    <ActionsPanel style={{ padding: 0 }}>
-      <Button
-        buttonType="secondary"
-        onClick={onClose}
-        data-qa-cancel
-        data-testid={'resize-dialog-cancel'}
-      >
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={onResize}
-        loading={loading}
-        data-qa-confirm
-        data-testid={'resize-dialog-confirm'}
-      >
-        Resize
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        'data-testid': 'confirm',
+        label: 'Resize',
+        loading,
+        onClick: onResize,
+      }}
+      secondaryButtonProps={{
+        'data-testid': 'cancel',
+        label: 'Cancel',
+        onClick: onClose,
+      }}
+      style={{ padding: 0 }}
+    />
   );
 };
 
-export const ResizeDialog: React.FC<Props> = (props) => {
+export const ResizeDialog = (props: Props) => {
   const {
-    isOpen,
-    error,
-    submitting,
     currentPlan,
-    targetPlan,
+    error,
+    isOpen,
     onClose,
     onResize,
+    submitting,
+    targetPlan,
   } = props;
 
   return (
     <ConfirmationDialog
-      title="Confirm Linode Resize"
-      open={isOpen}
+      actions={renderActions(submitting, onClose, onResize)}
       error={error}
       onClose={onClose}
-      actions={renderActions(submitting, onClose, onResize)}
+      open={isOpen}
+      title="Confirm Linode Resize"
     >
       <Typography>
         Are you sure you want to resize your Linode from {currentPlan} to{' '}
@@ -69,5 +64,3 @@ export const ResizeDialog: React.FC<Props> = (props) => {
     </ConfirmationDialog>
   );
 };
-
-export default ResizeDialog;

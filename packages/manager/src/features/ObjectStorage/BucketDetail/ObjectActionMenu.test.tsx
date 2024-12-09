@@ -1,16 +1,18 @@
 import { fireEvent, render } from '@testing-library/react';
 import * as React from 'react';
+
 import { wrapWithTheme } from 'src/utilities/testHelpers';
+
 import { ObjectActionMenu, Props } from './ObjectActionMenu';
 
-jest.mock('src/components/ActionMenu/ActionMenu');
+vi.mock('src/components/ActionMenu/ActionMenu');
 
-const mockHandleClickDelete = jest.fn();
-const mockHandleClickDownload = jest.fn();
+const mockHandleClickDelete = vi.fn();
+const mockHandleClickDownload = vi.fn();
 
 const props: Props = {
-  handleClickDownload: mockHandleClickDownload,
   handleClickDelete: mockHandleClickDelete,
+  handleClickDownload: mockHandleClickDownload,
   objectName: 'my-object',
 };
 

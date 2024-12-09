@@ -1,72 +1,48 @@
-import {
-  createReply,
-  SupportReply,
-  uploadAttachment,
-} from '@linode/api-v4/lib/support';
-import { APIError } from '@linode/api-v4/lib/types';
+import { uploadAttachment } from '@linode/api-v4';
+import Grid from '@mui/material/Unstable_Grid2';
 import { lensPath, set } from 'ramda';
 import * as React from 'react';
-import { compose } from 'recompose';
-import Accordion from 'src/components/Accordion';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
+import { debounce } from 'throttle-debounce';
+import { makeStyles } from 'tss-react/mui';
+
+import { Accordion } from 'src/components/Accordion';
+import { Notice } from 'src/components/Notice/Notice';
+import { useSupportTicketReplyMutation } from 'src/queries/support';
 import { getAPIErrorOrDefault, getErrorMap } from 'src/utilities/errorUtils';
 import { storage } from 'src/utilities/storage';
-import { debounce } from 'throttle-debounce';
-import AttachFileForm from '../../AttachFileForm';
-import { FileAttachment } from '../../index';
-import { ExtendedReply } from '../../types';
-import Reference from './MarkdownReference';
-import ReplyActions from './ReplyActions';
-import TabbedReply from './TabbedReply';
 
-const useStyles = makeStyles((theme: Theme) => ({
+import { AttachFileForm } from '../../AttachFileForm';
+import { MarkdownReference } from './MarkdownReference';
+import { ReplyActions } from './ReplyActions';
+import { TabbedReply } from './TabbedReply';
+
+import type { FileAttachment } from '../../index';
+import type { APIError, SupportReply } from '@linode/api-v4';
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   replyContainer: {
-    paddingLeft: theme.spacing(8),
-    [theme.breakpoints.down('xs')]: {
-      paddingLeft: theme.spacing(6),
-    },
-  },
-  expPanelSummary: {
-    backgroundColor:
-      theme.name === 'darkTheme' ? theme.bg.main : theme.bg.white,
-    borderTop: `1px solid ${theme.bg.main}`,
-    paddingTop: theme.spacing(),
-  },
-  referenceRoot: {
-    '& > p': {
-      marginBottom: theme.spacing(),
-    },
-  },
-  reference: {
-    [theme.breakpoints.up('sm')]: {
-      marginTop: theme.spacing(7),
-      marginRight: 4,
-      marginLeft: 4,
-      padding: `0 !important`,
-    },
-    [theme.breakpoints.down('xs')]: {
-      padding: `${theme.spacing(2)}px !important`,
+    paddingLeft: theme.spacing(6),
+    [theme.breakpoints.down('sm')]: {
+      paddingLeft: theme.spacing(5),
     },
   },
 }));
 
 interface Props {
   closable: boolean;
-  onSuccess: (newReply: SupportReply) => void;
+  lastReply?: SupportReply;
+  onSuccess?: (newReply: SupportReply) => void;
   reloadAttachments: () => void;
   ticketId: number;
-  closeTicketSuccess: () => void;
-  lastReply?: ExtendedReply;
 }
 
-type CombinedProps = Props;
+export const ReplyContainer = (props: Props) => {
+  const { classes } = useStyles();
 
-const ReplyContainer: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+  const { lastReply, onSuccess, reloadAttachments, ...rest } = props;
 
-  const { onSuccess, reloadAttachments, lastReply, ...rest } = props;
+  const { mutateAsync: createReply } = useSupportTicketReplyMutation();
 
   const textFromStorage = storage.ticketReply.get();
   const isTextFromStorageForCurrentTicket =
@@ -106,7 +82,9 @@ const ReplyContainer: React.FC<CombinedProps> = (props) => {
     createReply({ description: value, ticket_id: props.ticketId })
       .then((response) => {
         /** onSuccess callback */
-        onSuccess(response);
+        if (onSuccess) {
+          onSuccess(response);
+        }
 
         setSubmitting(false);
         setValue('');
@@ -128,8 +106,8 @@ const ReplyContainer: React.FC<CombinedProps> = (props) => {
             .then(() => {
               const nullFileState = {
                 file: null,
-                uploading: false,
                 uploaded: true,
+                uploading: false,
               };
 
               setFiles(set(lensPath([idx]), nullFileState));
@@ -165,43 +143,38 @@ const ReplyContainer: React.FC<CombinedProps> = (props) => {
   const errorMap = getErrorMap(['description'], errors);
 
   return (
-    <Grid item className={classes.replyContainer}>
+    <Grid className={classes.replyContainer}>
       {errorMap.none && (
-        <Notice error spacingBottom={8} spacingTop={16} text={errorMap.none} />
-      )}
-      <Grid item>
-        <TabbedReply
-          error={errorMap.description}
-          handleChange={setValue}
-          isReply
-          value={value}
+        <Notice
+          spacingBottom={8}
+          spacingTop={16}
+          text={errorMap.none}
+          variant="error"
         />
-      </Grid>
-      <Grid item style={{ marginTop: 8 }}>
-        <Accordion
-          heading="Formatting Tips"
-          defaultExpanded={false}
-          detailProps={{ className: classes.expPanelSummary }}
-        >
-          <Reference isReply rootClass={classes.referenceRoot} />
-        </Accordion>
-      </Grid>
-      <Grid item>
+      )}
+      <TabbedReply
+        error={errorMap.description}
+        handleChange={setValue}
+        isReply
+        value={value}
+      />
+      <Accordion heading="Formatting Tips" sx={{ mt: 2 }}>
+        <MarkdownReference isReply />
+      </Accordion>
+      <Grid>
         <AttachFileForm
-          files={files}
           updateFiles={(filesToAttach: FileAttachment[]) =>
             setFiles(filesToAttach)
           }
+          files={files}
         />
         <ReplyActions
           isSubmitting={isSubmitting}
-          value={value}
           submitForm={submitForm}
+          value={value}
           {...rest}
         />
       </Grid>
     </Grid>
   );
 };
-
-export default compose<CombinedProps, Props>(React.memo)(ReplyContainer);

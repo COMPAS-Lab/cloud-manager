@@ -1,8 +1,10 @@
+import { Box, FormHelperText, InputAdornment } from '@linode/ui';
 import * as React from 'react';
-import FormHelperText from 'src/components/core/FormHelperText';
-import InputAdornment from 'src/components/core/InputAdornment';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TextField from 'src/components/TextField';
+import { makeStyles } from 'tss-react/mui';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { TextField } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
 import { MAX_VOLUME_SIZE } from 'src/constants';
 /* -- Clanode Change -- */
 import { VolumeType } from '@linode/api-v4/lib/volumes';
@@ -17,8 +19,11 @@ const useStyles = makeStyles((theme: Theme) => ({
 }));
 
 interface Props {
+  disabled?: boolean;
+  error?: string;
+  hasSelectedRegion?: boolean;
+  isFromLinode?: boolean;
   name: string;
-  value: number;
   onBlur: (e: any) => void;
   onChange: (e: React.ChangeEvent<any>) => void;
   /* -- Clanode Change -- */
@@ -30,20 +35,37 @@ interface Props {
   isFromLinode?: boolean;
   resize?: number;
   textFieldStyles?: string;
+  value: number;
 }
 
-type CombinedProps = Props;
+const useStyles = makeStyles()((theme: Theme) => ({
+  createVolumeText: {
+    display: 'block',
+    marginLeft: theme.spacing(1.5),
+  },
+  priceDisplay: {
+    '& p': {
+      lineHeight: 1,
+      marginTop: 4,
+    },
 
-const SizeField: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+    left: `calc(${SIZE_FIELD_WIDTH}px + ${theme.spacing(2)})`,
+    position: 'absolute',
+    top: 50,
+  },
+}));
+
+export const SizeField = (props: Props) => {
+  const { classes } = useStyles();
 
   const {
-    name,
-    value,
     error,
+    hasSelectedRegion,
+    isFromLinode,
+    name,
     onBlur,
     onChange,
-    isFromLinode,
+    regionId,
     resize,
     textFieldStyles,
     /* -- Clanode Change -- */
@@ -52,6 +74,8 @@ const SizeField: React.FC<CombinedProps> = (props) => {
     /* -- Clanode Change End -- */
     ...rest
   } = props;
+
+  const { data: types, isLoading } = useVolumeTypesQuery();
 
   const helperText = resize
     ? `This volume can range from ${resize} GiB to ${MAX_VOLUME_SIZE} GiB in size.`
@@ -86,7 +110,7 @@ const SizeField: React.FC<CombinedProps> = (props) => {
         onChange={onChange}
         required
         type="number"
-        data-qa-size
+        value={value}
         {...rest}
       />
       <FormHelperText>
@@ -99,5 +123,3 @@ const SizeField: React.FC<CombinedProps> = (props) => {
     </>
   );
 };
-
-export default SizeField;

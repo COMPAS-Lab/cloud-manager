@@ -1,31 +1,31 @@
-import {
-  ManagedLinodeSetting,
-  updateLinodeSettings,
-} from '@linode/api-v4/lib/managed';
 import { APIError } from '@linode/api-v4/lib/types';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { compose } from 'recompose';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
+
+import { Action, ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { useUpdateLinodeSettingsMutation } from 'src/queries/managed/managed';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
-interface Props {
+export interface SSHAccessActionMenuProps {
+  isEnabled: boolean;
   linodeId: number;
   linodeLabel: string;
-  isEnabled: boolean;
-  updateOne: (linodeSetting: ManagedLinodeSetting) => void;
   openDrawer: (linodeId: number) => void;
 }
 
-export type CombinedProps = Props & WithSnackbarProps;
+export const SSHAccessActionMenu = (props: SSHAccessActionMenuProps) => {
+  const { isEnabled, linodeId, openDrawer } = props;
+  const theme = useTheme();
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
-export const SSHAccessActionMenu: React.FC<CombinedProps> = (props) => {
-  const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const { enqueueSnackbar } = useSnackbar();
 
-  const { linodeId, isEnabled, updateOne, openDrawer, enqueueSnackbar } = props;
+  const { mutateAsync: updateLinodeSettings } = useUpdateLinodeSettingsMutation(
+    linodeId
+  );
 
   const handleError = (message: string, error: APIError[]) => {
     const errMessage = getAPIErrorOrDefault(error, message);
@@ -34,20 +34,18 @@ export const SSHAccessActionMenu: React.FC<CombinedProps> = (props) => {
 
   const actions: Action[] = [
     {
-      title: 'Edit',
       onClick: () => {
         openDrawer(linodeId);
       },
+      title: 'Edit',
     },
     isEnabled
       ? {
-          title: 'Disable',
           onClick: () => {
-            updateLinodeSettings(linodeId, {
+            updateLinodeSettings({
               ssh: { access: false },
             })
-              .then((updatedLinodeSetting) => {
-                updateOne(updatedLinodeSetting);
+              .then(() => {
                 enqueueSnackbar('SSH Access disabled successfully.', {
                   variant: 'success',
                 });
@@ -56,15 +54,14 @@ export const SSHAccessActionMenu: React.FC<CombinedProps> = (props) => {
                 handleError('Error disabling SSH Access for this Linode.', err);
               });
           },
+          title: 'Disable',
         }
       : {
-          title: 'Enable',
           onClick: () => {
-            updateLinodeSettings(linodeId, {
+            updateLinodeSettings({
               ssh: { access: true },
             })
-              .then((updatedLinodeSetting) => {
-                updateOne(updatedLinodeSetting);
+              .then(() => {
                 enqueueSnackbar('SSH Access enabled successfully.', {
                   variant: 'success',
                 });
@@ -73,6 +70,7 @@ export const SSHAccessActionMenu: React.FC<CombinedProps> = (props) => {
                 handleError('Error enabling SSH Access for this Linode.', err);
               });
           },
+          title: 'Enable',
         },
   ];
 
@@ -88,8 +86,8 @@ export const SSHAccessActionMenu: React.FC<CombinedProps> = (props) => {
         actions.map((action) => {
           return (
             <InlineMenuAction
-              key={action.title}
               actionText={action.title}
+              key={action.title}
               onClick={action.onClick}
             />
           );
@@ -99,6 +97,4 @@ export const SSHAccessActionMenu: React.FC<CombinedProps> = (props) => {
   );
 };
 
-const enhanced = compose<CombinedProps, Props>(withSnackbar);
-
-export default enhanced(SSHAccessActionMenu);
+export default SSHAccessActionMenu;

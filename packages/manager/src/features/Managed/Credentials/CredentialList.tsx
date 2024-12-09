@@ -1,78 +1,56 @@
-import {
-  createCredential,
-  CredentialPayload,
-  deleteCredential,
-  ManagedCredential,
-  updateCredential,
-  updatePassword,
-} from '@linode/api-v4/lib/managed';
-import { APIError } from '@linode/api-v4/lib/types';
-import { FormikBag } from 'formik';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import AddNewLink from 'src/components/AddNewLink';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import DeletionDialog from 'src/components/DeletionDialog';
+
+import { Button } from 'src/components/Button/Button';
+import { DeletionDialog } from 'src/components/DeletionDialog/DeletionDialog';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Grid from 'src/components/Grid';
 import OrderBy from 'src/components/OrderBy';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableSortCell from 'src/components/TableSortCell';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableSortCell } from 'src/components/TableSortCell';
 import { useDialog } from 'src/hooks/useDialog';
+import {
+  useAllManagedCredentialsQuery,
+  useCreateCredentialMutation,
+  useDeleteCredentialMutation,
+  useUpdateCredentialMutation,
+  useUpdateCredentialPasswordMutation,
+} from 'src/queries/managed/managed';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import {
   handleFieldErrors,
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
+
+import {
+  StyledHeaderGrid,
+  StyledTypography,
+  StyledWrapperGrid,
+} from '../Contacts/Contacts.styles';
 import AddCredentialDrawer from './AddCredentialDrawer';
 import CredentialTableContent from './CredentialTableContent';
 import UpdateCredentialDrawer from './UpdateCredentialDrawer';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  copy: {
-    fontSize: '0.875rem',
-    marginBottom: theme.spacing(2),
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
-  },
-  header: {
-    margin: 0,
-    width: '100%',
-  },
-  addNewWrapper: {
-    '&.MuiGrid-item': {
-      paddingTop: 0,
-      paddingRight: 0,
-    },
-    [theme.breakpoints.down('sm')]: {
-      marginRight: theme.spacing(),
-    },
-  },
-}));
+import type { CredentialPayload } from '@linode/api-v4/lib/managed/types';
+import type { APIError } from '@linode/api-v4/lib/types';
+import type { FormikBag } from 'formik';
 
-interface Props {
-  error?: APIError[];
-  credentials: ManagedCredential[];
-  loading: boolean;
-  update: () => void;
-}
+export type FormikProps = FormikBag<{}, CredentialPayload>;
 
-type CombinedProps = Props & WithSnackbarProps;
+export const CredentialList = () => {
+  const { enqueueSnackbar } = useSnackbar();
+  const { data, error, isLoading } = useAllManagedCredentialsQuery();
 
-export type FormikProps = FormikBag<Props, CredentialPayload>;
+  const credentials = data || [];
 
-export const CredentialList: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { credentials, enqueueSnackbar, error, loading, update } = props;
+  const { mutateAsync: createCredential } = useCreateCredentialMutation();
+  const { mutateAsync: deleteCredential } = useDeleteCredentialMutation();
+
   // Creation drawer
   const [isCreateDrawerOpen, setDrawerOpen] = React.useState<boolean>(false);
 
@@ -80,13 +58,19 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
   const [isEditDrawerOpen, setEditDrawerOpen] = React.useState<boolean>(false);
   const [editID, setEditID] = React.useState<number>(0);
 
+  const { mutateAsync: updatePassword } = useUpdateCredentialPasswordMutation(
+    editID
+  );
+
+  const { mutateAsync: updateCredential } = useUpdateCredentialMutation(editID);
+
   const {
-    dialog,
-    openDialog,
     closeDialog,
-    submitDialog,
+    dialog,
     handleError,
-  } = useDialog<number>(deleteCredential);
+    openDialog,
+    submitDialog,
+  } = useDialog<number>((id) => deleteCredential({ id: id || -1 }));
 
   const selectedCredential = credentials.find(
     (thisCredential) => thisCredential.id === editID
@@ -98,7 +82,6 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
         enqueueSnackbar('Credential deleted successfully.', {
           variant: 'success',
         });
-        update();
       })
       .catch((e) =>
         handleError(
@@ -124,14 +107,13 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
 
   const handleCreate = (
     values: CredentialPayload,
-    { setSubmitting, setErrors, setStatus }: FormikProps
+    { setErrors, setStatus, setSubmitting }: FormikProps
   ) => {
     setStatus(undefined);
     createCredential(values)
       .then(() => {
         setDrawerOpen(false);
         setSubmitting(false);
-        update();
       })
       .catch((e) => {
         _handleError(
@@ -146,13 +128,13 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
 
   const handleUpdatePassword = (
     values: CredentialPayload,
-    { setSubmitting, setErrors, setStatus, setFieldValue }: FormikProps
+    { setErrors, setFieldValue, setStatus, setSubmitting }: FormikProps
   ) => {
     setStatus(undefined);
     if (!selectedCredential) {
       return;
     }
-    updatePassword(editID, {
+    updatePassword({
       password: values.password || undefined,
       username: values.username || undefined,
     })
@@ -161,7 +143,6 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
         setStatus({ success: 'Updated successfully.' });
         setFieldValue('password', '');
         setFieldValue('username', '');
-        update();
       })
       .catch((err) =>
         _handleError(
@@ -176,17 +157,16 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
 
   const handleUpdateLabel = (
     values: CredentialPayload,
-    { setSubmitting, setErrors, setStatus }: FormikProps
+    { setErrors, setStatus, setSubmitting }: FormikProps
   ) => {
     setStatus(undefined);
     if (!selectedCredential) {
       return;
     }
-    updateCredential(editID, { label: values.label })
+    updateCredential({ label: values.label })
       .then(() => {
         setSubmitting(false);
         setStatus({ success: 'Label updated successfully.' });
-        update();
       })
       .catch((err) =>
         _handleError(
@@ -212,32 +192,30 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
   return (
     <>
       <DocumentTitleSegment segment="Credentials" />
-      <Typography className={classes.copy}>
+      <StyledTypography>
         Please share any credentials our support team may need when responding
         to a service issue.
         <br /> Credentials are stored encrypted and all decryption attempts are
         logged. You can revoke credentials at any time by deleting them.
-      </Typography>
-      <Grid
-        className={classes.header}
-        container
+      </StyledTypography>
+      <StyledHeaderGrid
         alignItems="center"
+        container
         justifyContent="flex-end"
-        updateFor={[credentials, error, loading]}
+        spacing={2}
       >
-        <Grid className={classes.addNewWrapper} item>
-          <AddNewLink
-            label="Add Credential"
-            onClick={() => setDrawerOpen(true)}
-          />
-        </Grid>
-      </Grid>
-      <OrderBy data={credentials} orderBy={'label'} order={'asc'}>
+        <StyledWrapperGrid>
+          <Button buttonType="primary" onClick={() => setDrawerOpen(true)}>
+            Add Credential
+          </Button>
+        </StyledWrapperGrid>
+      </StyledHeaderGrid>
+      <OrderBy data={credentials} order={'asc'} orderBy={'label'}>
         {({ data: orderedData, handleOrderChange, order, orderBy }) => (
           <Paginate data={orderedData}>
             {({
-              data,
               count,
+              data,
               handlePageChange,
               handlePageSizeChange,
               page,
@@ -249,20 +227,20 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
                     <TableRow>
                       <TableSortCell
                         active={orderBy === 'label'}
-                        label={'label'}
+                        data-qa-credential-label-header
                         direction={order}
                         handleClick={handleOrderChange}
-                        data-qa-credential-label-header
+                        label={'label'}
                         style={{ width: '30%' }}
                       >
                         Credential
                       </TableSortCell>
                       <TableSortCell
                         active={orderBy === 'last_decrypted'}
-                        label={'last_decrypted'}
+                        data-qa-credential-decrypted-header
                         direction={order}
                         handleClick={handleOrderChange}
-                        data-qa-credential-decrypted-header
+                        label={'last_decrypted'}
                         style={{ width: '60%' }}
                       >
                         Last Decrypted
@@ -273,8 +251,8 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
                   <TableBody>
                     <CredentialTableContent
                       credentials={data}
-                      loading={loading}
                       error={error}
+                      loading={isLoading}
                       openDialog={openDialog}
                       openForEdit={openForEdit}
                     />
@@ -282,11 +260,11 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
                 </Table>
                 <PaginationFooter
                   count={count}
+                  eventCategory="managed credential table"
                   handlePageChange={handlePageChange}
                   handleSizeChange={handlePageSizeChange}
                   page={page}
                   pageSize={pageSize}
-                  eventCategory="managed credential table"
                 />
               </>
             )}
@@ -294,28 +272,28 @@ export const CredentialList: React.FC<CombinedProps> = (props) => {
         )}
       </OrderBy>
       <DeletionDialog
-        open={dialog.isOpen}
         entity="credential"
+        error={dialog.error}
         label={dialog.entityLabel || ''}
         loading={dialog.isLoading}
-        error={dialog.error}
         onClose={closeDialog}
         onDelete={handleDelete}
+        open={dialog.isOpen}
       />
       <AddCredentialDrawer
-        open={isCreateDrawerOpen}
         onClose={() => setDrawerOpen(false)}
         onSubmit={handleCreate}
+        open={isCreateDrawerOpen}
       />
       <UpdateCredentialDrawer
-        open={isEditDrawerOpen}
         label={selectedCredential ? selectedCredential.label : ''}
         onClose={handleDrawerClose}
         onSubmitLabel={handleUpdateLabel}
         onSubmitPassword={handleUpdatePassword}
+        open={isEditDrawerOpen}
       />
     </>
   );
 };
 
-export default withSnackbar(CredentialList);
+export default CredentialList;

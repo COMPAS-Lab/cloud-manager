@@ -1,30 +1,35 @@
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import ActionMenu, { Action, ActionMenuProps } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
 
-export interface Props extends Partial<ActionMenuProps> {
-  idx: number;
+import {
+  Action,
+  ActionMenu,
+  ActionMenuProps,
+} from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+
+export interface FirewallRuleActionMenuProps extends Partial<ActionMenuProps> {
   disabled: boolean;
+  idx: number;
   triggerCloneFirewallRule: (idx: number) => void;
   triggerDeleteFirewallRule: (idx: number) => void;
   triggerOpenRuleDrawerForEditing: (idx: number) => void;
 }
 
-type CombinedProps = Props;
+export const FirewallRuleActionMenu = React.memo(
+  (props: FirewallRuleActionMenuProps) => {
+    const theme = useTheme<Theme>();
+    const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
-const FirewallRuleActionMenu: React.FC<CombinedProps> = (props) => {
-  const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
-
-  const {
-    idx,
-    disabled,
-    triggerCloneFirewallRule,
-    triggerDeleteFirewallRule,
-    triggerOpenRuleDrawerForEditing,
-    ...actionMenuProps
-  } = props;
+    const {
+      disabled,
+      idx,
+      triggerCloneFirewallRule,
+      triggerDeleteFirewallRule,
+      triggerOpenRuleDrawerForEditing,
+      ...actionMenuProps
+    } = props;
 
   const actions: Action[] = [
     /* -- Clanode Changes -- */
@@ -52,28 +57,27 @@ const FirewallRuleActionMenu: React.FC<CombinedProps> = (props) => {
     },
   ];
 
-  return (
-    <>
-      {!matchesSmDown &&
-        actions.map((action) => {
-          return (
-            <InlineMenuAction
-              disabled={action.disabled}
-              key={action.title}
-              actionText={action.title}
-              onClick={action.onClick}
-            />
-          );
-        })}
-      {matchesSmDown && (
-        <ActionMenu
-          actionsList={actions}
-          ariaLabel={`Action menu for Firewall Rule`}
-          {...actionMenuProps}
-        />
-      )}
-    </>
-  );
-};
-
-export default React.memo(FirewallRuleActionMenu);
+    return (
+      <>
+        {!matchesSmDown &&
+          actions.map((action) => {
+            return (
+              <InlineMenuAction
+                actionText={action.title}
+                disabled={action.disabled}
+                key={action.title}
+                onClick={action.onClick}
+              />
+            );
+          })}
+        {matchesSmDown && (
+          <ActionMenu
+            actionsList={actions}
+            ariaLabel={`Action menu for Firewall Rule`}
+            {...actionMenuProps}
+          />
+        )}
+      </>
+    );
+  }
+);

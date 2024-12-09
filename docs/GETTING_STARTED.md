@@ -1,15 +1,5 @@
 # Getting Started
 
-## Using the getting_started.sh script
-
-1. Open the terminal application
-2. Paste this into the terminal appliation `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/linode/manager/develop/scripts/getting_started.sh)"`
-3. Press `Enter` to run the command
-4. The script will ask you to enter your password. This is likely the same password you use to login to your computer.
-5. Follow the prompts the scripts presents.
-
-## Manually
-
 1. Fork this repository.
 2. Clone your fork to your local machine.
 3. Go to [cloud.linode.com/profile/clients](https://cloud.linode.com/profile/clients) and click "Add an OAuth App".
@@ -17,18 +7,18 @@
 5. After your OAuth App has been created, copy the ID (not the secret).
 6. In `packages/manager`, copy the contents of `.env.example` and paste them into a new file called `.env`.
 7. In `.env` set `REACT_APP_CLIENT_ID` to the ID from step 5.
-8. Install Node.js 14.17.4. We recommend using [Node Version Manager](https://github.com/nvm-sh/nvm) (nvm):
+8. Install Node.js 20.17 LTS. We recommend using [Volta](https://volta.sh/):
 
    ```bash
 
-   $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+   $ curl https://get.volta.sh | bash
 
-   ## Add nvm to your .*rc file, or open a new terminal window.
+   ## Add volta to your .*rc file, or open a new terminal window.
 
-   $ nvm install 14.17.4
+   $ volta install node@20.17
 
    $ node --version
-   ## v14.17.4
+   ## v20.17.0
 
    ```
 
@@ -40,28 +30,27 @@
    ```
 
 10. Navigate to the root directory of the repository, then start Cloud Manager and the JS client with `yarn up`.
-11. After installation, Cloud Manager should be running at http://localhost:3000.
+11. After installation, Cloud Manager should be running at `http://localhost:3000`.
 
-## Serving a production build of Cloud Manager:
+## Serving a production build of Cloud Manager
 
-Since Cloud Manager was generated using Create React App, `yarn build` can be used to generate an optimized production bundle:
+You can then serve these files however you prefer or use our included local http server.
 
 ```bash
+yarn install:all
 
-    yarn install:all
+yarn workspace linode-manager build
 
-    yarn workspace linode-manager build
-
+yarn workspace linode-manager run start:ci
 ```
 
-You can then serve these files however you prefer, for example, with [http-server](https://www.npmjs.com/package/http-server):
+## Exposing Cloud Manager's dev server to the network
+
+By default, Cloud Manager's dev server only listens on `localhost`. If you need to
+expose the Vite dev server, you can use the following command.
+
+> **Note**: This is useful for running Cloud Manager's dev server in Docker-like environments
 
 ```bash
-
-    npm install -g http-server
-
-    cd packages/manager/build
-
-    http-server .
-
+yarn up:expose
 ```

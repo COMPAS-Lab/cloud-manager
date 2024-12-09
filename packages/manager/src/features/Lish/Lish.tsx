@@ -1,8 +1,4 @@
-import {
-  getLinode,
-  getLinodeLishToken,
-  Linode,
-} from '@linode/api-v4/lib/linodes';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
 import { matchPath, RouteComponentProps, withRouter } from 'react-router-dom';
 import CircleProgress from 'src/components/CircleProgress';
@@ -23,54 +19,42 @@ import NotFound from 'src/components/NotFound';
 // import Glish from './Glish';
 // import Weblish from './Weblish';
 
-type ClassNames = 'tabs' | 'progress' | 'notFound' | 'lish';
+import type { Tab } from 'src/components/Tabs/TabLinkList';
 
 const AUTH_POLLING_INTERVAL = 2000;
 
-const styles = (theme: Theme) =>
-  createStyles({
-    tabs: {
-      backgroundColor: 'black',
-      margin: 0,
-      '& [role="tablist"]': {
-        display: 'flex',
-        backgroundColor: theme.bg.offWhite,
-        margin: 0,
-        overflow: 'hidden',
-      },
-      '& [role="tab"]': {
-        backgroundColor: theme.bg.offWhite,
-        color: theme.color.tableHeaderText,
-        flex: 'auto',
-        margin: 0,
-        maxWidth: 'none !important',
-        '&[aria-selected="true"]': {
-          backgroundColor: theme.palette.primary.main,
-          borderBottom: 'none !important',
-          color: 'white !important',
-          '&:hover': {
-            backgroundColor: theme.palette.primary.light,
-            color: 'white',
-          },
-        },
-      },
-    },
-    progress: {
-      height: 'auto',
-    },
-    notFound: {
-      color: '#f4f4f4 !important',
-      '& h1': {
-        color: '#f4f4f4 !important',
-      },
-    },
-  });
+export interface RetryLimiterInterface {
+  reset: () => void;
+  retryAllowed: () => boolean;
+}
 
-interface State {
-  loading: boolean;
-  authenticated: boolean;
-  linode?: Linode;
-  token?: string;
+export const RetryLimiter = (
+  maxTries: number,
+  perTimeWindowMs: number
+): RetryLimiterInterface => {
+  let retryTimes: number[] = [];
+
+  return {
+    reset: (): void => {
+      retryTimes = [];
+    },
+    retryAllowed: (): boolean => {
+      const now = Date.now();
+      retryTimes.push(now);
+      const cutOffTime = now - perTimeWindowMs;
+      while (retryTimes.length && retryTimes[0] < cutOffTime) {
+        retryTimes.shift();
+      }
+      return retryTimes.length < maxTries;
+    },
+  };
+};
+
+export interface LishErrorInterface {
+  formatted: string;
+  grn: string;
+  isExpired: boolean;
+  reason: string;
 }
 
 type CombinedProps = WithStyles<ClassNames> &

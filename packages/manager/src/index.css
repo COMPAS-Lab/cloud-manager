@@ -16,6 +16,11 @@ body {
   margin: 0;
   padding: 0 !important;
   font-family: 'LatoWeb', sans-serif;
+
+  strong, b {
+    font-family: 'LatoWebBold', sans-serif;
+    font-weight: normal;
+  }
 }
 
 body.searchOverlay #main-content {
@@ -68,10 +73,6 @@ body.searchOverlay #main-content {
     color: #000 !important;
   }
 
-  .tableWrapper {
-    border: 1px solid #f4f4f4 !important;
-  }
-
   thead {
     display: table-header-group !important;
     border-bottom: 1px solid #f4f4f4 !important;
@@ -111,12 +112,6 @@ body.searchOverlay #main-content {
 #main-content {
   max-width: 1280px;
   margin: 0 auto;
-}
-
-@media (min-width: 1600px) {
-  #main-content {
-    padding-top: 20px;
-  }
 }
 
 .label-visually-hidden {
@@ -160,11 +155,6 @@ a.h-u:hover {
 
 .secondaryLink:hover {
   text-decoration: underline;
-}
-
-strong,
-b {
-  font-family: 'LatoWebBold', sans-serif;
 }
 
 .visually-hidden {
@@ -211,11 +201,6 @@ a.black {
 
 a.black:visited {
   color: #32363c;
-}
-
-a.black:not(.nu):hover {
-  color: #32363c;
-  text-decoration: underline;
 }
 
 a.black:not(.nu):active {
@@ -319,34 +304,16 @@ button::-moz-focus-inner {
   }
 }
 
-.fade-in-table {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
 @keyframes pulse {
   to {
     background-color: hsla(40, 100%, 55%, 0);
   }
 }
 
-/* Animate Linode Landing pending action status icons */
-.statusOther {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-/* Animate Linode Details pending action status icon */
-.statusOtherDetail::before {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
 .no-transition *,
 .no-transition *::before,
 .no-transition *::after {
   transition: none !important;
-}
-
-.terminal {
-  padding: 24px;
 }
 
 .overflow-hidden {
@@ -359,7 +326,7 @@ button::-moz-focus-inner {
   background: #3683dc;
   color: white;
   font-size: 14px;
-  font-weight: bold;
+  font-family: 'LatoWebBold', sans-serif;
   padding: 8px;
   position: absolute;
   top: -40px;
@@ -377,4 +344,17 @@ See: https://blog.chromium.org/2020/09/giving-users-and-developers-more.html
 */
 :focus:not(:focus-visible) {
   outline: none;
+}
+
+/* Used by `srSpeak` in `accessibility.ts` */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

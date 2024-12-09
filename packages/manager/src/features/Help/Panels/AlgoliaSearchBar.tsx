@@ -1,192 +1,144 @@
-import Search from '@material-ui/icons/Search';
+import Search from '@mui/icons-material/Search';
+import { Theme } from '@mui/material/styles';
 import { pathOr } from 'ramda';
 import * as React from 'react';
 import { RouteComponentProps, withRouter } from 'react-router-dom';
-import { compose } from 'recompose';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-  WithTheme,
-} from 'src/components/core/styles';
+import { debounce } from 'throttle-debounce';
+import { makeStyles } from 'tss-react/mui';
+
 import EnhancedSelect, { Item } from 'src/components/EnhancedSelect';
-import Notice from 'src/components/Notice';
-import { selectStyles } from 'src/features/TopMenu/SearchBar';
-import windowIsNarrowerThan from 'src/utilities/breakpoints';
+import { Notice } from 'src/components/Notice/Notice';
+import { selectStyles } from 'src/features/TopMenu/SearchBar/SearchBar';
+
 import withSearch, { AlgoliaState as AlgoliaProps } from '../SearchHOC';
-import SearchItem from './SearchItem';
+import { SearchItem } from './SearchItem';
 
-type ClassNames =
-  | 'root'
-  | 'searchIcon'
-  | 'searchItem'
-  | 'enhancedSelectWrapper';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      position: 'relative',
-    },
-    searchItem: {
-      '& em': {
-        fontStyle: 'normal',
-        color: theme.palette.primary.main,
+const useStyles = makeStyles()((theme: Theme) => ({
+  enhancedSelectWrapper: {
+    '& .input': {
+      '& > div': {
+        marginRight: 0,
       },
-    },
-    searchIcon: {
-      position: 'absolute',
-      color: theme.color.grey1,
-      zIndex: 3,
-      top: 4,
-      left: 5,
-    },
-    enhancedSelectWrapper: {
-      margin: '0 auto',
-      width: 300,
-      maxHeight: 500,
-      '& .react-select__value-container': {
-        paddingLeft: theme.spacing(4),
+      '& p': {
+        color: theme.color.grey1,
+        paddingLeft: theme.spacing(3),
       },
-      '& .input': {
-        maxWidth: '100%',
-        '& p': {
-          paddingLeft: theme.spacing(3),
-          color: theme.color.grey1,
-        },
-        '& > div': {
-          marginRight: 0,
-        },
-      },
-      [theme.breakpoints.up('md')]: {
-        width: 500,
-      },
+      maxWidth: '100%',
     },
-  });
+    '& .react-select__value-container': {
+      paddingLeft: theme.spacing(4),
+    },
+    margin: '0 auto',
+    maxHeight: 500,
+    [theme.breakpoints.up('md')]: {
+      width: 500,
+    },
+    width: 300,
+  },
+  notice: {
+    '& p': {
+      color: theme.color.white,
+      fontFamily: 'LatoWeb',
+    },
+  },
+  root: {
+    position: 'relative',
+  },
+  searchIcon: {
+    color: theme.color.grey1,
+    left: 5,
+    position: 'absolute',
+    top: 4,
+    zIndex: 3,
+  },
+}));
 
-interface State {
-  inputValue: string;
-}
+interface AlgoliaSearchBarProps extends AlgoliaProps, RouteComponentProps<{}> {}
 
-type CombinedProps = AlgoliaProps &
-  WithStyles<ClassNames> &
-  WithTheme &
-  RouteComponentProps<{}>;
-class AlgoliaSearchBar extends React.Component<CombinedProps, State> {
-  searchIndex: any = null;
-  mounted: boolean = false;
-  isMobile: boolean = false;
-  state: State = {
-    inputValue: '',
-  };
+const AlgoliaSearchBar = (props: AlgoliaSearchBarProps) => {
+  const { classes } = useStyles();
+  const [inputValue, setInputValue] = React.useState('');
+  const {
+    history,
+    searchAlgolia,
+    searchEnabled,
+    searchError,
+    searchResults,
+  } = props;
 
-  componentDidMount() {
-    const { theme } = this.props;
-    this.mounted = true;
-    if (theme) {
-      this.isMobile = windowIsNarrowerThan(theme.breakpoints.values.sm);
-    }
-  }
+  const options = React.useMemo(() => {
+    const [docs, community] = searchResults;
+    const mergedOptions = [...docs, ...community];
 
-  componentWillUnmount() {
-    this.mounted = false;
-  }
-
-  getOptionsFromResults = () => {
-    const [docs, community] = this.props.searchResults;
-    const { inputValue } = this.state;
-    const options = [...docs, ...community];
     return [
-      { value: 'search', label: inputValue, data: { source: 'finalLink' } },
-      ...options,
+      { data: { source: 'finalLink' }, label: inputValue, value: 'search' },
+      ...mergedOptions,
     ];
+  }, [inputValue, searchResults]);
+
+  const onInputValueChange = (inputValue: string) => {
+    setInputValue(inputValue);
+    debouncedSearchAlgolia(inputValue);
   };
 
-  onInputValueChange = (inputValue: string) => {
-    if (!this.mounted) {
-      return;
-    }
-    this.setState({ inputValue });
-    this.props.searchAlgolia(inputValue);
-  };
+  const debouncedSearchAlgolia = React.useCallback(
+    debounce(200, false, (inputValue: string) => {
+      searchAlgolia(inputValue);
+    }),
+    [searchAlgolia]
+  );
 
-  getLinkTarget = (inputValue: string) => {
+  const getLinkTarget = (inputValue: string) => {
     return inputValue
       ? `/support/search/?query=${inputValue}`
       : '/support/search/';
   };
 
-  handleSelect = (selected: Item<string>) => {
-    if (!selected) {
+  const handleSelect = (selected: Item<string>) => {
+    if (!selected || !inputValue) {
       return;
     }
-    const { history } = this.props;
-    const { inputValue } = this.state;
-    if (!inputValue) {
-      return;
-    }
-    const href = pathOr('', ['data', 'href'], selected);
+
     if (selected.value === 'search') {
-      const link = this.getLinkTarget(inputValue);
+      const link = getLinkTarget(inputValue);
       history.push(link);
     } else {
+      const href = pathOr('', ['data', 'href'], selected);
       window.open(href, '_blank', 'noopener');
     }
   };
 
-  handleSubmit = () => {
-    const { inputValue } = this.state;
-    if (!inputValue) {
-      return;
-    }
-    const { history } = this.props;
-    const link = this.getLinkTarget(inputValue);
-    history.push(link);
-  };
+  return (
+    <React.Fragment>
+      {searchError && (
+        <Notice className={classes.notice} spacingTop={8} variant="error">
+          {searchError}
+        </Notice>
+      )}
+      <div className={classes.root}>
+        <Search className={classes.searchIcon} data-qa-search-icon />
+        <EnhancedSelect
+          components={
+            { DropdownIndicator: () => null, Option: SearchItem } as any
+          }
+          className={classes.enhancedSelectWrapper}
+          disabled={!searchEnabled}
+          hideLabel
+          inputValue={inputValue}
+          isClearable={true}
+          isMulti={false}
+          label="Search for answers"
+          onChange={handleSelect}
+          onInputChange={onInputValueChange}
+          options={options}
+          placeholder="Search for answers..."
+          styles={selectStyles}
+        />
+      </div>
+    </React.Fragment>
+  );
+};
 
-  render() {
-    const { classes, searchEnabled, searchError } = this.props;
-    const { inputValue } = this.state;
-    const options = this.getOptionsFromResults();
-
-    return (
-      <React.Fragment>
-        {searchError && (
-          <Notice error spacingTop={8} spacingBottom={0}>
-            {searchError}
-          </Notice>
-        )}
-        <div className={classes.root}>
-          <Search className={classes.searchIcon} data-qa-search-icon />
-          <EnhancedSelect
-            disabled={!searchEnabled}
-            isMulti={false}
-            isClearable={false}
-            inputValue={inputValue}
-            options={options}
-            components={
-              { Option: SearchItem, DropdownIndicator: () => null } as any
-            }
-            onChange={this.handleSelect}
-            onInputChange={this.onInputValueChange}
-            placeholder="Search for answers..."
-            label="Search for answers"
-            hideLabel
-            className={classes.enhancedSelectWrapper}
-            styles={selectStyles}
-            value={false}
-          />
-        </div>
-      </React.Fragment>
-    );
-  }
-}
-
-const styled = withStyles(styles, { withTheme: true });
-const search = withSearch({ hitsPerPage: 10, highlight: true });
-
-export default compose<CombinedProps, {}>(
-  styled,
-  search,
-  withRouter
-)(AlgoliaSearchBar);
+export default withSearch({ highlight: false, hitsPerPage: 10 })(
+  withRouter(AlgoliaSearchBar)
+);

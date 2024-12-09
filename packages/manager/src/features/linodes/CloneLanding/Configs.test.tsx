@@ -1,14 +1,17 @@
 import { fireEvent, render } from '@testing-library/react';
 import * as React from 'react';
+
 import { linodeConfigs } from 'src/__data__/linodeConfigs';
 import { wrapWithTheme } from 'src/utilities/testHelpers';
-import { Configs, Props } from './Configs';
 
-const mockHandleSelect = jest.fn();
+import { Configs } from './Configs';
+import type { ConfigsProps } from './Configs';
 
-const props: Props = {
+const mockHandleSelect = vi.fn();
+
+const props: ConfigsProps = {
+  configSelection: { 9859511: { associatedDiskIds: [], isSelected: false } },
   configs: linodeConfigs,
-  configSelection: { 9859511: { isSelected: false, associatedDiskIds: [] } },
   handleSelect: (id: number) => mockHandleSelect(id),
 };
 
@@ -30,7 +33,7 @@ describe('Configs', () => {
   });
 
   it('renders an empty state when no configs', () => {
-    const { getByText, getByTestId } = render(
+    const { getByTestId, getByText } = render(
       wrapWithTheme(<Configs {...props} configs={[]} />)
     );
 

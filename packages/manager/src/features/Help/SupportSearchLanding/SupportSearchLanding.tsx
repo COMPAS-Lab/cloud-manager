@@ -1,177 +1,133 @@
-import Search from '@material-ui/icons/Search';
-import { compose } from 'ramda';
+import { Box, InputAdornment } from '@linode/ui';
+import Search from '@mui/icons-material/Search';
+import Grid from '@mui/material/Unstable_Grid2';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import InputAdornment from 'src/components/core/InputAdornment';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import H1Header from 'src/components/H1Header';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
+import { useHistory } from 'react-router-dom';
+import { makeStyles } from 'tss-react/mui';
+
+import { H1Header } from 'src/components/H1Header/H1Header';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
 import { COMMUNITY_SEARCH_URL, DOCS_SEARCH_URL } from 'src/constants';
-import { getQueryParam } from 'src/utilities/queryParams';
-import withSearch, { AlgoliaState as AlgoliaProps } from '../SearchHOC';
-import DocumentationResults, { SearchResult } from './DocumentationResults';
+import { getQueryParamFromQueryString } from 'src/utilities/queryParams';
+
+import withSearch from '../SearchHOC';
+import { DocumentationResults } from './DocumentationResults';
 import HelpResources from './HelpResources';
 
-type ClassNames =
-  | 'root'
-  | 'searchBar'
-  | 'searchBoxInner'
-  | 'searchHeading'
-  | 'searchField'
-  | 'searchIcon';
+import type { AlgoliaState as AlgoliaProps } from '../SearchHOC';
+import type { SearchResult } from './DocumentationResults';
+import type { Theme } from '@mui/material/styles';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      maxWidth: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      position: 'relative',
-    },
-    searchBar: {
+const useStyles = makeStyles()((theme: Theme) => ({
+  searchBar: {
+    maxWidth: '100%',
+  },
+  searchBoxInner: {
+    '& > div': {
       maxWidth: '100%',
     },
-    searchBoxInner: {
-      padding: theme.spacing(3),
-      backgroundColor: theme.color.grey2,
-      marginTop: 0,
-      '& > div': {
-        maxWidth: '100%',
-      },
+    backgroundColor: theme.color.grey2,
+    marginTop: 0,
+    padding: theme.spacing(3),
+  },
+  searchIcon: {
+    '& svg': {
+      color: theme.palette.text.primary,
     },
-    searchHeading: {
-      color: theme.color.black,
-      marginBottom: theme.spacing(2),
-      fontSize: '175%',
-    },
-    searchField: {
-      padding: theme.spacing(3),
-    },
-    searchIcon: {
-      marginRight: 0,
-      '& svg': {
-        color: theme.palette.text.primary,
-      },
-    },
-  });
+    marginRight: 0,
+  },
+}));
 
-interface State {
-  query: string;
-}
+const SupportSearchLanding = (props: AlgoliaProps) => {
+  const history = useHistory();
+  const { searchAlgolia, searchEnabled, searchError, searchResults } = props;
+  const [docs, community] = searchResults;
+  const { classes } = useStyles();
 
-export type CombinedProps = AlgoliaProps &
-  WithStyles<ClassNames> &
-  RouteComponentProps<{}>;
+  const [queryString, setQueryString] = React.useState('');
 
-export class SupportSearchLanding extends React.Component<
-  CombinedProps,
-  State
-> {
-  searchIndex: any = null;
-  state: State = {
-    query: '',
+  React.useEffect(() => {
+    searchFromParams();
+  }, []);
+
+  const searchFromParams = () => {
+    const query = getQueryParamFromQueryString(location.search, 'query');
+    setQueryString(query);
+    searchAlgolia(query);
   };
 
-  componentDidMount() {
-    this.searchFromParams();
-  }
-
-  searchFromParams() {
-    const query = getQueryParam(this.props.location.search, 'query');
-    this.setState({ query });
-    this.props.searchAlgolia(query);
-  }
-
-  componentDidUpdate(prevProps: CombinedProps) {
-    if (!prevProps.searchEnabled && this.props.searchEnabled) {
-      this.searchFromParams();
-    }
-  }
-
-  onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value ?? '';
-    this.setState({ query: newQuery });
-    this.props.history.replace({ search: `?query=${newQuery}` });
-    this.props.searchAlgolia(newQuery);
+    setQueryString(newQuery);
+    history.replace({ search: `?query=${newQuery}` });
+    searchAlgolia(newQuery);
   };
 
-  render() {
-    const { classes, searchEnabled, searchError, searchResults } = this.props;
-    const { query } = this.state;
+  return (
+    <Grid container data-testid="support-search-landing" direction="column">
+      <Box
+        sx={{
+          marginBottom: '16px',
+        }}
+      >
+        <H1Header
+          title={
+            queryString.length > 1
+              ? `Search results for "${queryString}"`
+              : 'Search'
+          }
+          data-qa-support-search-landing-title
+          dataQaEl={queryString}
+        />
+      </Box>
+      <Box>
+        {searchError && <Notice variant="error">{searchError}</Notice>}
+        <TextField
+          InputProps={{
+            className: classes.searchBar,
+            startAdornment: (
+              <InputAdornment className={classes.searchIcon} position="end">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+          className={classes.searchBoxInner}
+          data-qa-search-landing-input
+          disabled={!Boolean(searchEnabled)}
+          hideLabel
+          label="Search Linode documentation and community questions"
+          onChange={onInputChange}
+          placeholder="Search Linode documentation and community questions"
+          value={queryString}
+        />
+      </Box>
+      <Box>
+        <DocumentationResults
+          results={docs as SearchResult[]}
+          sectionTitle="Documentation"
+          target={DOCS_SEARCH_URL + queryString}
+        />
+      </Box>
+      <Box>
+        <DocumentationResults
+          results={community as SearchResult[]}
+          sectionTitle="Community Posts"
+          target={COMMUNITY_SEARCH_URL + queryString}
+        />
+      </Box>
+      <HelpResources />
+    </Grid>
+  );
+};
 
-    const [docs, community] = searchResults;
+export default withSearch({ highlight: false, hitsPerPage: 5 })(
+  SupportSearchLanding
+);
 
-    return (
-      <Grid container direction="column">
-        <Grid item>
-          <Grid container alignItems="center">
-            <Grid item>
-              <H1Header
-                title={
-                  query.length > 1 ? `Search results for "${query}"` : 'Search'
-                }
-                data-qa-support-search-landing-title
-              />
-            </Grid>
-          </Grid>
-        </Grid>
-        <Grid item>
-          {searchError && <Notice error>{searchError}</Notice>}
-          <TextField
-            data-qa-search-landing-input
-            className={classes.searchBoxInner}
-            placeholder="Search Linode documentation and community questions"
-            label="Search Linode documentation and community questions"
-            hideLabel
-            value={query}
-            onChange={this.onInputChange}
-            disabled={!Boolean(searchEnabled)}
-            InputProps={{
-              className: classes.searchBar,
-              startAdornment: (
-                <InputAdornment position="end" className={classes.searchIcon}>
-                  <Search />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Grid>
-        <Grid item>
-          <DocumentationResults
-            sectionTitle="Documentation"
-            results={docs as SearchResult[]}
-            target={DOCS_SEARCH_URL + query}
-          />
-        </Grid>
-        <Grid item>
-          <DocumentationResults
-            sectionTitle="Community Posts"
-            results={community as SearchResult[]}
-            target={COMMUNITY_SEARCH_URL + query}
-          />
-        </Grid>
-        <Grid container item>
-          <HelpResources />
-        </Grid>
-      </Grid>
-    );
+export const supportSearchLandingLazyRoute = createLazyRoute('/support/search')(
+  {
+    component: SupportSearchLanding,
   }
-}
-
-const styled = withStyles(styles);
-const searchable = withSearch({ hitsPerPage: 5, highlight: false });
-const enhanced: any = compose(
-  styled,
-  searchable,
-  withRouter
-)(SupportSearchLanding);
-
-export default enhanced;
+);

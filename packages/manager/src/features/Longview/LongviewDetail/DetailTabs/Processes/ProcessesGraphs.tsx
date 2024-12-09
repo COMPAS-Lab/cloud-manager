@@ -1,17 +1,9 @@
+import { Box, Paper } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import Paper from 'src/components/core/Paper';
-import {
-  makeStyles,
-  Theme,
-  withTheme,
-  WithTheme,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
-import {
-  LongviewProcesses,
-  WithStartAndEnd,
-} from 'src/features/Longview/request.types';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
+import { Typography } from 'src/components/Typography';
 import {
   convertData,
   formatMemory,
@@ -21,55 +13,43 @@ import {
   convertBytesToTarget,
   readableBytes,
 } from 'src/utilities/unitConversions';
-import { Process } from './types';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginTop: theme.spacing(1) + 2,
-    padding: theme.spacing(3),
-  },
-  graphWrap: {
-    marginTop: theme.spacing(3),
-  },
-  title: {
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-    },
-  },
-}));
+import type { Process } from './types';
+import type {
+  LongviewProcesses,
+  WithStartAndEnd,
+} from 'src/features/Longview/request.types';
 
 interface Props {
+  clientAPIKey: string;
+  error?: string;
+  isToday: boolean;
+  lastUpdated?: number;
   processesData: LongviewProcesses;
   processesLoading: boolean;
-  error?: string;
   selectedProcess: Process | null;
-  clientAPIKey: string;
-  timezone: string;
-  lastUpdated?: number;
-  isToday: boolean;
   time: WithStartAndEnd;
+  timezone: string;
 }
 
-type CombinedProps = Props & WithTheme;
-
-const ProcessesGraphs: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const ProcessesGraphs = (props: Props) => {
   const {
     error,
+    isToday,
     processesData,
     processesLoading,
     selectedProcess,
-    timezone,
-    isToday,
     time,
-    theme,
+    timezone,
   } = props;
 
-  const { start, end } = time;
+  const theme = useTheme();
+
+  const { end, start } = time;
 
   const name = selectedProcess?.name ?? '';
   const user = selectedProcess?.user ?? '';
+  // @ts-expect-error The types are completely wrong. They don't account for "user"
   const process = processesData.Processes?.[name]?.[user] ?? {};
 
   const cpu = process.cpu ?? [];
@@ -88,7 +68,7 @@ const ProcessesGraphs: React.FC<CombinedProps> = (props) => {
   );
   const ioUnit = readableBytes(ioMax).unit;
 
-  const formatDisk = (value: number | null) => {
+  const formatDisk = (value: null | number) => {
     if (!value) {
       return value;
     }
@@ -102,97 +82,111 @@ const ProcessesGraphs: React.FC<CombinedProps> = (props) => {
   ]);
 
   const commonGraphProps = {
-    timezone,
-    showToday: isToday,
-    loading: processesLoading,
     error,
+    loading: processesLoading,
+    showToday: isToday,
+    timezone,
   };
 
   return (
     <>
-      <Typography variant="h2" className={classes.title}>
+      <Typography
+        sx={{
+          [theme.breakpoints.down('lg')]: {
+            marginLeft: theme.spacing(),
+          },
+        }}
+        variant="h2"
+      >
         Process History{name && `: ${name}`}
       </Typography>
-      <Paper className={classes.root}>
+      <Paper
+        sx={{
+          marginTop: theme.spacing(1.25),
+          padding: theme.spacing(3),
+        }}
+      >
         <LongviewLineGraph
-          title="CPU"
-          subtitle="%"
-          unit="%"
           data={[
             {
+              backgroundColor: theme.graphs.cpu.system,
+              borderColor: 'transparent',
               data: _convertData(cpu, start, end),
               label: 'CPU',
-              borderColor: 'transparent',
-              backgroundColor: theme.graphs.cpu.system,
             },
           ]}
+          ariaLabel="CPU Usage Graph"
+          subtitle="%"
+          title="CPU"
+          unit="%"
           {...commonGraphProps}
         />
-        <div className={classes.graphWrap}>
+        <Box marginTop={theme.spacing(3)}>
           <LongviewLineGraph
-            title="RAM"
-            subtitle={memUnit}
-            formatData={(value: number) => convertBytesToTarget(memUnit, value)}
-            formatTooltip={(value: number) => readableBytes(value).formatted}
             data={[
               {
+                backgroundColor: theme.graphs.memory.used,
+                borderColor: 'transparent',
                 data: _convertData(memory, start, end, formatMemory),
                 label: 'RAM',
-                borderColor: 'transparent',
-                backgroundColor: theme.graphs.memory.used,
               },
             ]}
+            ariaLabel="RAM Usage Graph"
+            formatData={(value: number) => convertBytesToTarget(memUnit, value)}
+            formatTooltip={(value: number) => readableBytes(value).formatted}
+            subtitle={memUnit}
+            title="RAM"
             {...commonGraphProps}
           />
-        </div>
-        <div className={classes.graphWrap}>
+        </Box>
+        <Box marginTop={theme.spacing(3)}>
           <LongviewLineGraph
-            title="Count"
-            suggestedMax={10}
             data={[
               {
+                backgroundColor: theme.graphs.processCount,
+                borderColor: 'transparent',
                 data: _convertData(count, start, end, formatCount),
                 label: 'Count',
-                borderColor: 'transparent',
-                backgroundColor: theme.graphs.processCount,
               },
             ]}
+            ariaLabel="Process Count Graph"
+            suggestedMax={10}
+            title="Count"
             {...commonGraphProps}
           />
-        </div>
-        <div className={classes.graphWrap}>
+        </Box>
+        <Box marginTop={theme.spacing(3)}>
           <LongviewLineGraph
-            title="Disk I/O"
-            subtitle={ioUnit + '/s'}
-            unit={'/s'}
+            data={[
+              {
+                backgroundColor: theme.graphs.diskIO.write,
+                borderColor: 'transparent',
+                data: _convertData(iowritekbytes, start, end, formatDisk),
+                label: 'Write',
+              },
+              {
+                backgroundColor: theme.graphs.diskIO.read,
+                borderColor: 'transparent',
+                data: _convertData(ioreadkbytes, start, end, formatDisk),
+                label: 'Read',
+              },
+            ]}
+            ariaLabel="Disk I/O Graph"
             formatData={(value: number) => convertBytesToTarget(ioUnit, value)}
             formatTooltip={(value: number) => readableBytes(value).formatted}
             nativeLegend
-            data={[
-              {
-                label: 'Write',
-                borderColor: 'transparent',
-                backgroundColor: theme.graphs.diskIO.write,
-                data: _convertData(iowritekbytes, start, end, formatDisk),
-              },
-              {
-                label: 'Read',
-                borderColor: 'transparent',
-                backgroundColor: theme.graphs.diskIO.read,
-                data: _convertData(ioreadkbytes, start, end, formatDisk),
-              },
-            ]}
+            subtitle={ioUnit + '/s'}
+            title="Disk I/O"
+            unit={'/s'}
             {...commonGraphProps}
           />
-        </div>
+        </Box>
       </Paper>
     </>
   );
 };
 
-export default withTheme(ProcessesGraphs);
-
-export const formatCount = (value: number | null) => {
+export const formatCount = (value: null | number) => {
   if (!value) {
     return value;
   }

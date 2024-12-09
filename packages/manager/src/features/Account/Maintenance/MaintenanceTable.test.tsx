@@ -1,32 +1,25 @@
-import * as React from 'react';
-import { accountMaintenanceFactory } from 'src/factories';
-import {
-  mockMatchMedia,
-  renderWithTheme,
-  wrapWithTableBody,
-} from 'src/utilities/testHelpers';
-import MaintenanceTableRow from './MaintenanceTableRow';
-import MaintenanceTable from './MaintenanceTable';
 import {
   screen,
   waitForElementToBeRemoved,
   within,
 } from '@testing-library/react';
-import { rest, server } from 'src/mocks/testServer';
-import { makeResourcePage } from 'src/mocks/serverHandlers';
-import { queryPresets } from 'src/queries/base';
-import { QueryClient } from 'react-query';
-import { parseAPIDate } from 'src/utilities/date';
-import formatDate from 'src/utilities/formatDate';
+import * as React from 'react';
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: queryPresets.oneTimeFetch },
-});
+import { accountMaintenanceFactory } from 'src/factories';
+import { makeResourcePage } from 'src/mocks/serverHandlers';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
+import { parseAPIDate } from 'src/utilities/date';
+import { formatDate } from 'src/utilities/formatDate';
+import {
+  mockMatchMedia,
+  renderWithTheme,
+  wrapWithTableBody,
+} from 'src/utilities/testHelpers';
+
+import { MaintenanceTable } from './MaintenanceTable';
+import { MaintenanceTableRow } from './MaintenanceTableRow';
 
 beforeAll(() => mockMatchMedia());
-afterEach(() => {
-  queryClient.clear();
-});
 
 const loadingTestId = 'table-row-loading';
 
@@ -38,7 +31,6 @@ describe('Maintenance Table Row', () => {
     );
     getByText(maintenance.entity.label);
     getByText(formatDate(maintenance.when));
-    getByText(maintenance.reason);
   });
 
   it('should render a relative time', () => {
@@ -56,21 +48,14 @@ describe('Maintenance Table Row', () => {
 describe('Maintenance Table', () => {
   it('should render maintenance table with items', async () => {
     server.use(
-      rest.get('*/account/maintenance', (req, res, ctx) => {
+      http.get('*/account/maintenance', () => {
         const accountMaintenance = accountMaintenanceFactory.buildList(1, {
           status: 'pending',
         });
-        return res(ctx.json(makeResourcePage(accountMaintenance)));
+        return HttpResponse.json(makeResourcePage(accountMaintenance));
       })
     );
-    renderWithTheme(
-      <MaintenanceTable
-        type="Linode"
-        expanded={true}
-        toggleExpanded={() => null}
-        addTopMargin={false}
-      />
-    );
+    renderWithTheme(<MaintenanceTable type="pending" />);
 
     // Loading state should render
     expect(screen.getByTestId(loadingTestId)).toBeInTheDocument();
@@ -78,7 +63,7 @@ describe('Maintenance Table', () => {
     await waitForElementToBeRemoved(screen.getByTestId(loadingTestId));
 
     // Static text and table column headers
-    screen.getAllByText('Linodes');
+    screen.getAllByText('pending');
     screen.getAllByText('Label');
     screen.getAllByText('Date');
 
@@ -87,34 +72,19 @@ describe('Maintenance Table', () => {
   });
 
   it('should render the CSV download button if there are items', async () => {
-    renderWithTheme(
-      <MaintenanceTable
-        type="Linode"
-        expanded={true}
-        toggleExpanded={() => null}
-        addTopMargin={false}
-      />
-    );
+    renderWithTheme(<MaintenanceTable type="pending" />);
 
     screen.getByText('Download CSV');
   });
 
   it('should render maintenance table with empty state', async () => {
     server.use(
-      rest.get('*/account/maintenance', (req, res, ctx) => {
-        return res(ctx.json(makeResourcePage([])));
+      http.get('*/account/maintenance', () => {
+        return HttpResponse.json(makeResourcePage([]));
       })
     );
 
-    renderWithTheme(
-      <MaintenanceTable
-        type="Linode"
-        expanded={true}
-        toggleExpanded={() => null}
-        addTopMargin={false}
-      />,
-      { queryClient }
-    );
+    renderWithTheme(<MaintenanceTable type="pending" />);
 
     expect(await screen.findByTestId('table-row-empty')).toBeInTheDocument();
 

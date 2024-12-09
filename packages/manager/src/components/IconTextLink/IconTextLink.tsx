@@ -1,92 +1,78 @@
-import classNames from 'classnames';
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import Button from 'src/components/Button';
-import ConditionalWrapper from 'src/components/ConditionalWrapper';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import SvgIcon from 'src/components/core/SvgIcon';
+import { makeStyles } from 'tss-react/mui';
 
-type CSSClasses =
-  | 'root'
-  | 'active'
-  | 'disabled'
-  | 'icon'
-  | 'left'
-  | 'label'
-  | 'linkWrapper';
+import { Button } from 'src/components/Button/Button';
+import { SvgIcon } from 'src/components/SvgIcon';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      cursor: 'pointer',
-      padding: theme.spacing(1) + theme.spacing(1) / 2,
-      color: theme.textColors.linkActiveLight,
-      transition: 'none',
-      margin: `0 -${theme.spacing(1) + theme.spacing(1) / 2}px 2px 0`,
-      minHeight: 'auto',
-      borderRadius: 0,
-      '&:hover': {
-        color: theme.palette.primary.light,
-        backgroundColor: 'transparent',
-        '& .border': {
-          color: theme.palette.primary.light,
-        },
-      },
-      '&:focus': { outline: '1px dotted #999' },
-    },
-    active: {
-      color: '#1f64b6',
-    },
-    disabled: {
+const useStyles = makeStyles()((theme: Theme) => ({
+  active: {
+    color: '#1f64b6',
+  },
+  disabled: {
+    '& $icon': {
+      borderColor: '#939598',
       color: '#939598',
-      pointerEvents: 'none',
-      '& $icon': {
-        color: '#939598',
-        borderColor: '#939598',
-      },
     },
-    icon: {
+    color: '#939598',
+    pointerEvents: 'none',
+  },
+  icon: {
+    '& .border': {
       transition: 'none',
-      fontSize: 18,
-      marginRight: theme.spacing(0.5),
-      color: 'inherit',
+    },
+    color: 'inherit',
+    fontSize: 18,
+    marginRight: theme.spacing(0.5),
+    transition: 'none',
+  },
+  label: {
+    position: 'relative',
+    top: -1,
+    whiteSpace: 'nowrap',
+  },
+  left: {
+    left: `-${theme.spacing(1.5)}`,
+  },
+  linkWrapper: {
+    '&:hover, &:focus': {
+      textDecoration: 'none',
+    },
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  root: {
+    '&:focus': { outline: '1px dotted #999' },
+    '&:hover': {
       '& .border': {
-        transition: 'none',
+        color: theme.palette.primary.light,
       },
+      backgroundColor: 'transparent',
+      color: theme.palette.primary.light,
     },
-    left: {
-      left: -(theme.spacing(1) + theme.spacing(1) / 2),
-    },
-    label: {
-      whiteSpace: 'nowrap',
-      position: 'relative',
-      top: -1,
-    },
-    linkWrapper: {
-      display: 'flex',
-      justifyContent: 'center',
-      '&:hover, &:focus': {
-        textDecoration: 'none',
-      },
-    },
-  });
+    alignItems: 'flex-start',
+    borderRadius: theme.tokens.borderRadius.None,
+    cursor: 'pointer',
+    display: 'flex',
+    margin: `0 ${theme.spacing(1)} 2px 0`,
+    minHeight: 'auto',
+    padding: theme.spacing(1.5),
+    transition: 'none',
+  },
+}));
 
 export interface Props {
-  SideIcon: typeof SvgIcon | React.ComponentClass;
-  text: string;
-  onClick?: () => void;
+  SideIcon: React.ComponentClass | typeof SvgIcon;
   active?: boolean;
+  children?: string;
+  className?: string;
   disabled?: boolean;
-  title: string;
+  hideText?: boolean;
   left?: boolean;
-  className?: any;
+  onClick?: () => void;
+  text: string;
+  title: string;
   to?: string;
   hideText?: boolean;
   /* -- Clanode Change -- */
@@ -94,19 +80,18 @@ export interface Props {
   /* -- Clanode Change -- */
 }
 
-type FinalProps = Props & WithStyles<CSSClasses>;
-
-const IconTextLink: React.FC<FinalProps> = (props) => {
+export const IconTextLink = (props: Props) => {
+  const { classes, cx } = useStyles();
   const {
     SideIcon,
-    classes,
-    text,
-    onClick,
     active,
-    disabled,
-    title,
-    left,
     className,
+    disabled,
+    hideText,
+    left,
+    onClick,
+    text,
+    title,
     to,
     hideText,
     hide,

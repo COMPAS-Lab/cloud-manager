@@ -1,116 +1,57 @@
-import { PaymentMethod } from '@linode/api-v4';
-import {
-  ActivePromotion,
-  PromotionServiceType,
-} from '@linode/api-v4/lib/account/types';
-import { GridSize } from '@material-ui/core/Grid';
-import { Breakpoint } from '@material-ui/core/styles/createBreakpoints';
-import classNames from 'classnames';
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom';
-import Box from 'src/components/core/Box';
-import Divider from 'src/components/core/Divider';
-import Grid from 'src/components/core/Grid';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Currency from 'src/components/Currency';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
-import HelpIcon from 'src/components/HelpIcon';
-import useAccountManagement from 'src/hooks/useAccountManagement';
-import useNotifications from 'src/hooks/useNotifications';
-import { getGrantData } from 'src/queries/profile';
+
+import { Button } from 'src/components/Button/Button';
+import { Currency } from 'src/components/Currency';
+import { Divider } from 'src/components/Divider';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { Typography } from 'src/components/Typography';
+import { useAccountManagement } from 'src/hooks/useAccountManagement';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
+import { useGrants } from 'src/queries/profile/profile';
 import { isWithinDays } from 'src/utilities/date';
+
+import { BillingPaper } from '../../BillingDetail';
 import PaymentDrawer from './PaymentDrawer';
 import PromoDialog from './PromoDialog';
+import { PromoDisplay } from './PromoDisplay';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginTop: 0,
-    marginBottom: 16,
-    minHeight: 97,
-  },
-  paper: {
-    padding: `15px 20px`,
-    height: '100%',
-  },
-  helpIcon: {
-    padding: `0px 8px`,
-  },
-  noBalanceOrNotDue: {
-    color: theme.palette.text.primary,
-  },
-  pastDueBalance: {
-    color: theme.color.red,
-  },
-  credit: {
-    color: theme.color.green,
-  },
-  makeAPaymentButton: {
-    ...theme.applyLinkStyles,
-  },
-  text: {
-    color: theme.palette.text.primary,
-  },
-  accruedCharges: {
-    color: theme.palette.text.primary,
-  },
-  promo: {
-    marginTop: theme.spacing(),
-  },
-}));
+import type { PaymentMethod } from '@linode/api-v4';
+import type { ActivePromotion } from '@linode/api-v4/lib/account/types';
+import type { GridSize } from '@mui/material';
+import type { Breakpoint } from '@mui/material/styles';
 
-const serviceTypeMap: Partial<Record<PromotionServiceType, string>> = {
-  all: 'All',
-  backup: 'Backups',
-  blockstorage: 'Volumes',
-  db_mysql: 'DBaaS',
-  ip_v4: 'IPv4',
-  linode: 'Linodes',
-  linode_disk: 'Storage',
-  linode_memory: 'Memory',
-  longview: 'Longview',
-  managed: 'Managed',
-  nodebalancer: 'NodeBalancers',
-  objectstorage: 'Object Storage',
-  transfer_tx: 'Transfer Overages',
-};
-
-// =============================================================================
-// <BillingSummary />
-// =============================================================================
 interface BillingSummaryProps {
-  promotions?: ActivePromotion[];
-  paymentMethods: PaymentMethod[] | undefined;
-  balanceUninvoiced: number;
   balance: number;
+  balanceUninvoiced: number;
+  paymentMethods: PaymentMethod[] | undefined;
+  promotions?: ActivePromotion[];
 }
 
-export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
-  const classes = useStyles();
-  const notifications = useNotifications();
-  const { account, _isRestrictedUser } = useAccountManagement();
+export const BillingSummary = (props: BillingSummaryProps) => {
+  const theme = useTheme();
+  const { data: notifications } = useNotificationsQuery();
+  const { _isRestrictedUser, account } = useAccountManagement();
 
   const [isPromoDialogOpen, setIsPromoDialogOpen] = React.useState<boolean>(
     false
   );
 
-  const grantData = getGrantData();
-  const accountAccessGrant = grantData?.global?.account_access;
+  const { data: grants } = useGrants();
+  const accountAccessGrant = grants?.global?.account_access;
   const readOnlyAccountAccess = accountAccessGrant === 'read_only';
 
   // If a user has a payment_due notification with a severity of critical, it indicates that they are outside of any grace period they may have and payment is due immediately.
-  const isBalanceOutsideGracePeriod = notifications.some(
+  const isBalanceOutsideGracePeriod = notifications?.some(
     (notification) =>
       notification.type === 'payment_due' &&
       notification.severity === 'critical'
   );
 
-  const { promotions, paymentMethods, balanceUninvoiced, balance } = props;
-
-  //
-  // Payment Drawer
-  //
+  const { balance, balanceUninvoiced, paymentMethods, promotions } = props;
 
   // On-the-fly route matching so this component can open the drawer itself.
   const routeForMakePayment = '/account/billing/make-payment';
@@ -175,12 +116,16 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
     ? 'Credit'
     : 'You have no balance at this time.';
 
-  const accountBalanceClassnames = classNames({
-    [classes.noBalanceOrNotDue]:
-      balance === 0 || (balance > 0 && !isBalanceOutsideGracePeriod),
-    [classes.pastDueBalance]: pastDueBalance,
-    [classes.credit]: balance < 0,
-  });
+  const sxBalance = {
+    color:
+      balance === 0 || (balance > 0 && !isBalanceOutsideGracePeriod)
+        ? theme.palette.text.primary
+        : balance < 0
+        ? theme.color.green
+        : pastDueBalance
+        ? theme.color.red
+        : '',
+  };
 
   // The layout changes if there are promotions.
   const gridDimensions: Partial<Record<Breakpoint, GridSize>> =
@@ -189,12 +134,15 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
   const balanceJSX =
     balance /*>*/ < 0 ? (
       <Typography style={{ marginTop: 16 }}>
-        <button
-          className={classes.makeAPaymentButton}
+        <Button
+          sx={{
+            ...theme.applyLinkStyles,
+            verticalAlign: 'initial',
+          }}
           onClick={() => replace(routeForMakePayment)}
         >
           {pastDueBalance ? 'Make a payment immediately' : 'Make a payment'}
-        </button>
+        </Button>
         {pastDueBalance ? ` to avoid service disruption.` : '.'}
       </Typography>
     ) : null;
@@ -216,160 +164,110 @@ export const BillingSummary: React.FC<BillingSummaryProps> = (props) => {
 
   return (
     <>
-      <Grid container spacing={2} className={classes.root}>
-        <Grid item {...gridDimensions} sm={6}>
-          <Paper className={classes.paper} variant="outlined">
+      <Grid container margin={0} spacing={2} xs={12}>
+        <Grid {...gridDimensions} sm={6}>
+          <BillingPaper variant="outlined">
             <Typography variant="h3">Account Balance</Typography>
             <Divider />
             <Box
-              marginTop="12px"
+              alignItems="center"
               display="flex"
               justifyContent="space-between"
-              alignItems="center"
+              marginTop="12px"
             >
               <Typography
-                variant={balance === 0 ? 'body1' : 'h3'}
-                style={{ marginRight: 8 }}
-                className={accountBalanceClassnames}
                 data-testid="account-balance-text"
+                style={{ marginRight: 8 }}
+                sx={sxBalance}
+                variant={balance === 0 ? 'body1' : 'h3'}
               >
                 {accountBalanceText}
               </Typography>
-              <Typography variant="h3" className={accountBalanceClassnames}>
+              <Typography sx={sxBalance} variant="h3">
                 <Currency
-                  quantity={Math.abs(balance)}
                   dataAttrs={{ 'data-testid': 'account-balance-value' }}
+                  quantity={Math.abs(balance)}
                 />
               </Typography>
             </Box>
             {!readOnlyAccountAccess ? balanceJSX : null}
             {showAddPromoLink ? (
-              <Typography className={classes.promo}>
-                <button
-                  className={classes.makeAPaymentButton}
+              <Typography
+                sx={{
+                  marginTop: theme.spacing(),
+                }}
+              >
+                <Button
+                  sx={{
+                    ...theme.applyLinkStyles,
+                  }}
                   onClick={openPromoDialog}
                 >
                   Add a promo code
-                </button>
+                </Button>
               </Typography>
             ) : null}
-          </Paper>
+          </BillingPaper>
         </Grid>
         {promotions && promotions?.length > 0 ? (
-          <Grid item xs={12} sm={6} md={4}>
-            <Paper className={classes.paper} variant="outlined">
+          <Grid md={4} sm={6} xs={12}>
+            <BillingPaper variant="outlined">
               <Typography variant="h3">Promotions</Typography>
 
               <Divider />
               <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                {promotions?.map((thisPromo) => (
-                  <PromoDisplay key={thisPromo.summary} {...thisPromo} />
+                {promotions?.map((promo) => (
+                  <PromoDisplay
+                    key={`${promo.summary}-${promo.expire_dt}`}
+                    {...promo}
+                  />
                 ))}
               </div>
-            </Paper>
+            </BillingPaper>
           </Grid>
         ) : null}
-        <Grid item {...gridDimensions}>
-          <Paper className={classes.paper} variant="outlined">
-            <Box display="flex" alignItems="center">
+        <Grid {...gridDimensions}>
+          <BillingPaper variant="outlined">
+            <Box alignItems="center" display="flex">
               <Typography variant="h3">Accrued Charges</Typography>
-              <HelpIcon
-                className={classes.helpIcon}
+              <TooltipIcon
+                status="help"
+                sxTooltipIcon={{ padding: '0 8px' }}
                 text={accruedChargesHelperText}
               />
             </Box>
             <Divider />
             <Box
-              marginTop="12px"
+              alignItems="center"
               display="flex"
               justifyContent="space-between"
-              alignItems="center"
+              marginTop="12px"
             >
               <Typography>Since last invoice</Typography>
-              <Typography variant="h3" className={classes.accruedCharges}>
+              <Typography
+                sx={{
+                  color: theme.palette.text.primary,
+                }}
+                variant="h3"
+              >
                 <Currency
-                  quantity={balanceUninvoiced}
                   dataAttrs={{ 'data-testid': 'accrued-charges-value' }}
+                  quantity={balanceUninvoiced}
                 />
               </Typography>
             </Box>
-          </Paper>
+          </BillingPaper>
         </Grid>
       </Grid>
       <PaymentDrawer
+        onClose={closePaymentDrawer}
+        open={paymentDrawerOpen}
         paymentMethods={paymentMethods}
         selectedPaymentMethod={selectedPaymentMethod}
-        open={paymentDrawerOpen}
-        onClose={closePaymentDrawer}
       />
-      <PromoDialog open={isPromoDialogOpen} onClose={closePromoDialog} />
+      <PromoDialog onClose={closePromoDialog} open={isPromoDialogOpen} />
     </>
   );
 };
 
 export default React.memo(BillingSummary);
-
-// =============================================================================
-// PromoDisplay
-// =============================================================================
-export type PromoDisplayProps = ActivePromotion;
-
-export const PromoDisplay: React.FC<PromoDisplayProps> = React.memo((props) => {
-  const classes = useStyles();
-
-  const {
-    summary,
-    description,
-    credit_remaining,
-    expire_dt,
-    credit_monthly_cap,
-    service_type,
-  } = props;
-
-  const parsedCreditRemaining = Number.parseFloat(credit_remaining);
-  const parsedCreditMonthlyCap = Number.parseFloat(credit_monthly_cap);
-
-  return (
-    <Box marginTop="12px">
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="flex-start"
-        flexWrap="wrap"
-      >
-        <Box display="flex" alignItems="center">
-          <Typography
-            variant="h3"
-            className={classes.text}
-            style={{ wordBreak: 'break-word' }}
-          >
-            {summary}
-          </Typography>
-          <HelpIcon className={classes.helpIcon} text={description} />
-        </Box>
-        {!Number.isNaN(parsedCreditRemaining) ? (
-          <Typography
-            variant="h3"
-            className={classes.credit}
-            style={{ marginBottom: '4px' }}
-          >
-            <Currency quantity={parsedCreditRemaining} /> remaining
-          </Typography>
-        ) : null}
-      </Box>
-      {expire_dt ? (
-        <Typography>
-          Expires: <DateTimeDisplay value={expire_dt} displayTime={false} />
-        </Typography>
-      ) : null}
-      {service_type !== 'all' && serviceTypeMap[service_type] ? (
-        <Typography>Applies to: {serviceTypeMap[service_type]}</Typography>
-      ) : null}
-      {parsedCreditMonthlyCap > 0 ? (
-        <Typography>
-          Monthly cap: <Currency quantity={parsedCreditMonthlyCap} />
-        </Typography>
-      ) : null}
-    </Box>
-  );
-});

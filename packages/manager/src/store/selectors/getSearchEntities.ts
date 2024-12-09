@@ -1,25 +1,24 @@
-import { Domain } from '@linode/api-v4/lib/domains';
-import { Image } from '@linode/api-v4/lib/images';
-import { KubernetesCluster } from '@linode/api-v4/lib/kubernetes';
-import { Linode, LinodeType } from '@linode/api-v4/lib/linodes';
-import { NodeBalancer } from '@linode/api-v4/lib/nodebalancers';
-import { Volume } from '@linode/api-v4/lib/volumes';
-import { createSelector } from 'reselect';
-import { displayType } from 'src/features/linodes/presentation';
-import {
-  extendCluster,
-  getDescriptionForCluster,
-} from 'src/features/Kubernetes/kubeUtils';
-import { ExtendedCluster } from 'src/features/Kubernetes/types';
-import { SearchableItem } from 'src/features/Search/search.interfaces';
-import { ApplicationState } from 'src/store';
-import { ExtendedNodePool } from 'src/store/kubernetes/nodePools.actions';
-import getLinodeDescription from 'src/utilities/getLinodeDescription';
-import { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
-import { objectStorageClusterDisplay } from 'src/constants';
+import { getDatabasesDescription } from 'src/features/Databases/utilities';
+import { getFirewallDescription } from 'src/features/Firewalls/shared';
+import { getDescriptionForCluster } from 'src/features/Kubernetes/kubeUtils';
+import { displayType } from 'src/features/Linodes/presentation';
+import { getLinodeDescription } from 'src/utilities/getLinodeDescription';
 import { readableBytes } from 'src/utilities/unitConversions';
 
-type State = ApplicationState['__resources'];
+import type {
+  DatabaseInstance,
+  Domain,
+  Firewall,
+  Image,
+  KubernetesCluster,
+  Linode,
+  NodeBalancer,
+  ObjectStorageBucket,
+  Region,
+  Volume,
+} from '@linode/api-v4';
+import type { SearchableItem } from 'src/features/Search/search.interfaces';
+import type { ExtendedType } from 'src/utilities/extendType';
 
 export const getLinodeIps = (linode: Linode): string[] => {
   const { ipv4, ipv6 } = linode;
@@ -42,192 +41,159 @@ export const getNodebalIps = (nodebal: NodeBalancer): string[] => {
 
 export const formatLinode = (
   linode: Linode,
-  types: LinodeType[],
-  images: Record<string, Image>
+  types: ExtendedType[],
+  imageLabel: null | string
 ): SearchableItem => ({
-  label: linode.label,
-  value: linode.id,
-  entityType: 'linode',
   data: {
-    tags: linode.tags,
+    created: linode.created,
     description: getLinodeDescription(
       displayType(linode.type, types),
       linode.specs.memory,
       linode.specs.disk,
       linode.specs.vcpus,
-      linode.image,
-      images
+      imageLabel
     ),
     icon: 'linode',
-    path: `/linodes/${linode.id}`,
-    searchText: '', // @todo update this, either here or in the consumer. Probably in the consumer.
-    created: linode.created,
-    region: linode.region,
-    status: linode.status,
     ips: getLinodeIps(linode),
+    path: `/linodes/${linode.id}`,
+    region: linode.region,
+    searchText: '', // @todo update this, either here or in the consumer. Probably in the consumer.
+    status: linode.status,
+    tags: linode.tags,
   },
+  entityType: 'linode',
+  label: linode.label,
+  value: linode.id,
 });
 
 export const volumeToSearchableItem = (volume: Volume): SearchableItem => ({
-  label: volume.label,
-  value: volume.id,
-  entityType: 'volume',
   data: {
-    tags: volume.tags,
+    created: volume.created,
     description: volume.size + ' GB',
     icon: 'volume',
-    path: `/volumes/${volume.id}`,
-    created: volume.created,
+    path: `/volumes?query=${volume.label}`,
     region: volume.region,
+    tags: volume.tags,
   },
+  entityType: 'volume',
+  label: volume.label,
+  value: volume.id,
 });
 
-const imageReducer = (accumulator: SearchableItem[], image: Image) =>
+export const imageReducer = (accumulator: SearchableItem[], image: Image) =>
   image.is_public
     ? accumulator
     : [...accumulator, imageToSearchableItem(image)];
 
 export const imageToSearchableItem = (image: Image): SearchableItem => ({
+  data: {
+    created: image.created,
+    description: image.description || '',
+    icon: 'image',
+    /* TODO: Choose a real location for this to link to */
+    path: `/images?query=${image.label}`,
+    tags: [],
+  },
+  entityType: 'image',
   label: image.label,
   value: image.id,
-  entityType: 'image',
-  data: {
-    tags: [],
-    description: image.description || '',
-    /* TODO: Update this with the Images icon! */
-    icon: 'volume',
-    /* TODO: Choose a real location for this to link to */
-    path: `/images`,
-    created: image.created,
-  },
 });
 
 export const domainToSearchableItem = (domain: Domain): SearchableItem => ({
+  data: {
+    description: domain.type === 'master' ? 'primary' : 'secondary',
+    icon: 'domain',
+    ips: getDomainIps(domain),
+    path: `/domains/${domain.id}`,
+    status: domain.status,
+    tags: domain.tags,
+  },
+  entityType: 'domain',
   label: domain.domain,
   value: domain.id,
-  entityType: 'domain',
-  data: {
-    tags: domain.tags,
-    description: domain.type === 'master' ? 'primary' : 'secondary',
-    status: domain.status,
-    icon: 'domain',
-    path: `/domains/${domain.id}`,
-    ips: getDomainIps(domain),
-  },
 });
 
 export const nodeBalToSearchableItem = (
   nodebal: NodeBalancer
 ): SearchableItem => ({
-  label: nodebal.label,
-  value: nodebal.id,
-  entityType: 'nodebalancer',
   data: {
-    tags: nodebal.tags,
+    created: nodebal.created,
     description: nodebal.hostname,
     icon: 'nodebalancer',
-    path: `/nodebalancers/${nodebal.id}`,
-    created: nodebal.created,
     ips: getNodebalIps(nodebal),
+    path: `/nodebalancers/${nodebal.id}`,
     region: nodebal.region,
+    tags: nodebal.tags,
   },
+  entityType: 'nodebalancer',
+  label: nodebal.label,
+  value: nodebal.id,
 });
 
 export const kubernetesClusterToSearchableItem = (
-  kubernetesCluster: ExtendedCluster
+  kubernetesCluster: KubernetesCluster,
+  regions: Region[]
 ): SearchableItem => ({
+  data: {
+    created: kubernetesCluster.created,
+    description: getDescriptionForCluster(kubernetesCluster, regions),
+    icon: 'kube',
+    k8s_version: kubernetesCluster.k8s_version,
+    label: kubernetesCluster.label,
+    path: `/kubernetes/clusters/${kubernetesCluster.id}/summary`,
+    region: kubernetesCluster.region,
+    status: kubernetesCluster.status,
+    tags: kubernetesCluster.tags,
+    updated: kubernetesCluster.updated,
+  },
+  entityType: 'kubernetesCluster',
   label: kubernetesCluster.label,
   value: kubernetesCluster.id,
-  entityType: 'kubernetesCluster',
-  data: {
-    icon: 'kube',
-    path: `/kubernetes/clusters/${kubernetesCluster.id}/summary`,
-    status: kubernetesCluster.status,
-    created: kubernetesCluster.created,
-    updated: kubernetesCluster.updated,
-    label: kubernetesCluster.label,
-    region: kubernetesCluster.region,
-    k8s_version: kubernetesCluster.k8s_version,
-    tags: kubernetesCluster.tags,
-    description: getDescriptionForCluster(kubernetesCluster),
-  },
 });
 
 export const bucketToSearchableItem = (
   bucket: ObjectStorageBucket
 ): SearchableItem => ({
+  data: {
+    cluster: bucket.cluster,
+    created: bucket.created,
+    description: readableBytes(bucket.size).formatted,
+    icon: 'storage',
+    label: bucket.label,
+    path: `/object-storage/buckets/${bucket.cluster}/${bucket.label}`,
+  },
+  entityType: 'bucket',
   label: bucket.label,
   value: `${bucket.cluster}/${bucket.label}`,
-  entityType: 'bucket',
-  data: {
-    icon: 'bucket',
-    path: `/object-storage/buckets/${bucket.cluster}/${bucket.label}`,
-    created: bucket.created,
-    label: bucket.label,
-    region: objectStorageClusterDisplay[bucket.cluster],
-    description: readableBytes(bucket.size).formatted,
-  },
 });
 
-const linodeSelector = (state: State) => Object.values(state.linodes.itemsById);
-const volumeSelector = ({ volumes }: State) => Object.values(volumes.itemsById);
-const imageSelector = (state: State) => state.images.itemsById || {};
-const nodebalSelector = ({ nodeBalancers }: State) =>
-  Object.values(nodeBalancers.itemsById);
-const typesSelector = (state: State) => state.types.entities;
-const kubernetesClusterSelector = (state: State) =>
-  Object.values(state.kubernetes.itemsById);
-const kubePoolSelector = (state: State) => state.nodePools.entities;
+export const firewallToSearchableItem = (
+  firewall: Firewall
+): SearchableItem => ({
+  data: {
+    created: firewall.created,
+    description: getFirewallDescription(firewall),
+    icon: 'firewall',
+    path: `/firewalls/${firewall.id}`,
+    tags: firewall.tags,
+  },
+  entityType: 'firewall',
+  label: firewall.label,
+  value: firewall.id,
+});
 
-export default createSelector<
-  State,
-  Linode[],
-  Volume[],
-  { [key: string]: Image },
-  NodeBalancer[],
-  LinodeType[],
-  KubernetesCluster[],
-  ExtendedNodePool[],
-  SearchableItem[]
->(
-  linodeSelector,
-  volumeSelector,
-  imageSelector,
-  nodebalSelector,
-  typesSelector,
-  kubernetesClusterSelector,
-  kubePoolSelector,
-  (
-    linodes,
-    volumes,
-    images,
-    nodebalancers,
-    types,
-    kubernetesClusters,
-    nodePools
-  ) => {
-    const arrOfImages = Object.values(images);
-    const searchableLinodes = linodes.map((linode) =>
-      formatLinode(linode, types, images)
-    );
-    const searchableVolumes = volumes.map(volumeToSearchableItem);
-    const searchableImages = arrOfImages.reduce(imageReducer, []);
-    const searchableNodebalancers = nodebalancers.map(nodeBalToSearchableItem);
-    const searchableKubernetesClusters = kubernetesClusters
-      .map((thisCluster) => {
-        const pools = nodePools.filter(
-          (thisPool) => thisPool.clusterID === thisCluster.id
-        );
-        return extendCluster(thisCluster, pools, types);
-      })
-      .map(kubernetesClusterToSearchableItem);
-
-    return [
-      ...searchableLinodes,
-      ...searchableVolumes,
-      ...searchableImages,
-      ...searchableNodebalancers,
-      ...searchableKubernetesClusters,
-    ];
-  }
-);
+export const databaseToSearchableItem = (
+  database: DatabaseInstance
+): SearchableItem => ({
+  data: {
+    created: database.created,
+    description: getDatabasesDescription(database),
+    icon: 'database',
+    path: `/databases/${database.engine}/${database.id}`,
+    region: database.region,
+    status: database.status,
+  },
+  entityType: 'database',
+  label: database.label,
+  value: `${database.engine}/${database.id}`,
+});

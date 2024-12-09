@@ -1,60 +1,30 @@
-import { getUser, updateUser } from '@linode/api-v4/lib/account';
-import { updateProfile } from '@linode/api-v4/lib/profile';
-import { APIError } from '@linode/api-v4/lib/types';
-import { clone } from 'ramda';
+import { useQueryClient } from '@tanstack/react-query';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import {
-  matchPath,
-  useHistory,
-  useLocation,
-  useParams,
-} from 'react-router-dom';
-import Breadcrumb from 'src/components/Breadcrumb';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import Tabs from 'src/components/core/ReachTabs';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import SafeTabPanel from 'src/components/SafeTabPanel';
-import TabLinkList from 'src/components/TabLinkList';
-import { queryKey } from 'src/queries/accountUsers';
-import { queryClient } from 'src/queries/base';
-import { useProfile } from 'src/queries/profile';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import UserPermissions from './UserPermissions';
-import UserProfile from './UserProfile';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 
-const UserDetail: React.FC = () => {
-  const { username: usernameParam } = useParams<{ username: string }>();
-  const location = useLocation<{ newUsername: string; success: boolean }>();
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
+import { TabLinkList } from 'src/components/Tabs/TabLinkList';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import { Tabs } from 'src/components/Tabs/Tabs';
+import { useAccountUser } from 'src/queries/account/users';
+import { useProfile } from 'src/queries/profile/profile';
+
+import UserPermissions from './UserPermissions';
+import { UserProfile } from './UserProfile/UserProfile';
+
+export const UserDetail = () => {
+  const { username } = useParams<{ username: string }>();
+  const location = useLocation();
   const history = useHistory();
 
-  const { data: profile, refetch: refreshProfile } = useProfile();
+  const { data: profile } = useProfile();
+  const { data: user, error, isLoading } = useAccountUser(username ?? '');
 
-  const [error, setError] = React.useState<string | undefined>();
-  const [username, setUsername] = React.useState<string>('');
-  const [createdUsername, setCreatedUsername] = React.useState<
-    string | undefined
-  >();
-  const [originalUsername, setOriginalUsername] = React.useState<
-    string | undefined
-  >();
-  const [originalEmail, setOriginalEmail] = React.useState<
-    string | undefined
-  >();
-  const [email, setEmail] = React.useState<string | undefined>('');
-  const [restricted, setRestricted] = React.useState<boolean>(false);
-
-  const [accountSaving, setAccountSaving] = React.useState<boolean>(false);
-  const [accountSuccess, setAccountSuccess] = React.useState<boolean>(false);
-  const [accountErrors, setAccountErrors] = React.useState<
-    APIError[] | undefined
-  >();
-  const [profileSaving, setProfileSaving] = React.useState<boolean>(false);
-  const [profileSuccess, setProfileSuccess] = React.useState<boolean>(false);
-  const [profileErrors, setProfileErrors] = React.useState<
-    APIError[] | undefined
-  >();
+  const queryClient = useQueryClient();
 
   const tabs = [
     /* NB: These must correspond to the routes inside the Switch */
@@ -63,179 +33,47 @@ const UserDetail: React.FC = () => {
     //   routeName: `/account/users/${usernameParam}/profile`,
     // },
     {
+      routeName: `/account/users/${username}/permissions`,
       title: 'User Permissions',
-      routeName: `/account/users/${usernameParam}/permissions`,
     },
   ];
 
-  React.useEffect(() => {
-    getUser(usernameParam)
-      .then((user) => {
-        setOriginalUsername(user.username);
-        setUsername(user.username);
-        setOriginalEmail(user.email);
-        setEmail(user.email);
-        setRestricted(user.restricted);
-      })
-      .catch((errorResponse) => {
-        setError(
-          getAPIErrorOrDefault(errorResponse, 'Error loading user data.')[0]
-            .reason
-        );
-      });
+  const currentTabIndex = tabs.findIndex((tab) =>
+    location.pathname.includes(tab.routeName)
+  );
 
-    if (location.state) {
-      setAccountSuccess(clone(location.state.success));
-      setCreatedUsername(clone(location.state.newUsername));
-      history.replace({
-        pathname: history.location.pathname,
-        state: {},
-      });
-    }
-  }, []);
+  const isProxyUser = user?.user_type === 'proxy';
 
-  const clearNewUser = () => {
-    setCreatedUsername(undefined);
-  };
-
-  const onChangeUsername = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUsername(e.target.value);
-  };
-
-  const onChangeEmail = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  };
-
-  const onSaveAccount = () => {
-    if (!originalUsername) {
-      return;
-    }
-
-    setAccountSuccess(false);
-    setAccountSaving(true);
-    setAccountErrors([]);
-    setProfileSuccess(false);
-    setProfileErrors([]);
-
-    updateUser(originalUsername, { username, restricted })
-      .then((user) => {
-        /**
-         * Update the state of the component with the updated information.
-         */
-        setOriginalUsername(user.username);
-        setUsername(user.username);
-        setAccountSaving(false);
-        setAccountErrors(undefined);
-
-        /**
-         * If the user we updated is the current user, we need to reflect that change at the global level.
-         * Otherwise, refetch the account's users so it has the new username
-         */
-        if (profile?.username === originalUsername) {
-          refreshProfile();
-        } else {
-          queryClient.invalidateQueries(queryKey);
-        }
-
-        history.replace(`/account/users/${user.username}`, {
-          success: true,
-        });
-      })
-      .catch((errResponse) => {
-        setAccountErrors(
-          getAPIErrorOrDefault(errResponse, 'Error updating username')
-        );
-        setAccountSaving(false);
-        setAccountSuccess(false);
-      });
-  };
-
-  const onSaveProfile = () => {
-    setProfileSuccess(false);
-    setProfileSaving(true);
-    setProfileErrors([]);
-    setAccountSuccess(false);
-    setAccountErrors([]);
-
-    updateProfile({ email })
-      .then((profile) => {
-        setProfileSaving(false);
-        setProfileSuccess(true);
-        setProfileErrors(undefined);
-        /**
-         * If the user we updated is the current user, we need to reflect that change at the global level.
-         */
-        if (profile.username === originalUsername) {
-          refreshProfile();
-        }
-      })
-      .catch((errResponse) => {
-        setProfileErrors(
-          getAPIErrorOrDefault(errResponse, 'Error updating email')
-        );
-        setProfileSaving(false);
-        setProfileSuccess(false);
-      });
-  };
-
-  const matches = (p: string) => {
-    return Boolean(matchPath(p, { path: location.pathname }));
-  };
-
-  const navToURL = (index: number) => {
-    history.push(tabs[index].routeName);
-  };
+  if (isLoading) {
+    return <CircleProgress />;
+  }
 
   if (error) {
     return (
       <React.Fragment>
-        <Grid container justifyContent="space-between">
-          <Grid item>
-            <Breadcrumb
-              pathname={location.pathname}
-              labelTitle={username || ''}
-            />
-          </Grid>
-        </Grid>
-        <ErrorState errorText={error} />
+        <LandingHeader title={username || ''} />
+        <ErrorState errorText={error[0].reason} />
       </React.Fragment>
     );
   }
 
   return (
     <>
-      <Breadcrumb
-        pathname={location.pathname}
-        labelTitle={username}
-        labelOptions={{
-          noCap: true,
-        }}
-        crumbOverrides={[
-          {
-            position: 2,
-            label: 'Users',
-            linkTo: {
-              pathname: `/account/users`,
-            },
+      <LandingHeader
+        breadcrumbProps={{
+          labelOptions: {
+            noCap: true,
           },
-        ]}
+          pathname: location.pathname,
+        }}
         removeCrumbX={4}
+        title={username}
       />
       <Tabs
-        index={Math.max(
-          tabs.findIndex((tab) => matches(tab.routeName)),
-          0
-        )}
-        onChange={navToURL}
+        index={currentTabIndex === -1 ? 0 : currentTabIndex}
+        onChange={(index) => history.push(tabs[index].routeName)}
       >
-        <TabLinkList tabs={tabs} />
-
-        {createdUsername && (
-          <Notice
-            success
-            text={`User ${createdUsername} created successfully`}
-          />
-        )}
+        {!isProxyUser && <TabLinkList tabs={tabs} />}
         <TabPanels>
           <SafeTabPanel index={0}>
             <UserPermissions
@@ -268,4 +106,6 @@ const UserDetail: React.FC = () => {
   );
 };
 
-export default UserDetail;
+export const userDetailLazyRoute = createLazyRoute('/account/users/$username')({
+  component: UserDetail,
+});

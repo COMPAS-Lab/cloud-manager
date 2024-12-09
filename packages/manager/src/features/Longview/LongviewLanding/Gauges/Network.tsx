@@ -1,27 +1,31 @@
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 import { compose } from 'recompose';
-import { WithTheme, withTheme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import GaugePercent from 'src/components/GaugePercent';
+
+import { GaugePercent } from 'src/components/GaugePercent/GaugePercent';
+import { Typography } from 'src/components/Typography';
 import withClientStats, {
   Props as LVDataProps,
 } from 'src/containers/longview.stats.container';
+
 import { LongviewNetwork } from '../../request.types';
 import {
   convertNetworkToUnit,
   generateNetworkUnits,
 } from '../../shared/utilities';
-import { baseGaugeProps, BaseProps as Props } from './common';
+import { BaseProps as Props, baseGaugeProps } from './common';
 
-type CombinedProps = Props & LVDataProps & WithTheme;
+interface NetworkProps extends Props, LVDataProps {}
 
-const NetworkGauge: React.FC<CombinedProps> = (props) => {
+const Network = (props: NetworkProps) => {
   const {
-    longviewClientDataLoading: loading,
-    longviewClientDataError: error,
-    longviewClientData,
     lastUpdatedError,
+    longviewClientData,
+    longviewClientDataError: error,
+    longviewClientDataLoading: loading,
   } = props;
+
+  const theme = useTheme();
 
   const networkUsed = generateUsedNetworkAsBytes(
     longviewClientData?.Network?.Interface ?? {}
@@ -68,11 +72,9 @@ const NetworkGauge: React.FC<CombinedProps> = (props) => {
     return {
       innerText: `${value} ${unit}/s`,
       subTitle: (
-        <React.Fragment>
-          <Typography>
-            <strong>Network</strong>
-          </Typography>
-        </React.Fragment>
+        <Typography>
+          <strong>Network</strong>
+        </Typography>
       ),
     };
   };
@@ -83,8 +85,9 @@ const NetworkGauge: React.FC<CombinedProps> = (props) => {
   return (
     <GaugePercent
       {...baseGaugeProps}
-      /* 
-        the max here is not meant to act as an actual max 
+      filledInColor={theme.graphs.green}
+      /*
+        the max here is not meant to act as an actual max
         but instead just a logical high value.
 
         This max comes from the product review on Nov 1st, 2019
@@ -93,22 +96,20 @@ const NetworkGauge: React.FC<CombinedProps> = (props) => {
       */
       max={howManyBytesInAGigabit}
       value={networkUsed}
-      filledInColor={props.theme.graphs.green}
       {...generateCopy()}
     />
   );
 };
 
-export default compose<CombinedProps, Props>(
+export const NetworkGauge = compose<NetworkProps, Props>(
   React.memo,
-  withClientStats<Props>((ownProps) => ownProps.clientID),
-  withTheme
-)(NetworkGauge);
+  withClientStats<Props>((ownProps) => ownProps.clientID)
+)(Network);
 
 /*
   What's returned from Network is a bit of an unknown, but assuming that
   there might be multiple interfaces, we might have a payload like so
-  
+
   "Network": {
     "mac_addr": "f2:3c:92:50:4a:65",
     "Interface": {

@@ -1,28 +1,45 @@
 import * as React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import SuspenseLoader from 'src/components/SuspenseLoader';
 
-const KubernetesLanding = React.lazy(() => import('./KubernetesLanding'));
-const ClusterCreate = React.lazy(() => import('./CreateCluster'));
-const ClusterDetail = React.lazy(() => import('./KubernetesClusterDetail'));
+import { ProductInformationBanner } from 'src/components/ProductInformationBanner/ProductInformationBanner';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
 
-const Kubernetes: React.FC = () => {
+const KubernetesLanding = React.lazy(
+  () => import('./KubernetesLanding/KubernetesLanding')
+);
+
+const ClusterCreate = React.lazy(() =>
+  import('./CreateCluster/CreateCluster').then((module) => ({
+    default: module.CreateCluster,
+  }))
+);
+
+const KubernetesClusterDetail = React.lazy(() =>
+  import('./KubernetesClusterDetail/KubernetesClusterDetail').then(
+    (module) => ({
+      default: module.KubernetesClusterDetail,
+    })
+  )
+);
+
+export const Kubernetes = () => {
   return (
     <React.Suspense fallback={<SuspenseLoader />}>
+      <ProductInformationBanner bannerLocation="Kubernetes" />
       <Switch>
         <Route component={ClusterCreate} path={`/kubernetes/create`} />
         <Route
-          component={ClusterDetail}
+          component={KubernetesClusterDetail}
           exact
           path={`/kubernetes/clusters/:clusterID/summary`}
         />
         <Route
-          path={`/kubernetes/clusters/:clusterID`}
           render={(props) => (
             <Redirect
               to={`/kubernetes/clusters/${props.match.params.clusterID}/summary`}
             />
           )}
+          path={`/kubernetes/clusters/:clusterID`}
         />
         <Route
           component={KubernetesLanding}
@@ -34,5 +51,3 @@ const Kubernetes: React.FC = () => {
     </React.Suspense>
   );
 };
-
-export default Kubernetes;

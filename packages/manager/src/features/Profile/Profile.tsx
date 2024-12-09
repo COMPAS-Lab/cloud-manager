@@ -1,9 +1,12 @@
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
+import { useRouteMatch } from 'react-router-dom';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import LandingHeader from 'src/components/LandingHeader';
-import NavTabs, { NavTab } from 'src/components/NavTabs/NavTabs';
-import Props from './OAuthClients';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { NavTabs } from 'src/components/NavTabs/NavTabs';
+
+import type { NavTab } from 'src/components/NavTabs/NavTabs';
 
 const SSHKeys = React.lazy(() => import('./SSHKeys'));
 const Settings = React.lazy(
@@ -34,14 +37,14 @@ const Profile: React.FC<CombinedProps> = (props) => {
 
   const tabs: NavTab[] = [
     {
-      title: 'Display',
+      component: DisplaySettings,
       routeName: `${url}/display`,
       component: DisplaySettings,
     } /*
     {
-      title: 'Login & Authentication',
-      routeName: `${url}/auth`,
       component: AuthenticationSettings,
+      routeName: `${url}/auth`,
+      title: 'Login & Authentication',
     },
     */ /* -- Clanode Change End -- */,
     /* -- Clanode Change -- */ {
@@ -50,44 +53,42 @@ const Profile: React.FC<CombinedProps> = (props) => {
       component: SSHKeys,
     } /*
     {
-      title: 'LISH Console Settings',
-      routeName: `${url}/lish`,
       component: LishSettings,
+      routeName: `${url}/lish`,
+      title: 'LISH Console Settings',
     },
     {
-      title: 'API Tokens',
-      routeName: `${url}/tokens`,
       component: APITokens,
+      routeName: `${url}/tokens`,
+      title: 'API Tokens',
     },
     {
-      title: 'OAuth Apps',
-      routeName: `${url}/clients`,
       component: OAuthClients,
+      routeName: `${url}/clients`,
+      title: 'OAuth Apps',
     },
     {
-      title: 'Referrals',
-      routeName: `${url}/referrals`,
       component: Referrals,
+      routeName: `${url}/referrals`,
+      title: 'Referrals',
     },
     */ /* -- Clanode Change End -- */,
     /* -- Clanode Change -- */ {
       title: 'My Settings',
       routeName: `${url}/settings`,
-      render: <Settings toggleTheme={toggleTheme} />,
+      title: 'My Settings',
     },
   ];
 
   return (
     <React.Fragment>
-      <DocumentTitleSegment segment="My Profile " />
-      <LandingHeader
-        title="My Profile"
-        removeCrumbX={1}
-        data-qa-profile-header
-      />
+      <DocumentTitleSegment segment="My Profile" />
+      <LandingHeader removeCrumbX={1} title="My Profile" />
       <NavTabs tabs={tabs} />
     </React.Fragment>
   );
 };
 
-export default withRouter(Profile);
+export const ProfileLazyRoute = createLazyRoute('/profile')({
+  component: Profile,
+});

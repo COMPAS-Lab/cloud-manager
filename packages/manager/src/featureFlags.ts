@@ -1,29 +1,102 @@
-import { TPAProvider } from '@linode/api-v4/lib/profile';
-import { Link } from './features/OneClickApps/LinkSection';
+import type { OCA } from './features/OneClickApps/types';
+import type { TPAProvider } from '@linode/api-v4/lib/profile';
+import type { NoticeVariant } from 'src/components/Notice/Notice';
+
 // These flags should correspond with active features flags in LD
 
-interface TaxBanner {
+export interface TaxDetail {
+  qi_registration?: string;
+  tax_id: string;
+  tax_ids?: Record<
+    'B2B' | 'B2C',
+    {
+      tax_id: string;
+      tax_name: string;
+    }
+  >;
+  tax_info?: string;
   tax_name: string;
+}
+
+interface Taxes {
+  country_tax?: TaxDetail;
+  // If there is no date, assume the tax should be applied
+  date?: string;
+  provincial_tax_ids?: Record<string, TaxDetail>;
+}
+
+/**
+ * @deprecated deprecated in favor of `Taxes` for Akamai Tax information
+ */
+interface TaxBanner {
+  country_tax?: TaxDetail;
   date: string;
-  linode_tax_id?: string;
+  provincial_tax_ids?: Record<string, TaxDetail>;
+  tax_name: string;
+}
+
+interface TaxCollectionRegion {
+  date?: string;
+  name: string;
 }
 
 interface TaxCollectionBanner {
-  date: string;
   action?: boolean;
-  regions?: string[];
+  date: string;
+  regions?: TaxCollectionRegion[];
 }
 
-type OneClickApp = Record<string, string>;
+interface BaseFeatureFlag {
+  enabled: boolean;
+}
 
+interface BetaFeatureFlag extends BaseFeatureFlag {
+  beta: boolean;
+}
+
+interface GeckoFeatureFlag extends BaseFeatureFlag {
+  ga: boolean;
+  la: boolean;
+}
+
+interface AclpFlag {
+  beta: boolean;
+  enabled: boolean;
+}
+
+export interface CloudPulseResourceTypeMapFlag {
+  dimensionKey: string;
+  serviceType: string;
+}
+
+interface gpuV2 {
+  egressBanner: boolean;
+  planDivider: boolean;
+  transferBanner: boolean;
+}
+
+interface DesignUpdatesBannerFlag extends BaseFeatureFlag {
+  key: string;
+  link: string;
+}
+
+interface AclpAlerting {
+  alertDefinitions: boolean;
+  notificationChannels: boolean;
+  recentActivity: boolean;
+}
 export interface Flags {
-  promos: boolean;
-  vatBanner: TaxBanner;
-  taxBanner: TaxBanner;
-  oneClickApps: OneClickApp;
-  oneClickAppsDocsOverride: Record<string, Link[]>;
-  promotionalOffers: PromotionalOffer[];
-  mainContentBanner: MainContentBanner;
+  aclp: AclpFlag;
+  aclpAlerting: AclpAlerting;
+  aclpReadEndpoint: string;
+  aclpResourceTypeMap: CloudPulseResourceTypeMapFlag[];
+  apiMaintenance: APIMaintenance;
+  apicliButtonCopy: string;
+  apl: boolean;
+  blockStorageEncryption: boolean;
+  cloudManagerDesignUpdatesBanner: DesignUpdatesBannerFlag;
+  databaseBeta: boolean;
+  databaseResize: boolean;
   databases: boolean;
   /* -- Clanode Change -- */
   domains: boolean;
@@ -35,37 +108,65 @@ export interface Flags {
   /* -- Clanode Change End -- */
   tpaProviders: Provider[];
   ipv6Sharing: boolean;
-  referralBannerText: ReferralBannerText;
-  apiMaintenance: APIMaintenance;
+  linodeDiskEncryption: boolean;
+  mainContentBanner: MainContentBanner;
+  marketplaceAppOverrides: MarketplaceAppOverride[];
+  metadata: boolean;
+  objMultiCluster: boolean;
+  objectStorageGen2: BaseFeatureFlag;
   productInformationBanners: ProductInformationBannerFlag[];
-  kubernetesDashboardAvailability: boolean;
-  regionDropdown: boolean;
+  promos: boolean;
+  promotionalOffers: PromotionalOffer[];
+  referralBannerText: BannerContent;
+  secureVmCopy: SecureVMCopy;
+  selfServeBetas: boolean;
+  soldOutChips: boolean;
+  supportTicketSeverity: boolean;
+  taxBanner: TaxBanner;
   taxCollectionBanner: TaxCollectionBanner;
-  databaseBeta: boolean;
+  taxId: BaseFeatureFlag;
+  taxes: Taxes;
+  tpaProviders: Provider[];
+}
+
+interface MarketplaceAppOverride {
+  /**
+   * Define app details that should be overwritten
+   *
+   * If you are adding an app that is not already defined in "oneClickApps.ts",
+   * you *must* include all required OCA properties or Cloud Manager could crash.
+   *
+   * Pass `null` to hide the marketplace app
+   */
+  details: Partial<OCA> | null;
+  /**
+   * The ID of the StackScript that powers this Marketplace app
+   */
+  stackscriptId: number;
 }
 
 type PromotionalOfferFeature =
+  | 'Kubernetes'
   | 'Linodes'
-  | 'Volumes'
   | 'NodeBalancers'
   | 'Object Storage'
-  | 'Kubernetes';
+  | 'Volumes';
 
 interface PromotionalOfferButton {
-  text: string;
   href: string;
+  text: string;
   type: 'primary' | 'secondary';
 }
 
 export interface PromotionalOffer {
-  name: string;
+  alt: string;
   body: string;
+  buttons: PromotionalOfferButton[];
+  displayOnDashboard: boolean;
+  features: PromotionalOfferFeature[];
   footnote: string;
   logo: string;
-  alt: string;
-  features: PromotionalOfferFeature[];
-  displayOnDashboard: boolean;
-  buttons: PromotionalOfferButton[];
+  name: string;
 }
 
 /**
@@ -75,46 +176,82 @@ export interface PromotionalOffer {
 export type FlagSet = Partial<Flags>;
 
 export interface MainContentBanner {
+  key: string;
   link: {
     text: string;
     url: string;
   };
   text: string;
-  key: string;
 }
 
 export interface Provider {
-  name: TPAProvider;
   displayName: string;
-  icon: any;
   href: string;
+  icon: any;
+  name: TPAProvider;
 }
 
-interface ReferralBannerText {
-  text: string;
+interface BannerContent {
   link?: {
     text: string;
     url: string;
   };
+  text: string;
 }
 
-export type ProductInformationBannerLocation = 'Object Storage' | 'Databases';
+interface SecureVMCopy {
+  bannerLabel?: string;
+  firewallAuthorizationLabel?: string;
+  firewallAuthorizationWarning?: string;
+  firewallDetails?: BannerContent;
+  generateActionText?: string;
+  generateDocsLink: string;
+  generatePrompt?: BannerContent;
+  generateSuccess?: BannerContent;
+  linodeCreate?: BannerContent;
+}
 
+export type ProductInformationBannerLocation =
+  | 'Account'
+  | 'Betas'
+  | 'Databases'
+  | 'Domains'
+  | 'Firewalls'
+  | 'Images'
+  | 'Kubernetes'
+  | 'LinodeCreate' // Use for Marketplace banners
+  | 'Linodes'
+  | 'LoadBalancers'
+  | 'Longview'
+  | 'Managed'
+  | 'NodeBalancers'
+  | 'Object Storage'
+  | 'Placement Groups'
+  | 'StackScripts'
+  | 'VPC'
+  | 'Volumes';
+
+interface ProductInformationBannerDecoration {
+  important: 'false' | 'true' | boolean;
+  variant: NoticeVariant;
+}
 export interface ProductInformationBannerFlag {
+  // `bannerLocation` is the location where the banner will be rendered
+  bannerLocation: ProductInformationBannerLocation;
+  // `decoration` is applies styling to the banner; 'important' with a 'warning' variant is standard
+  decoration: ProductInformationBannerDecoration;
+  // The date where the banner should no longer be displayed.
+  expirationDate: string;
   // `key` should be unique across product information banners
   key: string;
   // `message` is rendered as Markdown (to support links)
   message: string;
-  // `bannerLocation` is the location where the banner will be rendered
-  bannerLocation: ProductInformationBannerLocation;
-  // The date where the banner should no longer be displayed.
-  expirationDate: string;
 }
 
 export interface SuppliedMaintenanceData {
+  body?: string;
   id: string;
   title?: string;
-  body?: string;
 }
 export interface APIMaintenance {
   maintenances: SuppliedMaintenanceData[];

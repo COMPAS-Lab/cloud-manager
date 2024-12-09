@@ -7,30 +7,30 @@ import { entityPrefix } from 'support/constants/cypress';
 /**
  * Describes options for generating a random string.
  */
-interface randomStringOptions {
-  /// Whether random string should include lowercase alphabetical characters.
+interface RandomStringOptions {
+  // / Whether random string should include lowercase alphabetical characters.
   lowercase: boolean;
 
-  /// Whether random string should include uppercase alphabetical characters.
-  uppercase: boolean;
-
-  /// Whether random string should include numeric characters.
+  // / Whether random string should include numeric characters.
   numbers: boolean;
 
-  /// Whether random string should include symbols.
+  // / Whether random string should include space characters.
+  spaces: boolean;
+
+  // / Whether random string should include symbols.
   symbols: boolean;
 
-  /// Whether random string should include space characters.
-  spaces: boolean;
+  // / Whether random string should include uppercase alphabetical characters.
+  uppercase: boolean;
 }
 
 // Default options for random string generation.
 const defaultRandomStringOptions = {
   lowercase: true,
-  uppercase: true,
   numbers: true,
-  symbols: false,
   spaces: false,
+  symbols: false,
+  uppercase: true,
 };
 
 /**
@@ -71,7 +71,7 @@ export const randomItem = (array: Array<any>): any => {
  */
 export const randomString = (
   length: number = 8,
-  options?: randomStringOptions
+  options?: RandomStringOptions
 ): string => {
   const stringOptions = options ? options : defaultRandomStringOptions;
 
@@ -114,10 +114,10 @@ export const randomString = (
 export const randomLabel = (length: number = 10): string => {
   const randomStringOptions = {
     lowercase: true,
-    uppercase: false,
     numbers: false,
-    symbols: false,
     spaces: false,
+    symbols: false,
+    uppercase: false,
   };
 
   return `${entityPrefix}${randomString(length, randomStringOptions)}`;
@@ -176,4 +176,73 @@ export const randomPhoneNumber = (
     1000,
     9999
   )}`;
+};
+
+/**
+ * Returns a random phrase of random strings.
+ *
+ * @param count - Number of strings to include in phrase.
+ *
+ * @returns Random phrase.
+ */
+export const randomPhrase = (count: number = 5): string => {
+  return [...Array(count)]
+    .map(() => {
+      const length = randomNumber(3, 9);
+      return randomString(length, {
+        lowercase: true,
+        numbers: false,
+        spaces: false,
+        symbols: false,
+        uppercase: false,
+      });
+    })
+    .join(' ');
+};
+
+/**
+ * Generates a random string which resembles a v4 UUID.
+ *
+ * This does not generate a valid UUID, nor does it offer the same guarantees as
+ * a UUID. Instead, it is intended to be used when generating values for mocks
+ * or when filling in fields which expect UUID values.
+ *
+ * @returns Random string which resembles a v4 UUID.
+ */
+export const randomUuid = (): string => {
+  const randomStringOptions = {
+    lowercase: false,
+    numbers: true,
+    spaces: false,
+    symbols: false,
+    uppercase: true,
+  };
+
+  return [
+    randomString(8, randomStringOptions),
+    randomString(4, randomStringOptions),
+    randomString(4, randomStringOptions),
+    randomString(4, randomStringOptions),
+    randomString(12, randomStringOptions),
+  ].join('-');
+};
+
+/**
+ * Returns a random hexadecimal string of a given length.
+ *
+ * @param length - Length of the hexadecimal string.
+ *
+ * @returns Random hexadecimal string.
+ */
+export const randomHex = (length: number = 64): string => {
+  const hexNumber = '0123456789abcdef';
+
+  const characterSelection = hexNumber.split('');
+
+  let output = '';
+  for (let i = 0; i < length; i++) {
+    output += randomItem(characterSelection);
+  }
+
+  return output;
 };

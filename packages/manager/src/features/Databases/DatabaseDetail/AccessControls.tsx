@@ -1,69 +1,36 @@
-import { Database } from '@linode/api-v4/lib/databases';
-import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import AddNewLink from 'src/components/AddNewLink';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import Typography from 'src/components/core/Typography';
-import InlineMenuAction from 'src/components/InlineMenuAction';
-import Notice from 'src/components/Notice';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import { useDatabaseMutation } from 'src/queries/databases';
-import { ExtendedIP, stringToExtendedIP } from 'src/utilities/ipUtils';
+import { makeStyles } from 'tss-react/mui';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Button } from 'src/components/Button/Button';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { Notice } from 'src/components/Notice/Notice';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { Typography } from 'src/components/Typography';
+import { useDatabaseMutation } from 'src/queries/databases/databases';
+
 import AddAccessControlDrawer from './AddAccessControlDrawer';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  topSection: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    [theme.breakpoints.down('sm')]: {
-      flexDirection: 'column',
-    },
-  },
-  sectionTitleAndText: {
-    width: '100%',
-  },
-  sectionTitle: {
-    marginBottom: '0.25rem',
-  },
-  sectionText: {
-    marginBottom: '1rem',
-    width: '65%',
-    marginRight: 0,
-    [theme.breakpoints.down('xs')]: {
-      width: '100%',
-    },
-  },
+import type { APIError, Database } from '@linode/api-v4';
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   addAccessControlBtn: {
-    minWidth: 214,
-    [theme.breakpoints.down('sm')]: {
+    minWidth: 225,
+    [theme.breakpoints.down('md')]: {
       alignSelf: 'flex-start',
       marginBottom: '1rem',
     },
   },
-  table: {
-    width: '50%',
-    border: `solid 1px ${theme.borderColors.borderTable}`,
-    [theme.breakpoints.down('xs')]: {
-      width: '100%',
-    },
-  },
-  row: {
-    '&:last-of-type td': {
-      borderBottom: 'none',
-    },
-  },
   cell: {
-    display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderBottom: `solid 1px ${theme.borderColors.borderTable}`,
+    display: 'flex',
+    justifyContent: 'space-between',
   },
   removeButton: {
     float: 'right',
@@ -74,20 +41,52 @@ const useStyles = makeStyles((theme: Theme) => ({
   restrictWarningText: {
     fontSize: '0.875rem,',
   },
+  row: {
+    '&:last-of-type td': {
+      borderBottom: 'none',
+    },
+  },
+  sectionText: {
+    marginBottom: '1rem',
+    marginRight: 0,
+    [theme.breakpoints.down('sm')]: {
+      width: '100%',
+    },
+    width: '65%',
+  },
+  sectionTitle: {
+    marginBottom: '0.25rem',
+  },
+  sectionTitleAndText: {
+    width: '100%',
+  },
+  table: {
+    border: `solid 1px ${theme.borderColors.borderTable}`,
+    [theme.breakpoints.down('sm')]: {
+      width: '100%',
+    },
+    width: '50%',
+  },
+  topSection: {
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'space-between',
+    [theme.breakpoints.down('md')]: {
+      flexDirection: 'column',
+    },
+  },
 }));
 
 interface Props {
   database: Database;
   description?: JSX.Element;
+  disabled?: boolean;
 }
 
-export const AccessControls: React.FC<Props> = (props) => {
-  const {
-    database: { id, engine, allow_list: allowList },
-    description,
-  } = props;
+export const AccessControls = (props: Props) => {
+  const { database, description, disabled } = props;
 
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   const [isDialogOpen, setDialogOpen] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>();
@@ -95,29 +94,17 @@ export const AccessControls: React.FC<Props> = (props) => {
   const [
     accessControlToBeRemoved,
     setAccessControlToBeRemoved,
-  ] = React.useState<string | null>(null);
+  ] = React.useState<null | string>(null);
 
   const [
     addAccessControlDrawerOpen,
     setAddAccessControlDrawerOpen,
   ] = React.useState<boolean>(false);
 
-  const [extendedIPs, setExtendedIPs] = React.useState<ExtendedIP[]>([]);
-
   const {
+    isPending: databaseUpdating,
     mutateAsync: updateDatabase,
-    isLoading: databaseUpdating,
-  } = useDatabaseMutation(engine, id);
-
-  React.useEffect(() => {
-    if (allowList.length > 0) {
-      const allowListExtended = allowList.map(stringToExtendedIP);
-
-      setExtendedIPs(allowListExtended);
-    } else {
-      setExtendedIPs([]);
-    }
-  }, [allowList]);
+  } = useDatabaseMutation(database.engine, database.id);
 
   const handleClickRemove = (accessControl: string) => {
     setError(undefined);
@@ -131,7 +118,7 @@ export const AccessControls: React.FC<Props> = (props) => {
 
   const handleRemoveIPAddress = () => {
     updateDatabase({
-      allow_list: allowList.filter(
+      allow_list: database.allow_list.filter(
         (ipAddress) => ipAddress !== accessControlToBeRemoved
       ),
     })
@@ -152,15 +139,16 @@ export const AccessControls: React.FC<Props> = (props) => {
       <Table className={classes.table} data-qa-access-controls>
         <TableBody>
           {accessControlsList.map((accessControl) => (
-            <TableRow key={`${accessControl}-row`} className={classes.row}>
+            <TableRow className={classes.row} key={`${accessControl}-row`}>
               <TableCell
-                key={`${accessControl}-tablecell`}
                 className={classes.cell}
+                key={`${accessControl}-tablecell`}
               >
                 {accessControl}
                 <InlineMenuAction
                   actionText="Remove"
                   className={classes.removeButton}
+                  disabled={disabled}
                   onClick={() => handleClickRemove(accessControl)}
                 />
               </TableCell>
@@ -172,19 +160,14 @@ export const AccessControls: React.FC<Props> = (props) => {
   };
 
   const actionsPanel = (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={handleDialogClose}>
-        Cancel
-      </Button>
-
-      <Button
-        buttonType="primary"
-        onClick={handleRemoveIPAddress}
-        loading={databaseUpdating}
-      >
-        Remove IP Address
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        label: 'Remove IP Address',
+        loading: databaseUpdating,
+        onClick: handleRemoveIPAddress,
+      }}
+      secondaryButtonProps={{ label: 'Cancel', onClick: handleDialogClose }}
+    />
   );
 
   return (
@@ -192,24 +175,28 @@ export const AccessControls: React.FC<Props> = (props) => {
       <div className={classes.topSection}>
         <div className={classes.sectionTitleAndText}>
           <div className={classes.sectionTitle}>
-            <Typography variant="h3">Access Controls</Typography>
+            <Typography variant="h3">Manage Access</Typography>
           </div>
           <div className={classes.sectionText}>{description ?? null}</div>
         </div>
-        <AddNewLink
-          label="Manage Access Controls"
-          onClick={() => setAddAccessControlDrawerOpen(true)}
+        <Button
+          buttonType="primary"
           className={classes.addAccessControlBtn}
-        />
+          data-testid="button-access-control"
+          disabled={disabled}
+          onClick={() => setAddAccessControlDrawerOpen(true)}
+        >
+          Manage Access
+        </Button>
       </div>
-      {ipTable(allowList)}
+      {ipTable(database.allow_list)}
       <ConfirmationDialog
-        open={isDialogOpen}
-        onClose={handleDialogClose}
-        title={`Remove IP Address ${accessControlToBeRemoved}`}
         actions={actionsPanel}
+        onClose={handleDialogClose}
+        open={isDialogOpen}
+        title={`Remove IP Address ${accessControlToBeRemoved}`}
       >
-        {error ? <Notice error text={error} /> : null}
+        {error ? <Notice text={error} variant="error" /> : null}
         <Typography data-testid="ip-removal-confirmation-warning">
           IP {accessControlToBeRemoved} will lose all access to the data on this
           database cluster. This action cannot be undone, but you can re-enable
@@ -218,10 +205,9 @@ export const AccessControls: React.FC<Props> = (props) => {
         </Typography>
       </ConfirmationDialog>
       <AddAccessControlDrawer
-        open={addAccessControlDrawerOpen}
+        database={database}
         onClose={() => setAddAccessControlDrawerOpen(false)}
-        updateDatabase={updateDatabase}
-        allowList={extendedIPs}
+        open={addAccessControlDrawerOpen}
       />
     </>
   );

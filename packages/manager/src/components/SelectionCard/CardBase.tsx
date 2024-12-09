@@ -1,122 +1,86 @@
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  '@keyframes fadeIn': {
-    from: {
-      opacity: 0,
-    },
-    to: {
-      opacity: 1,
-    },
-  },
-  icon: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-    '& svg, & span': {
-      fontSize: 32,
-      color: '#939598',
-    },
-    '& img': {
-      maxHeight: 32,
-      maxWidth: 32,
-    },
-  },
-  heading: {
-    fontFamily: theme.font.bold,
-    fontSize: '1rem',
-    color: theme.color.headline,
-    wordBreak: 'break-word',
-  },
-  subheading: {
-    fontSize: '0.875rem',
-    color: theme.palette.text.primary,
-  },
-  cardBaseGrid: {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-    minHeight: 60,
-    backgroundColor: theme.bg.offWhite,
-    border: `1px solid ${theme.bg.main}`,
-    margin: 0,
-    padding: `0 ${theme.spacing(1)}px !important`,
-    transition: `
-      ${'background-color 225ms ease-in-out, '}
-      ${'border-color 225ms ease-in-out'}
-    `,
-    '&:hover': {
-      backgroundColor: theme.bg.main,
-      borderColor: theme.color.border2,
-    },
-    '&:before': {
-      content: '""',
-      display: 'block',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: 5,
-      height: '100%',
-      backgroundColor: 'transparent',
-      transition: theme.transitions.create('backgroundColor'),
-    },
-  },
-  flex: {
-    flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'space-around',
-    '&> div': {
-      lineHeight: 1.3,
-    },
-  },
-}));
+import { useFlags } from 'src/hooks/useFlags';
 
-export interface Props {
+import {
+  CardBaseGrid,
+  CardBaseHeading,
+  CardBaseHeadings,
+  CardBaseIcon,
+  CardBaseSubheading,
+} from './CardBase.styles';
+
+import type { SxProps, Theme } from '@mui/material/styles';
+
+export interface CardBaseProps {
+  checked?: boolean;
+  heading: JSX.Element | string;
+  headingDecoration?: JSX.Element;
   renderIcon?: () => JSX.Element;
-  heading: string;
-  subheadings: (string | undefined)[];
   renderVariant?: () => JSX.Element | null;
+  subheadings: (JSX.Element | string | undefined)[];
+  sx?: SxProps<Theme>;
+  sxHeading?: SxProps<Theme>;
+  sxIcon?: SxProps<Theme>;
+  sxSubheading?: SxProps<Theme>;
 }
+export const CardBase = (props: CardBaseProps) => {
+  const {
+    checked,
+    heading,
+    headingDecoration,
+    renderIcon,
+    renderVariant,
+    subheadings,
+    sx,
+    sxHeading,
+    sxIcon,
+    sxSubheading,
+  } = props;
 
-type CombinedProps = Props;
+  const flags = useFlags();
 
-const CardBase: React.FC<CombinedProps> = (props) => {
-  const { renderIcon, heading, subheadings, renderVariant } = props;
+  const isDatabaseCreateFlow = location.pathname.includes('/databases/create');
+  const isDatabaseResizeFlow =
+    location.pathname.match(/\/databases\/.*\/(\d+\/resize)/)?.[0] ===
+    location.pathname;
 
-  const classes = useStyles();
+  const isDatabaseGA =
+    !flags.dbaasV2?.beta &&
+    flags.dbaasV2?.enabled &&
+    (isDatabaseCreateFlow || isDatabaseResizeFlow);
+
+  const renderSubheadings = subheadings.map((subheading, idx) => {
+    const subHeadingIsString = typeof subheading === 'string';
+
+    return (
+      <CardBaseSubheading
+        className={subHeadingIsString ? 'cardSubheadingItem' : ''}
+        data-qa-select-card-subheading={`subheading-${idx + 1}`}
+        key={idx}
+        sx={sxSubheading}
+      >
+        {subHeadingIsString && isDatabaseGA
+          ? subheading?.replace('Storage', 'Usable Storage')
+          : subheading}
+      </CardBaseSubheading>
+    );
+  });
 
   return (
-    <Grid
-      container
-      alignItems="center"
-      className={`${classes.cardBaseGrid} cardBaseGrid`}
-    >
-      {renderIcon && (
-        <Grid item className={`${classes.icon} cardBaseIcon`}>
-          {renderIcon()}
-        </Grid>
-      )}
-      <Grid item className={`${classes.flex} cardBaseHeadings`}>
-        <div className={classes.heading} data-qa-select-card-heading={heading}>
+    <CardBaseGrid checked={checked} container spacing={2} sx={sx}>
+      {renderIcon && <CardBaseIcon sx={sxIcon}>{renderIcon()}</CardBaseIcon>}
+      <CardBaseHeadings sx={sxHeading}>
+        <CardBaseHeading
+          className="cardSubheadingTitle"
+          data-qa-select-card-heading={heading}
+        >
           {heading}
-        </div>
-        {subheadings.map((subheading, idx) => {
-          return (
-            <div
-              key={idx}
-              className={`${classes.subheading} cardBaseSubHeading`}
-              data-qa-select-card-subheading={subheading}
-            >
-              {subheading}
-            </div>
-          );
-        })}
-      </Grid>
+          {headingDecoration}
+        </CardBaseHeading>
+        {renderSubheadings}
+      </CardBaseHeadings>
       {renderVariant ? renderVariant() : null}
-    </Grid>
+    </CardBaseGrid>
   );
 };
-
-export default CardBase;

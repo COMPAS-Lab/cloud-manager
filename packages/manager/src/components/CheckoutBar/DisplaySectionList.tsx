@@ -1,25 +1,26 @@
 import * as React from 'react';
-import Divider from '../core/Divider';
-import DisplaySection from './DisplaySection';
 
-interface Props {
-  displaySections?: { title: string; details?: string | number }[];
+import { Divider } from '../Divider';
+import { DisplaySection } from './DisplaySection';
+
+interface DisplaySectionListProps {
+  displaySections?: { details?: number | string; title: string }[];
 }
 
-export const DisplaySectionList: React.FC<Props> = ({ displaySections }) => {
+const DisplaySectionList = ({ displaySections }: DisplaySectionListProps) => {
   if (!displaySections) {
     return null;
   }
   return (
     // eslint-disable-next-line react/jsx-no-useless-fragment
     <>
-      {displaySections.map(({ title, details }, idx) => (
+      {displaySections.map(({ details, title }, idx) => (
         <React.Fragment key={`fragment-${title}-${idx}`}>
-          {idx !== 0 && <Divider light spacingTop={0} spacingBottom={0} />}
+          {idx !== 0 && <Divider light spacingBottom={0} spacingTop={0} />}
           <DisplaySection
+            details={details}
             key={`${title}-${idx}`}
             title={title}
-            details={details}
           />
         </React.Fragment>
       ))}
@@ -27,4 +28,4 @@ export const DisplaySectionList: React.FC<Props> = ({ displaySections }) => {
   );
 };
 
-export default DisplaySectionList;
+export { DisplaySectionList };

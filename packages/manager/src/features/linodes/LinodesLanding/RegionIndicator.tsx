@@ -1,36 +1,20 @@
 import * as React from 'react';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import { formatRegion } from 'src/utilities';
 
-type CSSClasses = 'regionIndicator';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    regionIndicator: {
-      alignItems: 'center',
-      whiteSpace: 'nowrap',
-    },
-  });
+import { useRegionsQuery } from 'src/queries/regions/regions';
 
 interface Props {
   region: string;
 }
 
-class RegionIndicator extends React.Component<Props & WithStyles<CSSClasses>> {
-  render() {
-    const { classes, region } = this.props;
+export const RegionIndicator = (props: Props) => {
+  const { region } = props;
+  const { data: regions } = useRegionsQuery();
 
-    return (
-      <div className={`dif ${classes.regionIndicator}`}>
-        {formatRegion(region)}
-      </div>
-    );
-  }
-}
+  const actualRegion = regions?.find((r) => r.id === region);
 
-export default withStyles(styles)(RegionIndicator);
+  return (
+    <div style={{ alignItems: 'center', whiteSpace: 'nowrap' }}>
+      {actualRegion?.label ?? region}
+    </div>
+  );
+};

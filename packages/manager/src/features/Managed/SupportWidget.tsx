@@ -1,23 +1,14 @@
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import { compose } from 'recompose';
-import Button from 'src/components/Button';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import { AttachmentError } from 'src/features/Support/SupportTicketDetail/SupportTicketDetail';
-import SupportTicketDrawer from 'src/features/Support/SupportTickets/SupportTicketDrawer';
+import { useHistory } from 'react-router-dom';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    color: theme.textColors.linkActiveLight,
-  },
-}));
+import { Button } from 'src/components/Button/Button';
+import { SupportTicketDialog } from 'src/features/Support/SupportTickets/SupportTicketDialog';
 
-export type CombinedProps = RouteComponentProps<{}>;
+import { AttachmentError } from '../Support/SupportTicketDetail/SupportTicketDetail';
 
-export const SupportWidget: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
-  const { history } = props;
+export const SupportWidget = () => {
+  const history = useHistory();
 
   const [open, setOpen] = React.useState<boolean>(false);
   const onTicketCreated = (
@@ -32,21 +23,22 @@ export const SupportWidget: React.FC<CombinedProps> = (props) => {
 
   return (
     <>
-      <Button
-        buttonType="secondary"
-        className={classes.root}
-        onClick={() => setOpen(true)}
-      >
+      <StyledButton buttonType="secondary" onClick={() => setOpen(true)}>
         Open Support Ticket
-      </Button>
-      <SupportTicketDrawer
-        open={open}
+      </StyledButton>
+      <SupportTicketDialog
         onClose={() => setOpen(false)}
         onSuccess={onTicketCreated}
+        open={open}
       />
     </>
   );
 };
 
-const enhanced = compose<CombinedProps, {}>(React.memo, withRouter);
-export default enhanced(SupportWidget);
+const StyledButton = styled(Button, {
+  label: 'StyledButton',
+})(({ theme }) => ({
+  color: theme.textColors.linkActiveLight,
+}));
+
+export default React.memo(SupportWidget);

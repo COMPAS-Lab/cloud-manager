@@ -1,42 +1,61 @@
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import Hidden from 'src/components/core/Hidden';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
+import { useHistory } from 'react-router-dom';
+
+import { ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { Hidden } from 'src/components/Hidden';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
+
+import type { Theme } from '@mui/material/styles';
+import type { Action } from 'src/components/ActionMenu/ActionMenu';
 
 interface Props {
+  label: string;
   nodeBalancerId: number;
   toggleDialog: (nodeBalancerId: number, label: string) => void;
-  label: string;
 }
 
-type CombinedProps = Props & RouteComponentProps<{}>;
-
-export const NodeBalancerActionMenu: React.FC<CombinedProps> = (props) => {
+export const NodeBalancerActionMenu = (props: Props) => {
   const theme = useTheme<Theme>();
-  const matchesMdDown = useMediaQuery(theme.breakpoints.down('md'));
+  const matchesMdDown = useMediaQuery(theme.breakpoints.down('lg'));
+  const history = useHistory();
 
-  const { nodeBalancerId, history, toggleDialog, label } = props;
+  const { label, nodeBalancerId, toggleDialog } = props;
+
+  const isNodeBalancerReadOnly = useIsResourceRestricted({
+    grantLevel: 'read_only',
+    grantType: 'nodebalancer',
+    id: nodeBalancerId,
+  });
 
   const actions: Action[] = [
     {
-      title: 'Configurations',
       onClick: () => {
         history.push(`/nodebalancers/${nodeBalancerId}/configurations`);
       },
+      title: 'Configurations',
     },
     {
-      title: 'Settings',
       onClick: () => {
         history.push(`/nodebalancers/${nodeBalancerId}/settings`);
       },
+      title: 'Settings',
     },
     {
-      title: 'Delete',
+      disabled: isNodeBalancerReadOnly,
       onClick: () => {
         toggleDialog(nodeBalancerId, label);
       },
+      title: 'Delete',
+      tooltip: isNodeBalancerReadOnly
+        ? getRestrictedResourceText({
+            action: 'delete',
+            resourceType: 'NodeBalancers',
+          })
+        : undefined,
     },
   ];
 
@@ -46,9 +65,11 @@ export const NodeBalancerActionMenu: React.FC<CombinedProps> = (props) => {
         actions.map((action) => {
           return (
             <InlineMenuAction
-              key={action.title}
               actionText={action.title}
+              disabled={action.disabled}
+              key={action.title}
               onClick={action.onClick}
+              tooltip={action.tooltip}
             />
           );
         })}
@@ -61,5 +82,3 @@ export const NodeBalancerActionMenu: React.FC<CombinedProps> = (props) => {
     </>
   );
 };
-
-export default withRouter(NodeBalancerActionMenu);

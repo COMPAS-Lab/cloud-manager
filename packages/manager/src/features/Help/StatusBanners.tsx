@@ -1,42 +1,19 @@
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import { DateTime } from 'luxon';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Link from 'src/components/Link';
-import Notice from 'src/components/Notice';
-import {
-  IncidentImpact,
-  IncidentStatus,
-  useIncidentQuery,
-} from 'src/queries/statusPage';
+
+import { DismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
+import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
+import { useIncidentQuery } from 'src/queries/statusPage';
 import { capitalize } from 'src/utilities/capitalize';
-import { sanitizeHTML } from 'src/utilities/sanitize-html';
+import { sanitizeHTML } from 'src/utilities/sanitizeHTML';
 import { truncateEnd } from 'src/utilities/truncate';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: theme.spacing(),
-    paddingLeft: theme.spacing(2),
-    display: 'flex',
-    justifyContent: 'space-between',
-    flexFlow: 'row nowrap',
-    alignItems: 'center',
-    marginBottom: theme.spacing(),
-  },
-  button: {
-    ...theme.applyLinkStyles,
-    display: 'flex',
-  },
-  text: {
-    fontSize: '0.875rem',
-    lineHeight: '1rem',
-  },
-  header: {
-    fontSize: '1rem',
-    marginBottom: theme.spacing(),
-  },
-}));
+import type { IncidentImpact, IncidentStatus } from 'src/queries/statusPage';
 
-export const StatusBanners: React.FC<{}> = (_) => {
+export const StatusBanners = () => {
   const { data: incidentsData } = useIncidentQuery();
   const incidents = incidentsData?.incidents ?? [];
 
@@ -53,12 +30,12 @@ export const StatusBanners: React.FC<{}> = (_) => {
         )[0];
         return (
           <IncidentBanner
+            href={thisIncident.shortlink}
+            impact={thisIncident.impact}
             key={thisIncident.id}
-            title={thisIncident.name}
             message={mostRecentUpdate?.body ?? ''}
             status={thisIncident.status}
-            impact={thisIncident.impact}
-            href={thisIncident.shortlink}
+            title={thisIncident.name}
           />
         );
       })}
@@ -67,59 +44,69 @@ export const StatusBanners: React.FC<{}> = (_) => {
 };
 
 export interface IncidentProps {
-  message: string;
-  title: string;
-  // Maintenance events have statuses but we don't need to display them
-  status?: IncidentStatus;
   href: string;
   impact: IncidentImpact;
+  message: string;
+  // Maintenance events have statuses but we don't need to display them
+  status?: IncidentStatus;
+  title: string;
 }
 
-export const IncidentBanner: React.FC<IncidentProps> = React.memo((props) => {
-  const { message, status: _status, title, impact, href } = props;
+export const IncidentBanner = React.memo((props: IncidentProps) => {
+  const { href, impact, message, status: _status, title } = props;
   const status = _status ?? '';
-  const classes = useStyles();
+  const theme = useTheme();
 
-  const [hidden, setHidden] = React.useState(false);
-
-  if (hidden) {
-    return null;
-  }
-
-  const handleDismiss = () => {
-    setHidden(true);
+  const preferenceKey = `${href}-${status}`;
+  const variantMap = {
+    error:
+      impact === 'critical' && !['monitoring', 'resolved'].includes(status),
+    warning:
+      ['major', 'minor', 'none'].includes(impact) ||
+      ['monitoring', 'resolved'].includes(status),
   };
 
   return (
-    <Notice
+    <DismissibleBanner
+      options={{
+        expiry: DateTime.utc().plus({ days: 1 }).toISO(),
+        label: preferenceKey,
+      }}
+      variant={
+        variantMap.error ? 'error' : variantMap.warning ? 'warning' : undefined
+      }
       important
-      warning={
-        ['major', 'minor', 'none'].includes(impact) ||
-        ['monitoring', 'resolved'].includes(status)
-      }
-      error={
-        impact === 'critical' && !['monitoring', 'resolved'].includes(status)
-      }
-      className={classes.root}
-      dismissible
-      onClose={handleDismiss}
+      preferenceKey={preferenceKey}
+      sx={{ marginBottom: theme.spacing() }}
     >
-      <Typography data-testid="status-banner" className={classes.header}>
-        <Link to={href}>
-          <strong data-testid="incident-status">
-            {title}
-            {status ? `: ${capitalize(status)}` : ''}
-          </strong>
-        </Link>
-      </Typography>
-      <Typography
-        dangerouslySetInnerHTML={{
-          __html: sanitizeHTML(truncateEnd(message, 500)),
-        }}
-        className={classes.text}
-      />
-    </Notice>
+      <Box display="flex" flexDirection="column">
+        <Typography
+          sx={{
+            fontSize: '1rem',
+            marginBottom: theme.spacing(),
+          }}
+          data-testid="status-banner"
+        >
+          <Link to={href}>
+            <strong data-testid="incident-status">
+              {title}
+              {status ? `: ${capitalize(status)}` : ''}
+            </strong>
+          </Link>
+        </Typography>
+        <Typography
+          dangerouslySetInnerHTML={{
+            __html: sanitizeHTML({
+              sanitizingTier: 'flexible',
+              text: truncateEnd(message, 500),
+            }),
+          }}
+          sx={{
+            fontSize: '0.875rem',
+            lineHeight: '1.25rem',
+          }}
+        />
+      </Box>
+    </DismissibleBanner>
   );
 });
-
-export default React.memo(StatusBanners);

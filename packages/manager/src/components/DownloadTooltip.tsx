@@ -1,55 +1,37 @@
-import classNames from 'classnames';
-import { downloadFile } from 'src/utilities/downloadFile';
+import { Tooltip } from '@linode/ui';
 import * as React from 'react';
+
 import FileDownload from 'src/assets/icons/download.svg';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ToolTip from 'src/components/core/Tooltip';
+import { StyledIconButton } from 'src/components/CopyTooltip/CopyTooltip';
+import { Typography } from 'src/components/Typography';
+import { downloadFile } from 'src/utilities/downloadFile';
 
 interface Props {
-  text: string;
+  /**
+   * Optional styles to be applied to the underlying button
+   */
   className?: string;
+  /**
+   * Optional text to show beside the download icon
+   */
   displayText?: string;
-  onClickCallback?: () => void;
+  /**
+   * The filename of the downloaded file. `.txt` is automatically appended.
+   */
   fileName: string;
+  /**
+   * Optional callback function that is called when the download button is clicked
+   */
+  onClickCallback?: () => void;
+  /**
+   * The text to be downloaded.
+   * It is also used in the `name` and `aria-label` of the underlying button.
+   */
+  text: string;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    position: 'relative',
-    padding: 4,
-    backgroundColor: 'transparent',
-    transition: theme.transitions.create(['background-color']),
-    borderRadius: 4,
-    border: 'none',
-    cursor: 'pointer',
-    color: theme.color.grey1,
-    '& svg': {
-      transition: theme.transitions.create(['color']),
-      color: theme.color.grey1,
-      margin: 0,
-      position: 'relative',
-      width: 20,
-      height: 20,
-    },
-    '&:hover': {
-      backgroundColor: theme.color.white,
-    },
-  },
-  flex: {
-    display: 'flex',
-    width: 'auto !important',
-  },
-  displayText: {
-    color: theme.textColors.linkActiveLight,
-    marginLeft: 6,
-  },
-}));
-
-export const DownloadTooltip: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
-  const { text, className, displayText, onClickCallback, fileName } = props;
+export const DownloadTooltip = (props: Props) => {
+  const { className, displayText, fileName, onClickCallback, text } = props;
 
   const handleIconClick = () => {
     downloadFile(`${fileName}.txt`, text);
@@ -59,24 +41,17 @@ export const DownloadTooltip: React.FC<Props> = (props) => {
   };
 
   return (
-    <ToolTip title="Download" placement="top" data-qa-copied>
-      <button
+    <Tooltip data-qa-copied placement="top" title="Download">
+      <StyledIconButton
         aria-label={`Download ${text}`}
+        className={className}
         name={text}
-        type="button"
         onClick={handleIconClick}
-        className={classNames(className, {
-          [classes.root]: true,
-          [classes.flex]: Boolean(displayText),
-        })}
+        type="button"
       >
         <FileDownload />
-        {displayText && (
-          <Typography className={classes.displayText}>{displayText}</Typography>
-        )}
-      </button>
-    </ToolTip>
+        {displayText && <Typography>{displayText}</Typography>}
+      </StyledIconButton>
+    </Tooltip>
   );
 };
-
-export default DownloadTooltip;

@@ -1,26 +1,24 @@
 import * as React from 'react';
-import { compose } from 'recompose';
-import NavItem, { PrimaryLink } from './NavItem';
 
 import Help from 'src/assets/icons/help.svg';
 
+import { NavItem, PrimaryLink } from './NavItem';
+
 interface Props {
   closeMenu: () => void;
-  linkClasses: (href?: string) => string;
-  listItemClasses: string;
   dividerClasses: string;
   isCollapsed?: boolean;
+  linkClasses: (href?: string) => string;
+  listItemClasses: string;
 }
 
-type CombinedProps = Props;
-
-const AdditionalMenuItems: React.FC<CombinedProps> = (props) => {
+export const AdditionalMenuItems = React.memo((props: Props) => {
   const { isCollapsed } = props;
   const links: PrimaryLink[] = [
     {
+      QAKey: 'help',
       display: 'Get Help',
       href: '/support',
-      QAKey: 'help',
       icon: <Help className="small wBorder" />,
     },
   ];
@@ -32,13 +30,11 @@ const AdditionalMenuItems: React.FC<CombinedProps> = (props) => {
           <NavItem
             {...eachLink}
             {...props}
-            key={eachLink.QAKey}
             isCollapsed={isCollapsed}
+            key={eachLink.QAKey}
           />
         );
       })}
     </React.Fragment>
   );
-};
-
-export default compose<CombinedProps, Props>(React.memo)(AdditionalMenuItems);
+});

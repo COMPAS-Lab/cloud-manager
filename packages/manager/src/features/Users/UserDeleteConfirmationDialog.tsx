@@ -1,56 +1,67 @@
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { useAccountUserDeleteMutation } from 'src/queries/account/users';
 
 interface Props {
-  username: string;
+  onClose: () => void;
+  onSuccess?: () => void;
   open: boolean;
-  onDelete: (username: string) => void;
-  onCancel: () => void;
+  username: string;
 }
 
-type CombinedProps = Props;
+export const UserDeleteConfirmationDialog = (props: Props) => {
+  const { onClose: _onClose, onSuccess, open, username } = props;
 
-class UserDeleteConfirmationDialog extends React.PureComponent<
-  CombinedProps,
-  {}
-> {
-  deleteUser = () => this.props.onDelete(this.props.username);
+  const { enqueueSnackbar } = useSnackbar();
 
-  render() {
-    return (
-      <ConfirmationDialog
-        title="Confirm Deletion"
-        onClose={this.props.onCancel}
-        actions={this.renderActionsPanel}
-        open={this.props.open}
-      >
-        {`User ${this.props.username} will be permanently deleted. Are you sure?`}
-      </ConfirmationDialog>
-    );
-  }
+  const {
+    error,
+    mutateAsync: deleteUser,
+    reset,
+    isPending,
+  } = useAccountUserDeleteMutation(username);
 
-  renderActionsPanel = () => {
-    return (
-      <ActionsPanel style={{ padding: 0 }}>
-        <Button
-          buttonType="secondary"
-          onClick={this.props.onCancel}
-          data-qa-cancel-delete
-        >
-          Cancel
-        </Button>
-        <Button
-          buttonType="primary"
-          onClick={this.deleteUser}
-          data-qa-confirm-delete
-        >
-          Delete
-        </Button>
-      </ActionsPanel>
-    );
+  const onClose = () => {
+    reset(); // resets the error state of the useMutation
+    _onClose();
   };
-}
 
-export default UserDeleteConfirmationDialog;
+  const onDelete = async () => {
+    await deleteUser();
+    enqueueSnackbar(`User ${username} has been deleted successfully.`, {
+      variant: 'success',
+    });
+    if (onSuccess) {
+      onSuccess();
+    }
+    onClose();
+  };
+
+  return (
+    <ConfirmationDialog
+      actions={
+        <ActionsPanel
+          primaryButtonProps={{
+            label: 'Delete',
+            loading: isPending,
+            onClick: onDelete,
+          }}
+          secondaryButtonProps={{
+            label: 'Cancel',
+            onClick: onClose,
+          }}
+          style={{ padding: 0 }}
+        />
+      }
+      error={error?.[0].reason}
+      onClose={onClose}
+      open={open}
+      title="Confirm Deletion"
+    >
+      User {username} will be permanently deleted. Are you sure?
+    </ConfirmationDialog>
+  );
+};

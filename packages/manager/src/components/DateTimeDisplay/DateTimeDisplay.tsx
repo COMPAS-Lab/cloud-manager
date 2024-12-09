@@ -1,25 +1,45 @@
 import * as React from 'react';
-import Typography from 'src/components/core/Typography';
-import formatDate, { TimeInterval } from 'src/utilities/formatDate';
 
-export interface Props {
-  value: string;
-  format?: string;
-  displayTime?: boolean;
-  humanizeCutoff?: TimeInterval;
+import { Typography } from 'src/components/Typography';
+import { useProfile } from 'src/queries/profile/profile';
+import { TimeInterval, formatDate } from 'src/utilities/formatDate';
+
+export interface DateTimeDisplayProps {
+  /**
+   * Additional styles to apply to the root element
+   */
   className?: string;
-  styles?: React.CSSProperties;
+  /**
+   * If true displays time component of the date and time provided
+   */
+  displayTime?: boolean;
+  /**
+   * String that specifies a luxon compatible format to use
+   */
+  format?: string;
+  /**
+   * If the date and time provided is within the designated time frame then the date is displayed as a relative date
+   */
+  humanizeCutoff?: TimeInterval;
+  /**
+   * The date and time string to display
+   */
+  value: string;
 }
 
-type CombinedProps = Props;
-
-export const DateTimeDisplay: React.FC<CombinedProps> = (props) => {
-  const { format, humanizeCutoff, displayTime, value, className } = props;
+const DateTimeDisplay = (props: DateTimeDisplayProps) => {
+  const { className, displayTime, format, humanizeCutoff, value } = props;
+  const { data: profile } = useProfile();
   return (
-    <Typography style={props.styles} component="span" className={className}>
-      {formatDate(value, { format, humanizeCutoff, displayTime })}
+    <Typography className={className} component="span">
+      {formatDate(value, {
+        displayTime,
+        format,
+        humanizeCutoff,
+        timezone: profile?.timezone,
+      })}
     </Typography>
   );
 };
 
-export default DateTimeDisplay;
+export { DateTimeDisplay };

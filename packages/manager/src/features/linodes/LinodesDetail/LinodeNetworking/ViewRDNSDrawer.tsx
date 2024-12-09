@@ -1,36 +1,49 @@
-import { IPAddress } from '@linode/api-v4/lib/networking';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  rdnsListItem: {
-    marginBottom: theme.spacing(2),
-  },
-}));
+import { Drawer } from 'src/components/Drawer';
+import { Typography } from 'src/components/Typography';
+import { useLinodeQuery } from 'src/queries/linodes/linodes';
+import { useAllIPsQuery } from 'src/queries/networking/networking';
+
+import { listIPv6InRange } from './LinodeIPAddressRow';
+
+import type { IPRange } from '@linode/api-v4';
 
 interface Props {
-  open: boolean;
+  linodeId: number;
   onClose: () => void;
-  ips: IPAddress[];
+  open: boolean;
+  selectedRange: IPRange | undefined;
 }
 
-type CombinedProps = Props;
+export const ViewRDNSDrawer = (props: Props) => {
+  const { linodeId, onClose, open, selectedRange } = props;
 
-const ViewRDNSDrawer: React.FC<CombinedProps> = (props) => {
-  const { open, onClose, ips } = props;
-  const classes = useStyles();
+  const { data: linode } = useLinodeQuery(linodeId, open);
+
+  const { data: ipsInRegion } = useAllIPsQuery(
+    {},
+    {
+      region: linode?.region,
+    },
+    linode !== undefined && open
+  );
+
+  // @todo in the future use an API filter insted of `listIPv6InRange` ARB-3785
+  const ips = selectedRange
+    ? listIPv6InRange(selectedRange.range, selectedRange.prefix, ipsInRegion)
+    : [];
 
   return (
-    <Drawer open={open} onClose={onClose} title={`View Reverse DNS`}>
+    <Drawer onClose={onClose} open={open} title={`View Reverse DNS`}>
       <div>
         {ips.map((ip) => {
           return (
-            <div key={ip.address} className={classes.rdnsListItem}>
+            <StyledDiv key={ip.address}>
               <Typography>{ip.address}</Typography>
               <Typography>{ip.rdns || ''}</Typography>
-            </div>
+            </StyledDiv>
           );
         })}
       </div>
@@ -38,4 +51,6 @@ const ViewRDNSDrawer: React.FC<CombinedProps> = (props) => {
   );
 };
 
-export default ViewRDNSDrawer;
+const StyledDiv = styled('div', { label: 'StyledDiv' })(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+}));

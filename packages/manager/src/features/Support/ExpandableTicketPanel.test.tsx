@@ -1,10 +1,12 @@
 import { screen } from '@testing-library/react';
 import { DateTime } from 'luxon';
 import * as React from 'react';
+
 import { ISO_DATETIME_NO_TZ_FORMAT } from 'src/constants';
 import { supportReplyFactory } from 'src/factories/support';
 import { renderWithTheme } from 'src/utilities/testHelpers';
-import ExpandableTicketPanel, { Props } from './ExpandableTicketPanel';
+
+import { ExpandableTicketPanel } from './ExpandableTicketPanel';
 import { shouldRenderHively } from './Hively';
 
 const recent = DateTime.utc()
@@ -17,19 +19,19 @@ const user = 'Linode';
 
 const reply = supportReplyFactory.build();
 
-const props: Props = {
-  reply: { ...reply, gravatarUrl: '' },
+const props = {
   isCurrentUser: false,
+  reply,
 };
 
 describe('Expandable ticket panel', () => {
   describe('Panel component', () => {
-    it('should display "Linode Expert" if the ticket or reply has from_linode', () => {
+    it('should display "Customer Support" if the ticket or reply has from_linode', () => {
       renderWithTheme(<ExpandableTicketPanel {...props} />);
-      expect(screen.getByText('Linode Expert')).toBeInTheDocument();
+      expect(screen.getByText('Customer Support')).toBeInTheDocument();
     });
 
-    it('should not display "Linode Expert" if the reply is from the Linode account', () => {
+    it('should not display "Customer Support" if the reply is from the Linode account', () => {
       const replyFromLinode = {
         ...supportReplyFactory.build({
           created_by: 'Linode',
@@ -40,10 +42,10 @@ describe('Expandable ticket panel', () => {
       renderWithTheme(
         <ExpandableTicketPanel {...props} reply={replyFromLinode} />
       );
-      expect(screen.queryByText('Linode Expert')).toBeNull();
+      expect(screen.queryByText('Customer Support')).toBeNull();
     });
 
-    it('should not display "Linode Expert" if the reply is from the Linode Trust & Safety account', () => {
+    it('should not display "Customer Support" if the reply is from the Linode Trust & Safety account', () => {
       const replyFromLinode = {
         ...supportReplyFactory.build({
           created_by: 'Linode Trust & Safety',
@@ -54,7 +56,7 @@ describe('Expandable ticket panel', () => {
       renderWithTheme(
         <ExpandableTicketPanel {...props} reply={replyFromLinode} />
       );
-      expect(screen.queryByText('Linode Expert')).toBeNull();
+      expect(screen.queryByText('Customer Support')).toBeNull();
     });
   });
   describe('shouldRenderHively function', () => {

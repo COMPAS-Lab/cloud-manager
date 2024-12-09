@@ -1,66 +1,49 @@
-import { Profile } from '@linode/api-v4/lib/profile';
-import { APIError } from '@linode/api-v4/lib/types';
-import { makeStyles } from '@material-ui/styles';
+import { Box, FormControl, Paper } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import { createLazyRoute } from '@tanstack/react-router';
 import { equals, lensPath, remove, set } from 'ramda';
 import * as React from 'react';
-import { compose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import FormControl from 'src/components/core/FormControl';
-import Paper from 'src/components/core/Paper';
-import { Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import setDocs from 'src/components/DocsSidebar/setDocs';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { Button } from 'src/components/Button/Button';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import { LISH } from 'src/documentation';
-import { useMutateProfile, useProfile } from 'src/queries/profile';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
+import { useMutateProfile, useProfile } from 'src/queries/profile/profile';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import getAPIErrorFor from 'src/utilities/getAPIErrorFor';
-import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
+import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
+import { scrollErrorIntoView } from 'src/utilities/scrollErrorIntoView';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  intro: {
-    marginBottom: theme.spacing(2),
-  },
-  modeControl: {
-    display: 'flex',
-  },
-  sshWrap: {
-    margin: `${theme.spacing(1)}px 0`,
-  },
-  keyTextarea: {
-    [theme.breakpoints.up('md')]: {
-      minWidth: 415,
-    },
-  },
-  sshKeyButton: {
-    marginTop: theme.spacing(),
-  },
-}));
+import type { Profile } from '@linode/api-v4/lib/profile';
+import type { APIError } from '@linode/api-v4/lib/types';
 
-const LishSettings: React.FC = () => {
-  const classes = useStyles();
+export interface LishAuthOption<T = string, L = string> {
+  label: L;
+  value: T;
+}
+
+export const LishSettings = () => {
+  const theme = useTheme();
   const { data: profile, isLoading } = useProfile();
   const { mutateAsync: updateProfile } = useMutateProfile();
-
   const [submitting, setSubmitting] = React.useState<boolean>(false);
+  const [errors, setErrors] = React.useState<APIError[]>([]);
+  const [success, setSuccess] = React.useState<string>();
+  const thirdPartyEnabled = profile?.authentication_type !== 'password';
+
   const [lishAuthMethod, setLishAuthMethod] = React.useState<
-    Pick<Profile, 'lish_auth_method'> | undefined
-  >(profile?.lish_auth_method || ('password_keys' as any));
+    Profile['lish_auth_method'] | undefined
+  >(profile?.lish_auth_method || 'password_keys');
+
   const [authorizedKeys, setAuthorizedKeys] = React.useState<string[]>(
     profile?.authorized_keys || []
   );
+
   const [authorizedKeysCount, setAuthorizedKeysCount] = React.useState<number>(
     profile?.authorized_keys ? profile!.authorized_keys.length : 1
   );
-
-  const [errors, setErrors] = React.useState<APIError[]>([]);
-  const [success, setSuccess] = React.useState<string>();
-
-  const thirdPartyEnabled = profile?.authentication_type !== 'password';
 
   const tooltipText = thirdPartyEnabled
     ? 'Password is disabled because Third-Party Authentication has been enabled.'
@@ -68,20 +51,21 @@ const LishSettings: React.FC = () => {
 
   const hasErrorFor = getAPIErrorFor(
     {
-      lish_auth_method: 'authentication method',
       authorized_keys: 'ssh public keys',
+      lish_auth_method: 'authentication method',
     },
     errors
   );
+
   const generalError = hasErrorFor('none');
   const authMethodError = hasErrorFor('lish_auth_method');
   const authorizedKeysError = hasErrorFor('authorized_keys');
 
   const modeOptions = [
     {
+      disabled: profile?.authentication_type !== 'password',
       label: 'Allow both password and key authentication',
       value: 'password_keys',
-      isDisabled: profile?.authentication_type !== 'password',
     },
     {
       label: 'Allow key authentication only',
@@ -95,9 +79,9 @@ const LishSettings: React.FC = () => {
 
   const defaultMode = modeOptions.find((eachMode) => {
     if (profile?.authentication_type !== 'password') {
-      return (eachMode.value as any) === 'keys_only';
+      return (eachMode.value as Profile['lish_auth_method']) === 'keys_only';
     } else {
-      return (eachMode.value as any) === lishAuthMethod;
+      return (eachMode.value as Profile['lish_auth_method']) === lishAuthMethod;
     }
   });
 
@@ -111,8 +95,8 @@ const LishSettings: React.FC = () => {
     setSubmitting(false);
 
     updateProfile({
-      lish_auth_method: lishAuthMethod as any,
       authorized_keys: keys,
+      lish_auth_method: lishAuthMethod as Profile['lish_auth_method'],
     })
       .then((profileData) => {
         setSubmitting(false);
@@ -130,9 +114,6 @@ const LishSettings: React.FC = () => {
       });
   };
 
-  const onListAuthMethodChange = (e: Item<Pick<Profile, 'lish_auth_method'>>) =>
-    setLishAuthMethod(e.value);
-
   const onPublicKeyChange = (idx: number) => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -148,91 +129,98 @@ const LishSettings: React.FC = () => {
     <>
       <DocumentTitleSegment segment="LISH Console Settings" />
       <Paper>
-        {success && <Notice success text={success} />}
-        {authorizedKeysError && <Notice error text={authorizedKeysError} />}
-        {generalError && <Notice error text={generalError} />}
-        <Typography className={classes.intro}>
+        {success && <Notice text={success} variant="success" />}
+        {authorizedKeysError && (
+          <Notice text={authorizedKeysError} variant="error" />
+        )}
+        {generalError && <Notice text={generalError} variant="error" />}
+        <Typography sx={{ marginBottom: theme.spacing(2) }}>
           This controls what authentication methods are allowed to connect to
           the Lish console servers.
         </Typography>
         {isLoading ? null : (
           <>
-            <FormControl className={classes.modeControl}>
-              <Select
+            <FormControl sx={{ display: 'flex' }}>
+              <Autocomplete
+                onChange={(
+                  _,
+                  item: LishAuthOption<Profile['lish_auth_method']>
+                ) => setLishAuthMethod(item.value)}
                 textFieldProps={{
                   dataAttrs: {
                     'data-qa-mode-select': true,
                   },
                   tooltipText,
                 }}
-                options={modeOptions}
-                name="mode-select"
+                value={modeOptions.find(
+                  (option) => option.value === lishAuthMethod
+                )}
+                defaultValue={defaultMode}
+                disableClearable
+                errorText={authMethodError}
+                getOptionDisabled={(option) => option.disabled === true}
                 id="mode-select"
                 label="Authentication Mode"
-                defaultValue={defaultMode}
-                onChange={onListAuthMethodChange as any}
-                isClearable={false}
-                errorText={authMethodError}
+                options={modeOptions}
               />
             </FormControl>
             {Array.from(Array(authorizedKeysCount)).map((value, idx) => (
-              <div className={classes.sshWrap} key={idx}>
+              <Box key={idx} sx={{ margin: `${theme.spacing(1)} 0` }}>
                 <TextField
+                  sx={{
+                    [theme.breakpoints.up('md')]: {
+                      minWidth: 415,
+                    },
+                  }}
+                  data-qa-public-key
                   key={idx}
                   label="SSH Public Key"
-                  onChange={onPublicKeyChange(idx)}
-                  value={authorizedKeys[idx] || ''}
                   multiline
-                  rows="4"
-                  className={classes.keyTextarea}
-                  data-qa-public-key
+                  onChange={onPublicKeyChange(idx)}
+                  rows={1.75}
+                  value={authorizedKeys[idx] || ''}
                 />
                 {(idx === 0 && typeof authorizedKeys[0] !== 'undefined') ||
                 idx > 0 ? (
                   <Button
                     buttonType="outlined"
-                    className={classes.sshKeyButton}
-                    compact
-                    onClick={onPublicKeyRemove(idx)}
                     data-qa-remove
+                    onClick={onPublicKeyRemove(idx)}
+                    sx={{ marginTop: theme.spacing() }}
                   >
                     Remove
                   </Button>
                 ) : null}
-              </div>
+              </Box>
             ))}
             <Typography style={{ paddingTop: 2 }}>
               Place your SSH public keys here for use with Lish console access.
             </Typography>
             <Button
-              onClick={addSSHPublicKeyField}
-              className={classes.sshKeyButton}
               buttonType="outlined"
-              compact
+              onClick={addSSHPublicKeyField}
+              sx={{ marginTop: theme.spacing() }}
             >
               Add SSH Public Key
             </Button>
           </>
         )}
-        <ActionsPanel>
-          <Button
-            buttonType="primary"
-            onClick={onSubmit}
-            loading={submitting}
-            disabled={
+        <ActionsPanel
+          primaryButtonProps={{
+            'data-testid': 'save',
+            disabled:
               lishAuthMethod === profile?.lish_auth_method &&
-              equals(authorizedKeys, profile?.authorized_keys)
-            }
-            data-qa-save
-          >
-            Save
-          </Button>
-        </ActionsPanel>
+              equals(authorizedKeys, profile?.authorized_keys),
+            label: 'Save',
+            loading: submitting,
+            onClick: onSubmit,
+          }}
+        />
       </Paper>
     </>
   );
 };
 
-const enhanced = compose(setDocs([LISH]));
-
-export default enhanced(LishSettings);
+export const lishSettingsLazyRoute = createLazyRoute('/profile/lish')({
+  component: LishSettings,
+});

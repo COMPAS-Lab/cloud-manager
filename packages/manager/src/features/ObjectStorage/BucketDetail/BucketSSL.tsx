@@ -1,250 +1,197 @@
-import {
-  deleteSSLCert,
-  getSSLCert,
-  uploadSSLCert,
-} from '@linode/api-v4/lib/object-storage';
-import { APIError } from '@linode/api-v4/lib/types';
+import { Paper } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import { useFormik } from 'formik';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ErrorState from 'src/components/ErrorState';
-import ExternalLink from 'src/components/ExternalLink';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import { useAPIRequest } from 'src/hooks/useAPIRequest';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
+import {
+  useBucketSSLDeleteMutation,
+  useBucketSSLMutation,
+  useBucketSSLQuery,
+} from 'src/queries/object-storage/queries';
 import { getErrorMap } from 'src/utilities/errorUtils';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: theme.spacing(3),
-  },
-  button: {
-    ...theme.applyLinkStyles,
-  },
-  helperText: {
-    paddingTop: theme.spacing(),
-    lineHeight: 1.5,
-  },
-  textArea: {
-    minWidth: '100%',
-  },
-  wrapper: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    flexFlow: 'row wrap',
-    [theme.breakpoints.down('md')]: {
-      justifyContent: 'flex-start',
-    },
-  },
-  certWrapper: {
-    paddingRight: theme.spacing(2),
-    [theme.breakpoints.down('sm')]: {
-      padding: 0,
-    },
-  },
-  keyWrapper: {
-    paddingLeft: theme.spacing(2),
-    [theme.breakpoints.down('sm')]: {
-      padding: 0,
-    },
-  },
-}));
+import {
+  StyledCertWrapper,
+  StyledFieldsWrapper,
+  StyledHelperText,
+  StyledKeyWrapper,
+} from './BucketSSL.styles';
+
+import type { CreateObjectStorageBucketSSLPayload } from '@linode/api-v4';
 
 interface Props {
   bucketName: string;
   clusterId: string;
 }
 
-export const BucketSSL: React.FC<Props> = (props) => {
+export const BucketSSL = (props: Props) => {
   const { bucketName, clusterId } = props;
-  const classes = useStyles();
+  const theme = useTheme();
 
   return (
-    <Paper className={classes.root}>
+    <Paper sx={{ padding: theme.spacing(3) }}>
       <Typography variant="h2">SSL/TLS Certificate</Typography>
-      <Typography className={classes.helperText}>
+      <StyledHelperText>
         Object Storage buckets are automatically served with a default TLS
         certificate that is valid for subdomains of linodeobjects.com. You can
         upload a custom certificate that will be used for the TLS portion of the
         HTTPS request instead. For more information, please see our guide on
         using{' '}
-        <ExternalLink
-          link="https://www.linode.com/docs/platform/object-storage/enable-ssl-for-object-storage/"
-          hideIcon
-          text="custom certificates for Object Storage buckets"
-        />
+        <Link to="https://techdocs.akamai.com/cloud-computing/docs/configure-a-custom-domain-with-a-tls-ssl-certificate">
+          custom certificates for Object Storage buckets
+        </Link>
         .
-      </Typography>
+      </StyledHelperText>
       <SSLBody bucketName={bucketName} clusterId={clusterId} />
     </Paper>
   );
 };
 
-interface BodyProps {
-  bucketName: string;
-  clusterId: string;
-}
-
-export const SSLBody: React.FC<BodyProps> = (props) => {
+export const SSLBody = (props: Props) => {
   const { bucketName, clusterId } = props;
+  const { data, error, isLoading } = useBucketSSLQuery(clusterId, bucketName);
+  const hasSSL = Boolean(data?.ssl);
 
-  const request = useAPIRequest(
-    () => getSSLCert(clusterId, bucketName).then((response) => response.ssl),
-    false
-  );
-
-  const hasSSL = request.data;
-
-  if (request.loading) {
+  if (isLoading) {
     return <CircleProgress />;
   }
 
-  if (request.error) {
-    return <ErrorState errorText="Error loading TLS cert data" />;
+  if (error) {
+    return <ErrorState errorText={error?.[0].reason} />;
   }
 
   if (hasSSL) {
-    return <RemoveCertForm {...props} update={request.update} />;
+    return <RemoveCertForm {...props} />;
   }
 
-  return <AddCertForm {...props} update={request.update} />;
+  return <AddCertForm {...props} />;
 };
 
-export interface FormProps extends BodyProps {
-  update: () => void;
-}
+const AddCertForm = (props: Props) => {
+  const { bucketName, clusterId } = props;
+  const { enqueueSnackbar } = useSnackbar();
+  const { error, isPending, mutateAsync } = useBucketSSLMutation(
+    clusterId,
+    bucketName
+  );
 
-export const AddCertForm: React.FC<FormProps> = (props) => {
-  const { bucketName, clusterId, update } = props;
-  const [certificate, setCertificate] = React.useState('');
-  const [sslKey, setSSLKey] = React.useState('');
-  const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<APIError[] | undefined>(undefined);
+  const formik = useFormik<CreateObjectStorageBucketSSLPayload>({
+    initialValues: {
+      certificate: '',
+      private_key: '',
+    },
+    async onSubmit(values) {
+      await mutateAsync(values);
+      enqueueSnackbar(
+        `Successfully added certificate to bucket ${bucketName}`,
+        { variant: 'success' }
+      );
+    },
+  });
 
   const errorMap = getErrorMap(['certificate', 'private_key'], error);
 
-  const classes = useStyles();
-
-  const onSubmit = () => {
-    setSubmitting(true);
-    setError(undefined);
-    uploadSSLCert(clusterId, bucketName, { certificate, private_key: sslKey })
-      .then((_) => {
-        setSubmitting(false);
-        update();
-        setCertificate('');
-        setSSLKey('');
-      })
-      .catch((error) => {
-        setSubmitting(false);
-        setError(error);
-      });
-  };
-
   return (
-    <>
+    <form onSubmit={formik.handleSubmit}>
       {errorMap.none && (
-        <Notice error text={errorMap.none} spacingTop={8} spacingBottom={0} />
+        <Notice
+          spacingBottom={0}
+          spacingTop={8}
+          text={errorMap.none}
+          variant="error"
+        />
       )}
-      <div>
-        <div className={classes.wrapper}>
-          <Grid item xs={12} md={6} className={classes.certWrapper}>
-            <TextField
-              label="Certificate"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setCertificate(e.target.value)
-              }
-              value={certificate}
-              multiline
-              fullWidth={false}
-              rows="4"
-              className={classes.textArea}
-              data-testid="ssl-cert-input"
-              errorText={errorMap.certificate}
-            />
-          </Grid>
-          <Grid item xs={12} md={6} className={classes.keyWrapper}>
-            <TextField
-              label="Private Key"
-              fullWidth
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setSSLKey(e.target.value)
-              }
-              value={sslKey}
-              className={classes.textArea}
-              multiline
-              rows="4"
-              data-testid="ssl-cert-input"
-              errorText={errorMap.private_key}
-            />
-          </Grid>
-        </div>
-        <Grid item>
-          <ActionsPanel>
-            <Button
-              onClick={onSubmit}
-              loading={submitting}
-              buttonType="primary"
-            >
-              Upload Certificate
-            </Button>
-          </ActionsPanel>
-        </Grid>
-      </div>
-    </>
+      <StyledFieldsWrapper>
+        <StyledCertWrapper md={6} xs={12}>
+          <TextField
+            data-testid="ssl-cert-input"
+            errorText={errorMap.certificate}
+            fullWidth={false}
+            label="Certificate"
+            multiline
+            name="certificate"
+            onChange={formik.handleChange}
+            rows="3"
+            sx={{ '& > div': { minWidth: '100%' } }}
+            value={formik.values.certificate}
+          />
+        </StyledCertWrapper>
+        <StyledKeyWrapper md={6} xs={12}>
+          <TextField
+            data-testid="ssl-cert-input"
+            errorText={errorMap.private_key}
+            fullWidth
+            label="Private Key"
+            multiline
+            name="private_key"
+            onChange={formik.handleChange}
+            rows="3"
+            sx={{ '& > div': { minWidth: '100%' } }}
+            value={formik.values.private_key}
+          />
+        </StyledKeyWrapper>
+      </StyledFieldsWrapper>
+      <Grid>
+        <ActionsPanel
+          primaryButtonProps={{
+            label: 'Upload Certificate',
+            loading: isPending,
+            type: 'submit',
+          }}
+        />
+      </Grid>
+    </form>
   );
 };
 
-export const RemoveCertForm: React.FC<FormProps> = (props) => {
-  const { bucketName, clusterId, update } = props;
+const RemoveCertForm = (props: Props) => {
+  const { bucketName, clusterId } = props;
   const [open, setOpen] = React.useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+  const {
+    error,
+    isPending,
+    mutateAsync: deleteSSLCert,
+  } = useBucketSSLDeleteMutation(clusterId, bucketName);
 
-  const [submittingDialog, setSubmittingDialog] = React.useState(false);
-  const [dialogError, setDialogError] = React.useState<string | undefined>(
-    undefined
-  );
-
-  const removeCertificate = () => {
-    setSubmittingDialog(true);
-    deleteSSLCert(clusterId, bucketName)
-      .then(() => {
-        setOpen(false);
-        setSubmittingDialog(false);
-        update();
-      })
-      .catch((error) => {
-        setDialogError(error[0].reason);
-        setSubmittingDialog(false);
-      });
+  const removeCertificate = async () => {
+    await deleteSSLCert();
+    setOpen(false);
+    enqueueSnackbar(
+      `Successfully removed certificate from bucket ${bucketName}`,
+      { variant: 'success' }
+    );
   };
-  const createActions = () => (
-    <ActionsPanel>
-      <Button
-        buttonType="secondary"
-        onClick={() => setOpen(false)}
-        disabled={submittingDialog}
-      >
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={removeCertificate}
-        loading={submittingDialog}
-      >
-        Remove certificate
-      </Button>
-    </ActionsPanel>
+
+  const actions = (
+    <ActionsPanel
+      primaryButtonProps={{
+        label: 'Remove certificate',
+        loading: isPending,
+        onClick: removeCertificate,
+      }}
+      secondaryButtonProps={{
+        disabled: isPending,
+        label: 'Cancel',
+        onClick: () => setOpen(false),
+      }}
+    />
   );
+
   return (
     <>
-      <Notice success spacingTop={8}>
+      <Notice spacingTop={8} variant="info">
         A TLS certificate has already been uploaded for this Bucket. To upload a
         new certificate, remove the current certificate.{` `}
       </Notice>
@@ -252,11 +199,11 @@ export const RemoveCertForm: React.FC<FormProps> = (props) => {
         Remove Certificate
       </Button>
       <ConfirmationDialog
-        title={'Remove TLS certificate'}
-        open={open}
+        actions={actions}
+        error={error?.[0].reason}
         onClose={() => setOpen(false)}
-        actions={createActions()}
-        error={dialogError}
+        open={open}
+        title="Remove TLS certificate"
       >
         <Typography>
           Are you sure you want to remove all certificates from this Bucket?
@@ -265,5 +212,3 @@ export const RemoveCertForm: React.FC<FormProps> = (props) => {
     </>
   );
 };
-
-export default React.memo(BucketSSL);

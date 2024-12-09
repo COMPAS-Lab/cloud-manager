@@ -1,37 +1,37 @@
 import * as React from 'react';
-import { matchPath, Redirect, useHistory, useLocation } from 'react-router-dom';
-import TabPanel from 'src/components/core/ReachTabPanel';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import ReachTabs from 'src/components/core/ReachTabs';
-import SafeTabPanel from 'src/components/SafeTabPanel';
-import SuspenseLoader from 'src/components/SuspenseLoader';
-import TabLinkList from '../TabLinkList/TabLinkList';
+import { Redirect, matchPath, useHistory, useLocation } from 'react-router-dom';
+
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
+import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
+import { TabPanel } from 'src/components/Tabs/TabPanel';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import { Tabs } from 'src/components/Tabs/Tabs';
+
+import { TabLinkList } from '../Tabs/TabLinkList';
 
 export interface NavTab {
-  title: string;
-  routeName: string;
+  // especially when a component behind a tab performs network requests.
+  backgroundRendering?: boolean;
   component?:
     | React.ComponentType
     | React.LazyExoticComponent<React.ComponentType>;
   render?: JSX.Element;
+  routeName: string;
   // Whether or not this tab should be rendered in the background (even when
   // not on screen). Consumers should consider performance implications,
-  // especially when a component behind a tab performs network requests.
-  backgroundRendering?: boolean;
+  title: string;
 }
 
 export interface NavTabsProps {
-  tabs: NavTab[];
   navToTabRouteOnChange?: boolean;
+  tabs: NavTab[];
 }
 
-type CombinedProps = NavTabsProps;
-
-const NavTabs: React.FC<CombinedProps> = (props) => {
+export const NavTabs = React.memo((props: NavTabsProps) => {
   const history = useHistory();
   const reactRouterLocation = useLocation();
 
-  const { tabs, navToTabRouteOnChange } = props;
+  const { navToTabRouteOnChange, tabs } = props;
 
   // Defaults to `true`.
   const _navToTabRouteOnChange = navToTabRouteOnChange ?? true;
@@ -55,11 +55,11 @@ const NavTabs: React.FC<CombinedProps> = (props) => {
   }
 
   return (
-    <ReachTabs
+    <Tabs
       index={Math.max(tabMatch.idx, 0)}
       onChange={_navToTabRouteOnChange ? navToURL : undefined}
     >
-      <TabLinkList tabs={tabs} noLink />
+      <TabLinkList noLink tabs={tabs} />
       <React.Suspense fallback={<SuspenseLoader />}>
         <TabPanels>
           {tabs.map((thisTab, i) => {
@@ -72,7 +72,7 @@ const NavTabs: React.FC<CombinedProps> = (props) => {
               : SafeTabPanel;
 
             return (
-              <_TabPanelComponent key={thisTab.routeName} index={i}>
+              <_TabPanelComponent index={i} key={thisTab.routeName}>
                 {thisTab.component ? (
                   <thisTab.component />
                 ) : thisTab.render ? (
@@ -83,11 +83,9 @@ const NavTabs: React.FC<CombinedProps> = (props) => {
           })}
         </TabPanels>
       </React.Suspense>
-    </ReachTabs>
+    </Tabs>
   );
-};
-
-export default React.memo(NavTabs);
+});
 
 // Given tabs and a pathname, return the index of the matched tab, and whether
 // or not it's an exact match. If no match is found, the returned index is -1.
@@ -95,8 +93,8 @@ export const getTabMatch = (tabs: NavTab[], pathname: string) => {
   return tabs.reduce(
     (acc, thisTab, i) => {
       const match = matchPath(pathname, {
-        path: thisTab.routeName,
         exact: false,
+        path: thisTab.routeName,
       });
 
       if (match) {

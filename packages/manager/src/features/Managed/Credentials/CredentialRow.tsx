@@ -1,53 +1,27 @@
 import { ManagedCredential } from '@linode/api-v4/lib/managed';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { createStyles, makeStyles, Theme } from 'src/components/core/styles';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
+
+import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+
 import ActionMenu from './CredentialActionMenu';
 
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    credentialDescription: {
-      paddingTop: theme.spacing(1) / 2,
-    },
-    credentialRow: {
-      '&:before': {
-        display: 'none',
-      },
-    },
-    actionInner: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      padding: 0,
-      '&.MuiTableCell-root': {
-        paddingRight: 0,
-      },
-    },
-  })
-);
-
-interface Props {
+interface CredentialRowProps {
   credential: ManagedCredential;
   openDialog: (id: number, label: string) => void;
   openForEdit: (id: number) => void;
 }
 
-type CombinedProps = Props;
-
-export const CredentialRow: React.FunctionComponent<CombinedProps> = (
-  props
-) => {
+export const CredentialRow = (props: CredentialRowProps) => {
   const { credential, openDialog, openForEdit } = props;
-  const classes = useStyles();
 
   return (
-    <TableRow
-      key={credential.id}
+    <StyledTableRow
       data-qa-credential-cell={credential.id}
       data-testid={'credential-row'}
-      className={classes.credentialRow}
-      ariaLabel={`Credential ${credential.label}`}
+      key={credential.id}
     >
       <TableCell data-qa-credential-label>{credential.label}</TableCell>
       <TableCell data-qa-credential-decrypted>
@@ -58,16 +32,31 @@ export const CredentialRow: React.FunctionComponent<CombinedProps> = (
           'Never'
         )}
       </TableCell>
-      <TableCell className={classes.actionInner}>
+      <StyledTableCell>
         <ActionMenu
           credentialID={credential.id}
+          label={credential.label}
           openDialog={openDialog}
           openForEdit={openForEdit}
-          label={credential.label}
         />
-      </TableCell>
-    </TableRow>
+      </StyledTableCell>
+    </StyledTableRow>
   );
 };
+
+const StyledTableCell = styled(TableCell, { label: 'StyledTableCell' })({
+  '&.MuiTableCell-root': {
+    paddingRight: 0,
+  },
+  display: 'flex',
+  justifyContent: 'flex-end',
+  padding: 0,
+});
+
+const StyledTableRow = styled(TableRow, { label: 'StyledTableRow' })({
+  '&:before': {
+    display: 'none',
+  },
+});
 
 export default CredentialRow;

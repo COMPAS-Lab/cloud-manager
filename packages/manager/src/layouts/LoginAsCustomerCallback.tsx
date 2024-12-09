@@ -7,23 +7,28 @@
  */
 
 import { PureComponent } from 'react';
-import { connect, MapDispatchToProps } from 'react-redux';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import { compose } from 'recompose';
+import { connect } from 'react-redux';
+import { withRouter } from 'react-router-dom';
 
 import { handleStartSession } from 'src/store/authentication/authentication.actions';
-import { parseQueryParams } from 'src/utilities/queryParams';
+import { getQueryParamsFromQueryString } from 'src/utilities/queryParams';
 
-type CombinedProps = DispatchProps & RouteComponentProps;
+import type { MapDispatchToProps } from 'react-redux';
+import type { RouteComponentProps } from 'react-router-dom';
+import type { BaseQueryParams } from 'src/utilities/queryParams';
 
-interface QueryParams {
+interface LoginAsCustomerCallbackProps
+  extends DispatchProps,
+    RouteComponentProps {}
+
+interface QueryParams extends BaseQueryParams {
   access_token: string;
-  token_type: string;
   destination: string;
   expires_in: string;
+  token_type: string;
 }
 
-export class LoginAsCustomerCallback extends PureComponent<CombinedProps> {
+export class LoginAsCustomerCallback extends PureComponent<LoginAsCustomerCallbackProps> {
   componentDidMount() {
     /**
      * If this URL doesn't have a fragment, or doesn't have enough entries, we know we don't have
@@ -33,7 +38,7 @@ export class LoginAsCustomerCallback extends PureComponent<CombinedProps> {
      * 'location.hash = `#access_token=something&token_type=Admin&destination=linodes/1234`
      *
      */
-    const { location, history } = this.props;
+    const { history, location } = this.props;
 
     /**
      * If the hash doesn't contain a string after the #, there's no point continuing as we dont have
@@ -44,15 +49,15 @@ export class LoginAsCustomerCallback extends PureComponent<CombinedProps> {
       return history.push('/');
     }
 
-    const hashParams = (parseQueryParams(
+    const hashParams = getQueryParamsFromQueryString<QueryParams>(
       location.hash.substr(1)
-    ) as unknown) as QueryParams;
+    );
 
     const {
       access_token: accessToken,
       destination,
-      token_type: tokenType,
       expires_in: expiresIn,
+      token_type: tokenType,
     } = hashParams;
 
     /** If the access token wasn't returned, something is wrong and we should bail. */
@@ -103,11 +108,11 @@ const mapDispatchToProps: MapDispatchToProps<DispatchProps, {}> = (
     dispatchStartSession: (token, tokenType, expires) =>
       dispatch(
         handleStartSession({
+          expires,
+          scopes: '*',
           token: `${tokenType.charAt(0).toUpperCase()}${tokenType.substr(
             1
           )} ${token}`,
-          scopes: '*',
-          expires,
         })
       ),
   };
@@ -115,7 +120,4 @@ const mapDispatchToProps: MapDispatchToProps<DispatchProps, {}> = (
 
 const connected = connect(undefined, mapDispatchToProps);
 
-export default compose<CombinedProps, {}>(
-  connected,
-  withRouter
-)(LoginAsCustomerCallback);
+export default connected(withRouter(LoginAsCustomerCallback));

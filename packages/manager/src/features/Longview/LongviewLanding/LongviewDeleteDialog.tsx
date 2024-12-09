@@ -1,26 +1,24 @@
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Dialog from 'src/components/ConfirmationDialog';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
 
 interface Props {
-  open: boolean;
   closeDialog: () => void;
+  deleteClient: (id: number) => Promise<{}>;
+  open: boolean;
   selectedLongviewClientID?: number;
   selectedLongviewClientLabel: string;
-  deleteClient: (id: number) => Promise<{}>;
 }
 
-type CombinedProps = Props;
-
-const LongviewDeleteDialog: React.FC<CombinedProps> = (props) => {
+export const LongviewDeleteDialog = React.memo((props: Props) => {
   const [isDeleting, setDeleting] = React.useState<boolean>(false);
   const [errors, setErrors] = React.useState<APIError[] | undefined>(undefined);
 
   const {
-    open,
     closeDialog,
+    open,
     selectedLongviewClientID,
     selectedLongviewClientLabel: label,
   } = props;
@@ -56,46 +54,40 @@ const LongviewDeleteDialog: React.FC<CombinedProps> = (props) => {
   };
 
   return (
-    <Dialog
-      open={open}
-      title={`Delete ${label ? label : 'this Longview Client'}?`}
-      onClose={props.closeDialog}
-      error={errors ? errors[0].reason : ''}
+    <ConfirmationDialog
       actions={
         <Actions
-          onClose={props.closeDialog}
           isDeleting={isDeleting}
+          onClose={props.closeDialog}
           onSubmit={handleDelete}
         />
       }
+      error={errors ? errors[0].reason : ''}
+      onClose={props.closeDialog}
+      open={open}
+      title={`Delete ${label ? label : 'this Longview Client'}?`}
     >
       Are you sure you want to delete this Longview Client?
-    </Dialog>
+    </ConfirmationDialog>
   );
-};
+});
 
 interface ActionsProps {
+  isDeleting: boolean;
   onClose: () => void;
   onSubmit: () => void;
-  isDeleting: boolean;
 }
 
-const Actions: React.FC<ActionsProps> = (props) => {
+const Actions = (props: ActionsProps) => {
   return (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={props.onClose}>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={props.onSubmit}
-        loading={props.isDeleting}
-        data-testid="delete-button"
-      >
-        Delete
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        'data-testid': 'delete-button',
+        label: 'Delete',
+        loading: props.isDeleting,
+        onClick: props.onSubmit,
+      }}
+      secondaryButtonProps={{ label: 'Cancel', onClick: props.onClose }}
+    />
   );
 };
-
-export default React.memo(LongviewDeleteDialog);

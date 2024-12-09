@@ -1,16 +1,20 @@
+import Paper from '@mui/material/Paper';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import setDocs, { SetDocsProps } from 'src/components/DocsSidebar/setDocs';
+
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import { AccountsAndPasswords, BillingAndPayments } from 'src/documentation';
-import { useAccount } from 'src/queries/account';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { PAYPAL_CLIENT_ID } from 'src/constants';
+import { useAccount } from 'src/queries/account/account';
+import { useAllPaymentMethodsQuery } from 'src/queries/account/payment';
+import { useProfile } from 'src/queries/profile/profile';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import BillingActivityPanel from './BillingPanels/BillingActivityPanel/BillingActivityPanel';
+
+import { BillingActivityPanel } from './BillingPanels/BillingActivityPanel/BillingActivityPanel';
 import BillingSummary from './BillingPanels/BillingSummary';
 import ContactInfo from './BillingPanels/ContactInfoPanel';
 // import PaymentInformation from './BillingPanels/PaymentInfoPanel';
@@ -32,7 +36,7 @@ const useStyles = makeStyles((theme: Theme) => ({
 
 type CombinedProps = SetDocsProps & RouteComponentProps<{}>;
 
-export const BillingDetail: React.FC<CombinedProps> = (props) => {
+export const BillingDetail = () => {
   const {
     data: paymentMethods,
     // isLoading: paymentMethodsLoading,
@@ -45,7 +49,7 @@ export const BillingDetail: React.FC<CombinedProps> = (props) => {
     isLoading: accountLoading,
   } = useAccount();
 
-  const classes = useStyles();
+  const { data: profile } = useProfile();
 
   if (accountLoading) {
     return <CircleProgress />;
@@ -109,6 +113,27 @@ export const BillingDetail: React.FC<CombinedProps> = (props) => {
   );
 };
 
-const docs = [BillingAndPayments, AccountsAndPasswords];
+export const BillingPaper = styled(Paper)(() => ({
+  height: '100%',
+  padding: `15px 20px`,
+}));
 
-export default compose<CombinedProps, {}>(setDocs(docs))(BillingDetail);
+export const BillingBox = styled('div')(({ theme }) => ({
+  alignItems: 'center',
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginBottom: theme.spacing(2),
+}));
+
+export const BillingActionButton = styled(Button)(({ theme, ...props }) => ({
+  ...(!props.disabled && {
+    '&:hover, &:focus': {
+      textDecoration: 'underline',
+    },
+  }),
+  fontFamily: theme.font.bold,
+  fontSize: '.875rem',
+  minHeight: 'unset',
+  minWidth: 'auto',
+  padding: 0,
+}));

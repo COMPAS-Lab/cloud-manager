@@ -1,25 +1,27 @@
 import { fireEvent, render } from '@testing-library/react';
 import * as React from 'react';
+
 import { wrapWithTheme } from 'src/utilities/testHelpers';
+
 import { BucketActionMenu } from './BucketActionMenu';
 
-window.matchMedia = jest.fn().mockImplementation((query) => {
+window.matchMedia = vi.fn().mockImplementation((query) => {
   return {
+    addListener: vi.fn(),
     matches: true,
     media: query,
     onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
+    removeListener: vi.fn(),
   };
 });
 
-const mockOnRemove = jest.fn();
+const mockOnRemove = vi.fn();
 
 const props = {
-  onRemove: mockOnRemove,
-  onDetails: jest.fn(),
-  label: '',
   cluster: '',
+  label: '',
+  onDetails: vi.fn(),
+  onRemove: mockOnRemove,
 };
 
 describe('BucketActionMenu', () => {

@@ -1,8 +1,9 @@
-import produce from 'immer';
-import { Config, Disk } from '@linode/api-v4/lib/linodes';
+import { Config, Devices, Disk } from '@linode/api-v4/lib/linodes';
 import { APIError } from '@linode/api-v4/lib/types';
+import produce from 'immer';
 import { DateTime } from 'luxon';
 import { append, compose, flatten, keys, map, pickBy, uniqBy } from 'ramda';
+import { isDiskDevice } from '../LinodesDetail/LinodeConfigs/ConfigRow';
 
 /**
  * TYPES
@@ -11,37 +12,39 @@ import { append, compose, flatten, keys, map, pickBy, uniqBy } from 'ramda';
 export interface CloneLandingState {
   configSelection: ConfigSelection;
   diskSelection: DiskSelection;
-  selectedLinodeId: number | null;
-  isSubmitting: boolean;
   errors?: APIError[];
+  isSubmitting: boolean;
+  selectedLinodeId: null | number;
 }
 
 // Allows for easy toggling of a selected config.
 export type ConfigSelection = Record<
   number,
-  { isSelected: boolean; associatedDiskIds: number[] }
+  { associatedDiskIds: number[]; isSelected: boolean }
 >;
 
 // Allows for easy toggling of a selected disk.
 export type DiskSelection = Record<
   number,
-  { isSelected: boolean; associatedConfigIds: number[] }
+  { associatedConfigIds: number[]; isSelected: boolean }
 >;
 
 export type CloneLandingAction =
-  | { type: 'toggleConfig'; id: number }
-  | { type: 'toggleDisk'; id: number }
-  | { type: 'setSelectedLinodeId'; id: number }
-  | { type: 'setSubmitting'; value: boolean }
-  | { type: 'setErrors'; errors?: APIError[] }
-  | { type: 'clearAll' }
   | {
-      type: 'syncConfigsDisks';
       configs: Config[];
       disks: Disk[];
-    };
+      type: 'syncConfigsDisks';
+    }
+  | { errors?: APIError[]; type: 'setErrors' }
+  | { id: number; type: 'setSelectedLinodeId' }
+  | { id: number; type: 'toggleConfig' }
+  | { id: number; type: 'toggleDisk' }
+  | { type: 'clearAll' }
+  | { type: 'setSubmitting'; value: boolean };
 
-export type ExtendedConfig = Config & { associatedDisks: Disk[] };
+export interface ExtendedConfig extends Config {
+  associatedDisks: Disk[];
+}
 /**
  * REDUCER
  *
@@ -164,8 +167,8 @@ export const curriedCloneLandingReducer = produce(cloneLandingReducer);
 export const defaultState: CloneLandingState = {
   configSelection: {},
   diskSelection: {},
-  selectedLinodeId: null,
   isSubmitting: false,
+  selectedLinodeId: null,
 };
 
 // Returns an array of IDs of configs/disks that are selected.
@@ -206,8 +209,8 @@ export const createConfigDiskSelection = (
     });
 
     configSelection[eachConfig.id] = {
-      isSelected,
       associatedDiskIds,
+      isSelected,
     };
   });
 
@@ -219,8 +222,8 @@ export const createConfigDiskSelection = (
     const associatedConfigIds = diskConfigMap[eachDisk.id] || [];
 
     diskSelection[eachDisk.id] = {
-      isSelected,
       associatedConfigIds,
+      isSelected,
     };
   });
 
@@ -240,9 +243,10 @@ export const getAssociatedDisks = (
   const disksOnConfig: number[] = [];
 
   // Go through the devices and grab all the disks
-  Object.keys(config.devices).forEach((key) => {
-    if (config.devices[key] && config.devices[key].disk_id) {
-      disksOnConfig.push(config.devices[key].disk_id);
+  Object.keys(config.devices).forEach((key: keyof Devices) => {
+    const device = config.devices[key];
+    if (device && isDiskDevice(device) && device.disk_id) {
+      disksOnConfig.push(device.disk_id);
     }
   });
 
@@ -283,7 +287,7 @@ export const getAllDisks = (
   )(configs);
 };
 
-export type EstimatedCloneTimeMode = 'sameDatacenter' | 'differentDatacenter';
+export type EstimatedCloneTimeMode = 'differentDatacenter' | 'sameDatacenter';
 
 /**
  * Provides a rough estimate of the clone time, based on the size of the disk(s),
@@ -304,7 +308,7 @@ export const getEstimatedCloneTime = (
     minutes: estimatedTimeInMinutes,
     seconds: estimatedTimeInMinutes > 0 ? 1 : 0, // in case less than 1 min
   });
-  let humanizedEstimate = then.toRelative(now.toObject());
+  let humanizedEstimate = then.toRelative({ base: now });
   const prefixHumanized = 'in ';
   if (humanizedEstimate?.startsWith(prefixHumanized)) {
     humanizedEstimate = humanizedEstimate?.substring(prefixHumanized.length);

@@ -1,69 +1,67 @@
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
+
 import OrderBy from 'src/components/OrderBy';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
-import TableSortCell from 'src/components/TableSortCell';
+import { TableSortCell } from 'src/components/TableSortCell';
+import { Typography } from 'src/components/Typography';
 import { LongviewService } from 'src/features/Longview/request.types';
-import LongviewServiceRow from './LongviewServiceRow';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  title: {
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-    },
-  },
-}));
+import { LongviewServiceRow } from './LongviewServiceRow';
 
 export interface TableProps {
   services: LongviewService[];
-  servicesLoading: boolean;
   servicesError?: string;
+  servicesLoading: boolean;
 }
 
-export const ListeningServices: React.FC<TableProps> = (props) => {
-  const classes = useStyles();
-
+export const ListeningServices = (props: TableProps) => {
   const { services, servicesError, servicesLoading } = props;
 
   return (
-    <Grid item xs={12} md={8}>
-      <Typography variant="h2" className={classes.title}>
+    <Grid md={8} xs={12}>
+      <Typography
+        sx={(theme) => ({
+          [theme.breakpoints.down('lg')]: {
+            marginLeft: theme.spacing(),
+          },
+        })}
+        variant="h2"
+      >
         Listening Services
       </Typography>
       <ServicesTable
         services={services}
-        servicesLoading={servicesLoading}
         servicesError={servicesError}
+        servicesLoading={servicesLoading}
       />
     </Grid>
   );
 };
 
-export const ServicesTable: React.FC<TableProps> = (props) => {
+export const ServicesTable = (props: TableProps) => {
   const { services, servicesError, servicesLoading } = props;
 
   return (
     <OrderBy
       data={services}
-      orderBy={'process'}
       order={'asc'}
+      orderBy={'process'}
       preferenceKey={'listening-services'}
     >
       {({ data: orderedData, handleOrderChange, order, orderBy }) => (
         <Paginate data={orderedData} pageSize={25}>
           {({
-            data: paginatedData,
             count,
+            data: paginatedData,
             handlePageChange,
             handlePageSizeChange,
             page,
@@ -74,51 +72,51 @@ export const ServicesTable: React.FC<TableProps> = (props) => {
                 <TableHead>
                   <TableRow>
                     <TableSortCell
-                      data-qa-table-header="Process"
                       active={orderBy === 'name'}
-                      label="name"
+                      data-qa-table-header="Process"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="name"
                       style={{ width: '25%' }}
                     >
                       Process
                     </TableSortCell>
                     <TableSortCell
-                      data-qa-table-header="User"
                       active={orderBy === 'user'}
-                      label="user"
+                      data-qa-table-header="User"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="user"
                       style={{ width: '25%' }}
                     >
                       User
                     </TableSortCell>
                     <TableSortCell
-                      data-qa-table-header="Protocol"
                       active={orderBy === 'type'}
-                      label="type"
+                      data-qa-table-header="Protocol"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="type"
                       style={{ width: '15%' }}
                     >
                       Protocol
                     </TableSortCell>
                     <TableSortCell
-                      data-qa-table-header="Port"
                       active={orderBy === 'port'}
-                      label="port"
+                      data-qa-table-header="Port"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="port"
                       style={{ width: '10%' }}
                     >
                       Port
                     </TableSortCell>
                     <TableSortCell
-                      data-qa-table-header="IP"
                       active={orderBy === 'ip'}
-                      label="ip"
+                      data-qa-table-header="IP"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="ip"
                       style={{ width: '25%' }}
                     >
                       IP
@@ -135,11 +133,11 @@ export const ServicesTable: React.FC<TableProps> = (props) => {
               </Table>
               <PaginationFooter
                 count={count}
-                page={page}
-                pageSize={pageSize}
+                eventCategory="Longview active connections"
                 handlePageChange={handlePageChange}
                 handleSizeChange={handlePageSizeChange}
-                eventCategory="Longview active connections"
+                page={page}
+                pageSize={pageSize}
               />
             </>
           )}
@@ -161,12 +159,10 @@ const renderLoadingErrorData = (
     return <TableRowLoading columns={5} />;
   }
   if (data.length === 0) {
-    return <TableRowEmptyState colSpan={12} message="No listening services." />;
+    return <TableRowEmpty colSpan={12} message="No listening services." />;
   }
 
   return data.map((thisService, idx) => (
     <LongviewServiceRow key={`longview-service-${idx}`} service={thisService} />
   ));
 };
-
-export default ListeningServices;

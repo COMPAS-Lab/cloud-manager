@@ -1,34 +1,33 @@
 {
   "name": "@linode/validation",
-  "version": "0.13.0",
+  "version": "0.56.0",
   "description": "Yup validation schemas for use with the Linode APIv4",
   "type": "module",
-  "main": "lib/index.js",
-  "module": "lib/esm/index.js",
+  "main": "lib/index.cjs",
+  "module": "lib/index.js",
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/index.js"
+      "import": "./lib/index.js",
+      "require": "./lib/index.cjs"
     },
     "./lib": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/index.js"
+      "import": "./lib/index.js",
+      "require": "./lib/index.cjs"
     },
     "./lib/*": {
-      "import": "./lib/esm/index.js",
-      "require": "./lib/index.js"
+      "import": "./lib/index.js",
+      "require": "./lib/index.cjs"
     }
   },
   "types": "./lib/index.d.ts",
-  "browser": "./lib/iife/index.js",
-  "unpkg": "./lib/iife/index.js",
+  "browser": "./lib/index.global.js",
+  "unpkg": "./lib/index.global.js",
   "files": [
     "lib"
   ],
   "scripts": {
     "start": "concurrently --raw \"tsc -w --preserveWatchOutput\" \"tsup --watch\"",
     "build": "concurrently --raw \"tsc\" \"tsup\"",
-    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "yarn run eslint . --quiet --ext .js,.ts,.tsx",
     "typecheck": "tsc --noEmit true --emitDeclarationOnly false",
     "precommit": "lint-staged"
@@ -44,29 +43,12 @@
     "yup": "^0.32.9"
   },
   "devDependencies": {
-    "@babel/cli": "^7.10.1",
-    "@babel/core": "^7.10.2",
-    "@babel/plugin-proposal-class-properties": "^7.10.1",
-    "@babel/plugin-proposal-object-rest-spread": "^7.10.1",
-    "@babel/plugin-transform-modules-commonjs": "^7.10.1",
-    "@babel/preset-env": "^7.10.2",
-    "@babel/preset-typescript": "^7.10.1",
-    "@types/jest": "^26.0.13",
-    "@types/node": "^12.7.1",
-    "babel-plugin-module-resolver": "^4.0.0",
-    "concurrently": "^4.1.1",
+    "concurrently": "^9.0.1",
     "eslint": "^6.8.0",
-    "eslint-plugin-ramda": "^2.5.1",
     "eslint-plugin-sonarjs": "^0.5.0",
-    "jest": "~26.4.2",
-    "lint-staged": "^9.4.2",
-    "npm-dts-webpack-plugin": "^1.3.10",
+    "lint-staged": "^15.2.9",
     "prettier": "~2.2.1",
-    "ts-jest": "^24.1.0",
-    "tsup": "^6.2.1",
-    "webpack": "^5.64.0",
-    "webpack-cli": "^4.9.1",
-    "webpack-dev-server": "^4.4.0"
+    "tsup": "^8.2.4"
   },
   "keywords": [
     "linode",
@@ -76,8 +58,7 @@
   "lint-staged": {
     "*.{ts,tsx,js}": [
       "prettier --write",
-      "eslint --ext .js,.ts,.tsx",
-      "git add"
+      "eslint --ext .js,.ts,.tsx"
     ],
     ".{ts,tsx}": [
       "tsc -p tsconfig.json --noEmit true --emitDeclarationOnly false"

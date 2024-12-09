@@ -30,7 +30,7 @@ export const CreateVolumeSchema = object({
     .trim()
     .min(1, 'Label must be between 1 and 32 characters.')
     .max(32, 'Label must be 32 characters or less.'),
-  config_id: number().typeError('Config ID must be a number.'),
+  config_id: number().nullable().typeError('Config ID must be a number.'),
   tags: array().of(string()),
   hardware_type: string(),
 });

@@ -1,62 +1,47 @@
-import classNames from 'classnames';
-import * as React from 'react';
-import { OptionProps } from 'react-select';
-import { Item } from 'src/components/EnhancedSelect';
-import Option from 'src/components/EnhancedSelect/components/Option';
+import { Tooltip } from '@linode/ui';
+import React from 'react';
 
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
+import CloudInitIcon from 'src/assets/icons/cloud-init.svg';
+import { ListItemOption } from 'src/components/ListItemOption';
+import { useFlags } from 'src/hooks/useFlags';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: theme.spacing(1),
-  },
-  focused: {
-    backgroundColor: theme.palette.primary.main,
-    color: 'white',
-  },
-  icon: {
-    fontSize: '1.8em',
-  },
-}));
+import { OSIcon } from '../OSIcon';
+import { Stack } from '../Stack';
+import { Typography } from '../Typography';
+import { isImageDeprecated } from './utilities';
 
-interface ImageItem extends Item<string> {
-  className?: string;
-}
+import type { Image } from '@linode/api-v4';
+import type { ListItemProps } from 'src/components/ListItemOption';
 
-interface ImageOptionProps extends OptionProps<any, any> {
-  data: ImageItem;
-}
-
-type CombinedProps = ImageOptionProps;
-
-export const ImageOption: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { data, label } = props;
+export const ImageOption = ({
+  disabledOptions,
+  item,
+  props,
+  selected,
+}: ListItemProps<Image>) => {
+  const flags = useFlags();
 
   return (
-    <Option
-      className={classNames({
-        [classes.root]: true,
-        [classes.focused]: props.isFocused,
-      })}
-      value={data.value}
-      attrs={{ ['data-qa-image-select-item']: data.value }}
-      {...props}
+    <ListItemOption
+      disabledOptions={disabledOptions}
+      item={item}
+      maxHeight={35}
+      props={props}
+      selected={selected}
     >
-      <Grid
-        container
-        direction="row"
-        alignItems="center"
-        justifyContent="flex-start"
-      >
-        <Grid item className="py0">
-          <span className={`${props.data.className} ${classes.icon}`} />
-        </Grid>
-        <Grid item>{label}</Grid>
-      </Grid>
-    </Option>
+      <Stack alignItems="center" direction="row" gap={1} width="100%">
+        {item?.id !== 'any/all' && <OSIcon fontSize="1.8em" os={item.vendor} />}
+        <Typography color="inherit">
+          {item.label} {isImageDeprecated(item) && '(deprecated)'}
+        </Typography>
+      </Stack>
+      {flags.metadata && item.capabilities.includes('cloud-init') && (
+        <Tooltip title="This image supports our Metadata service via cloud-init.">
+          <span style={{ display: 'flex' }}>
+            <CloudInitIcon />
+          </span>
+        </Tooltip>
+      )}
+    </ListItemOption>
   );
 };
-
-export default ImageOption;

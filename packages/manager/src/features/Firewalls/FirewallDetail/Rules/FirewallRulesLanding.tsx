@@ -1,28 +1,26 @@
-import {
-  FirewallPolicyType,
-  FirewallRules,
-  FirewallRuleType,
-} from '@linode/api-v4/lib/firewalls';
-import { APIError } from '@linode/api-v4/lib/types';
+import { styled } from '@mui/material/styles';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import Prompt from 'src/components/Prompt';
-import withFirewalls, {
-  DispatchProps,
-} from 'src/containers/firewalls.container';
-import { updateFirewallRules } from 'src/queries/firewalls';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Notice } from 'src/components/Notice/Notice';
+import { Prompt } from 'src/components/Prompt/Prompt';
+import { Typography } from 'src/components/Typography';
+import {
+  useAllFirewallDevicesQuery,
+  useUpdateFirewallRulesMutation,
+} from 'src/queries/firewalls';
+import { linodeQueries } from 'src/queries/linodes/linodes';
+import { nodebalancerQueries } from 'src/queries/nodebalancers';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import FirewallRuleDrawer, { Mode } from './FirewallRuleDrawer';
-import curriedFirewallRuleEditorReducer, {
-  editorStateToRules,
+
+import { FirewallRuleDrawer } from './FirewallRuleDrawer';
+import {
   hasModified as _hasModified,
+  curriedFirewallRuleEditorReducer,
+  editorStateToRules,
   initRuleEditorState,
   prepareRules,
   stripExtendedFields,
@@ -33,45 +31,38 @@ import { Category, parseFirewallRuleError } from './shared';
 import { resetEventsPolling } from 'src/eventsPolling';
 /* -- Clanode Change End -- */
 
-const useStyles = makeStyles((theme: Theme) => ({
-  copy: {
-    fontSize: '0.875rem',
-    lineHeight: 1.5,
-    paddingBottom: theme.spacing(1),
-  },
-  table: {
-    marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(4),
-  },
-  actions: {
-    float: 'right',
-  },
-  mobileSpacing: {
-    [theme.breakpoints.down('sm')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
-  },
-}));
+import type { FirewallRuleDrawerMode } from './FirewallRuleDrawer.types';
+import type { Category } from './shared';
+import type {
+  FirewallPolicyType,
+  FirewallRuleType,
+  FirewallRules,
+} from '@linode/api-v4/lib/firewalls';
+import type { APIError } from '@linode/api-v4/lib/types';
 
 interface Props {
   firewallID: string;
   rules: FirewallRules;
-  disabled: boolean;
 }
 
 interface Drawer {
-  mode: Mode;
   category: Category;
   isOpen: boolean;
+  mode: FirewallRuleDrawerMode;
   ruleIdx?: number;
 }
 
-type CombinedProps = Props & DispatchProps & RouteComponentProps;
+// TODO: Refactor this code - Becoming too large and hard to maintain
 
-const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { firewallID, rules, disabled } = props;
+export const FirewallRulesLanding = React.memo((props: Props) => {
+  const { disabled, firewallID, rules } = props;
+  const { mutateAsync: updateFirewallRules } = useUpdateFirewallRulesMutation(
+    firewallID
+  );
+  const { data: devices } = useAllFirewallDevicesQuery(firewallID);
+  const queryClient = useQueryClient();
+
+  const { enqueueSnackbar } = useSnackbar();
 
   /**
    * inbound and outbound policy aren't part of any particular rule
@@ -98,9 +89,9 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
    * Component state and handlers
    */
   const [ruleDrawer, setRuleDrawer] = React.useState<Drawer>({
-    mode: 'create',
     category: 'inbound',
     isOpen: false,
+    mode: 'create',
   });
   const [submitting, setSubmitting] = React.useState<boolean>(false);
   // @todo fine-grained error handling.
@@ -112,12 +103,16 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
     setDiscardChangesModalOpen,
   ] = React.useState<boolean>(false);
 
-  const openRuleDrawer = (category: Category, mode: Mode, idx?: number) =>
+  const openRuleDrawer = (
+    category: Category,
+    mode: FirewallRuleDrawerMode,
+    idx?: number
+  ) =>
     setRuleDrawer({
-      mode,
-      ruleIdx: idx,
       category,
       isOpen: true,
+      mode,
+      ruleIdx: idx,
     });
 
   const closeRuleDrawer = () => setRuleDrawer({ ...ruleDrawer, isOpen: false });
@@ -142,12 +137,12 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
 
   const handleAddRule = (category: Category, rule: FirewallRuleType) => {
     const dispatch = dispatchFromCategory(category);
-    dispatch({ type: 'NEW_RULE', rule });
+    dispatch({ rule, type: 'NEW_RULE' });
   };
 
   const handleCloneRule = (category: Category, idx: number) => {
     const dispatch = dispatchFromCategory(category);
-    dispatch({ type: 'CLONE_RULE', idx });
+    dispatch({ idx, type: 'CLONE_RULE' });
   };
 
   const handleReorder = (
@@ -156,7 +151,7 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
     endIdx: number
   ) => {
     const dispatch = dispatchFromCategory(category);
-    dispatch({ type: 'REORDER', startIdx, endIdx });
+    dispatch({ endIdx, startIdx, type: 'REORDER' });
   };
 
   const handleEditRule = (
@@ -170,21 +165,21 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
 
     const dispatch = dispatchFromCategory(category);
     dispatch({
-      type: 'MODIFY_RULE',
-      modifiedRule: rule,
       idx: ruleDrawer.ruleIdx,
+      modifiedRule: rule,
+      type: 'MODIFY_RULE',
     });
   };
 
   const handleDeleteRule = (category: Category, idx: number) => {
     const dispatch = dispatchFromCategory(category);
-    dispatch({ type: 'DELETE_RULE', idx });
+    dispatch({ idx, type: 'DELETE_RULE' });
   };
 
   const handleUndo = (category: Category, idx: number) => {
     const dispatch = dispatchFromCategory(category);
 
-    dispatch({ type: 'UNDO', idx });
+    dispatch({ idx, type: 'UNDO' });
   };
 
   const applyChanges = () => {
@@ -200,14 +195,32 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
 
     const finalRules = {
       inbound: preparedRules.inbound.map(stripExtendedFields),
-      outbound: preparedRules.outbound.map(stripExtendedFields),
       inbound_policy: policy.inbound,
+      outbound: preparedRules.outbound.map(stripExtendedFields),
       outbound_policy: policy.outbound,
     };
 
     updateFirewallRules(firewallID as any, finalRules)
       .then((_rules) => {
         setSubmitting(false);
+        // Invalidate Firewalls assigned to NodeBalancers and Linodes.
+        if (devices) {
+          for (const device of devices) {
+            if (device.entity.type === 'linode') {
+              queryClient.invalidateQueries({
+                queryKey: linodeQueries.linode(device.entity.id)._ctx.firewalls
+                  .queryKey,
+              });
+            }
+            if (device.entity.type === 'nodebalancer') {
+              queryClient.invalidateQueries({
+                queryKey: nodebalancerQueries.nodebalancer(device.entity.id)
+                  ._ctx.firewalls.queryKey,
+              });
+            }
+          }
+        }
+
         // Reset editor state.
         inboundDispatch({ type: 'RESET', rules: _rules.inbound ?? [] });
         outboundDispatch({ type: 'RESET', rules: _rules.outbound ?? [] });
@@ -231,16 +244,19 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
               thisError,
             ]);
           } else {
-            const { idx, category } = parsedError;
+            const { category, idx } = parsedError;
 
             const dispatch = dispatchFromCategory(category as Category);
             dispatch({
-              type: 'SET_ERROR',
-              idx,
               error: parsedError,
+              idx,
+              type: 'SET_ERROR',
             });
           }
         }
+        enqueueSnackbar('Failed to update Firewall rules', {
+          variant: 'error',
+        });
       });
   };
 
@@ -272,24 +288,25 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
 
   return (
     <>
-      <Prompt when={hasUnsavedChanges} confirmWhenLeaving={true}>
-        {({ isModalOpen, handleCancel, handleConfirm }) => {
+      <Prompt confirmWhenLeaving={true} when={hasUnsavedChanges}>
+        {({ handleCancel, handleConfirm, isModalOpen }) => {
           return (
             <ConfirmationDialog
-              open={isModalOpen}
-              onClose={handleCancel}
-              title="Discard Firewall changes?"
               actions={() => (
-                <ActionsPanel>
-                  <Button buttonType="secondary" onClick={handleConfirm}>
-                    Leave and discard changes
-                  </Button>
-
-                  <Button buttonType="primary" onClick={handleCancel}>
-                    Go back and review changes
-                  </Button>
-                </ActionsPanel>
+                <ActionsPanel
+                  primaryButtonProps={{
+                    label: 'Go back and review changes',
+                    onClick: handleCancel,
+                  }}
+                  secondaryButtonProps={{
+                    label: 'Leave and discard changes',
+                    onClick: handleConfirm,
+                  }}
+                />
               )}
+              onClose={handleCancel}
+              open={isModalOpen}
+              title="Discard Firewall changes?"
             >
               <Typography variant="subtitle1">
                 The changes you made to this Firewall haven&rsquo;t been
@@ -306,85 +323,80 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
           text={
             "You don't have permissions to modify this Firewall. Please contact an account administrator for details."
           }
-          error
           important
+          variant="error"
         />
       ) : null}
 
       {generalErrors?.length === 1 && (
-        <Notice spacingTop={8} error text={generalErrors[0].reason} />
+        <Notice spacingTop={8} text={generalErrors[0].reason} variant="error" />
       )}
 
-      <div className={classes.table}>
+      <StyledDiv>
         <FirewallRuleTable
-          category="inbound"
-          policy={policy.inbound}
-          disabled={disabled}
-          handlePolicyChange={handlePolicyChange}
           triggerCloneFirewallRule={(idx: number) =>
             handleCloneRule('inbound', idx)
           }
-          rulesWithStatus={inboundRules}
-          openRuleDrawer={openRuleDrawer}
           triggerOpenRuleDrawerForEditing={(idx: number) =>
             openRuleDrawer('inbound', 'edit', idx)
           }
-          triggerDeleteFirewallRule={(idx) => handleDeleteRule('inbound', idx)}
-          triggerUndo={(idx) => handleUndo('inbound', idx)}
           triggerReorder={(startIdx: number, endIdx: number) =>
             handleReorder('inbound', startIdx, endIdx)
           }
-        />
-      </div>
-      <div className={classes.table}>
-        <FirewallRuleTable
-          category="outbound"
-          policy={policy.outbound}
+          category="inbound"
           disabled={disabled}
           handlePolicyChange={handlePolicyChange}
+          openRuleDrawer={openRuleDrawer}
+          policy={policy.inbound}
+          rulesWithStatus={inboundRules}
+          triggerDeleteFirewallRule={(idx) => handleDeleteRule('inbound', idx)}
+          triggerUndo={(idx) => handleUndo('inbound', idx)}
+        />
+      </StyledDiv>
+      <StyledDiv>
+        <FirewallRuleTable
           triggerCloneFirewallRule={(idx: number) =>
             handleCloneRule('outbound', idx)
           }
-          rulesWithStatus={outboundRules}
-          openRuleDrawer={openRuleDrawer}
           triggerOpenRuleDrawerForEditing={(idx: number) =>
             openRuleDrawer('outbound', 'edit', idx)
           }
-          triggerDeleteFirewallRule={(idx) => handleDeleteRule('outbound', idx)}
-          triggerUndo={(idx) => handleUndo('outbound', idx)}
           triggerReorder={(startIdx: number, endIdx: number) =>
             handleReorder('outbound', startIdx, endIdx)
           }
+          category="outbound"
+          disabled={disabled}
+          handlePolicyChange={handlePolicyChange}
+          openRuleDrawer={openRuleDrawer}
+          policy={policy.outbound}
+          rulesWithStatus={outboundRules}
+          triggerDeleteFirewallRule={(idx) => handleDeleteRule('outbound', idx)}
+          triggerUndo={(idx) => handleUndo('outbound', idx)}
         />
-      </div>
+      </StyledDiv>
       <FirewallRuleDrawer
+        category={ruleDrawer.category}
         isOpen={ruleDrawer.isOpen}
         mode={ruleDrawer.mode}
-        category={ruleDrawer.category}
         onClose={closeRuleDrawer}
         onSubmit={ruleDrawer.mode === 'create' ? handleAddRule : handleEditRule}
         ruleToModify={ruleToModify}
       />
-      <ActionsPanel className={classes.actions}>
-        <Button
-          buttonType="secondary"
-          disabled={!hasUnsavedChanges || disabled}
-          onClick={() => setDiscardChangesModalOpen(true)}
-        >
-          Discard Changes
-        </Button>
-        <Button
-          buttonType="primary"
-          onClick={applyChanges}
-          loading={submitting}
-          disabled={!hasUnsavedChanges || disabled}
-        >
-          Save Changes
-        </Button>
-      </ActionsPanel>
+      <StyledActionsPanel
+        primaryButtonProps={{
+          disabled: !hasUnsavedChanges || disabled,
+          label: 'Save Changes',
+          loading: submitting,
+          onClick: applyChanges,
+        }}
+        secondaryButtonProps={{
+          disabled: !hasUnsavedChanges || disabled,
+          label: 'Discard Changes',
+          onClick: () => setDiscardChangesModalOpen(true),
+        }}
+      />
+
       <DiscardChangesDialog
-        isOpen={discardChangesModalOpen}
-        handleClose={() => setDiscardChangesModalOpen(false)}
         handleDiscard={() => {
           setDiscardChangesModalOpen(false);
           setGeneralErrors(undefined);
@@ -395,47 +407,56 @@ const FirewallRulesLanding: React.FC<CombinedProps> = (props) => {
           inboundDispatch({ type: 'DISCARD_CHANGES' });
           outboundDispatch({ type: 'DISCARD_CHANGES' });
         }}
+        handleClose={() => setDiscardChangesModalOpen(false)}
+        isOpen={discardChangesModalOpen}
       />
     </>
   );
-};
+});
 
-export default compose<CombinedProps, Props>(
-  React.memo,
-  withFirewalls()
-)(FirewallRulesLanding);
+const StyledActionsPanel = styled(ActionsPanel, {
+  label: 'StyledActionsPanel',
+})({
+  float: 'right',
+});
+
+const StyledDiv = styled('div', { label: 'StyledDiv' })(({ theme }) => ({
+  marginBottom: theme.spacing(4),
+  marginTop: theme.spacing(2),
+}));
 
 interface DiscardChangesDialogProps {
-  isOpen: boolean;
   handleClose: () => void;
   handleDiscard: () => void;
+  isOpen: boolean;
 }
 
 export const DiscardChangesDialog: React.FC<DiscardChangesDialogProps> = React.memo(
   (props) => {
-    const { isOpen, handleClose, handleDiscard } = props;
+    const { handleClose, handleDiscard, isOpen } = props;
 
     const actions = React.useCallback(
       () => (
-        <ActionsPanel>
-          <Button buttonType="secondary" onClick={handleDiscard}>
-            Discard changes
-          </Button>
-
-          <Button buttonType="primary" onClick={handleClose}>
-            Go back and review changes
-          </Button>
-        </ActionsPanel>
+        <ActionsPanel
+          primaryButtonProps={{
+            label: 'Go back and review changes',
+            onClick: handleClose,
+          }}
+          secondaryButtonProps={{
+            label: 'Discard changes',
+            onClick: handleDiscard,
+          }}
+        />
       ),
       [handleDiscard, handleClose]
     );
 
     return (
       <ConfirmationDialog
-        open={isOpen}
-        onClose={() => handleClose()}
-        title="Discard Firewall changes?"
         actions={actions}
+        onClose={() => handleClose()}
+        open={isOpen}
+        title="Discard Firewall changes?"
       >
         <Typography variant="subtitle1">
           Are you sure you want to discard changes to this Firewall?

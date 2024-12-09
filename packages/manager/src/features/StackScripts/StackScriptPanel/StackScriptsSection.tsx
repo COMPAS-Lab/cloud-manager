@@ -1,74 +1,68 @@
 import { Image } from '@linode/api-v4/lib/images';
 import { StackScript } from '@linode/api-v4/lib/stackscripts';
 import * as React from 'react';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import { getGrants, hasGrant } from 'src/features/Profile/permissionsHelpers';
-import {
-  canUserModifyAccountStackScript,
-  StackScriptCategory,
-} from 'src/features/StackScripts/stackScriptUtils';
-import { useGrants, useProfile } from 'src/queries/profile';
-import { formatDate } from 'src/utilities/formatDate';
-import stripImageName from 'src/utilities/stripImageName';
-import StackScriptRow from './StackScriptRow';
 
-const useStyles = makeStyles(() => ({
-  loadingWrapper: {
-    border: 0,
-    paddingTop: 100,
-  },
-}));
+import { CircleProgress } from 'src/components/CircleProgress';
+import { TableBody } from 'src/components/TableBody';
+import { TableRow } from 'src/components/TableRow';
+import {
+  StackScriptCategory,
+  canUserModifyAccountStackScript,
+} from 'src/features/StackScripts/stackScriptUtils';
+import { useGrants, useProfile } from 'src/queries/profile/profile';
+import { formatDate } from 'src/utilities/formatDate';
+import { stripImageName } from 'src/utilities/stripImageName';
+
+import { StyledStackScriptSectionTableCell } from '../CommonStackScript.styles';
+import { StackScriptRow } from './StackScriptRow';
 
 export interface Props {
+  // change until we're actually using it.
+  category: StackScriptCategory | string;
+  currentUser: string;
   data: StackScript[];
   isSorting: boolean;
   publicImages: Record<string, Image>;
   triggerDelete: (id: number, label: string) => void;
-  triggerMakePublic: (id: number, label: string) => void;
-  currentUser: string;
   // @todo: when we implement StackScripts pagination, we should remove "| string" in the type below.
   // Leaving this in as an escape hatch now, since there's a bunch of code in
   // /LandingPanel that uses different values for categories that we shouldn't
-  // change until we're actually using it.
-  category: StackScriptCategory | string;
+  triggerMakePublic: (id: number, label: string) => void;
 }
 
-const StackScriptsSection: React.FC<Props> = (props) => {
-  const classes = useStyles();
-  const { data, isSorting, triggerDelete, triggerMakePublic, category } = props;
+export const StackScriptsSection = (props: Props) => {
+  const { category, data, isSorting, triggerDelete, triggerMakePublic } = props;
 
   const { data: profile } = useProfile();
   const { data: grants } = useGrants();
 
   const isRestrictedUser = Boolean(profile?.restricted);
-  const stackScriptGrants = getGrants(grants, 'stackscript');
-  const userCannotAddLinodes =
-    isRestrictedUser && !hasGrant('add_linodes', grants);
+  const stackScriptGrants = grants?.stackscript;
+  const userCannotAddLinodes = isRestrictedUser && grants?.global.add_linodes;
 
   const listStackScript = (s: StackScript) => (
     <StackScriptRow
-      key={s.id}
-      label={s.label}
-      stackScriptUsername={s.username}
-      description={s.description}
-      isPublic={s.is_public}
-      images={stripImageName(s.images)}
-      deploymentsTotal={s.deployments_total}
-      updated={formatDate(s.updated, { displayTime: false })}
-      stackScriptID={s.id}
-      triggerDelete={triggerDelete}
-      triggerMakePublic={triggerMakePublic}
       canModify={canUserModifyAccountStackScript(
         isRestrictedUser,
-        stackScriptGrants,
+        stackScriptGrants ?? [],
         s.id
       )}
+      updated={formatDate(s.updated, {
+        displayTime: false,
+        timezone: profile?.timezone,
+      })}
       canAddLinodes={!userCannotAddLinodes}
       category={category}
+      deploymentsTotal={s.deployments_total}
+      description={s.description}
+      images={stripImageName(s.images)}
+      isPublic={s.is_public}
+      key={s.id}
+      label={s.label}
+      stackScriptID={s.id}
+      stackScriptUsername={s.username}
+      triggerDelete={triggerDelete}
+      triggerMakePublic={triggerMakePublic}
     />
   );
 
@@ -78,13 +72,11 @@ const StackScriptsSection: React.FC<Props> = (props) => {
         data && data.map(listStackScript)
       ) : (
         <TableRow>
-          <TableCell colSpan={5} className={classes.loadingWrapper}>
+          <StyledStackScriptSectionTableCell colSpan={5}>
             <CircleProgress />
-          </TableCell>
+          </StyledStackScriptSectionTableCell>
         </TableRow>
       )}
     </TableBody>
   );
 };
-
-export default StackScriptsSection;

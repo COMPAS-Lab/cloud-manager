@@ -1,20 +1,47 @@
+import { Tooltip } from '@linode/ui';
 import * as React from 'react';
-import { AccountMaintenance } from '@linode/api-v4/lib/account/types';
-import Hidden from 'src/components/core/Hidden';
-import Link from 'src/components/Link';
-import StatusIcon from 'src/components/StatusIcon';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import capitalize from 'src/utilities/capitalize';
-import { parseAPIDate } from 'src/utilities/date';
-import formatDate from 'src/utilities/formatDate';
-import HighlightedMarkdown from 'src/components/HighlightedMarkdown';
 
-const MaintenanceTableRow: React.FC<AccountMaintenance> = (props) => {
-  const { entity, when, type, status, reason } = props;
+import { Hidden } from 'src/components/Hidden';
+import { HighlightedMarkdown } from 'src/components/HighlightedMarkdown/HighlightedMarkdown';
+import { Link } from 'src/components/Link';
+import { StatusIcon } from 'src/components/StatusIcon/StatusIcon';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { useProfile } from 'src/queries/profile/profile';
+import { capitalize } from 'src/utilities/capitalize';
+import { parseAPIDate } from 'src/utilities/date';
+import { formatDate } from 'src/utilities/formatDate';
+import { truncate } from 'src/utilities/truncate';
+
+import type { AccountMaintenance } from '@linode/api-v4/lib/account/types';
+import type { Status } from 'src/components/StatusIcon/StatusIcon';
+
+const statusTextMap: Record<AccountMaintenance['status'], string> = {
+  completed: 'Completed',
+  pending: 'Scheduled',
+  started: 'In Progress',
+};
+
+const statusIconMap: Record<AccountMaintenance['status'], Status> = {
+  completed: 'inactive',
+  pending: 'active',
+  started: 'other',
+};
+
+export const MaintenanceTableRow = (props: AccountMaintenance) => {
+  const { entity, reason, status, type, when } = props;
+
+  const { data: profile } = useProfile();
+
+  const truncatedReason = truncate(reason, 93);
+
+  const isTruncated = reason !== truncatedReason;
 
   return (
     <TableRow key={entity.id}>
+      <TableCell style={{ textTransform: 'capitalize' }}>
+        {entity.type}
+      </TableCell>
       <TableCell>
         <Link
           to={
@@ -27,33 +54,36 @@ const MaintenanceTableRow: React.FC<AccountMaintenance> = (props) => {
           {entity.label}
         </Link>
       </TableCell>
-      <TableCell noWrap>{formatDate(when)}</TableCell>
-      <Hidden smDown>
+      <TableCell noWrap>
+        {formatDate(when, {
+          timezone: profile?.timezone,
+        })}
+      </TableCell>
+      <Hidden mdDown>
         <TableCell data-testid="relative-date">
           {parseAPIDate(when).toRelative()}
         </TableCell>
       </Hidden>
-      <Hidden xsDown>
+      <Hidden smDown>
         <TableCell noWrap>{capitalize(type.replace('_', ' '))}</TableCell>
       </Hidden>
       <TableCell statusCell>
-        <StatusIcon status={status == 'started' ? 'other' : 'inactive'} />
-        {
-          // @ts-expect-error api will change pending -> scheduled
-          status === 'pending' || status === 'scheduled'
-            ? 'Scheduled'
-            : status === 'started'
-            ? 'In Progress'
-            : capitalize(status)
-        }
+        <StatusIcon status={statusIconMap[status] ?? 'other'} />
+        {statusTextMap[status] ?? capitalize(status)}
       </TableCell>
-      <Hidden mdDown>
+      <Hidden lgDown>
         <TableCell>
-          <HighlightedMarkdown textOrMarkdown={reason} />
+          {isTruncated ? (
+            <Tooltip title={<HighlightedMarkdown textOrMarkdown={reason} />}>
+              <div>
+                <HighlightedMarkdown textOrMarkdown={truncatedReason} />
+              </div>
+            </Tooltip>
+          ) : (
+            <HighlightedMarkdown textOrMarkdown={truncatedReason} />
+          )}
         </TableCell>
       </Hidden>
     </TableRow>
   );
 };
-
-export default MaintenanceTableRow;

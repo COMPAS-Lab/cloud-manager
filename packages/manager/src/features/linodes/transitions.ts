@@ -1,12 +1,12 @@
 import { Event, EventAction } from '@linode/api-v4/lib/account';
+
 import {
   isEventRelevantToLinode,
+  isInProgressEvent,
   isPrimaryEntity,
   isSecondaryEntity,
-} from 'src/store/events/event.selectors';
+} from 'src/queries/events/event.helpers';
 import { capitalizeAllWords } from 'src/utilities/capitalize';
-import { isInProgressEvent } from 'src/store/events/event.helpers';
-import { ExtendedEvent } from 'src/store/events/event.types';
 
 export const transitionStatus = [
   'booting',
@@ -24,13 +24,15 @@ export const transitionStatus = [
 
 const transitionActionMap: Partial<Record<EventAction, string>> = {
   backups_restore: 'Backups Restore',
-  linode_snapshot: 'Snapshot',
-  linode_mutate: 'Upgrading',
+  disk_duplicate: 'Disk Duplicating',
+  disk_imagize: 'Capturing Image',
+  disk_resize: 'Disk Resizing',
   linode_clone: 'Cloning',
   linode_migrate_datacenter: 'Migrating',
-  disk_resize: 'Disk Resizing',
-  disk_imagize: 'Capturing Image',
-  disk_duplicate: 'Disk Duplicating',
+  linode_mutate: 'Upgrading',
+  linode_rebuild: 'Rebuilding',
+  linode_resize: 'Resizing',
+  linode_snapshot: 'Snapshot',
 };
 
 export const linodeInTransition = (
@@ -93,10 +95,8 @@ export const linodesInTransition = (events: Event[]) => {
 // an in-progress event, but we don't have the updated status from the API  yet.
 // In this case it doesn't have a recentEvent attached (since it has completed),
 // but its status is still briefly in transition, so give it a progress of 100.
-export const getProgressOrDefault = (
-  event?: ExtendedEvent,
-  defaultProgress = 100
-) => event?.percent_complete ?? defaultProgress;
+export const getProgressOrDefault = (event?: Event, defaultProgress = 0) =>
+  event?.percent_complete ?? defaultProgress;
 
 // Linodes have a literal "status" given by the API (linode.status). There are
 // states the Linode can be in which aren't entirely communicated with the
@@ -112,6 +112,7 @@ const eventsWithSecondaryStatus: EventAction[] = [
   'linode_migrate',
   'linode_migrate_datacenter',
   'linode_mutate',
+  'linode_rebuild',
 ];
 
 export const isEventWithSecondaryLinodeStatus = (

@@ -1,31 +1,31 @@
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Dialog from 'src/components/ConfirmationDialog';
-import Typography from 'src/components/core/Typography';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Typography } from 'src/components/Typography';
+
 import { managedText } from './LongviewPlans';
 
 interface Props {
   clientLimit: number;
-  isOpen: boolean;
   isManaged: boolean;
+  isOpen: boolean;
   onClose: () => void;
   onSubmit: () => void;
 }
 
-export const SubscriptionDialog: React.FC<Props> = (props) => {
+export const SubscriptionDialog = (props: Props) => {
   const { clientLimit, isManaged, isOpen, onClose, onSubmit } = props;
 
   const actions = () => (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={onClose}>
-        Cancel
-      </Button>
-
-      <Button buttonType="primary" onClick={onSubmit} role="link">
-        {isManaged ? 'Contact Support' : 'View upgrade options'}
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        label: isManaged ? 'Contact Support' : 'View upgrade options',
+        onClick: onSubmit,
+        role: 'link',
+      }}
+      secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
+    />
   );
 
   const text = isManaged ? (
@@ -39,15 +39,13 @@ export const SubscriptionDialog: React.FC<Props> = (props) => {
   );
 
   return (
-    <Dialog
-      title="Maximum Clients Reached"
-      open={isOpen}
-      onClose={onClose}
+    <ConfirmationDialog
       actions={actions}
+      onClose={onClose}
+      open={isOpen}
+      title="Maximum Clients Reached"
     >
       <Typography variant="body1">{text}</Typography>
-    </Dialog>
+    </ConfirmationDialog>
   );
 };
-
-export default SubscriptionDialog;

@@ -1,37 +1,27 @@
+import { styled } from '@mui/material/styles';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import DeletionDialog from 'src/components/DeletionDialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
+
+import { Button } from 'src/components/Button/Button';
+import { DeletionDialog } from 'src/components/DeletionDialog/DeletionDialog';
 import { useDeleteDomainMutation } from 'src/queries/domains';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { useSnackbar } from 'notistack';
 
-export interface Props {
+export interface DeleteDomainProps {
   domainId: number;
   domainLabel: string;
   // Function that is invoked after Domain has been successfully deleted.
   onSuccess?: () => void;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  button: {
-    float: 'right',
-    [theme.breakpoints.down('md')]: {
-      marginRight: theme.spacing(),
-    },
-  },
-}));
-
-export const DeleteDomain = (props: Props) => {
-  const classes = useStyles();
-
+export const DeleteDomain = (props: DeleteDomainProps) => {
   const { domainId, domainLabel } = props;
   const { enqueueSnackbar } = useSnackbar();
 
   const {
-    mutateAsync: deleteDomain,
     error,
-    isLoading,
+    isPending,
+    mutateAsync: deleteDomain,
   } = useDeleteDomainMutation(domainId);
 
   const [open, setOpen] = React.useState(false);
@@ -49,29 +39,29 @@ export const DeleteDomain = (props: Props) => {
 
   return (
     <>
-      <Button
-        className={classes.button}
-        buttonType="outlined"
-        onClick={() => setOpen(true)}
-      >
+      <StyledButton buttonType="outlined" onClick={() => setOpen(true)}>
         Delete Domain
-      </Button>
+      </StyledButton>
       <DeletionDialog
-        typeToConfirm
-        entity="domain"
-        open={open}
-        label={domainLabel}
-        loading={isLoading}
         error={
           error
             ? getAPIErrorOrDefault(error, 'Error deleting domain.')[0].reason
             : undefined
         }
+        entity="domain"
+        label={domainLabel}
+        loading={isPending}
         onClose={() => setOpen(false)}
         onDelete={onDelete}
+        open={open}
+        typeToConfirm
       />
     </>
   );
 };
 
-export default DeleteDomain;
+const StyledButton = styled(Button, { label: 'StyledButton' })(({ theme }) => ({
+  [theme.breakpoints.down('lg')]: {
+    marginRight: theme.spacing(),
+  },
+}));

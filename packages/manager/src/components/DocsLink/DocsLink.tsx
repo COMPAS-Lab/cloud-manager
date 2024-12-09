@@ -1,47 +1,33 @@
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
+
 import DocsIcon from 'src/assets/icons/docs.svg';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import { sendHelpButtonClickEvent } from 'src/utilities/ga';
-import IconTextLink from '../IconTextLink';
+import { Link } from 'src/components/Link';
+import { sendHelpButtonClickEvent } from 'src/utilities/analytics/customEventAnalytics';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    alignItems: 'center',
-    fontFamily: theme.font.normal,
-    fontSize: '.875rem',
-    lineHeight: 'normal',
-    margin: 0,
-    marginTop: 2,
-    minWidth: 'auto',
-    padding: 0,
-    '& svg': {
-      marginRight: theme.spacing(),
-    },
-    '&:hover': {
-      color: theme.textColors.linkActiveLight,
-      textDecoration: 'underline',
-    },
-  },
-  '@supports (-moz-appearance: none)': {
-    /* Fix text alignment for Firefox */
-    root: {
-      '& span': {
-        top: 1,
-      },
-    },
-  },
-}));
-
-interface Props {
-  href: string;
-  label?: string;
+export interface DocsLinkProps {
+  /** The label to use for analytics purposes */
   analyticsLabel?: string;
+  /** The URL to link to */
+  href: string;
+  /**
+   * The clickable text of the link
+   * @default Docs
+   * */
+  label?: string;
+  /** A callback function when the link is clicked */
+  onClick?: () => void;
+  /*  */
+  icon?: JSX.Element;
 }
 
-export const DocsLink: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
-  const { href, label, analyticsLabel } = props;
+/**
+ * - The Docs link breaks the pattern of an external link with the position and size of the icon.
+ * - The Docs link is usually featured on create flows in the top right corner of the page, next to the create button.
+ * - Consider displaying the title of a key guide or product document as the link instead of the generic “Docs”.
+ */
+export const DocsLink = (props: DocsLinkProps) => {
+  const { analyticsLabel, href, label, onClick, icon } = props;
 
   return (
     <IconTextLink
@@ -53,12 +39,33 @@ export const DocsLink: React.FC<Props> = (props) => {
       text={label ?? 'Docs'}
       title={label ?? 'Docs'}
       onClick={() => {
-        sendHelpButtonClickEvent(href, analyticsLabel);
-        window.open(href, '_blank', 'noopener');
+        if (onClick === undefined) {
+          sendHelpButtonClickEvent(href, analyticsLabel);
+        } else {
+          onClick();
+        }
       }}
-      aria-describedby="external-site"
-    />
+      className="docsButton"
+      to={href}
+    >
+      {icon ?? <DocsIcon />}
+      {label ?? 'Docs'}
+    </StyledDocsLink>
   );
 };
 
-export default DocsLink;
+const StyledDocsLink = styled(Link, {
+  label: 'StyledDocsLink',
+})(({ theme }) => ({
+  ...theme.applyLinkStyles,
+  '& svg': {
+    marginRight: theme.spacing(),
+  },
+  alignItems: 'center',
+  display: 'flex',
+  fontFamily: theme.font.normal,
+  fontSize: '.875rem',
+  lineHeight: 'normal',
+  margin: 0,
+  minWidth: 'auto',
+}));

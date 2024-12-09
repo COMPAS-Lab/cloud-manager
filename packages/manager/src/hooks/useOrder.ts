@@ -1,11 +1,18 @@
-import * as qs from 'qs';
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { getInitialValuesFromUserPreferences } from 'src/components/OrderBy';
-import { usePreferences } from 'src/hooks/usePreferences';
-import { OrderSet } from 'src/store/preferences/preferences.actions';
-import { getParamsFromUrl } from 'src/utilities/queryParams';
 import { debounce } from 'throttle-debounce';
+
+import { getInitialValuesFromUserPreferences } from 'src/components/OrderBy';
+import {
+  useMutatePreferences,
+  usePreferences,
+} from 'src/queries/profile/preferences';
+import { getQueryParamsFromQueryString } from 'src/utilities/queryParams';
+
+import type { OrderSet } from 'src/types/ManagerPreferences';
+import type { BaseQueryParams } from 'src/utilities/queryParams';
+
+export type Order = 'asc' | 'desc';
 
 /**
  * useOrder is a hook that allows you to handle ordering tables. It takes into account
@@ -21,21 +28,24 @@ import { debounce } from 'throttle-debounce';
  * @returns {order, orderBy, handleOrderChange}
  */
 export const useOrder = (
-  initial: OrderSet,
+  initial?: OrderSet,
   preferenceKey?: string,
   prefix?: string
 ) => {
-  const { preferences, updatePreferences } = usePreferences();
+  const { data: preferences } = usePreferences();
+  const { mutateAsync: updatePreferences } = useMutatePreferences();
   const location = useLocation();
   const history = useHistory();
-  const params = getParamsFromUrl(location.search);
+  const params = getQueryParamsFromQueryString<BaseQueryParams>(
+    location.search
+  );
 
   const initialOrder = getInitialValuesFromUserPreferences(
     preferenceKey || '',
     preferences || {},
-    params as Record<string, string>,
-    initial.orderBy,
-    initial.order,
+    params,
+    initial?.orderBy,
+    initial?.order,
     prefix
   ) as OrderSet;
 
@@ -43,7 +53,7 @@ export const useOrder = (
   const [order, setOrder] = useState<'asc' | 'desc'>(initialOrder.order);
 
   const debouncedUpdateUserPreferences = useRef(
-    debounce(1500, false, (orderBy: string, order: 'asc' | 'desc') => {
+    debounce(1500, false, (orderBy: string, order: Order) => {
       if (preferenceKey) {
         updatePreferences({
           sortKeys: {
@@ -55,7 +65,7 @@ export const useOrder = (
     })
   ).current;
 
-  const handleOrderChange = (newOrderBy: string, newOrder: 'asc' | 'desc') => {
+  const handleOrderChange = (newOrderBy: string, newOrder: Order) => {
     setOrderBy(newOrderBy);
     setOrder(newOrder);
 
@@ -69,14 +79,16 @@ export const useOrder = (
           orderBy: newOrderBy,
         };
 
-    const queryParams = qs.parse(location.search.replace('?', ''));
+    const queryParams = new URLSearchParams(location.search);
 
-    const newQueries = { ...queryParams, ...urlData };
+    for (const [key, value] of Object.entries(urlData)) {
+      queryParams.set(key, value);
+    }
 
-    history.replace(`?${qs.stringify(newQueries)}`);
+    history.replace(`?${queryParams.toString()}`);
 
     debouncedUpdateUserPreferences(newOrderBy, newOrder);
   };
 
-  return { order, orderBy, handleOrderChange };
+  return { handleOrderChange, order, orderBy };
 };

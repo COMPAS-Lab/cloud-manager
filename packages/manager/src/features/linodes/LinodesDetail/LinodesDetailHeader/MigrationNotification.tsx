@@ -3,50 +3,46 @@ import { scheduleOrQueueMigration } from '@linode/api-v4/lib/linodes';
 import { DateTime } from 'luxon';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
 import { useDialog } from 'src/hooks/useDialog';
+import { useProfile } from 'src/queries/profile/profile';
 import { capitalize } from 'src/utilities/capitalize';
 import { parseAPIDate } from 'src/utilities/date';
 import { formatDate } from 'src/utilities/formatDate';
 import { pluralize } from 'src/utilities/pluralize';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  migrationLink: {
-    ...theme.applyLinkStyles,
-  },
-}));
+import { StyledLinkButton } from 'src/components/Button/StyledLinkButton';
 
 interface Props {
   linodeID: number;
-  requestNotifications: () => void;
-  notificationType: NotificationType;
+  migrationTime: null | string;
   notificationMessage: string;
-  migrationTime: string | null;
+  notificationType: NotificationType;
+  requestNotifications: () => void;
 }
 
-const MigrationNotification: React.FC<Props> = (props) => {
-  const classes = useStyles();
+export const MigrationNotification = React.memo((props: Props) => {
   const { enqueueSnackbar } = useSnackbar();
 
   const {
     linodeID,
-    requestNotifications,
+    migrationTime,
     notificationMessage,
     notificationType,
-    migrationTime,
+    requestNotifications,
   } = props;
 
+  const { data: profile } = useProfile();
+
   const {
-    dialog,
-    openDialog,
     closeDialog,
-    submitDialog,
+    dialog,
     handleError,
+    openDialog,
+    submitDialog,
   } = useDialog<number>((linodeID: number) =>
     scheduleOrQueueMigration(linodeID)
   );
@@ -73,18 +69,18 @@ const MigrationNotification: React.FC<Props> = (props) => {
   };
 
   const actions = () => (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={closeDialog} data-qa-cancel>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={onSubmit}
-        loading={dialog.isLoading}
-      >
-        Enter Migration Queue
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        label: 'Enter Migration Queue',
+        loading: dialog.isLoading,
+        onClick: onSubmit,
+      }}
+      secondaryButtonProps={{
+        'data-testid': 'cancel',
+        label: 'Cancel',
+        onClick: closeDialog,
+      }}
+    />
   );
 
   const migrationActionDescription =
@@ -97,7 +93,9 @@ const MigrationNotification: React.FC<Props> = (props) => {
 
     const migrationTimeObject = parseAPIDate(migrationTime as string).toLocal();
 
-    const formattedMigrationTime = formatDate(migrationTime as string);
+    const formattedMigrationTime = formatDate(migrationTime as string, {
+      timezone: profile?.timezone,
+    });
 
     const now = DateTime.local();
     const roundedHourDifference = Math.round(
@@ -112,27 +110,24 @@ const MigrationNotification: React.FC<Props> = (props) => {
 
   return (
     <>
-      <Notice important warning>
+      <Notice important variant="warning">
         <Typography>
           {notificationType === 'migration_scheduled'
             ? migrationScheduledText()
             : notificationMessage}
           {` `}
-          <button
-            className={classes.migrationLink}
-            onClick={() => openDialog(linodeID)}
-          >
+          <StyledLinkButton onClick={() => openDialog(linodeID)}>
             {capitalize(migrationActionDescription)}
-          </button>
+          </StyledLinkButton>
           .
         </Typography>
       </Notice>
       <ConfirmationDialog
-        open={dialog.isOpen}
+        actions={actions}
         error={dialog.error}
         onClose={() => closeDialog()}
+        open={dialog.isOpen}
         title="Confirm Migration"
-        actions={actions}
       >
         <Typography variant="subtitle1">
           Are you sure you want to {migrationActionDescription}?
@@ -140,6 +135,4 @@ const MigrationNotification: React.FC<Props> = (props) => {
       </ConfirmationDialog>
     </>
   );
-};
-
-export default React.memo(MigrationNotification);
+});

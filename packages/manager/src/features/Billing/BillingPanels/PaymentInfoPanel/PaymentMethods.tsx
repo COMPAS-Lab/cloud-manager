@@ -1,35 +1,39 @@
 import { PaymentMethod } from '@linode/api-v4/lib/account/types';
 import { APIError } from '@linode/api-v4/lib/types';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import PaymentMethodRow from 'src/components/PaymentMethodRow';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { PaymentMethodRow } from 'src/components/PaymentMethodRow/PaymentMethodRow';
+import { Typography } from 'src/components/Typography';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
-const useStyles = makeStyles(() => ({
-  loading: {
-    display: 'flex',
-    justifyContent: 'center',
-  },
-}));
-
 interface Props {
-  loading: boolean;
   error: APIError[] | null | undefined;
-  paymentMethods: PaymentMethod[] | undefined;
+  isChildUser?: boolean | undefined;
+  isRestrictedUser?: boolean | undefined;
+  loading: boolean;
   openDeleteDialog: (method: PaymentMethod) => void;
+  paymentMethods: PaymentMethod[] | undefined;
 }
 
-const PaymentMethods: React.FC<Props> = (props) => {
-  const { loading, error, paymentMethods, openDeleteDialog } = props;
-  const classes = useStyles();
-
+const PaymentMethods = ({
+  error,
+  isChildUser,
+  isRestrictedUser,
+  loading,
+  openDeleteDialog,
+  paymentMethods,
+}: Props) => {
   if (loading) {
     return (
-      <Grid className={classes.loading}>
-        <CircleProgress mini />
+      <Grid
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
+        <CircleProgress size="sm" />
       </Grid>
     );
   }
@@ -59,13 +63,15 @@ const PaymentMethods: React.FC<Props> = (props) => {
     <>
       {paymentMethods.map((paymentMethod: PaymentMethod) => (
         <PaymentMethodRow
+          isChildUser={isChildUser}
+          isRestrictedUser={isRestrictedUser}
           key={paymentMethod.id}
-          paymentMethod={paymentMethod}
           onDelete={() => openDeleteDialog(paymentMethod)}
+          paymentMethod={paymentMethod}
         />
       ))}
     </>
   );
 };
 
-export default PaymentMethods;
+export { PaymentMethods };

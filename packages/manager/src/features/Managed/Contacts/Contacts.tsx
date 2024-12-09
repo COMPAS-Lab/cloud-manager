@@ -1,111 +1,71 @@
-import { deleteContact, ManagedContact } from '@linode/api-v4/lib/managed';
-import { APIError } from '@linode/api-v4/lib/types';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import AddNewLink from 'src/components/AddNewLink';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import DeletionDialog from 'src/components/DeletionDialog';
+
+import { Button } from 'src/components/Button/Button';
+import { DeletionDialog } from 'src/components/DeletionDialog/DeletionDialog';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Grid from 'src/components/Grid';
+import { Hidden } from 'src/components/Hidden';
 import OrderBy from 'src/components/OrderBy';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableSortCell from 'src/components/TableSortCell';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableSortCell } from 'src/components/TableSortCell';
 import { useDialog } from 'src/hooks/useDialog';
-import useOpenClose from 'src/hooks/useOpenClose';
+import { useOpenClose } from 'src/hooks/useOpenClose';
+import {
+  useAllManagedContactsQuery,
+  useDeleteContactMutation,
+} from 'src/queries/managed/managed';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { ManagedContactGroup, Mode } from './common';
+
+import {
+  StyledHeaderGrid,
+  StyledTypography,
+  StyledWrapperGrid,
+} from './Contacts.styles';
 import ContactDrawer from './ContactsDrawer';
 import ContactTableContact from './ContactsTableContent';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  copy: {
-    fontSize: '0.875rem',
-    marginBottom: theme.spacing(2),
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
-  },
-  header: {
-    margin: 0,
-    width: '100%',
-  },
-  addNewWrapper: {
-    '&.MuiGrid-item': {
-      paddingTop: 0,
-      paddingRight: 0,
-    },
-    [theme.breakpoints.down('sm')]: {
-      marginRight: theme.spacing(),
-    },
-  },
-}));
+import type { ManagedContactGroup, Mode } from './common';
+import type { ManagedContact } from '@linode/api-v4/lib/managed';
 
-interface Props {
-  contacts: ManagedContact[];
-  loading: boolean;
-  error?: APIError[];
-  lastUpdated: number;
-  transformData: (fn: (contacts: ManagedContact[]) => void) => void;
-  update: () => void;
-}
-
-type CombinedProps = Props & WithSnackbarProps;
-
-const Contacts: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+const Contacts = () => {
+  const { enqueueSnackbar } = useSnackbar();
 
   const {
-    contacts,
-    loading,
+    data,
+    dataUpdatedAt,
     error,
-    lastUpdated,
-    transformData,
-    update,
-    enqueueSnackbar,
-  } = props;
+    isLoading,
+  } = useAllManagedContactsQuery();
 
-  const updateOrAdd = (contact: ManagedContact) => {
-    transformData((draft) => {
-      const idx = draft.findIndex((l) => l.id === contact.id);
-      // Add the contact if we don't already have it.
-      if (idx === -1) {
-        draft.push(contact);
-      } else {
-        // Otherwise just update it.
-        draft[idx] = contact;
-      }
-    });
-  };
+  const contacts = data || [];
 
   const [selectedContactId, setSelectedContactId] = React.useState<
-    number | null
+    null | number
   >(null);
 
   const [contactDrawerMode, setContactDrawerMode] = React.useState<Mode>(
     'create'
   );
 
+  const { mutateAsync: deleteContact } = useDeleteContactMutation();
+
   const {
-    dialog,
-    openDialog,
     closeDialog,
-    submitDialog,
+    dialog,
     handleError,
-  } = useDialog<number>(deleteContact);
+    openDialog,
+    submitDialog,
+  } = useDialog<number>((id) => deleteContact({ id: id || -1 }));
 
   const handleDelete = () => {
     submitDialog(dialog.entityID)
       .then(() => {
-        update();
         enqueueSnackbar('Contact deleted successfully.', {
           variant: 'success',
         });
@@ -127,29 +87,31 @@ const Contacts: React.FC<CombinedProps> = (props) => {
   return (
     <>
       <DocumentTitleSegment segment="Contacts" />
-      <Typography className={classes.copy}>
+      <StyledTypography>
         You can assign contact groups to monitors so we know who to talk to in
         the event of a support issue. Create contacts and assign them to a
         group, then assign the group to the appropriate monitor(s).
-      </Typography>
-      <Grid
-        ref={contactsTableRef}
-        className={classes.header}
-        container
+      </StyledTypography>
+      <StyledHeaderGrid
         alignItems="center"
+        container
         justifyContent="flex-end"
+        ref={contactsTableRef}
+        spacing={2}
       >
-        <Grid item className={classes.addNewWrapper}>
-          <AddNewLink
+        <StyledWrapperGrid>
+          <Button
             onClick={() => {
               setContactDrawerMode('create');
               contactDrawer.open();
             }}
-            label="Add Contact"
-          />
-        </Grid>
-      </Grid>
-      <OrderBy data={contacts} orderBy="name" order="asc">
+            buttonType="primary"
+          >
+            Add Contact
+          </Button>
+        </StyledWrapperGrid>
+      </StyledHeaderGrid>
+      <OrderBy data={contacts} order="asc" orderBy="name">
         {({ data: orderedData, handleOrderChange, order, orderBy }) => {
           return (
             <Paginate data={orderedData} scrollToRef={contactsTableRef}>
@@ -168,44 +130,44 @@ const Contacts: React.FC<CombinedProps> = (props) => {
                         <TableRow>
                           <TableSortCell
                             active={orderBy === 'name'}
-                            label={'name'}
                             direction={order}
                             handleClick={handleOrderChange}
+                            label={'name'}
                           >
                             Name
                           </TableSortCell>
                           <Hidden smDown>
                             <TableSortCell
                               active={orderBy === 'group'}
-                              label={'group'}
                               direction={order}
                               handleClick={handleOrderChange}
+                              label={'group'}
                             >
                               Group
                             </TableSortCell>
                           </Hidden>
                           <TableSortCell
                             active={orderBy === 'email'}
-                            label={'email'}
                             direction={order}
                             handleClick={handleOrderChange}
+                            label={'email'}
                           >
                             E-mail
                           </TableSortCell>
                           <Hidden xsDown>
                             <TableSortCell
                               active={orderBy === 'phone:primary'}
-                              label={'phone:primary'}
                               direction={order}
                               handleClick={handleOrderChange}
+                              label={'phone:primary'}
                             >
                               Primary Phone
                             </TableSortCell>
                             <TableSortCell
                               active={orderBy === 'phone:secondary'}
-                              label={'phone:secondary'}
                               direction={order}
                               handleClick={handleOrderChange}
+                              label={'phone:secondary'}
                             >
                               Secondary Phone
                             </TableSortCell>
@@ -215,15 +177,6 @@ const Contacts: React.FC<CombinedProps> = (props) => {
                       </TableHead>
                       <TableBody>
                         <ContactTableContact
-                          contacts={paginatedData}
-                          loading={loading}
-                          lastUpdated={lastUpdated}
-                          updateOrAdd={updateOrAdd}
-                          openDrawer={(contactId: number) => {
-                            setSelectedContactId(contactId);
-                            setContactDrawerMode('edit');
-                            contactDrawer.open();
-                          }}
                           openDialog={(contactId: number) => {
                             const selectedContact = contacts.find(
                               (thisContact) => thisContact.id === contactId
@@ -233,17 +186,25 @@ const Contacts: React.FC<CombinedProps> = (props) => {
                               : '';
                             openDialog(contactId, label);
                           }}
+                          openDrawer={(contactId: number) => {
+                            setSelectedContactId(contactId);
+                            setContactDrawerMode('edit');
+                            contactDrawer.open();
+                          }}
+                          contacts={paginatedData}
                           error={error}
+                          lastUpdated={dataUpdatedAt}
+                          loading={isLoading}
                         />
                       </TableBody>
                     </Table>
                     <PaginationFooter
                       count={count}
+                      eventCategory="managed contacts"
                       handlePageChange={handlePageChange}
                       handleSizeChange={handlePageSizeChange}
                       page={page}
                       pageSize={pageSize}
-                      eventCategory="managed contacts"
                     />
                   </>
                 );
@@ -253,27 +214,26 @@ const Contacts: React.FC<CombinedProps> = (props) => {
         }}
       </OrderBy>
       <DeletionDialog
-        open={dialog.isOpen}
-        label={dialog.entityLabel || ''}
         entity="contact"
-        loading={dialog.isLoading}
         error={dialog.error}
+        label={dialog.entityLabel || ''}
+        loading={dialog.isLoading}
         onClose={closeDialog}
         onDelete={handleDelete}
+        open={dialog.isOpen}
       />
       <ContactDrawer
-        mode={contactDrawerMode}
-        isOpen={contactDrawer.isOpen}
         closeDrawer={contactDrawer.close}
-        updateOrAdd={updateOrAdd}
         contact={contacts.find((contact) => contact.id === selectedContactId)}
         groups={groups}
+        isOpen={contactDrawer.isOpen}
+        mode={contactDrawerMode}
       />
     </>
   );
 };
 
-export default withSnackbar(Contacts);
+export default Contacts;
 
 /**
  * Generate groups from a list of Managed Contacts.
@@ -298,8 +258,8 @@ export const generateGroupsFromContacts = (
     // If not, add a new group.
     if (idx === -1) {
       groups.push({
-        groupName: contact.group,
         contactNames: [contact.name],
+        groupName: contact.group,
       });
     } else {
       // If we've already tracked the group, just add this contact's name.

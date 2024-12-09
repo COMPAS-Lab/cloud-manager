@@ -1,45 +1,44 @@
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { compose } from 'recompose';
-import CircleProgress from 'src/components/CircleProgress';
-import Grid from 'src/components/core/Grid';
-import ErrorState from 'src/components/ErrorState';
-import renderGuard, { RenderGuardProps } from 'src/components/RenderGuard';
-import SelectPlanQuantityPanel, {
-  ExtendedType,
-  ExtendedTypeWithCount,
-} from 'src/features/linodes/LinodesCreate/SelectPlanQuantityPanel';
-import { getMonthlyPrice } from '.././kubeUtils';
-import { PoolNodeWithPrice } from '.././types';
 
-interface Props {
-  types: ExtendedType[];
-  typesLoading: boolean;
-  typesError?: string;
+import { CircleProgress } from 'src/components/CircleProgress';
+import { useIsDiskEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { doesRegionSupportFeature } from 'src/utilities/doesRegionSupportFeature';
+import { extendType } from 'src/utilities/extendType';
+
+import { ADD_NODE_POOLS_DESCRIPTION } from '../ClusterList/constants';
+import { KubernetesPlansPanel } from '../KubernetesPlansPanel/KubernetesPlansPanel';
+
+import type {
+  KubeNodePoolResponse,
+  LinodeTypeClass,
+  Region,
+} from '@linode/api-v4';
+import type { ExtendedType } from 'src/utilities/extendType';
+
+const DEFAULT_PLAN_COUNT = 3;
+
+export interface NodePoolPanelProps {
+  addNodePool: (pool: Partial<KubeNodePoolResponse>) => any; // Has to accept both extended and non-extended pools
   apiError?: string;
-  isOnCreate?: boolean;
-  addNodePool: (pool: Partial<PoolNodeWithPrice>) => any; // Has to accept both extended and non-extended pools
+  hasSelectedRegion: boolean;
+  isAPLEnabled?: boolean;
+  isPlanPanelDisabled: (planType?: LinodeTypeClass) => boolean;
+  isSelectedRegionEligibleForPlan: (planType?: LinodeTypeClass) => boolean;
+  regionsData: Region[];
+  selectedRegionId: Region['id'] | undefined;
+  types: ExtendedType[];
+  typesError?: string;
+  typesLoading: boolean;
 }
 
-type CombinedProps = Props;
-
-export const addCountToTypes = (
-  types: ExtendedType[]
-): ExtendedTypeWithCount[] => {
-  return types.map((thisType) => ({
-    ...thisType,
-    count: 3,
-  }));
-};
-
-export const NodePoolPanel: React.FunctionComponent<CombinedProps> = (
-  props
-) => {
+export const NodePoolPanel = (props: NodePoolPanelProps) => {
   return <RenderLoadingOrContent {...props} />;
 };
 
-const RenderLoadingOrContent: React.FunctionComponent<CombinedProps> = (
-  props
-) => {
+const RenderLoadingOrContent = (props: NodePoolPanelProps) => {
   const { typesError, typesLoading } = props;
 
   if (typesError) {
@@ -53,61 +52,81 @@ const RenderLoadingOrContent: React.FunctionComponent<CombinedProps> = (
   return <Panel {...props} />;
 };
 
-const Panel: React.FunctionComponent<CombinedProps> = (props) => {
-  const { addNodePool, apiError, types, isOnCreate } = props;
+const Panel = (props: NodePoolPanelProps) => {
+  const {
+    addNodePool,
+    apiError,
+    hasSelectedRegion,
+    isAPLEnabled,
+    isPlanPanelDisabled,
+    isSelectedRegionEligibleForPlan,
+    regionsData,
+    selectedRegionId,
+    types,
+  } = props;
 
-  const [_types, setNewType] = React.useState<ExtendedTypeWithCount[]>(
-    addCountToTypes(types)
+  const {
+    isDiskEncryptionFeatureEnabled,
+  } = useIsDiskEncryptionFeatureEnabled();
+
+  const regions = useRegionsQuery().data ?? [];
+
+  const [typeCountMap, setTypeCountMap] = React.useState<Map<string, number>>(
+    new Map()
   );
   const [selectedType, setSelectedType] = React.useState<string | undefined>();
 
-  const submitForm = (selectedPlanType: string, nodeCount: number) => {
-    /**
-     * Add pool and reset form state.
-     */
+  const extendedTypes = types.map(extendType);
+
+  const addPool = (selectedPlanType: string, nodeCount: number) => {
     addNodePool({
+      count: nodeCount,
       id: Math.random(),
       type: selectedPlanType,
-      count: nodeCount,
-      totalMonthlyPrice: getMonthlyPrice(selectedPlanType, nodeCount, types),
     });
-    updatePlanCount(selectedPlanType, 0);
-    setSelectedType(undefined);
   };
 
   const updatePlanCount = (planId: string, newCount: number) => {
-    const newTypes = _types.map((thisType: ExtendedTypeWithCount) => {
-      if (thisType.id === planId) {
-        return { ...thisType, count: newCount };
-      }
-      return thisType;
-    });
-    setNewType(newTypes);
+    setTypeCountMap(new Map(typeCountMap).set(planId, newCount));
     setSelectedType(planId);
   };
 
+  const regionSupportsDiskEncryption = doesRegionSupportFeature(
+    selectedRegionId ?? '',
+    regions,
+    'Disk Encryption'
+  );
+
   return (
     <Grid container direction="column">
-      <Grid item>
-        <SelectPlanQuantityPanel
-          types={_types.filter(
+      <Grid>
+        <KubernetesPlansPanel
+          copy={
+            isDiskEncryptionFeatureEnabled && regionSupportsDiskEncryption
+              ? ADD_NODE_POOLS_DESCRIPTION
+              : 'Add groups of Linodes to your cluster. You can have a maximum of 100 Linodes per node pool.'
+          }
+          getTypeCount={(planId) =>
+            typeCountMap.get(planId) ?? DEFAULT_PLAN_COUNT
+          }
+          types={extendedTypes.filter(
             (t) => t.class !== 'nanode' && t.class !== 'gpu'
           )} // No Nanodes or GPUs in clusters
-          selectedID={selectedType}
-          onSelect={(newType: string) => setSelectedType(newType)}
           error={apiError}
+          hasSelectedRegion={hasSelectedRegion}
           header="Add Node Pools"
-          copy="Add groups of Linodes to your cluster. You can have a maximum of 100 Linodes per node pool."
-          updatePlanCount={updatePlanCount}
-          submitForm={submitForm}
-          isOnCreate={isOnCreate}
+          isAPLEnabled={isAPLEnabled}
+          isPlanPanelDisabled={isPlanPanelDisabled}
+          isSelectedRegionEligibleForPlan={isSelectedRegionEligibleForPlan}
+          onAdd={addPool}
+          onSelect={(newType: string) => setSelectedType(newType)}
+          regionsData={regionsData}
           resetValues={() => null} // In this flow we don't want to clear things on tab changes
+          selectedId={selectedType}
+          selectedRegionId={selectedRegionId}
+          updatePlanCount={updatePlanCount}
         />
       </Grid>
     </Grid>
   );
 };
-
-const enhanced = compose<CombinedProps, Props & RenderGuardProps>(renderGuard);
-
-export default enhanced(NodePoolPanel);

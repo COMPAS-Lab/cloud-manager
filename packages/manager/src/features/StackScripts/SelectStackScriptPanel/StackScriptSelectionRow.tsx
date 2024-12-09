@@ -1,133 +1,99 @@
 import * as React from 'react';
-import { connect, MapDispatchToProps } from 'react-redux';
-import { compose as recompose } from 'recompose';
-import Button from 'src/components/Button';
-import { withStyles, WithStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import Radio from 'src/components/Radio';
-import RenderGuard, { RenderGuardProps } from 'src/components/RenderGuard';
-import TableCell from 'src/components/TableCell/TableCell';
-import TableRow from 'src/components/TableRow/TableRow';
-import { openStackScriptDialog as openStackScriptDialogAction } from 'src/store/stackScriptDialog';
-import { ClassNames, styles } from '../StackScriptRowHelpers';
 
-export interface Props {
-  label: string;
-  description: string;
-  deploymentsActive: number;
-  updated: string;
-  disabledCheckedSelect?: boolean;
-  onSelect?: (e: React.ChangeEvent<HTMLElement>, value: boolean) => void;
+import { Radio } from 'src/components/Radio/Radio';
+import { RenderGuard } from 'src/components/RenderGuard';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { Typography } from 'src/components/Typography';
+
+import {
+  StyledDetailsButton,
+  StyledLabel,
+  StyledSelectionButtonGrid,
+  StyledSelectionDetailsGrid,
+  StyledSelectionGrid,
+  StyledTableCell,
+  StyledTypography,
+  StyledUsernameLabel,
+} from '../CommonStackScript.styles';
+
+interface Props {
   checked?: boolean;
+  deploymentsActive: number;
+  description: string;
+  disabled?: boolean;
+  disabledCheckedSelect?: boolean;
+  label: string;
+  onSelect?: (e: React.ChangeEvent<HTMLElement>, value: boolean) => void;
+  openStackScriptDetailsDialog: (stackscriptId: number) => void;
   stackScriptID: number;
   stackScriptUsername: string;
-  disabled?: boolean;
+  updated: string;
 }
 
-interface DispatchProps {
-  openStackScriptDialog: (stackScriptId: number) => void;
-}
-
-export type CombinedProps = Props &
-  WithStyles<ClassNames> &
-  DispatchProps &
-  RenderGuardProps;
-
-export class StackScriptSelectionRow extends React.Component<
-  CombinedProps,
-  {}
-> {
+export class StackScriptSelectionRow extends React.Component<Props, {}> {
   render() {
     const {
-      classes,
-      onSelect,
-      disabledCheckedSelect,
       checked,
-      label,
       description,
+      disabled,
+      disabledCheckedSelect,
+      label,
+      onSelect,
+      openStackScriptDetailsDialog,
       stackScriptID,
       stackScriptUsername,
-      openStackScriptDialog,
-      disabled,
     } = this.props;
 
     const renderLabel = () => {
       const openDialog = (event: React.MouseEvent<HTMLElement>) => {
         event.stopPropagation();
-        openStackScriptDialog(stackScriptID);
+        openStackScriptDetailsDialog(stackScriptID);
       };
       return (
-        <Grid container alignItems="center" className={classes.selectionGrid}>
-          <Grid item className={classes.selectionGridDetails}>
+        <StyledSelectionGrid alignItems="center" container>
+          <StyledSelectionDetailsGrid>
             <Typography variant="h3">
               {stackScriptUsername && (
-                <label
-                  htmlFor={`${stackScriptID}`}
-                  className={`${classes.libRadioLabel} ${classes.stackScriptUsername}`}
-                >
+                <StyledUsernameLabel htmlFor={`${stackScriptID}`}>
                   {stackScriptUsername} /&nbsp;
-                </label>
+                </StyledUsernameLabel>
               )}
-              <label
-                htmlFor={`${stackScriptID}`}
-                className={classes.libRadioLabel}
-              >
-                {label}
-              </label>
+              <StyledLabel htmlFor={`${stackScriptID}`}>{label}</StyledLabel>
             </Typography>
             {description && (
-              <Typography variant="body1" className={classes.libDescription}>
-                {description}
-              </Typography>
+              <StyledTypography variant="body1">{description}</StyledTypography>
             )}
-          </Grid>
-          <Grid item className={classes.selectionGridButton}>
-            <Button
+          </StyledSelectionDetailsGrid>
+          <StyledSelectionButtonGrid>
+            <StyledDetailsButton
               buttonType="secondary"
-              className={classes.detailsButton}
-              compact
+              compactX
               onClick={openDialog}
             >
               Show Details
-            </Button>
-          </Grid>
-        </Grid>
+            </StyledDetailsButton>
+          </StyledSelectionButtonGrid>
+        </StyledSelectionGrid>
       );
     };
 
     return (
-      <TableRow data-qa-table-row={label} ariaLabel={label}>
+      <TableRow data-qa-table-row={label}>
         <TableCell>
           <Radio
             checked={!disabled && checked}
             disabled={disabledCheckedSelect || disabled}
-            onChange={onSelect}
             id={`${stackScriptID}`}
+            onChange={onSelect}
           />
         </TableCell>
-        <TableCell
-          className={classes.stackScriptCell}
-          data-qa-stackscript-title
-        >
+        <StyledTableCell data-qa-stackscript-title>
           {renderLabel()}
-        </TableCell>
+        </StyledTableCell>
       </TableRow>
     );
   }
 }
 
-const mapDispatchToProps: MapDispatchToProps<DispatchProps, Props> = (
-  dispatch
-) => {
-  return {
-    openStackScriptDialog: (stackScriptId: number) =>
-      dispatch(openStackScriptDialogAction(stackScriptId)),
-  };
-};
-
-export default recompose<CombinedProps, Props & RenderGuardProps>(
-  connect(undefined, mapDispatchToProps),
-  RenderGuard,
-  withStyles(styles)
-)(StackScriptSelectionRow);
+export default RenderGuard(StackScriptSelectionRow);

@@ -1,146 +1,138 @@
+import { Box, InputAdornment } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { compose } from 'recompose';
-import Divider from 'src/components/core/Divider';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import InputAdornment from 'src/components/core/InputAdornment';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import RenderGuard from 'src/components/RenderGuard';
-import TextField from 'src/components/TextField';
-import Toggle from 'src/components/Toggle';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  '@keyframes fadeIn': {
-    from: {
-      opacity: 0,
-    },
-    to: {
-      opacity: 1,
-    },
-  },
-  root: {
-    marginBottom: theme.spacing(2),
-    paddingTop: theme.spacing(0.5),
-    '&:last-of-type': {
-      marginBottom: 0,
-    },
-    '&:last-of-type + hr': {
-      display: 'none',
-    },
-  },
-  switch: {
-    display: 'flex',
-    marginLeft: -12,
-    width: 240,
-    '& .toggleLabel': {
-      display: 'flex',
-      flexDirection: 'row',
-      '& > span:first-child': {
-        marginTop: -6,
-      },
-      '& > span:last-child': {
-        ...theme.typography.h3,
-      },
-    },
-  },
-  copy: {
-    marginTop: 40,
-    marginLeft: -160,
-    width: 600,
-    [theme.breakpoints.down('sm')]: {
-      marginTop: -28,
-      marginLeft: 70,
-      width: '100%',
-    },
-  },
-  usageWrapper: {
-    [theme.breakpoints.down('sm')]: {
-      marginLeft: 70,
-      width: '100%',
-    },
-  },
-  usage: {
-    animation: '$fadeIn .3s ease-in-out forwards',
-    marginTop: 0,
-    maxWidth: 150,
-  },
-}));
+import { Divider } from 'src/components/Divider';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { TextField } from 'src/components/TextField';
+import { Toggle } from 'src/components/Toggle/Toggle';
+import { Typography } from 'src/components/Typography';
+import { fadeIn } from 'src/styles/keyframes';
 
 interface Props {
-  title: string;
-  textTitle: string;
-  radioInputLabel: string;
-  textInputLabel: string;
   copy: string;
-  state: boolean;
-  value: number;
+  endAdornment: string;
+  error?: string;
   onStateChange: (e: React.ChangeEvent<{}>, checked: boolean) => void;
   onValueChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  error?: string;
-  endAdornment: string;
+  radioInputLabel: string;
   readOnly?: boolean;
+  state: boolean;
+  textInputLabel: string;
+  textTitle: string;
+  title: string;
+  value: number;
 }
 
-type CombinedProps = Props;
-
-export const AlertSection: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const AlertSection = (props: Props) => {
+  const theme = useTheme();
   const {
-    title,
-    textTitle,
     copy,
-    state,
-    value,
+    endAdornment,
+    error,
     onStateChange,
     onValueChange,
-    error,
-    endAdornment,
     readOnly,
+    state,
+    textTitle,
+    title,
+    value,
   } = props;
 
   return (
     <>
       <Grid
+        sx={{
+          '&:last-of-type': {
+            marginBottom: 0,
+          },
+          '&:last-of-type + hr': {
+            display: 'none',
+          },
+          alignItems: 'flex-start',
+          flex: 1,
+          marginBottom: theme.spacing(2),
+        }}
         container
-        alignItems="flex-start"
-        className={classes.root}
         data-qa-alerts-panel
+        spacing={2}
       >
-        <Grid item className={classes.switch}>
-          <FormControlLabel
-            className="toggleLabel"
-            control={
-              <Toggle
-                checked={state}
-                disabled={readOnly}
-                onChange={onStateChange}
-              />
-            }
-            label={title}
-            data-qa-alert={title}
-          />
+        <Grid
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          lg={7}
+          md={9}
+          xs={12}
+        >
+          <Box>
+            <FormControlLabel
+              control={
+                <Toggle
+                  checked={state}
+                  disabled={readOnly}
+                  onChange={onStateChange}
+                />
+              }
+              sx={{
+                '& > span:last-child': {
+                  ...theme.typography.h3,
+                },
+                '.MuiFormControlLabel-label': {
+                  paddingLeft: '12px',
+                },
+              }}
+              data-qa-alert={title}
+              label={title}
+            />
+          </Box>
+          <Box
+            sx={{
+              paddingLeft: '70px',
+              [theme.breakpoints.down('md')]: {
+                marginTop: '-12px',
+              },
+            }}
+          >
+            <Typography>{copy}</Typography>
+          </Box>
         </Grid>
-        <Grid item className={classes.copy}>
-          <Typography>{copy}</Typography>
-        </Grid>
-        <Grid item className={`${classes.usageWrapper} py0`}>
+        <Grid
+          sx={{
+            paddingBottom: '0',
+            paddingTop: '0',
+            [theme.breakpoints.down('md')]: {
+              paddingLeft: '78px',
+            },
+          }}
+          lg={5}
+          md={3}
+          xs={12}
+        >
           <TextField
-            className={classes.usage}
-            disabled={!state || readOnly}
-            error={Boolean(error)}
-            errorText={error}
-            label={textTitle}
-            min={0}
-            max={Infinity}
-            onChange={onValueChange}
-            type="number"
-            value={value}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">{endAdornment}</InputAdornment>
               ),
             }}
+            sx={{
+              '.MuiInput-root': {
+                animation: `${fadeIn} .3s ease-in-out forwards`,
+                marginTop: 0,
+                maxWidth: 150,
+              },
+            }}
+            disabled={!state || readOnly}
+            error={Boolean(error)}
+            errorText={error}
+            label={textTitle}
+            max={Infinity}
+            min={0}
+            onChange={onValueChange}
+            type="number"
+            value={value}
           />
         </Grid>
       </Grid>
@@ -148,5 +140,3 @@ export const AlertSection: React.FC<CombinedProps> = (props) => {
     </>
   );
 };
-
-export default compose<CombinedProps, any>(RenderGuard)(AlertSection);

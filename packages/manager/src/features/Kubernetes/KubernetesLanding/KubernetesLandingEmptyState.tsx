@@ -1,42 +1,53 @@
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import { compose } from 'redux';
-import KubernetesSvg from 'src/assets/icons/entityIcons/kubernetes.svg';
-import Typography from 'src/components/core/Typography';
-import Placeholder from 'src/components/Placeholder';
+import { useHistory } from 'react-router-dom';
 
-type Props = RouteComponentProps<{}>;
+import LinodeIcon from 'src/assets/icons/entityIcons/linode.svg';
+import { ResourcesSection } from 'src/components/EmptyLandingPageResources/ResourcesSection';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { sendEvent } from 'src/utilities/analytics/utils';
 
-class KubernetesEmptyState extends React.Component<Props> {
-  render() {
-    return (
-      <Placeholder
-        title="Kubernetes"
-        isEntity
-        icon={KubernetesSvg}
-        buttonProps={[
-          {
-            onClick: () => this.props.history.push('/kubernetes/create'),
-            children: 'Create Cluster',
-          },
-        ]}
-      >
-        {' '}
-        <Typography variant="subtitle1">Need help getting started?</Typography>
-        <Typography variant="subtitle1">
-          <a
-            href="https://www.linode.com/docs/applications/containers/kubernetes/how-to-deploy-a-cluster-with-lke/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-u"
-          >
-            Learn more about getting started with LKE.
-          </a>
-        </Typography>
-      </Placeholder>
-    );
-  }
+import {
+  gettingStartedGuides,
+  headers,
+  linkAnalyticsEvent,
+  youtubeLinkData,
+} from './KubernetesLandingEmptyStateData';
+
+interface Props {
+  isRestricted: boolean;
 }
-const enhanced = compose(withRouter);
 
-export default enhanced(KubernetesEmptyState);
+export const KubernetesEmptyState = (props: Props) => {
+  const { isRestricted = false } = props;
+
+  const { push } = useHistory();
+
+  return (
+    <ResourcesSection
+      buttonProps={[
+        {
+          children: 'Create Cluster',
+          disabled: isRestricted,
+          onClick: () => {
+            sendEvent({
+              action: 'Click:button',
+              category: linkAnalyticsEvent.category,
+              label: 'Create Cluster',
+            });
+            push('/kubernetes/create');
+          },
+          tooltipText: getRestrictedResourceText({
+            action: 'create',
+            isSingular: false,
+            resourceType: 'LKE Clusters',
+          }),
+        },
+      ]}
+      gettingStartedGuidesData={gettingStartedGuides}
+      headers={headers}
+      icon={LinodeIcon}
+      linkAnalyticsEvent={linkAnalyticsEvent}
+      youtubeLinkData={youtubeLinkData}
+    />
+  );
+};

@@ -1,59 +1,146 @@
-import { createUser, User } from '@linode/api-v4/lib/account';
+import { User, createUser } from '@linode/api-v4/lib/account';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
 import { RouteComponentProps, withRouter } from 'react-router-dom';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import Drawer from 'src/components/Drawer';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import Toggle from 'src/components/Toggle';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Drawer } from 'src/components/Drawer';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import { Toggle } from 'src/components/Toggle/Toggle';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import getAPIErrorsFor from 'src/utilities/getAPIErrorFor';
+import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
 
 interface Props {
-  open: boolean;
   onClose: () => void;
+  open: boolean;
   refetch: () => void;
 }
 
 interface State {
-  username: string;
   email: string;
-  restricted: boolean;
   errors: APIError[];
+  restricted: boolean;
   submitting: boolean;
+  username: string;
 }
 
-type CombinedProps = Props & RouteComponentProps<{}>;
+interface CreateUserDrawerProps extends Props, RouteComponentProps<{}> {}
 
-class CreateUserDrawer extends React.Component<CombinedProps, State> {
-  state: State = {
-    username: '',
-    email: '',
-    restricted: false,
-    errors: [],
-    submitting: false,
-  };
-
-  componentDidUpdate(prevProps: CombinedProps) {
+class CreateUserDrawer extends React.Component<CreateUserDrawerProps, State> {
+  componentDidUpdate(prevProps: CreateUserDrawerProps) {
     if (this.props.open === true && prevProps.open === false) {
       this.setState({
-        username: '',
         email: '',
-        restricted: false,
         errors: [],
+        restricted: false,
         submitting: false,
+        username: '',
       });
     }
   }
 
+  render() {
+    const { onClose, open } = this.props;
+    const { email, errors, restricted, submitting, username } = this.state;
+
+    const hasErrorFor = getAPIErrorFor(
+      { email: 'Email', username: 'Username' },
+      errors
+    );
+    const generalError = hasErrorFor('none');
+
+    return (
+      <Drawer onClose={onClose} open={open} title="Add a User">
+        {generalError && <Notice text={generalError} variant="error" />}
+        <TextField
+          data-qa-create-username
+          errorText={hasErrorFor('username')}
+          label="Username"
+          onBlur={this.handleChangeUsername}
+          onChange={this.handleChangeUsername}
+          required
+          trimmed
+          value={username}
+        />
+        <TextField
+          data-qa-create-email
+          errorText={hasErrorFor('email')}
+          label="Email"
+          onChange={this.handleChangeEmail}
+          required
+          trimmed
+          type="email"
+          value={email}
+        />
+        <FormControlLabel
+          control={
+            <Toggle
+              checked={!restricted}
+              data-qa-create-restricted
+              onChange={this.handleChangeRestricted}
+            />
+          }
+          label={
+            restricted
+              ? `This user will have limited access to account features.
+              This can be changed later.`
+              : `This user will have full access to account features.
+              This can be changed later.`
+          }
+          style={{ marginTop: 8 }}
+        />
+        <div style={{ marginTop: 8 }}>
+          <Notice
+            text="The user will be sent an email to set their password"
+            variant="warning"
+          />
+        </div>
+        <ActionsPanel
+          primaryButtonProps={{
+            'data-testid': 'submit',
+            label: 'Add User',
+            loading: submitting,
+            onClick: this.onSubmit,
+          }}
+          secondaryButtonProps={{
+            'data-testid': 'cancel',
+            label: 'Cancel',
+            onClick: onClose,
+          }}
+        />
+      </Drawer>
+    );
+  }
+
+  handleChangeEmail = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({
+      email: e.target.value,
+    });
+  };
+
+  handleChangeRestricted = () => {
+    this.setState({
+      restricted: !this.state.restricted,
+    });
+  };
+
+  handleChangeUsername = (
+    e:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    this.setState({
+      username: e.target.value,
+    });
+  };
+
   onSubmit = () => {
     const {
-      refetch,
-      onClose,
       history: { push },
+      onClose,
+      refetch,
     } = this.props;
     const { email, restricted } = this.state;
     this.setState({ errors: [], submitting: true });

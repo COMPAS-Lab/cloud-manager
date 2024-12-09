@@ -1,180 +1,164 @@
-import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  MenuPopover,
-} from '@reach/menu-button';
-import '@reach/menu-button/styles.css';
-import { positionRight } from '@reach/popover';
-import classNames from 'classnames';
+import { IconButton, ListItemText } from '@mui/material';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import * as React from 'react';
+
 import KebabIcon from 'src/assets/icons/kebab.svg';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import HelpIcon from 'src/components/HelpIcon';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { convertToKebabCase } from 'src/utilities/convertToKebobCase';
 
 export interface Action {
-  title: string;
   disabled?: boolean;
-  tooltip?: string;
+  id?: string;
   onClick: () => void;
+  title: string;
+  tooltip?: string;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  button: {
-    '&[data-reach-menu-button]': {
-      display: 'flex',
-      alignItems: 'center',
-      background: 'none',
-      fontSize: '1rem',
-      border: 'none',
-      padding: '10px',
-      color: theme.textColors.linkActiveLight,
-      cursor: 'pointer',
-      '&:hover': {
-        backgroundColor: '#3683dc',
-        color: '#fff',
-      },
-      '&[aria-expanded="true"]': {
-        backgroundColor: '#3683dc',
-        color: '#fff',
-      },
-    },
-  },
-  icon: {
-    '& svg': {
-      fill: theme.palette.primary.main,
-    },
-  },
-  popover: {
-    zIndex: 1,
-  },
-  itemsOuter: {
-    '&[data-reach-menu-items]': {
-      padding: 0,
-      minWidth: 200,
-      background: '#3683dc',
-      border: 'none',
-      fontSize: 14,
-      color: '#fff',
-      textAlign: 'left',
-    },
-  },
-  item: {
-    '&[data-reach-menu-item]': {
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: theme.spacing(1) + 2,
-      paddingLeft: '16px',
-      borderBottom: '1px solid #5294e0',
-      background: '#3683dc',
-      color: '#fff',
-    },
-    '&[data-reach-menu-item][data-selected]': {
-      background: '#226dc3',
-    },
-  },
-  disabled: {
-    '&[data-reach-menu-item]': {
-      color: '#93bcec',
-      cursor: 'auto',
-    },
-    '&[data-reach-menu-item][data-selected]': {
-      background: '#3683dc',
-      color: '#93bcec',
-    },
-  },
-  tooltip: {
-    color: '#fff',
-    '& :hover': {
-      color: '#4d99f1',
-    },
-    padding: '0 0 0 8px',
-    '& svg': {
-      height: 20,
-      width: 20,
-    },
-  },
-}));
-
-export interface Props {
+export interface ActionMenuProps {
+  /**
+   * A list of actions to show in the Menu
+   */
   actionsList: Action[];
-  toggleOpenCallback?: () => void;
-  // We want to require using aria label for these buttons
-  // as they don't have text (just an icon)
+  /**
+   * Gives the Menu Button an accessible name
+   */
   ariaLabel: string;
-  className?: string;
-  disabled?: boolean;
+  /**
+   * A function that is called when the Menu is opened. Useful for analytics.
+   */
+  onOpen?: () => void;
 }
 
-type CombinedProps = Props;
+/**
+ * ## Usage
+ *
+ * No more than 8 items should be displayed within an action menu.
+ */
+export const ActionMenu = React.memo((props: ActionMenuProps) => {
+  const { actionsList, ariaLabel, onOpen } = props;
 
-const ActionMenu: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { toggleOpenCallback, actionsList } = props;
+  const menuId = convertToKebabCase(ariaLabel);
+  const buttonId = `${convertToKebabCase(ariaLabel)}-button`;
 
-  const { ariaLabel } = props;
+  const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
 
-  const handleClick = () => {
-    if (toggleOpenCallback) {
-      toggleOpenCallback();
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+    if (onOpen) {
+      onOpen();
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (toggleOpenCallback && e.keyCode === 13) {
-      toggleOpenCallback();
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter') {
+      setAnchorEl(e.currentTarget);
+      if (onOpen) {
+        onOpen();
+      }
     }
   };
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>) =>
+    e.currentTarget.focus();
 
   if (!actionsList || actionsList.length === 0) {
     return null;
   }
 
+  const sxTooltipIcon = {
+    padding: '0 0 0 8px',
+    pointerEvents: 'all', // Allows the tooltip to be hovered on a disabled MenuItem
+  };
+
   return (
-    <Menu>
-      <MenuButton
-        className={classNames({
-          [classes.button]: true,
+    <>
+      <IconButton
+        sx={(theme) => ({
+          ':hover': {
+            backgroundColor: theme.color.buttonPrimaryHover,
+            color: theme.color.white,
+          },
+          backgroundColor: open ? theme.color.buttonPrimaryHover : undefined,
+          borderRadius: 'unset',
+          color: open ? theme.color.white : theme.textColors.linkActiveLight,
+          height: '100%',
+          minWidth: '40px',
+          padding: '10px',
         })}
+        aria-controls={open ? menuId : undefined}
+        aria-expanded={open ? 'true' : undefined}
+        aria-haspopup="true"
         aria-label={ariaLabel}
-        onMouseDown={handleClick}
+        color="inherit"
+        id={buttonId}
+        onClick={handleClick}
         onKeyDown={handleKeyPress}
       >
-        <KebabIcon aria-hidden className={classes.icon} type="primary" />
-      </MenuButton>
-      <MenuPopover className={classes.popover} position={positionRight}>
-        <MenuItems className={classes.itemsOuter}>
-          {(actionsList as Action[]).map((a, idx) => (
-            <MenuItem
-              key={idx}
-              className={classNames({
-                [classes.item]: true,
-                [classes.disabled]: a.disabled,
-              })}
-              onSelect={() => {
-                if (!a.disabled) {
-                  return a.onClick();
-                }
-              }}
-              data-qa-action-menu-item={a.title}
-              disabled={a.disabled}
-            >
+        <KebabIcon />
+      </IconButton>
+      <Menu
+        MenuListProps={{
+          'aria-labelledby': buttonId,
+        }}
+        anchorOrigin={{
+          horizontal: 'right',
+          vertical: 'bottom',
+        }}
+        slotProps={{
+          paper: {
+            sx: (theme) => ({
+              backgroundColor: theme.palette.primary.main,
+            }),
+          },
+        }}
+        transformOrigin={{
+          horizontal: 'right',
+          vertical: 'top',
+        }}
+        anchorEl={anchorEl}
+        data-qa-action-menu
+        disableScrollLock
+        id={menuId}
+        marginThreshold={0}
+        onClose={handleClose}
+        open={open}
+        transitionDuration={225}
+      >
+        {actionsList.map((a, idx) => (
+          <MenuItem
+            onClick={() => {
+              if (!a.disabled) {
+                handleClose();
+                a.onClick();
+              }
+            }}
+            data-qa-action-menu-item={a.title}
+            data-testid={a.title}
+            disabled={a.disabled}
+            key={idx}
+            onMouseEnter={handleMouseEnter}
+          >
+            <ListItemText primaryTypographyProps={{ color: 'inherit' }}>
               {a.title}
-              {a.tooltip ? (
-                <HelpIcon
-                  data-qa-tooltip-icon
-                  text={a.tooltip}
-                  tooltipPosition="right"
-                  className={classes.tooltip}
-                />
-              ) : null}
-            </MenuItem>
-          ))}
-        </MenuItems>
-      </MenuPopover>
-    </Menu>
+            </ListItemText>
+            {a.tooltip && (
+              <TooltipIcon
+                data-qa-tooltip-icon
+                status="help"
+                sxTooltipIcon={sxTooltipIcon}
+                text={a.tooltip}
+                tooltipPosition="right"
+              />
+            )}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
   );
-};
-
-export default React.memo(ActionMenu);
+});

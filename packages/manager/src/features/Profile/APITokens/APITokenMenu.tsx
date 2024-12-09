@@ -1,77 +1,81 @@
 import { Token } from '@linode/api-v4/lib/profile';
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
+
+import { Action, ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { PROXY_USER_RESTRICTED_TOOLTIP_TEXT } from 'src/features/Account/constants';
 
 interface Props {
-  token: Token;
-  type: string;
+  isProxyUser: boolean;
   isThirdPartyAccessToken: boolean;
-  openViewDrawer: (token: Token) => void;
   openEditDrawer: (token: Token) => void;
   openRevokeDialog: (token: Token, type: string) => void;
+  openViewDrawer: (token: Token) => void;
+  token: Token;
+  type: string;
 }
 
-type CombinedProps = Props;
-
-export const APITokenMenu: React.FC<CombinedProps> = (props) => {
+export const APITokenMenu = (props: Props) => {
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
   const {
+    isProxyUser,
     isThirdPartyAccessToken,
-    openViewDrawer,
     openEditDrawer,
     openRevokeDialog,
+    openViewDrawer,
     token,
     type,
   } = props;
 
   const actions = [
     {
-      title: 'View Scopes',
       onClick: () => {
         openViewDrawer(token);
       },
+      title: 'View Scopes',
     },
     !isThirdPartyAccessToken
       ? {
-          title: 'Rename',
+          disabled: isProxyUser,
           onClick: () => {
             openEditDrawer(token);
           },
+          title: 'Rename',
+          tooltip: isProxyUser ? PROXY_USER_RESTRICTED_TOOLTIP_TEXT : undefined,
         }
       : null,
     {
-      title: 'Revoke',
       onClick: () => {
         openRevokeDialog(token, type);
       },
+      title: 'Revoke',
     },
   ].filter(Boolean) as Action[];
 
+  if (matchesSmDown) {
+    return (
+      <ActionMenu
+        actionsList={actions}
+        ariaLabel={`Action menu for API Token ${props.token.label}`}
+      />
+    );
+  }
+
   return (
-    // eslint-disable-next-line react/jsx-no-useless-fragment
     <>
-      {matchesSmDown ? (
-        <ActionMenu
-          actionsList={actions}
-          ariaLabel={`Action menu for API Token ${props.token.label}`}
+      {actions.map((action) => (
+        <InlineMenuAction
+          actionText={action.title}
+          disabled={action.disabled}
+          key={action.title}
+          onClick={action.onClick}
+          tooltip={action.tooltip}
         />
-      ) : (
-        actions.map((action) => {
-          return (
-            <InlineMenuAction
-              key={action.title}
-              actionText={action.title}
-              onClick={action.onClick}
-            />
-          );
-        })
-      )}
+      ))}
     </>
   );
 };
-
-export default APITokenMenu;

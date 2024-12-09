@@ -3,6 +3,8 @@ import { array, boolean, mixed, number, object, string } from 'yup';
 const PORT_WARNING = 'Port must be between 1 and 65535.';
 const LABEL_WARNING = 'Label must be between 3 and 32 characters.';
 
+export const PRIVATE_IPv4_REGEX = /^10\.|^172\.1[6-9]\.|^172\.2[0-9]\.|^172\.3[0-1]\.|^192\.168\.|^fd/;
+
 export const nodeBalancerConfigNodeSchema = object({
   label: string()
     .matches(
@@ -14,11 +16,9 @@ export const nodeBalancerConfigNodeSchema = object({
     .required('Label is required.'),
 
   address: string()
-    .matches(
-      /^192\.168\.\d{1,3}\.\d{1,3}$/,
-      'Must be a valid private IPv4 address.'
-    )
-    .required('IP address is required.'),
+    .typeError('IP address is required.')
+    .required('IP address is required.')
+    .matches(PRIVATE_IPv4_REGEX, 'Must be a valid private IPv4 address.'),
 
   port: number()
     .typeError('Port must be a number.')
@@ -121,6 +121,7 @@ export const UpdateNodeBalancerConfigSchema = object({
 
 export const NodeBalancerSchema = object({
   label: string()
+    .required('Label is required.')
     .min(3, LABEL_WARNING)
     .max(32, LABEL_WARNING)
     .matches(

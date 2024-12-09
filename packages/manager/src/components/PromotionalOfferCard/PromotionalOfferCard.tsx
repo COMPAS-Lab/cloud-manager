@@ -1,100 +1,97 @@
-import classNames from 'classnames';
+import { Paper } from '@linode/ui';
+import Button from '@mui/material/Button';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import HeavenlyBucketIcon from 'src/assets/icons/promotionalOffers/heavenly-bucket.svg';
-import Button from 'src/components/core/Button';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import { PromotionalOffer } from 'src/featureFlags';
-import { useWindowDimensions } from 'src/hooks/useWindowDimensions';
-import {
-  offSiteURL,
-  onSiteURL,
-} from 'src/utilities/sanitize-html/sanitizeHTML';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'column',
-    paddingBottom: 4,
-    backgroundColor: theme.bg.main,
+import HeavenlyBucketIcon from 'src/assets/icons/promotionalOffers/heavenly-bucket.svg';
+import { Typography } from 'src/components/Typography';
+import { OFFSITE_URL_REGEX, ONSITE_URL_REGEX } from 'src/constants';
+import { useWindowDimensions } from 'src/hooks/useWindowDimensions';
+
+import type { Theme } from '@mui/material/styles';
+import type { PromotionalOffer } from 'src/featureFlags';
+
+const useStyles = makeStyles()((theme: Theme) => ({
+  alignLeft: {
+    alignItems: 'flex-start',
   },
-  fullWidth: {
+  button: {
+    '&:hover, &:focus': {
+      backgroundColor: '#3f8a4e',
+      color: theme.tokens.color.Neutrals.White,
+    },
+    backgroundColor: '#4FAD62',
+    color: theme.tokens.color.Neutrals.White,
+    marginLeft: theme.spacing(2),
+    marginRight: theme.spacing(2),
+    textAlign: 'center',
+  },
+  buttonSecondary: {
+    '&:hover, &:focus': {
+      backgroundColor: 'inherit',
+      borderColor: '#72BD81',
+      color: '#72BD81',
+    },
+    backgroundColor: 'inherit',
+    border: '1px solid transparent',
+    borderColor: '#4FAD62',
+    color: '#4FAD62',
+    transition: theme.transitions.create(['color', 'border-color']),
+  },
+  buttonSection: {
+    display: 'flex',
     flexDirection: 'row',
-    alignContent: 'center',
-    justifyContent: 'flex-start',
-    '& svg': {
-      marginRight: theme.spacing(2),
-      marginBottom: theme.spacing(1) - 2,
-    },
-    '& p:last-child': {
-      marginTop: theme.spacing(1),
-    },
-  },
-  logo: {
-    marginBottom: theme.spacing(2),
-  },
-  copy: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+    justifyContent: 'center',
+    margin: theme.spacing(2),
   },
   capMaxWidth: {
     maxWidth: 400,
   },
-  alignLeft: {
-    alignItems: 'flex-start',
+  centerText: {
+    textAlign: 'center',
+  },
+  copy: {
+    alignItems: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
   },
   footnote: {
     marginTop: theme.spacing(1),
   },
-  centerText: {
-    textAlign: 'center',
-  },
-  buttonSection: {
-    margin: theme.spacing(2),
-    display: 'flex',
+  fullWidth: {
+    '& p:last-child': {
+      marginTop: theme.spacing(1),
+    },
+    '& svg': {
+      marginBottom: `calc(${theme.spacing(1)} - 2)`,
+      marginRight: theme.spacing(2),
+    },
+    alignContent: 'center',
     flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  logo: {
+    marginBottom: theme.spacing(2),
+  },
+  root: {
+    alignItems: 'center',
+    backgroundColor: theme.bg.main,
+    display: 'flex',
+    flexDirection: 'column',
     justifyContent: 'center',
-  },
-  button: {
-    backgroundColor: '#4FAD62',
-    color: 'white',
-    marginRight: theme.spacing(2),
-    marginLeft: theme.spacing(2),
-    textAlign: 'center',
-    '&:hover, &:focus': {
-      backgroundColor: '#3f8a4e',
-      color: 'white',
-    },
-  },
-  buttonSecondary: {
-    backgroundColor: 'inherit',
-    color: '#4FAD62',
-    border: '1px solid transparent',
-    transition: theme.transitions.create(['color', 'border-color']),
-    borderColor: '#4FAD62',
-    '&:hover, &:focus': {
-      backgroundColor: 'inherit',
-      color: '#72BD81',
-      borderColor: '#72BD81',
-    },
+    paddingBottom: 4,
   },
 }));
 
-export interface Props extends PromotionalOffer {
-  fullWidth?: boolean;
+export interface PromotionalOfferCardProps extends PromotionalOffer {
   className?: string;
+  fullWidth?: boolean;
 }
 
-type CombinedProps = Props;
-
-export const PromotionalOfferCard: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const PromotionalOfferCard = (props: PromotionalOfferCardProps) => {
+  const { classes, cx } = useStyles();
 
   const { fullWidth, ...promotionalOfferAttributes } = props;
 
@@ -110,28 +107,28 @@ export const PromotionalOfferCard: React.FC<CombinedProps> = (props) => {
 
   return (
     <Paper
-      className={classNames({
-        [classes.root]: true,
+      className={cx({
         [classes.fullWidth]: props.fullWidth,
+        [classes.root]: true,
         // Inject the className if given as as prop.
         [props.className ?? '']: Boolean(props.className),
       })}
     >
       {Logo && (
-        <Logo className={classes.logo} width={iconSize} height={iconSize} />
+        <Logo className={classes.logo} height={iconSize} width={iconSize} />
       )}
       <div
-        className={classNames({
-          [classes.copy]: true,
+        className={cx({
           [classes.alignLeft]: fullWidth,
+          [classes.copy]: true,
         })}
       >
         <Typography
-          variant="subtitle2"
-          className={classNames({
-            [classes.centerText]: !fullWidth,
+          className={cx({
             [classes.capMaxWidth]: !fullWidth,
+            [classes.centerText]: !fullWidth,
           })}
+          variant="subtitle2"
         >
           {offer.body}
         </Typography>
@@ -142,11 +139,11 @@ export const PromotionalOfferCard: React.FC<CombinedProps> = (props) => {
             than two buttons is a mistake. */}
             {offer.buttons.slice(0, 2).map((button) => (
               <Button
-                key={button.text}
-                className={classNames({
+                className={cx({
                   [classes.button]: true,
                   [classes.buttonSecondary]: button.type === 'secondary',
                 })}
+                key={button.text}
                 {...buttonProps(button.href)}
               >
                 {button.text}
@@ -157,12 +154,12 @@ export const PromotionalOfferCard: React.FC<CombinedProps> = (props) => {
 
         {offer.footnote && (
           <Typography
-            variant="body1"
-            className={classNames({
-              [classes.footnote]: true,
-              [classes.centerText]: !fullWidth,
+            className={cx({
               [classes.capMaxWidth]: !fullWidth,
+              [classes.centerText]: !fullWidth,
+              [classes.footnote]: true,
             })}
+            variant="body1"
           >
             {offer.footnote}
           </Typography>
@@ -172,8 +169,6 @@ export const PromotionalOfferCard: React.FC<CombinedProps> = (props) => {
   );
 };
 
-export default PromotionalOfferCard;
-
 // Be extra-cautious when accessing fields on promotionalOffers, since they are
 // sourced from our external feature flag service. This function ensures that
 // each field is the type consumers are expecting, subbing defaults if they
@@ -181,14 +176,14 @@ export default PromotionalOfferCard;
 export const promotionalOfferOrDefaults = (
   offer: PromotionalOffer
 ): PromotionalOffer => ({
-  name: checkStringOrDefault(offer.name),
+  alt: checkStringOrDefault(offer.alt),
   body: checkStringOrDefault(offer.body),
+  buttons: offer.buttons ?? [],
+  displayOnDashboard: offer.displayOnDashboard ?? false,
+  features: offer.features ?? ['None'],
   footnote: checkStringOrDefault(offer.footnote),
   logo: checkStringOrDefault(offer.logo),
-  alt: checkStringOrDefault(offer.alt),
-  features: offer.features ?? ['None'],
-  displayOnDashboard: offer.displayOnDashboard ?? false,
-  buttons: offer.buttons ?? [],
+  name: checkStringOrDefault(offer.name),
 });
 
 export const checkStringOrDefault = (maybeString: any, defaultVal?: string) => {
@@ -220,16 +215,16 @@ export const logoMap: Record<PromotionalOffer['logo'], any> = {
 const buttonProps = (url: string) => {
   let linkProps;
 
-  if (onSiteURL.test(url)) {
+  if (ONSITE_URL_REGEX.test(url)) {
     linkProps = {
       component: Link,
       to: url,
     };
-  } else if (offSiteURL.test(url)) {
+  } else if (OFFSITE_URL_REGEX.test(url)) {
     linkProps = {
       href: url,
-      target: '_blank',
       rel: 'noopener noreferrer',
+      target: '_blank',
     };
   }
   return linkProps;

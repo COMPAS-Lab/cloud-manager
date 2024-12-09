@@ -1,84 +1,88 @@
-import classNames from 'classnames';
-import { isEmpty } from 'ramda';
+import { Box } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
+import { RouterProvider } from '@tanstack/react-router';
 import * as React from 'react';
-import { Redirect, Route, RouteComponentProps, Switch } from 'react-router-dom';
-import { compose } from 'recompose';
-import Logo from 'src/assets/logo/logo-text.svg';
-import Box from 'src/components/core/Box';
-import {
-  makeStyles,
-  Theme,
-  withTheme,
-  WithTheme,
-} from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import MainContentBanner from 'src/components/MainContentBanner';
-import { MaintenanceScreen } from 'src/components/MaintenanceScreen';
-import NotFound from 'src/components/NotFound';
-import PreferenceToggle, { ToggleProps } from 'src/components/PreferenceToggle';
-import SideMenu from 'src/components/SideMenu';
-import SuspenseLoader from 'src/components/SuspenseLoader';
-import withGlobalErrors, {
-  Props as GlobalErrorProps,
-} from 'src/containers/globalErrors.container';
-import { useDialogContext } from 'src/context';
-import BackupDrawer from 'src/features/Backups';
-import Footer from 'src/features/Footer';
-import GlobalNotifications from 'src/features/GlobalNotifications';
-import {
-  notificationContext,
-  useNotificationContext,
-} from 'src/features/NotificationCenter/NotificationContext';
-import ToastNotifications from 'src/features/ToastNotifications';
-import TopMenu from 'src/features/TopMenu';
-import VolumeDrawer from 'src/features/Volumes/VolumeDrawer';
-import useAccountManagement from 'src/hooks/useAccountManagement';
-import useFlags from 'src/hooks/useFlags';
-import usePreferences from 'src/hooks/usePreferences';
-import { isFeatureEnabled } from 'src/utilities/accountCapabilities';
-import { complianceUpdateContext } from './context/complianceUpdateContext';
-import { FlagSet } from './featureFlags';
-import { UserPreferences } from './store/preferences/preferences.actions';
+import { Redirect, Route, Switch } from 'react-router-dom';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
+import Logo from 'src/assets/logo/akamai-logo.svg';
+import { MainContentBanner } from 'src/components/MainContentBanner';
+import { MaintenanceScreen } from 'src/components/MaintenanceScreen';
+import { SideMenu } from 'src/components/PrimaryNav/SideMenu';
+import { SIDEBAR_WIDTH } from 'src/components/PrimaryNav/SideMenu';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
+import { useDialogContext } from 'src/context/useDialogContext';
+import { Footer } from 'src/features/Footer';
+import { GlobalNotifications } from 'src/features/GlobalNotifications/GlobalNotifications';
+import {
+  notificationCenterContext,
+  useNotificationContext,
+} from 'src/features/NotificationCenter/NotificationCenterContext';
+import { TopMenu } from 'src/features/TopMenu/TopMenu';
+import {
+  useMutatePreferences,
+  usePreferences,
+} from 'src/queries/profile/preferences';
+
+import { ENABLE_MAINTENANCE_MODE } from './constants';
+import { complianceUpdateContext } from './context/complianceUpdateContext';
+import { sessionExpirationContext } from './context/sessionExpirationContext';
+import { switchAccountSessionContext } from './context/switchAccountSessionContext';
+import { useIsACLPEnabled } from './features/CloudPulse/Utils/utils';
+import { useIsDatabasesEnabled } from './features/Databases/utilities';
+import { useIsPlacementGroupsEnabled } from './features/PlacementGroups/utils';
+import { useGlobalErrors } from './hooks/useGlobalErrors';
+import { useAccountSettings } from './queries/account/settings';
+import { useProfile } from './queries/profile/profile';
+import { migrationRouter } from './routes';
+
+import type { Theme } from '@mui/material/styles';
+import type { AnyRouter } from '@tanstack/react-router';
+
+const useStyles = makeStyles()((theme: Theme) => ({
+  activationWrapper: {
+    padding: theme.spacing(4),
+    [theme.breakpoints.up('xl')]: {
+      margin: '0 auto',
+      width: '50%',
+    },
+  },
   appFrame: {
-    position: 'relative',
-    display: 'flex',
-    minHeight: '100vh',
-    flexDirection: 'column',
     backgroundColor: theme.bg.app,
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: '100vh',
+    position: 'relative',
     zIndex: 1,
   },
-  wrapper: {
-    padding: theme.spacing(3),
-    transition: theme.transitions.create('opacity'),
-    [theme.breakpoints.down('sm')]: {
-      paddingTop: theme.spacing(2),
-      paddingLeft: theme.spacing(2),
-      paddingRight: theme.spacing(2),
-    },
+  bgStyling: {
+    backgroundColor: theme.bg.main,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    minHeight: '100vh',
   },
   cmrWrapper: {
     maxWidth: `${theme.breakpoints.values.lg}px !important`,
-    padding: `${theme.spacing(3)}px 0`,
-    paddingTop: 20,
-    transition: theme.transitions.create('opacity'),
-    [theme.breakpoints.down('sm')]: {
-      paddingTop: theme.spacing(2),
-      paddingLeft: 0,
-      paddingRight: 0,
-    },
-    [theme.breakpoints.between('md', 'lg')]: {
+    padding: `${theme.spacing(3)} 0`,
+    paddingTop: 12,
+    [theme.breakpoints.between('md', 'xl')]: {
       paddingLeft: theme.spacing(2),
       paddingRight: theme.spacing(2),
     },
+    [theme.breakpoints.down('md')]: {
+      paddingLeft: 0,
+      paddingRight: 0,
+      paddingTop: theme.spacing(2),
+    },
+    transition: theme.transitions.create('opacity'),
   },
   content: {
     flex: 1,
-    transition: 'margin-left .1s linear',
     [theme.breakpoints.up('md')]: {
-      marginLeft: 190,
+      marginLeft: SIDEBAR_WIDTH,
     },
+    transition: 'margin-left .1s linear',
   },
   fullWidthContent: {
     marginLeft: 0,
@@ -86,22 +90,20 @@ const useStyles = makeStyles((theme: Theme) => ({
       marginLeft: 52,
     },
   },
-  hidden: {
-    display: 'none',
-    overflow: 'hidden',
-  },
   grid: {
     marginLeft: 0,
     marginRight: 0,
-    width: '100%',
     [theme.breakpoints.up('lg')]: {
       height: '100%',
     },
+    width: '100%',
+  },
+  logo: {
+    '& > g': {
+      fill: theme.color.black,
+    },
   },
   switchWrapper: {
-    flex: 1,
-    maxWidth: '100%',
-    position: 'relative',
     '& > .MuiGrid-container': {
       maxWidth: theme.breakpoints.values.lg,
       width: '100%',
@@ -111,99 +113,124 @@ const useStyles = makeStyles((theme: Theme) => ({
         maxWidth: '78.8%',
       },
     },
-    '& .mlSidebar': {
-      [theme.breakpoints.up('lg')]: {
-        paddingRight: `0 !important`,
-      },
-    },
-  },
-  logo: {
-    '& > g': {
-      fill: theme.color.black,
-    },
-  },
-  activationWrapper: {
-    padding: theme.spacing(4),
-    [theme.breakpoints.up('xl')]: {
-      width: '50%',
-      margin: '0 auto',
-    },
+    flex: 1,
+    maxWidth: '100%',
+    position: 'relative',
   },
 }));
 
-interface Props {
-  location: RouteComponentProps['location'];
-  history: RouteComponentProps['history'];
-  appIsLoading: boolean;
-  toggleTheme: () => void;
-  isLoggedInAsCustomer: boolean;
-}
-
-type CombinedProps = Props & GlobalErrorProps & WithTheme;
-
-const Account = React.lazy(() => import('src/features/Account'));
-const LinodesRoutes = React.lazy(() => import('src/features/linodes'));
+const Account = React.lazy(() =>
+  import('src/features/Account').then((module) => ({
+    default: module.Account,
+  }))
+);
+const LinodesRoutes = React.lazy(() =>
+  import('src/features/Linodes').then((module) => ({
+    default: module.LinodesRoutes,
+  }))
+);
 const Volumes = React.lazy(() => import('src/features/Volumes'));
-const Domains = React.lazy(() => import('src/features/Domains'));
+const Domains = React.lazy(() =>
+  import('src/features/Domains').then((module) => ({
+    default: module.DomainsRoutes,
+  }))
+);
 const Images = React.lazy(() => import('src/features/Images'));
-const Kubernetes = React.lazy(() => import('src/features/Kubernetes'));
+const Kubernetes = React.lazy(() =>
+  import('src/features/Kubernetes').then((module) => ({
+    default: module.Kubernetes,
+  }))
+);
 const ObjectStorage = React.lazy(() => import('src/features/ObjectStorage'));
-const Profile = React.lazy(() => import('src/features/Profile'));
-const NodeBalancers = React.lazy(() => import('src/features/NodeBalancers'));
-const StackScripts = React.lazy(() => import('src/features/StackScripts'));
+const Profile = React.lazy(() =>
+  import('src/features/Profile/Profile').then((module) => ({
+    default: module.Profile,
+  }))
+);
+const NodeBalancers = React.lazy(
+  () => import('src/features/NodeBalancers/NodeBalancers')
+);
+const StackScripts = React.lazy(
+  () => import('src/features/StackScripts/StackScripts')
+);
 const SupportTickets = React.lazy(
   () => import('src/features/Support/SupportTickets')
 );
-const SupportTicketDetail = React.lazy(
-  () => import('src/features/Support/SupportTicketDetail')
+const SupportTicketDetail = React.lazy(() =>
+  import('src/features/Support/SupportTicketDetail/SupportTicketDetail').then(
+    (module) => ({
+      default: module.SupportTicketDetail,
+    })
+  )
 );
 const Longview = React.lazy(() => import('src/features/Longview'));
-const Managed = React.lazy(() => import('src/features/Managed'));
-const Help = React.lazy(() => import('src/features/Help'));
-
-const SearchLanding = React.lazy(() => import('src/features/Search'));
-const EventsLanding = React.lazy(
-  () => import('src/features/Events/EventsLanding')
+const Managed = React.lazy(() => import('src/features/Managed/ManagedLanding'));
+const Help = React.lazy(() =>
+  import('./features/Help/index').then((module) => ({
+    default: module.HelpAndSupport,
+  }))
+);
+const SearchLanding = React.lazy(
+  () => import('src/features/Search/SearchLanding')
+);
+const EventsLanding = React.lazy(() =>
+  import('src/features/Events/EventsLanding').then((module) => ({
+    default: module.EventsLanding,
+  }))
 );
 const AccountActivationLanding = React.lazy(
   () => import('src/components/AccountActivation/AccountActivationLanding')
 );
 const Firewalls = React.lazy(() => import('src/features/Firewalls'));
 const Databases = React.lazy(() => import('src/features/Databases'));
+const VPC = React.lazy(() => import('src/features/VPCs'));
+const PlacementGroups = React.lazy(() =>
+  import('src/features/PlacementGroups').then((module) => ({
+    default: module.PlacementGroups,
+  }))
+);
 
-const MainContent: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const flags = useFlags();
-  const { preferences } = usePreferences();
+const CloudPulse = React.lazy(() =>
+  import('src/features/CloudPulse/CloudPulseLanding').then((module) => ({
+    default: module.CloudPulseLanding,
+  }))
+);
 
-  const NotificationProvider = notificationContext.Provider;
+export const MainContent = () => {
+  const { classes, cx } = useStyles();
+  const { data: preferences } = usePreferences();
+  const { mutateAsync: updatePreferences } = useMutatePreferences();
+
+  const globalErrors = useGlobalErrors();
+
+  const NotificationProvider = notificationCenterContext.Provider;
   const contextValue = useNotificationContext();
 
   const ComplianceUpdateProvider = complianceUpdateContext.Provider;
   const complianceUpdateContextValue = useDialogContext();
 
-  const [menuIsOpen, toggleMenu] = React.useState<boolean>(false);
-  const { account, profile, _isManagedAccount } = useAccountManagement();
+  const SwitchAccountSessionProvider = switchAccountSessionContext.Provider;
+  const switchAccountSessionContextValue = useDialogContext({
+    isOpen: false,
+  });
 
+  const SessionExpirationProvider = sessionExpirationContext.Provider;
+  const sessionExpirationContextValue = useDialogContext({
+    isOpen: false,
+  });
+
+  const [menuIsOpen, toggleMenu] = React.useState<boolean>(false);
+
+  const { data: profile } = useProfile();
   const username = profile?.username || '';
 
-  const [bannerDismissed, setBannerDismissed] = React.useState<boolean>(false);
+  const { isDatabasesEnabled } = useIsDatabasesEnabled();
+  const { isPlacementGroupsEnabled } = useIsPlacementGroupsEnabled();
 
-  const showDatabases = isFeatureEnabled(
-    'Managed Databases',
-    Boolean(flags.databases),
-    account?.capabilities ?? []
-  );
+  const { data: accountSettings } = useAccountSettings();
+  const defaultRoot = accountSettings?.managed ? '/managed' : '/linodes';
 
-  const defaultRoot = _isManagedAccount ? '/managed' : '/linodes';
-
-  const shouldDisplayMainContentBanner =
-    !bannerDismissed &&
-    checkFlagsForMainContentBanner(flags) &&
-    !checkPreferencesForBannerDismissal(
-      preferences ?? {},
-      flags?.mainContentBanner?.key
-    );
+  const { isACLPEnabled } = useIsACLPEnabled();
 
   /**
    * this is the case where the user has successfully completed signup
@@ -212,36 +239,32 @@ const MainContent: React.FC<CombinedProps> = (props) => {
    *
    * So in this case, we'll show something more user-friendly
    */
-  if (props.globalErrors.account_unactivated) {
+  if (globalErrors.account_unactivated) {
     return (
-      <div
-        style={{
-          backgroundColor: props.theme.bg.main,
-          minHeight: '100vh',
-        }}
-      >
+      <div className={classes.bgStyling}>
         <div className={classes.activationWrapper}>
           <Box
             style={{
               display: 'flex',
+              justifyContent: 'center',
             }}
           >
-            <Logo width={150} height={87} className={classes.logo} />
+            <Logo className={classes.logo} width={215} />
           </Box>
           <Switch>
             <Route
-              exact
-              strict
-              path="/support/tickets"
               component={SupportTickets}
+              exact
+              path="/support/tickets"
+              strict
             />
             <Route
-              path="/support/tickets/:ticketId"
               component={SupportTicketDetail}
               exact
+              path="/support/tickets/:ticketId"
               strict
             />
-            <Route exact path="/support" component={Help} />
+            <Route component={Help} exact path="/support" />
             <Route component={AccountActivationLanding} />
           </Switch>
         </div>
@@ -250,157 +273,120 @@ const MainContent: React.FC<CombinedProps> = (props) => {
   }
 
   // If the API is in maintenance mode, return a Maintenance screen
-  if (props.globalErrors.api_maintenance_mode) {
+  if (globalErrors.api_maintenance_mode || ENABLE_MAINTENANCE_MODE) {
     return <MaintenanceScreen />;
   }
 
-  /**
-   * otherwise just show the rest of the app.
-   */
+  const desktopMenuIsOpen = preferences?.desktop_sidebar_open ?? false;
+
+  const desktopMenuToggle = () => {
+    updatePreferences({
+      desktop_sidebar_open: !preferences?.desktop_sidebar_open,
+    });
+  };
+
   return (
-    <div
-      className={classNames({
-        [classes.appFrame]: true,
-        /**
-         * hidden to prevent some jankiness with the app loading before the splash screen
-         */
-        [classes.hidden]: props.appIsLoading,
-      })}
-    >
-      <PreferenceToggle<boolean>
-        preferenceKey="desktop_sidebar_open"
-        preferenceOptions={[true, false]}
-      >
-        {({
-          preference: desktopMenuIsOpen,
-          togglePreference: desktopMenuToggle,
-        }: ToggleProps<boolean>) => (
+    <div className={classes.appFrame}>
+      <SessionExpirationProvider value={sessionExpirationContextValue}>
+        <SwitchAccountSessionProvider value={switchAccountSessionContextValue}>
           <ComplianceUpdateProvider value={complianceUpdateContextValue}>
             <NotificationProvider value={contextValue}>
-              <>
-                {shouldDisplayMainContentBanner ? (
-                  <MainContentBanner
-                    bannerText={flags.mainContentBanner?.text ?? ''}
-                    url={flags.mainContentBanner?.link?.url ?? ''}
-                    linkText={flags.mainContentBanner?.link?.text ?? ''}
-                    bannerKey={flags.mainContentBanner?.key ?? ''}
-                    onClose={() => setBannerDismissed(true)}
-                  />
-                ) : null}
-                <SideMenu
-                  open={menuIsOpen}
-                  collapse={desktopMenuIsOpen || false}
-                  closeMenu={() => toggleMenu(false)}
+              <SideMenu
+                closeMenu={() => toggleMenu(false)}
+                collapse={desktopMenuIsOpen || false}
+                open={menuIsOpen}
+              />
+              <div
+                className={cx(classes.content, {
+                  [classes.fullWidthContent]:
+                    desktopMenuIsOpen ||
+                    (desktopMenuIsOpen && desktopMenuIsOpen === true),
+                })}
+              >
+                <MainContentBanner />
+                <TopMenu
+                  desktopMenuToggle={desktopMenuToggle}
+                  isSideMenuOpen={!desktopMenuIsOpen}
+                  openSideMenu={() => toggleMenu(true)}
+                  username={username}
                 />
-                <div
-                  className={`
-                    ${classes.content}
-                    ${
-                      desktopMenuIsOpen ||
-                      (desktopMenuIsOpen && desktopMenuIsOpen === true)
-                        ? classes.fullWidthContent
-                        : ''
-                    }
-                  `}
+                <main
+                  className={classes.cmrWrapper}
+                  id="main-content"
+                  role="main"
                 >
-                  <TopMenu
-                    isSideMenuOpen={!desktopMenuIsOpen}
-                    openSideMenu={() => toggleMenu(true)}
-                    desktopMenuToggle={desktopMenuToggle}
-                    isLoggedInAsCustomer={props.isLoggedInAsCustomer}
-                    username={username}
-                  />
-                  <main
-                    className={classes.cmrWrapper}
-                    id="main-content"
-                    role="main"
-                  >
-                    <Grid container spacing={0} className={classes.grid}>
-                      <Grid item className={`${classes.switchWrapper} p0`}>
-                        <GlobalNotifications />
-                        <React.Suspense fallback={<SuspenseLoader />}>
-                          <Switch>
-                            <Route path="/linodes" component={LinodesRoutes} />
-                            <Route path="/volumes" component={Volumes} />
-                            <Redirect path="/volumes*" to="/volumes" />
+                  <Grid className={classes.grid} container spacing={0}>
+                    <Grid className={cx(classes.switchWrapper, 'p0')}>
+                      <GlobalNotifications />
+                      <React.Suspense fallback={<SuspenseLoader />}>
+                        <Switch>
+                          <Route component={LinodesRoutes} path="/linodes" />
+                          {isPlacementGroupsEnabled && (
                             <Route
-                              path="/nodebalancers"
-                              component={NodeBalancers}
+                              component={PlacementGroups}
+                              path="/placement-groups"
                             />
-                            <Route path="/domains" component={Domains} />
-                            <Route path="/managed" component={Managed} />
-                            <Route path="/longview" component={Longview} />
-                            <Route path="/images" component={Images} />
+                          )}
+                          <Route component={Volumes} path="/volumes" />
+                          <Redirect path="/volumes*" to="/volumes" />
+                          <Route
+                            component={NodeBalancers}
+                            path="/nodebalancers"
+                          />
+                          <Route component={Domains} path="/domains" />
+                          <Route component={Managed} path="/managed" />
+                          <Route component={Longview} path="/longview" />
+                          <Route component={Images} path="/images" />
+                          <Route
+                            component={StackScripts}
+                            path="/stackscripts"
+                          />
+                          <Route
+                            component={ObjectStorage}
+                            path="/object-storage"
+                          />
+                          <Route component={Kubernetes} path="/kubernetes" />
+                          <Route component={Account} path="/account" />
+                          <Route component={Profile} path="/profile" />
+                          <Route component={Help} path="/support" />
+                          <Route component={SearchLanding} path="/search" />
+                          <Route component={EventsLanding} path="/events" />
+                          <Route component={Firewalls} path="/firewalls" />
+                          {isDatabasesEnabled && (
+                            <Route component={Databases} path="/databases" />
+                          )}
+                          <Route component={VPC} path="/vpcs" />
+                          {isACLPEnabled && (
                             <Route
-                              path="/stackscripts"
-                              component={StackScripts}
+                              component={CloudPulse}
+                              path="/monitor/cloudpulse"
                             />
-                            <Route
-                              path="/object-storage"
-                              component={ObjectStorage}
+                          )}
+                          <Redirect exact from="/" to={defaultRoot} />
+                          {/** We don't want to break any bookmarks. This can probably be removed eventually. */}
+                          <Redirect from="/dashboard" to={defaultRoot} />
+                          {/**
+                           * This is the catch all routes that allows TanStack Router to take over.
+                           * When a route is not found here, it will be handled by the migration router, which in turns handles the NotFound component.
+                           * It is currently set to the migration router in order to incrementally migrate the app to the new routing.
+                           * This is a temporary solution until we are ready to fully migrate to TanStack Router.
+                           */}
+                          <Route path="*">
+                            <RouterProvider
+                              router={migrationRouter as AnyRouter}
                             />
-                            <Route path="/kubernetes" component={Kubernetes} />
-                            <Route path="/account" component={Account} />
-
-                            <Route
-                              path="/profile"
-                              render={(routeProps) => (
-                                <Profile
-                                  {...routeProps}
-                                  toggleTheme={props.toggleTheme}
-                                />
-                              )}
-                            />
-                            <Route path="/support" component={Help} />
-                            <Route path="/search" component={SearchLanding} />
-                            <Route path="/events" component={EventsLanding} />
-                            <Route path="/firewalls" component={Firewalls} />
-                            {showDatabases ? (
-                              <Route path="/databases" component={Databases} />
-                            ) : null}
-                            <Redirect exact from="/" to={defaultRoot} />
-                            {/** We don't want to break any bookmarks. This can probably be removed eventually. */}
-                            <Redirect from="/dashboard" to={defaultRoot} />
-                            <Route component={NotFound} />
-                          </Switch>
-                        </React.Suspense>
-                      </Grid>
+                          </Route>
+                        </Switch>
+                      </React.Suspense>
                     </Grid>
-                  </main>
-                </div>
-              </>
+                  </Grid>
+                </main>
+              </div>
             </NotificationProvider>
             <Footer desktopMenuIsOpen={desktopMenuIsOpen} />
-            <ToastNotifications />
-            <VolumeDrawer />
-            <BackupDrawer />
           </ComplianceUpdateProvider>
-        )}
-      </PreferenceToggle>
+        </SwitchAccountSessionProvider>
+      </SessionExpirationProvider>
     </div>
   );
-};
-
-export default compose<CombinedProps, Props>(
-  React.memo,
-  withGlobalErrors(),
-  withTheme
-)(MainContent);
-
-// =============================================================================
-// Utilities
-// =============================================================================
-export const checkFlagsForMainContentBanner = (flags: FlagSet) => {
-  return Boolean(
-    flags.mainContentBanner &&
-      !isEmpty(flags.mainContentBanner) &&
-      flags.mainContentBanner.key
-  );
-};
-
-export const checkPreferencesForBannerDismissal = (
-  preferences: UserPreferences,
-  key = 'defaultKey'
-) => {
-  return Boolean(preferences?.main_content_banner_dismissal?.[key]);
 };

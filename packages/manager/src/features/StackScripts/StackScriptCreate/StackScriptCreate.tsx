@@ -1,80 +1,53 @@
-import { Account, Grant } from '@linode/api-v4/lib/account';
-import { Image } from '@linode/api-v4/lib/images';
 import {
   createStackScript,
   getStackScript,
-  StackScript,
-  StackScriptPayload,
   updateStackScript,
 } from '@linode/api-v4/lib/stackscripts';
-import { APIError } from '@linode/api-v4/lib/types';
 import { equals } from 'ramda';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
 import { compose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Breadcrumb from 'src/components/Breadcrumb';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import setDocs, { SetDocsProps } from 'src/components/DocsSidebar/setDocs';
-import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import { Item } from 'src/components/EnhancedSelect/Select';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import withImages from 'src/containers/withImages.container';
-import { StackScripts } from 'src/documentation';
-import {
-  getGrants,
-  hasGrant,
-  isRestrictedUser,
-} from 'src/features/Profile/permissionsHelpers';
-import ScriptForm from 'src/features/StackScripts/StackScriptForm';
-import { filterImagesByType } from 'src/store/image/image.helpers';
-import getAPIErrorsFor from 'src/utilities/getAPIErrorFor';
-import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
-import { storage } from 'src/utilities/storage';
 import { debounce } from 'throttle-debounce';
-import { queryClient } from 'src/queries/base';
-import { queryKey } from 'src/queries/profile';
-import withProfile, { ProfileProps } from 'src/components/withProfile';
 
-type ClassNames = 'backButton' | 'createTitle';
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { DocumentTitleSegment } from 'src/components/DocumentTitle';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { withProfile } from 'src/containers/profile.container';
+import { withQueryClient } from 'src/containers/withQueryClient.container';
+import { StackScriptForm } from 'src/features/StackScripts/StackScriptForm/StackScriptForm';
+import { profileQueries } from 'src/queries/profile/profile';
+import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
+import { scrollErrorIntoView } from 'src/utilities/scrollErrorIntoView';
+import { storage } from 'src/utilities/storage';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    backButton: {
-      margin: '5px 0 0 -16px',
-      '& svg': {
-        width: 34,
-        height: 34,
-      },
-    },
-    createTitle: {
-      marginTop: theme.spacing(2),
-      marginBottom: theme.spacing(2),
-    },
-  });
+import type {
+  APIError,
+  Image,
+  StackScript,
+  StackScriptPayload,
+} from '@linode/api-v4';
+import type { Account, Grant } from '@linode/api-v4/lib/account';
+import type { QueryClient } from '@tanstack/react-query';
+import type { RouteComponentProps } from 'react-router-dom';
+import type { WithProfileProps } from 'src/containers/profile.container';
+import type { WithQueryClientProps } from 'src/containers/withQueryClient.container';
 
 interface State {
-  label: string;
-  description: string;
-  images: string[];
-  script: string;
-  revisionNote: string;
-  isSubmitting: boolean;
-  errors?: APIError[];
-  dialogOpen: boolean;
   apiResponse?: StackScript;
+  description: string;
+  dialogOpen: boolean;
+  errors?: APIError[];
+  images: string[];
   isLoadingStackScript: boolean;
+  isSubmitting: boolean;
+  label: string;
+  revisionNote: string;
+  script: string;
   updated: string;
 }
 
@@ -83,121 +56,33 @@ interface Props {
 }
 
 type CombinedProps = Props &
-  ProfileProps &
-  WithImagesProps &
-  SetDocsProps &
-  WithStyles<ClassNames> &
-  RouteComponentProps<{ stackScriptID: string }>;
+  WithProfileProps &
+  RouteComponentProps<{ stackScriptID: string }> &
+  WithQueryClientProps;
 
 const errorResources = {
-  label: 'A label',
   images: 'Images',
+  label: 'A label',
   script: 'A script',
 };
 
 export class StackScriptCreate extends React.Component<CombinedProps, State> {
-  state: State = {
-    label: '',
-    description: '',
-    images: [],
-    /* available images to select from in the dropdown */
-    script: '',
-    revisionNote: '',
-    isSubmitting: false,
-    dialogOpen: false,
-    isLoadingStackScript: false,
-    updated: '',
-  };
-
-  static docs = [StackScripts];
-
-  mounted: boolean = false;
-
-  componentDidMount() {
-    this.mounted = true;
+  _saveStateToLocalStorage = (queryClient: QueryClient) => {
     const {
-      match: {
-        params: { stackScriptID },
-      },
-    } = this.props;
-    const valuesFromStorage = storage.stackScriptInProgress.get();
-    const account = queryClient.getQueryData<Account>('account');
-
-    if (stackScriptID) {
-      // If we have a stackScriptID we're in the edit flow and
-      // should request the stackscript.
-      this.setState({ isLoadingStackScript: true });
-      getStackScript(+stackScriptID)
-        .then((response) => {
-          const responseUpdated = Date.parse(response.updated);
-          const localUpdated = Date.parse(valuesFromStorage.updated);
-          const stackScriptHasBeenUpdatedElsewhere =
-            responseUpdated > localUpdated;
-          if (
-            response.id === valuesFromStorage.id &&
-            !stackScriptHasBeenUpdatedElsewhere
-          ) {
-            this.setState({
-              label: valuesFromStorage.label ?? '',
-              description: valuesFromStorage.description ?? '',
-              images: valuesFromStorage.images ?? [],
-              script: valuesFromStorage.script ?? '',
-              revisionNote: valuesFromStorage.rev_note ?? '',
-              isLoadingStackScript: false,
-              apiResponse: response,
-            });
-          } else {
-            this.setState({
-              label: response.label,
-              description: response.description,
-              images: response.images,
-              revisionNote: response.rev_note,
-              script: response.script,
-              apiResponse: response, // Saved for use when resetting the form
-              isLoadingStackScript: false,
-              updated: response.updated,
-            });
-          }
-        })
-        .catch((error) => {
-          this.setState({ errors: error, isLoadingStackScript: false });
-        });
-    } else if (valuesFromStorage.id === account?.euuid) {
-      /**
-       * We're creating a stackscript and we have cached
-       * data from a user that was creating a stackscript,
-       * so load that in.
-       */
-      this.setState({
-        label: valuesFromStorage.label ?? '',
-        description: valuesFromStorage.description ?? '',
-        images: valuesFromStorage.images ?? [],
-        script: valuesFromStorage.script ?? '',
-        revisionNote: valuesFromStorage.rev_note ?? '',
-      });
-    }
-  }
-
-  componentWillUnmount() {
-    this.mounted = false;
-  }
-
-  _saveStateToLocalStorage = () => {
-    const {
-      label,
       description,
-      script,
       images,
+      label,
       revisionNote: rev_note,
+      script,
       updated,
     } = this.state;
     const {
-      mode,
       match: {
         params: { stackScriptID },
       },
+      mode,
     } = this.props;
-    const account = queryClient.getQueryData<Account>('account');
+    const account = queryClient.getQueryData<Account>(['account']);
 
     if (account) {
       // Use the euuid if we're creating to avoid loading another user's data
@@ -205,32 +90,43 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
       const id = mode === 'create' ? account.euuid : +stackScriptID;
 
       storage.stackScriptInProgress.set({
-        id,
-        label,
         description,
-        script,
+        id,
         images,
+        label,
         rev_note,
+        script,
         updated,
       });
     }
   };
 
-  saveStateToLocalStorage = debounce(1000, this._saveStateToLocalStorage);
+  generatePayload = () => {
+    const { description, images, label, revisionNote, script } = this.state;
 
-  handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState({ label: e.target.value }, this.saveStateToLocalStorage);
+    return {
+      description,
+      images,
+      label,
+      rev_note: revisionNote,
+      script,
+    };
   };
 
-  handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState(
-      { description: e.target.value },
-      this.saveStateToLocalStorage
+  handleChangeRevisionNote = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({ revisionNote: e.target.value }, () =>
+      this.saveStateToLocalStorage(this.props.queryClient)
     );
   };
 
-  handleChooseImage = (images: Item<string>[]) => {
-    const imageList = images.map((image) => image.value);
+  handleChangeScript = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({ script: e.target.value }, () =>
+      this.saveStateToLocalStorage(this.props.queryClient)
+    );
+  };
+
+  handleChooseImage = (images: Image[]) => {
+    const imageList = images.map((image) => image.id);
 
     const anyAllOptionChosen = imageList.includes('any/all');
 
@@ -242,32 +138,41 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
         */
         images: anyAllOptionChosen ? ['any/all'] : imageList,
       },
-      this.saveStateToLocalStorage
+      () => this.saveStateToLocalStorage(this.props.queryClient)
     );
   };
 
-  handleChangeScript = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState({ script: e.target.value }, this.saveStateToLocalStorage);
+  handleCloseDialog = () => {
+    this.setState({ dialogOpen: false });
   };
 
-  handleChangeRevisionNote = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState(
-      { revisionNote: e.target.value },
-      this.saveStateToLocalStorage
-    );
+  handleCreateStackScript = (
+    payload: StackScriptPayload,
+    queryClient: QueryClient
+  ) => {
+    const { history, profile } = this.props;
+    createStackScript(payload)
+      .then((stackScript: StackScript) => {
+        if (!this.mounted) {
+          return;
+        }
+        if (profile.data?.restricted) {
+          queryClient.invalidateQueries({
+            queryKey: profileQueries.grants.queryKey,
+          });
+        }
+        this.setState({ isSubmitting: false });
+        this.resetAllFields();
+        history.push('/stackscripts/account', {
+          successMessage: `${stackScript.label} successfully created`,
+        });
+      })
+      .catch(this.handleError);
   };
 
-  resetAllFields = (payload?: StackScript) => {
-    this.handleCloseDialog();
-    this.setState(
-      {
-        script: payload?.script ?? '',
-        label: payload?.label ?? '',
-        images: payload?.images ?? [],
-        description: payload?.description ?? '',
-        revisionNote: payload?.rev_note ?? '',
-      },
-      this.saveStateToLocalStorage
+  handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({ description: e.target.value }, () =>
+      this.saveStateToLocalStorage(this.props.queryClient)
     );
   };
 
@@ -278,13 +183,41 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
 
     this.setState(
       () => ({
-        isSubmitting: false,
         errors,
+        isSubmitting: false,
       }),
       () => {
         scrollErrorIntoView();
       }
     );
+  };
+
+  handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({ label: e.target.value }, () =>
+      this.saveStateToLocalStorage(this.props.queryClient)
+    );
+  };
+
+  handleOpenDialog = () => {
+    this.setState({ dialogOpen: true });
+  };
+
+  handleSubmit = () => {
+    const { mode } = this.props;
+
+    const payload = this.generatePayload();
+
+    if (!this.mounted) {
+      return;
+    }
+
+    this.setState({ isSubmitting: true });
+
+    if (mode === 'create') {
+      this.handleCreateStackScript(payload, this.props.queryClient);
+    } else {
+      this.handleUpdateStackScript(payload);
+    }
   };
 
   handleUpdateStackScript = (payload: StackScriptPayload) => {
@@ -309,45 +242,14 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
       .catch(this.handleError);
   };
 
-  handleCreateStackScript = (payload: StackScriptPayload) => {
-    const { history, profile } = this.props;
-    createStackScript(payload)
-      .then((stackScript: StackScript) => {
-        if (!this.mounted) {
-          return;
-        }
-        if (profile.data?.restricted) {
-          queryClient.invalidateQueries(`${queryKey}-grants`);
-        }
-        this.setState({ isSubmitting: false });
-        this.resetAllFields();
-        history.push('/stackscripts/account', {
-          successMessage: `${stackScript.label} successfully created`,
-        });
-      })
-      .catch(this.handleError);
-  };
-
-  generatePayload = () => {
-    const { script, label, images, description, revisionNote } = this.state;
-
-    return {
-      script,
-      label,
-      images,
-      description,
-      rev_note: revisionNote,
-    };
-  };
-
   hasUnsavedChanges = () => {
     const {
       apiResponse,
-      script,
-      label,
-      images,
       description,
+      images,
+      label,
       revisionNote,
+      script,
     } = this.state;
     if (!apiResponse) {
       // Create flow; return true if there's any input anywhere
@@ -366,62 +268,17 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
     }
   };
 
-  handleSubmit = () => {
-    const { mode } = this.props;
-
-    const payload = this.generatePayload();
-
-    if (!this.mounted) {
-      return;
-    }
-
-    this.setState({ isSubmitting: true });
-
-    if (mode === 'create') {
-      this.handleCreateStackScript(payload);
-    } else {
-      this.handleUpdateStackScript(payload);
-    }
-  };
-
-  handleOpenDialog = () => {
-    this.setState({ dialogOpen: true });
-  };
-
-  handleCloseDialog = () => {
-    this.setState({ dialogOpen: false });
-  };
-
-  renderDialogActions = () => {
-    return (
-      <ActionsPanel>
-        <Button
-          buttonType="secondary"
-          onClick={this.handleCloseDialog}
-          data-qa-cancel-cancel
-        >
-          Cancel
-        </Button>
-        <Button
-          buttonType="primary"
-          onClick={() => this.resetAllFields(this.state.apiResponse)}
-          data-qa-confirm-cancel
-        >
-          Reset
-        </Button>
-      </ActionsPanel>
-    );
-  };
+  mounted: boolean = false;
 
   renderCancelStackScriptDialog = () => {
     const { dialogOpen } = this.state;
 
     return (
       <ConfirmationDialog
-        title={`Clear StackScript Configuration?`}
-        open={dialogOpen}
         actions={this.renderDialogActions}
         onClose={this.handleCloseDialog}
+        open={dialogOpen}
+        title={`Clear StackScript Configuration?`}
       >
         <Typography>
           Are you sure you want to reset your StackScript configuration?
@@ -430,51 +287,158 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
     );
   };
 
-  render() {
+  renderDialogActions = () => {
+    return (
+      <ActionsPanel
+        primaryButtonProps={{
+          'data-testid': 'confirm-cancel',
+          label: 'Reset',
+          onClick: () => this.resetAllFields(this.state.apiResponse),
+        }}
+        secondaryButtonProps={{
+          'data-testid': 'cancel-cancel',
+          label: 'Cancel',
+          onClick: this.handleCloseDialog,
+        }}
+      />
+    );
+  };
+
+  resetAllFields = (payload?: StackScript) => {
+    this.handleCloseDialog();
+    this.setState(
+      {
+        description: payload?.description ?? '',
+        images: payload?.images ?? [],
+        label: payload?.label ?? '',
+        revisionNote: payload?.rev_note ?? '',
+        script: payload?.script ?? '',
+      },
+      () => this.saveStateToLocalStorage(this.props.queryClient)
+    );
+  };
+
+  saveStateToLocalStorage = debounce(1000, this._saveStateToLocalStorage);
+
+  state: State = {
+    description: '',
+    dialogOpen: false,
+    images: [],
+    isLoadingStackScript: false,
+    isSubmitting: false,
+    label: '',
+    revisionNote: '',
+    /* available images to select from in the dropdown */
+    script: '',
+    updated: '',
+  };
+
+  componentDidMount() {
+    this.mounted = true;
     const {
-      classes,
-      location,
-      imagesData,
-      mode,
-      grants,
-      profile,
       match: {
         params: { stackScriptID },
       },
     } = this.props;
+    const valuesFromStorage = storage.stackScriptInProgress.get();
+    const account = this.props.queryClient.getQueryData<Account>(['account']);
+
+    if (stackScriptID) {
+      // If we have a stackScriptID we're in the edit flow and
+      // should request the stackscript.
+      this.setState({ isLoadingStackScript: true });
+      getStackScript(+stackScriptID)
+        .then((response) => {
+          const responseUpdated = Date.parse(response.updated);
+          const localUpdated = Date.parse(valuesFromStorage.updated);
+          const stackScriptHasBeenUpdatedElsewhere =
+            responseUpdated > localUpdated;
+          if (
+            response.id === valuesFromStorage.id &&
+            !stackScriptHasBeenUpdatedElsewhere
+          ) {
+            this.setState({
+              apiResponse: response,
+              description: valuesFromStorage.description ?? '',
+              images: valuesFromStorage.images ?? [],
+              isLoadingStackScript: false,
+              label: valuesFromStorage.label ?? '',
+              revisionNote: valuesFromStorage.rev_note ?? '',
+              script: valuesFromStorage.script ?? '',
+            });
+          } else {
+            this.setState({
+              apiResponse: response, // Saved for use when resetting the form
+              description: response.description,
+              images: response.images,
+              isLoadingStackScript: false,
+              label: response.label,
+              revisionNote: response.rev_note,
+              script: response.script,
+              updated: response.updated,
+            });
+          }
+        })
+        .catch((error) => {
+          this.setState({ errors: error, isLoadingStackScript: false });
+        });
+    } else if (valuesFromStorage.id === account?.euuid) {
+      /**
+       * We're creating a stackscript and we have cached
+       * data from a user that was creating a stackscript,
+       * so load that in.
+       */
+      this.setState({
+        description: valuesFromStorage.description ?? '',
+        images: valuesFromStorage.images ?? [],
+        label: valuesFromStorage.label ?? '',
+        revisionNote: valuesFromStorage.rev_note ?? '',
+        script: valuesFromStorage.script ?? '',
+      });
+    }
+  }
+
+  componentWillUnmount() {
+    this.mounted = false;
+  }
+
+  render() {
     const {
-      images,
-      script,
-      label,
+      grants,
+      location,
+      match: {
+        params: { stackScriptID },
+      },
+      mode,
+      profile,
+    } = this.props;
+    const {
       description,
-      revisionNote,
       errors,
-      isSubmitting,
+      images,
       isLoadingStackScript,
+      isSubmitting,
+      label,
+      revisionNote,
+      script,
       // apiResponse
     } = this.state;
 
-    const hasErrorFor = getAPIErrorsFor(errorResources, errors);
+    const hasErrorFor = getAPIErrorFor(errorResources, errors);
     const generalError = hasErrorFor('none');
 
     const hasUnsavedChanges = this.hasUnsavedChanges();
 
-    const availableImages = Object.values(imagesData).filter(
-      (thisImage) =>
-        !this.state.images.includes(thisImage.id) &&
-        !thisImage.label.match(/kube/i)
-    );
+    const stackScriptGrants = grants.data?.stackscript;
 
-    const stackScriptGrants = getGrants(grants.data, 'stackscript');
-
-    const grantsForThisStackScript = stackScriptGrants.find(
+    const grantsForThisStackScript = stackScriptGrants?.find(
       (eachGrant: Grant) => eachGrant.id === Number(stackScriptID)
     );
 
     const userCannotCreateStackScripts =
-      isRestrictedUser() && !hasGrant('add_stackscripts');
+      profile.data?.restricted && !grants.data?.global.add_stackscripts;
     const userCannotModifyStackScript =
-      isRestrictedUser() &&
+      profile.data?.restricted &&
       grantsForThisStackScript?.permissions !== 'read_write';
 
     const shouldDisable =
@@ -496,23 +460,22 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
     return (
       <React.Fragment>
         <DocumentTitleSegment segment={pageTitle} />
-        {generalError && <Notice error text={generalError} />}
-        <Grid container justifyContent="space-between">
-          <Grid item className="py0">
-            <Breadcrumb
-              pathname={location.pathname}
-              labelTitle={pageTitle}
-              className={classes.createTitle}
-              crumbOverrides={[
-                {
-                  position: 1,
-                  label: 'StackScripts',
-                },
-              ]}
-              data-qa-create-stackscript-breadcrumb
-            />
-          </Grid>
-        </Grid>
+        {generalError && <Notice text={generalError} variant="error" />}
+        <LandingHeader
+          breadcrumbProps={{
+            breadcrumbDataAttrs: {
+              'data-qa-create-stackscript-breadcrumb': true,
+            },
+            crumbOverrides: [
+              {
+                label: 'StackScripts',
+                position: 1,
+              },
+            ],
+            pathname: location.pathname,
+          }}
+          title={pageTitle}
+        />
         {shouldDisable && (
           <Notice
             text={`You don't have permission to ${
@@ -520,40 +483,37 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
                 ? 'create StackScripts'
                 : 'edit this StackScript'
             }. Please contact an account administrator for details.`}
-            error={true}
             important
+            variant="error"
           />
         )}
-        <ScriptForm
+        <StackScriptForm
+          description={{
+            handler: this.handleDescriptionChange,
+            value: description,
+          }}
+          label={{
+            handler: this.handleLabelChange,
+            value: label,
+          }}
+          revision={{
+            handler: this.handleChangeRevisionNote,
+            value: revisionNote,
+          }}
+          script={{
+            handler: this.handleChangeScript,
+            value: script,
+          }}
           currentUser={profile.data?.username || ''}
           disableSubmit={!hasUnsavedChanges}
           disabled={shouldDisable}
-          mode={mode}
-          images={{
-            available: availableImages,
-            selected: images,
-          }}
-          label={{
-            value: label,
-            handler: this.handleLabelChange,
-          }}
-          description={{
-            value: description,
-            handler: this.handleDescriptionChange,
-          }}
-          revision={{
-            value: revisionNote,
-            handler: this.handleChangeRevisionNote,
-          }}
-          script={{
-            value: script,
-            handler: this.handleChangeScript,
-          }}
-          onSelectChange={this.handleChooseImage}
           errors={errors}
-          onSubmit={this.handleSubmit}
-          onCancel={this.handleOpenDialog}
           isSubmitting={isSubmitting}
+          mode={mode}
+          onCancel={this.handleOpenDialog}
+          onSelectChange={this.handleChooseImage}
+          onSubmit={this.handleSubmit}
+          selectedImages={images}
         />
         {this.renderCancelStackScriptDialog()}
       </React.Fragment>
@@ -561,25 +521,12 @@ export class StackScriptCreate extends React.Component<CombinedProps, State> {
   }
 }
 
-const styled = withStyles(styles);
-
-interface WithImagesProps {
-  imagesData: Record<string, Image>;
-  imagesLoading: boolean;
-  imagesError?: APIError[];
-}
-
 const enhanced = compose<CombinedProps, Props>(
-  setDocs(StackScriptCreate.docs),
-  withImages((ownProps, imagesData, imagesLoading, imagesError) => ({
-    ...ownProps,
-    imagesData: filterImagesByType(imagesData, 'public'),
-    imagesLoading,
-    imagesError,
-  })),
-  styled,
   withRouter,
-  withProfile
+  withProfile,
+  withQueryClient
 );
 
-export default enhanced(StackScriptCreate);
+export const EnhancedStackScriptCreate = enhanced(StackScriptCreate);
+
+export default EnhancedStackScriptCreate;

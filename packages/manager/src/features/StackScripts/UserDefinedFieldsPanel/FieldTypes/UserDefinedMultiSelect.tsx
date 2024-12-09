@@ -1,14 +1,17 @@
-import { UserDefinedField } from '@linode/api-v4/lib/stackscripts';
 import * as React from 'react';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import Notice from 'src/components/Notice';
-import RenderGuard from 'src/components/RenderGuard';
+
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { Notice } from 'src/components/Notice/Notice';
+import { RenderGuard } from 'src/components/RenderGuard';
+
+import type { UserDefinedField } from '@linode/api-v4/lib/stackscripts';
+import type { Item } from 'src/components/EnhancedSelect';
 
 interface Props {
-  updateFormState: (key: string, value: any) => void;
+  error?: string;
   field: UserDefinedField;
   isOptional: boolean;
-  error?: string;
+  updateFormState: (key: string, value: any) => void;
   /**
    * value will end up being a comma-seperated list
    * something like TCP,TCPIP,Helloworld
@@ -23,15 +26,9 @@ interface State {
   manyof: string[];
 }
 
-type CombinedProps = Props;
-
-class UserDefinedMultiSelect extends React.Component<CombinedProps, State> {
-  state: State = {
-    manyof: this.props.field.manyof!.split(','),
-  };
-
-  handleSelectManyOf = (selectedOptions: Item) => {
-    const { updateFormState, field } = this.props;
+class UserDefinedMultiSelect extends React.Component<Props, State> {
+  handleSelectManyOf = (selectedOptions: Item[]) => {
+    const { field, updateFormState } = this.props;
 
     const arrayToString = Array.prototype.map
       .call(selectedOptions, (opt: Item) => opt.value)
@@ -40,9 +37,13 @@ class UserDefinedMultiSelect extends React.Component<CombinedProps, State> {
     updateFormState(field.name, arrayToString);
   };
 
+  state: State = {
+    manyof: this.props.field.manyof!.split(','),
+  };
+
   render() {
     const { manyof } = this.state;
-    const { error, field, isOptional, value: propValue } = this.props;
+    const { error, field, value: propValue } = this.props;
 
     /**
      * if we don't have any options selected for this multivalue
@@ -64,19 +65,22 @@ class UserDefinedMultiSelect extends React.Component<CombinedProps, State> {
 
     return (
       <div>
-        {error && <Notice error text={error} spacingTop={8} />}
-        <Select
+        {error && <Notice spacingTop={8} text={error} variant="error" />}
+
+        <Autocomplete
+          onChange={(_, selected) => {
+            if (selected) {
+              this.handleSelectManyOf(selected);
+            }
+          }}
           label={field.label}
-          {...(!isOptional && '*')}
+          multiple
+          options={manyOfOptions ?? []}
           value={value}
-          isMulti={true}
-          onChange={this.handleSelectManyOf}
-          options={manyOfOptions}
-          // small={isOptional}
         />
       </div>
     );
   }
 }
 
-export default RenderGuard<CombinedProps>(UserDefinedMultiSelect);
+export default RenderGuard<Props>(UserDefinedMultiSelect);

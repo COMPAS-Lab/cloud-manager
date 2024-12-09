@@ -1,118 +1,170 @@
-import * as React from 'react';
-import Paper from 'src/components/core/Paper';
-import Tab from 'src/components/core/ReachTab';
-import TabList from 'src/components/core/ReachTabList';
-import TabPanel from 'src/components/core/ReachTabPanel';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import Tabs from 'src/components/core/ReachTabs';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from '../Notice';
+import { Box, Paper, Tooltip } from '@linode/ui';
+import HelpOutline from '@mui/icons-material/HelpOutline';
+import { styled } from '@mui/material/styles';
+import React, { useEffect, useState } from 'react';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    flexGrow: 1,
-  },
-  copy: {
-    fontSize: '0.875rem',
-    marginTop: theme.spacing(1),
-  },
-  panelBody: {
-    padding: `${theme.spacing(2)}px 0 0`,
-  },
-  tabsWrapper: {
-    position: 'relative',
-  },
-  tab: {
-    '&[data-reach-tab]': {
-      '&:focus': {
-        backgroundColor: theme.bg.tableHeader,
-      },
-      '&:hover': {
-        backgroundColor: theme.bg.tableHeader,
-      },
-    },
-  },
-  tabList: {
-    '&[data-reach-tab-list]': {
-      boxShadow: `inset 0 -1px 0 ${theme.borderColors.divider}`,
-      marginTop: 22,
-      marginBottom: theme.spacing(3),
-    },
-  },
-}));
+import { Notice } from 'src/components/Notice/Notice';
+import { Tab } from 'src/components/Tabs/Tab';
+import { TabList } from 'src/components/Tabs/TabList';
+import { TabPanel } from 'src/components/Tabs/TabPanel';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import { Tabs } from 'src/components/Tabs/Tabs';
+import { Typography } from 'src/components/Typography';
+
+import type { SxProps, Theme } from '@mui/material/styles';
 
 export interface Tab {
-  title: string;
+  disabled?: boolean;
   render: (props: any) => JSX.Element | null;
+  title: string;
 }
 
-interface Props {
-  header: string;
-  error?: string | JSX.Element;
-  copy?: string;
-  rootClass?: string;
-  innerClass?: string;
-  tabs: Tab[];
-  [index: string]: any;
-  initTab?: number;
+interface TabbedPanelProps {
   bodyClass?: string;
-  noPadding?: boolean;
+  children?: React.ReactNode;
+  copy?: string;
+  docsLink?: JSX.Element;
+  error?: JSX.Element | string;
   handleTabChange?: (index: number) => void;
+  header: string;
+  initTab?: number;
+  innerClass?: string;
+  noPadding?: boolean;
+  rootClass?: string;
+  sx?: SxProps<Theme>;
+  tabDisabledMessage?: string;
+  tabs: Tab[];
   value?: number;
 }
 
-type CombinedProps = Props;
-
-export const TabbedPanel: React.FC<CombinedProps> = (props) => {
+const TabbedPanel = React.memo((props: TabbedPanelProps) => {
   const {
-    header,
-    error,
     copy,
-    rootClass,
-    innerClass,
-    tabs,
+    docsLink,
+    error,
     handleTabChange,
+    header,
+    initTab,
+    innerClass,
+    rootClass,
+    sx,
+    tabs,
     ...rest
   } = props;
 
-  const classes = useStyles();
+  const [tabIndex, setTabIndex] = useState<number | undefined>(initTab);
+
+  const sxHelpIcon = {
+    height: 20,
+    m: 0.5,
+    verticalAlign: 'sub',
+    width: 20,
+  };
+
+  const tabChangeHandler = (index: number) => {
+    setTabIndex(index);
+    if (handleTabChange) {
+      handleTabChange(index);
+    }
+  };
+
+  useEffect(() => {
+    if (tabIndex !== initTab) {
+      setTabIndex(initTab);
+    }
+  }, [initTab]);
 
   return (
-    <Paper className={`${classes.root} ${rootClass}`} data-qa-tp={header}>
+    <Paper
+      className={rootClass}
+      data-qa-tp={header}
+      sx={{ flexGrow: 1, ...sx }}
+    >
       <div className={innerClass}>
-        {error && <Notice error>{error}</Notice>}
-        {header !== '' && (
-          <Typography variant="h2" data-qa-tp-title>
-            {header}
-          </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          {header && (
+            <Typography data-qa-tp-title variant="h2">
+              {header}
+            </Typography>
+          )}
+          {docsLink}
+        </Box>
+        {error && (
+          <Notice spacingBottom={0} spacingTop={12} variant="error">
+            {error}
+          </Notice>
         )}
-        {copy && (
-          <Typography component="div" className={classes.copy} data-qa-tp-copy>
-            {copy}
-          </Typography>
-        )}
-
-        <Tabs className={classes.tabsWrapper} onChange={handleTabChange}>
-          <TabList className={classes.tabList}>
+        {copy && <StyledTypography data-qa-tp-copy>{copy}</StyledTypography>}
+        <StyledTabs index={tabIndex} onChange={tabChangeHandler}>
+          <StyledTabList>
             {tabs.map((tab, idx) => (
-              <Tab className={classes.tab} key={`tabs-${tab.title}-${idx}`}>
+              <StyledTab
+                disabled={tab.disabled}
+                key={`tabs-${tab.title}-${idx}`}
+              >
                 {tab.title}
-              </Tab>
+                {tab.disabled && props.tabDisabledMessage && (
+                  <Tooltip title={props.tabDisabledMessage}>
+                    <span>
+                      <HelpOutline fontSize="small" sx={sxHelpIcon} />
+                    </span>
+                  </Tooltip>
+                )}
+              </StyledTab>
             ))}
-          </TabList>
-
+          </StyledTabList>
           <TabPanels>
             {tabs.map((tab, idx) => (
-              <TabPanel key={`tabs-panel-${tab.title}-${idx}`}>
+              <TabPanel
+                data-qa-tp-tab={tab.title}
+                key={`tabs-panel-${tab.title}-${idx}`}
+              >
                 {tab.render(rest.children)}
               </TabPanel>
             ))}
           </TabPanels>
-        </Tabs>
+        </StyledTabs>
       </div>
     </Paper>
   );
-};
+});
 
-export default React.memo(TabbedPanel);
+export { TabbedPanel };
+
+const StyledTypography = styled(Typography)(({ theme }) => ({
+  fontSize: '0.875rem',
+  marginTop: theme.spacing(1),
+}));
+
+const StyledTabList = styled(TabList)(({ theme }) => ({
+  'div &[data-reach-tab-list]': {
+    '&button': {
+      '&:focus': {
+        backgroundColor: theme.bg.tableHeader,
+      },
+      '&:hover': {
+        backgroundColor: `red !important`,
+      },
+    },
+    boxShadow: `inset 0 -1px 0 ${theme.borderColors.divider}`,
+    marginBottom: theme.spacing(3),
+    marginTop: theme.spacing(1),
+  },
+}));
+
+const StyledTabs = styled(Tabs, {
+  label: 'StyledTabs',
+})(() => ({
+  position: 'relative',
+}));
+
+const StyledTab = styled(Tab)(({ theme }) => ({
+  '&[data-reach-tab]': {
+    '&:focus': {
+      backgroundColor: theme.bg.tableHeader,
+    },
+    '&:hover': {
+      backgroundColor: theme.bg.tableHeader,
+    },
+  },
+}));

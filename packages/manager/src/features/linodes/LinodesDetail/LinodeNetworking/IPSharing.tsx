@@ -1,94 +1,93 @@
 import { Linode } from '@linode/api-v4/lib/linodes';
-import {
-  shareAddresses,
-  shareAddressesv4,
-  IPRangeInformation,
-} from '@linode/api-v4/lib/networking';
+import { IPRangeInformation } from '@linode/api-v4/lib/networking';
 import { APIError } from '@linode/api-v4/lib/types';
+import Grid from '@mui/material/Unstable_Grid2';
+import { styled, useTheme } from '@mui/material/styles';
 import { remove, uniq, update } from 'ramda';
 import * as React from 'react';
-import { compose as recompose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Link from 'src/components/Link';
-import CircleProgress from 'src/components/CircleProgress';
-import Divider from 'src/components/core/Divider';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Dialog from 'src/components/Dialog';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Dialog } from 'src/components/Dialog/Dialog';
+import { Divider } from 'src/components/Divider';
 import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import RenderGuard, { RenderGuardProps } from 'src/components/RenderGuard';
-import TextField from 'src/components/TextField';
-import useFlags from 'src/hooks/useFlags';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
 import { API_MAX_PAGE_SIZE } from 'src/constants';
-import { useAllLinodesQuery } from 'src/queries/linodes';
+import { useFlags } from 'src/hooks/useFlags';
+import {
+  useAllLinodesQuery,
+  useLinodeQuery,
+} from 'src/queries/linodes/linodes';
+import {
+  useLinodeIPsQuery,
+  useLinodeShareIPMutation,
+} from 'src/queries/linodes/networking';
+import { useAllDetailedIPv6RangesQuery } from 'src/queries/networking/networking';
+import { areArraysEqual } from 'src/utilities/areArraysEqual';
 import { getAPIErrorOrDefault, getErrorMap } from 'src/utilities/errorUtils';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  addNewButton: {
-    marginTop: theme.spacing(3),
-    marginBottom: -theme.spacing(2),
-  },
-  ipField: {
-    width: '100%',
-    marginTop: 0,
-  },
-  ipFieldLabel: {
-    width: '100%',
-    [theme.breakpoints.up('sm')]: {
-      width: `calc(175px + ${theme.spacing(2)}px)`,
-    },
-  },
-  noIPsMessage: {
-    marginTop: theme.spacing(2),
-    color: theme.color.grey1,
-  },
-  networkActionText: {
-    marginBottom: theme.spacing(2),
-  },
-  removeCont: {
-    [theme.breakpoints.down('xs')]: {
-      width: '100%',
-    },
-  },
-  remove: {
-    [theme.breakpoints.down('xs')]: {
-      margin: '-16px 0 0 -26px',
-    },
-  },
-}));
-
 interface Props {
-  linodeID: number;
-  linodeRegion: string;
-  linodeIPs: string[];
-  linodeSharedIPs: string[];
-  availableRanges: IPRangeInformation[];
-  readOnly?: boolean;
-  refreshIPs: () => Promise<void>[];
-  open: boolean;
+  linodeId: number;
   onClose: () => void;
+  open: boolean;
+  readOnly?: boolean;
 }
-
-type CombinedProps = Props;
 
 type AvailableRangesMap = { [linode_id: number]: string[] };
 
-const IPSharingPanel: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+const IPSharingPanel = (props: Props) => {
+  const theme = useTheme();
   const flags = useFlags();
-  const {
-    linodeID,
-    linodeIPs,
-    linodeRegion,
-    readOnly,
-    open,
-    onClose,
-    linodeSharedIPs,
-    availableRanges,
-  } = props;
+  const { linodeId, onClose, open, readOnly } = props;
+  const { data: linode } = useLinodeQuery(linodeId);
+
+  const { data: ips } = useLinodeIPsQuery(linodeId, open);
+
+  const { data: ranges } = useAllDetailedIPv6RangesQuery(
+    {},
+    { region: linode?.region },
+    open
+  );
+
+  const { mutateAsync: shareAddresses } = useLinodeShareIPMutation();
+
+  const rangeData = ranges?.reduce(
+    (
+      acc: {
+        availableRanges: IPRangeInformation[];
+        sharedRanges: IPRangeInformation[];
+      },
+      range
+    ) => {
+      if (
+        flags.ipv6Sharing &&
+        range.is_bgp &&
+        range.linodes.includes(linodeId)
+      ) {
+        // any range that is shared to this linode
+        acc.sharedRanges.push(range);
+      } else if (flags.ipv6Sharing) {
+        // any range that is not shared to this linode or static on this linode
+        acc.availableRanges.push(range);
+      }
+      return acc;
+    },
+    { availableRanges: [], sharedRanges: [] }
+  );
+
+  const sharedRanges = rangeData?.sharedRanges ?? [];
+  const availableRanges = rangeData?.availableRanges ?? [];
+
+  const linodeSharedIPs = [
+    ...(ips?.ipv4.shared.map((ip) => ip.address) ?? []),
+    ...sharedRanges?.map((range) => `${range.range}/${range.prefix}`),
+  ];
+
+  const linodeIPs = ips?.ipv4.public.map((i) => i.address) ?? [];
 
   const availableRangesMap: AvailableRangesMap = formatAvailableRanges(
     availableRanges
@@ -97,7 +96,7 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
   const { data: linodes, isLoading } = useAllLinodesQuery(
     { page_size: API_MAX_PAGE_SIZE },
     {
-      region: linodeRegion,
+      region: linode?.region,
     },
     open // Only run the query if the modal is open
   );
@@ -106,27 +105,30 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
     linodeID: number,
     linodes: Linode[]
   ): Record<number, string> => {
-    const choiceLabels = linodes.reduce((previousValue, currentValue) => {
-      // Filter out the current Linode
-      if (currentValue.id === linodeID) {
-        return previousValue;
-      }
+    const choiceLabels = linodes.reduce<Record<string, string>>(
+      (previousValue, currentValue) => {
+        // Filter out the current Linode
+        if (currentValue.id === linodeID) {
+          return previousValue;
+        }
 
-      currentValue.ipv4.forEach((ip) => {
-        previousValue[ip] = currentValue.label;
-      });
-
-      if (flags.ipv6Sharing) {
-        availableRangesMap?.[currentValue.id]?.forEach((range: string) => {
-          previousValue[range] = currentValue.label;
-          updateIPToLinodeID({
-            [range]: [...(ipToLinodeID?.[range] ?? []), currentValue.id],
-          });
+        currentValue.ipv4.forEach((ip) => {
+          previousValue[ip] = currentValue.label;
         });
-      }
 
-      return previousValue;
-    }, {});
+        if (flags.ipv6Sharing) {
+          availableRangesMap?.[currentValue.id]?.forEach((range: string) => {
+            previousValue[range] = currentValue.label;
+            updateIPToLinodeID({
+              [range]: [...(ipToLinodeID?.[range] ?? []), currentValue.id],
+            });
+          });
+        }
+
+        return previousValue;
+      },
+      {}
+    );
 
     linodeSharedIPs.forEach((range) => {
       if (!choiceLabels.hasOwnProperty(range)) {
@@ -137,23 +139,13 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
     return choiceLabels;
   };
 
-  const [ipChoices, setIPChoices] = React.useState({});
-  const [ipToLinodeID, setIPToLinodeID] = React.useState({});
+  let ipToLinodeID: Record<string, number[]> = {};
 
   const updateIPToLinodeID = (newData: Record<string, number[]>) => {
-    setIPToLinodeID((previousState) => {
-      return { ...previousState, ...newData };
-    });
+    ipToLinodeID = { ...ipToLinodeID, ...newData };
   };
 
-  React.useEffect(() => {
-    // don't try anything until we've finished the request for the Linodes data
-    if (isLoading) {
-      return;
-    }
-    const ipChoices = getIPChoicesAndLabels(linodeID, linodes ?? []);
-    setIPChoices(ipChoices);
-  }, [linodeID, linodes, availableRanges]);
+  const ipChoices = getIPChoicesAndLabels(linodeId, linodes ?? []);
 
   const [errors, setErrors] = React.useState<APIError[] | undefined>(undefined);
   const [successMessage, setSuccessMessage] = React.useState<
@@ -163,11 +155,11 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
   const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) {
+    if (ips && ranges && !areArraysEqual(linodeSharedIPs, ipsToShare)) {
       setIpsToShare(linodeSharedIPs);
       setErrors(undefined);
     }
-  }, [open, linodeSharedIPs]);
+  }, [ips, ranges]);
 
   const onIPSelect = (ipIdx: number, e: Item<string>) => {
     setIpsToShare((currentIps) => {
@@ -196,7 +188,7 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
   };
 
   const onSubmit = () => {
-    const groupedUnsharedRanges = {};
+    const groupedUnsharedRanges: Record<number | string, string[]> = {};
     const finalIPs: string[] = uniq(
       ipsToShare.reduce((previousValue, currentValue) => {
         if (currentValue === undefined || currentValue === null) {
@@ -214,7 +206,7 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
           if (groupedUnsharedRanges.hasOwnProperty(linode_id)) {
             groupedUnsharedRanges[linode_id] = [
               ...groupedUnsharedRanges[linode_id],
-              [strippedIP],
+              strippedIP,
             ];
           } else {
             groupedUnsharedRanges[linode_id] = [strippedIP];
@@ -233,16 +225,23 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
     setSubmitting(localSubmitting);
     setSuccessMessage(undefined);
 
-    const share = flags.ipv6Sharing ? shareAddresses : shareAddressesv4;
-    const promises: Promise<void | {}>[] = [];
+    // if the user hasn't selected any IP to share or hasn't removed any, don't do anything
+    if (areArraysEqual(linodeSharedIPs, ipsToShare)) {
+      setErrors([{ reason: 'Please select an action.' }]);
+      setSubmitting(false);
+
+      return;
+    }
+
+    const promises: Promise<{} | void>[] = [];
 
     if (flags.ipv6Sharing) {
       // share unshared ranges first to their staticly routed Linode, then later we can share to the current Linode
       Object.keys(groupedUnsharedRanges).forEach((linode_id) => {
         promises.push(
           shareAddresses({
-            linode_id: parseInt(linode_id, 10),
             ips: groupedUnsharedRanges[linode_id],
+            linode_id: parseInt(linode_id, 10),
           }).catch((errorResponse) => {
             const errors = getAPIErrorOrDefault(
               errorResponse,
@@ -263,9 +262,8 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
         return;
       }
 
-      share({ linode_id: props.linodeID, ips: finalIPs })
+      shareAddresses({ ips: finalIPs, linode_id: linodeId })
         .then((_) => {
-          props.refreshIPs();
           setErrors(undefined);
           setSubmitting(false);
           setSuccessMessage('IP Sharing updated successfully');
@@ -294,111 +292,117 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
   const errorMap = getErrorMap([], errors);
   const generalError = errorMap.none;
   return (
-    <Dialog title="IP Sharing" open={open} onClose={handleClose}>
+    <Dialog fullWidth onClose={handleClose} open={open} title="IP Sharing">
       <DialogContent loading={isLoading}>
         <>
           {generalError && (
-            <Grid item xs={12}>
-              <Notice error text={generalError} />
+            <Grid xs={12}>
+              <Notice text={generalError} variant="error" />
             </Grid>
           )}
           {successMessage && (
-            <Grid item xs={12}>
-              <Notice success text={successMessage} />
+            <Grid xs={12}>
+              <Notice text={successMessage} variant="success" />
             </Grid>
           )}
           <Grid container>
-            <Grid item sm={12} lg={8} xl={6}>
+            <Grid lg={8} sm={12} xl={6}>
               {flags.ipv6Sharing ? (
-                <Notice warning>
-                  <Typography style={{ fontSize: '0.875rem' }}>
+                <Notice variant="warning">
+                  <Typography sx={{ fontSize: '0.875rem' }}>
                     <strong>Warning:</strong> Converting a statically routed
                     IPv6 range to a shared range will break existing IPv6
                     connectivity unless each Linode that shares the range has
                     BGP set up to advertise that range. Follow{' '}
-                    <Link to="https://www.linode.com/docs/guides/ip-failover/">
+                    <Link to="https://techdocs.akamai.com/cloud-computing/docs/configure-failover-on-a-compute-instance">
                       this guide
                     </Link>{' '}
                     to set up BGP on a Linode.
                   </Typography>
                 </Notice>
               ) : null}
-              <Typography className={classes.networkActionText}>
+              <Typography sx={{ marginBottom: theme.spacing(2) }}>
                 IP Sharing allows a Linode to share an IP address assignment
                 (one or more additional IP addresses). This can be used to allow
                 one Linode to begin serving requests should another become
-                unresponsive. Only IPs in the same datacenter are offered for
+                unresponsive. Only IPs in the same data center are offered for
                 sharing.
               </Typography>
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <Grid container>
-                <Grid item className={classes.ipFieldLabel}>
-                  <Typography style={{ fontWeight: 'bold' }}>
+                <Grid
+                  sx={{
+                    [theme.breakpoints.up('sm')]: {
+                      width: `calc(175px + ${theme.spacing(2)})`,
+                    },
+                    width: '100%',
+                  }}
+                >
+                  <Typography sx={{ fontFamily: theme.font.bold }}>
                     IP Addresses
                   </Typography>
                 </Grid>
               </Grid>
               {noChoices ? (
-                <Typography className={classes.noIPsMessage}>
-                  You have no other Linodes in this Linode&rsquo;s datacenter
+                <Typography
+                  sx={{
+                    color: theme.color.grey1,
+                    marginTop: theme.spacing(2),
+                  }}
+                >
+                  You have no other Linodes in this Linode&rsquo;s data center
                   with which to share IPs.
                 </Typography>
               ) : (
                 <React.Fragment>
                   {linodeIPs.map((ip: string) => (
-                    <IPRow key={ip} ip={ip} />
+                    <IPRow ip={ip} key={ip} />
                   ))}
                   {ipsToShare.map((ip: string, idx: number) => (
                     <IPSharingRow
-                      key={`${ip}-sharing-row-${idx}`}
-                      ip={ip}
-                      idx={idx}
-                      readOnly={Boolean(readOnly)}
+                      getRemainingChoices={remainingChoices}
                       handleDelete={onIPDelete}
                       handleSelect={onIPSelect}
+                      idx={idx}
+                      ip={ip}
+                      key={`${ip}-sharing-row-${idx}`}
                       labels={ipChoices}
-                      getRemainingChoices={remainingChoices}
+                      readOnly={Boolean(readOnly)}
                     />
                   ))}
                   {remainingChoices('').length > 0 && (
                     <IPSharingRow
-                      key={`empty-sharing-row`}
-                      ip={''}
-                      idx={ipsToShare.length}
-                      readOnly={Boolean(readOnly)}
-                      handleSelect={onIPSelect}
-                      labels={ipChoices}
                       getRemainingChoices={remainingChoices}
+                      handleSelect={onIPSelect}
+                      idx={ipsToShare.length}
+                      ip={''}
+                      key={`empty-sharing-row`}
+                      labels={ipChoices}
+                      readOnly={Boolean(readOnly)}
                     />
                   )}
                 </React.Fragment>
               )}
             </Grid>
-            <Grid container item justifyContent="flex-end" className="m0">
-              <ActionsPanel>
-                <Button
-                  buttonType="secondary"
-                  disabled={submitting || noChoices}
-                  onClick={onReset}
-                  data-qa-reset
-                >
-                  Reset Form
-                </Button>
-                <Button
-                  buttonType="primary"
-                  disabled={readOnly || noChoices}
-                  loading={submitting}
-                  onClick={onSubmit}
-                  data-qa-submit
-                >
-                  Save
-                </Button>
-              </ActionsPanel>
-            </Grid>
           </Grid>
         </>
       </DialogContent>
+      <ActionsPanel
+        primaryButtonProps={{
+          'data-testid': 'submit',
+          disabled: readOnly || noChoices,
+          label: 'Save',
+          loading: submitting,
+          onClick: onSubmit,
+        }}
+        secondaryButtonProps={{
+          'data-testid': 'reset',
+          disabled: submitting || noChoices,
+          label: 'Reset Form',
+          onClick: onReset,
+        }}
+      />
     </Dialog>
   );
 };
@@ -406,24 +410,23 @@ const IPSharingPanel: React.FC<CombinedProps> = (props) => {
 const formatAvailableRanges = (
   availableRanges: IPRangeInformation[]
 ): AvailableRangesMap => {
-  const availableRangesMap: {
-    [linode_id: number]: string[];
-  } = availableRanges.reduce((previousValue, currentValue) => {
-    // use the first entry in linodes as we're only dealing with ranges unassociated with this
-    // Linode, so we just use whatever the first Linode is to later get the label for this range
-    previousValue[currentValue.linodes[0]] = [
-      ...(previousValue?.[currentValue.linodes[0]] ?? []),
-      `${currentValue.range}/${currentValue.prefix}`,
-    ];
-    return previousValue;
-  }, {});
-
-  return availableRangesMap;
+  return availableRanges.reduce<Record<number, string[]>>(
+    (previousValue, currentValue) => {
+      // use the first entry in linodes as we're only dealing with ranges unassociated with this
+      // Linode, so we just use whatever the first Linode is to later get the label for this range
+      previousValue[currentValue.linodes[0]] = [
+        ...(previousValue?.[currentValue.linodes[0]] ?? []),
+        `${currentValue.range}/${currentValue.prefix}`,
+      ];
+      return previousValue;
+    },
+    {}
+  );
 };
 
 interface WrapperProps {
-  loading: boolean;
   children: JSX.Element;
+  loading: boolean;
 }
 
 // Content Wrapper
@@ -441,19 +444,18 @@ interface RowProps {
 
 export const IPRow: React.FC<RowProps> = React.memo((props) => {
   const { ip } = props;
-  const classes = useStyles();
   return (
-    <Grid container key={ip}>
-      <Grid item xs={12}>
+    <Grid container key={ip} spacing={2}>
+      <Grid xs={12}>
         <Divider spacingBottom={0} />
       </Grid>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <TextField
+          sx={{ marginTop: 0, width: '100%' }}
           disabled
-          value={ip}
-          className={classes.ipField}
-          label="IP Address"
           hideLabel
+          label="IP Address"
+          value={ip}
         />
       </Grid>
     </Grid>
@@ -462,25 +464,25 @@ export const IPRow: React.FC<RowProps> = React.memo((props) => {
 
 // IP Sharing Row
 interface SharingRowProps extends RowProps {
-  idx: number;
-  readOnly: boolean;
-  labels: Record<string, string>;
   getRemainingChoices: (ip: string | undefined) => string[];
-  handleSelect: (idx: number, selected: Item<string>) => void;
   handleDelete?: (idx: number) => void;
+  handleSelect: (idx: number, selected: Item<string>) => void;
+  idx: number;
+  labels: Record<string, string>;
+  readOnly: boolean;
 }
 
 export const IPSharingRow: React.FC<SharingRowProps> = React.memo((props) => {
   const {
-    ip,
-    idx,
     getRemainingChoices,
     handleDelete,
     handleSelect,
+    idx,
+    ip,
     labels,
     readOnly,
   } = props;
-  const classes = useStyles();
+  const theme = useTheme();
 
   const ipList = getRemainingChoices(ip).map((ipChoice: string) => {
     const label = `${ipChoice} ${
@@ -494,38 +496,48 @@ export const IPSharingRow: React.FC<SharingRowProps> = React.memo((props) => {
   });
 
   return (
-    <Grid container key={idx}>
-      <Grid item xs={12}>
+    <Grid container key={idx} spacing={2}>
+      <Grid xs={12}>
         <Divider spacingBottom={0} />
       </Grid>
-      <Grid item xs={12} sm={10}>
-        <Select
-          value={selectedIP}
-          options={ipList}
-          onChange={(selected: Item<string>) => handleSelect(idx, selected)}
-          className={classes.ipField}
+      <Grid sm={10} xs={12}>
+        <StyledSelect
           textFieldProps={{
             dataAttrs: {
               'data-qa-share-ip': true,
             },
           }}
           disabled={readOnly}
-          isClearable={false}
-          placeholder="Select an IP"
-          label="Select an IP"
-          inputId={`ip-select-${idx}`}
           hideLabel
+          inputId={`ip-select-${idx}`}
+          isClearable={false}
+          label="Select an IP"
+          onChange={(selected: Item<string>) => handleSelect(idx, selected)}
+          options={ipList}
           overflowPortal
+          placeholder="Select an IP"
+          value={selectedIP}
         />
       </Grid>
       {handleDelete ? (
-        <Grid item sm={2} className={classes.removeCont}>
+        <Grid
+          sm={2}
+          sx={{
+            [theme.breakpoints.down('sm')]: {
+              width: '100%',
+            },
+          }}
+        >
           <Button
             buttonType="outlined"
-            className={classes.remove}
+            data-qa-remove-shared-ip
             disabled={readOnly}
             onClick={() => handleDelete(idx)}
-            data-qa-remove-shared-ip
+            sx={{
+              [theme.breakpoints.down('sm')]: {
+                margin: '-16px 0 0 -26px',
+              },
+            }}
           >
             Remove
           </Button>
@@ -535,8 +547,9 @@ export const IPSharingRow: React.FC<SharingRowProps> = React.memo((props) => {
   );
 });
 
-const enhanced = recompose<CombinedProps, Props & RenderGuardProps>(
-  RenderGuard
-);
+const StyledSelect = styled(Select, { label: 'StyledSelect' })({
+  marginTop: 0,
+  width: '100%',
+});
 
-export default enhanced(IPSharingPanel);
+export default IPSharingPanel;

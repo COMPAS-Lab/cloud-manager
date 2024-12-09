@@ -1,17 +1,20 @@
-import { entityPrefix } from '../constants/cypress';
+import { oauthToken } from 'support/constants/api';
+import { entityPrefix, entityTag } from 'support/constants/cypress';
 
 const apiroot = Cypress.env('REACT_APP_API_ROOT') + '/';
 const apirootBeta = Cypress.env('REACT_APP_API_ROOT') + 'beta/';
-const oauthtoken = Cypress.env('MANAGER_OAUTH');
 
-export const apiCheckErrors = (resp, failOnError = true) => {
+export const apiCheckErrors = (
+  resp: Cypress.Response<any>,
+  failOnError = true
+) => {
   let errs = undefined;
   if (resp.body && resp.body.ERRORARRAY && resp.body.ERRORARRAY.length > 0) {
     errs = resp.body.ERRORARRAY;
   }
   if (failOnError) {
     if (errs) {
-      expect(errs[0].ERRORMESSAGE).not.to.be.exist;
+      expect((errs[0] as any).ERRORMESSAGE).not.to.be.exist;
     } else {
       expect(!!errs).to.be.false;
     }
@@ -21,22 +24,22 @@ export const apiCheckErrors = (resp, failOnError = true) => {
 
 export const getAll = (path: string, headers = {}) => {
   return cy.request({
+    auth: {
+      bearer: oauthToken,
+    },
+    headers,
     method: 'GET',
     url: `${apiroot}${path}`,
-    headers,
-    auth: {
-      bearer: oauthtoken,
-    },
   });
 };
 
 export const getAllBeta = (path: string) => {
   return cy.request({
+    auth: {
+      bearer: oauthToken,
+    },
     method: 'GET',
     url: `${apirootBeta}${path}`,
-    auth: {
-      bearer: oauthtoken,
-    },
   });
 };
 
@@ -52,26 +55,26 @@ export const getAllBeta = (path: string) => {
  */
 export const deleteById = (path: string, id: number) => {
   return cy.request({
-    method: 'DELETE',
-    url: `${apiroot}${path}/${id}`,
     auth: {
-      bearer: oauthtoken,
+      bearer: oauthToken,
     },
+    //     to another e2e in progress.
+    failOnStatusCode: false,
+    method: 'DELETE',
     // Sometimes a entity may fail to delete. This should not fail a test.
     // Ex. A Linode created by Cypress may be cloning due to another E2E test
     //     running and the API will return 400. We don't want to fail due
-    //     to another e2e in progress.
-    failOnStatusCode: false,
+    url: `${apiroot}${path}/${id}`,
   });
 };
 
 export const deleteByIdBeta = (path: string, id: number) => {
   return cy.request({
+    auth: {
+      bearer: oauthToken,
+    },
     method: 'DELETE',
     url: `${apirootBeta}${path}/${id}`,
-    auth: {
-      bearer: oauthtoken,
-    },
   });
 };
 
@@ -87,23 +90,24 @@ export const deleteByIdBeta = (path: string, id: number) => {
  */
 export const deleteByLabel = (path: string, label: string) => {
   return cy.request({
-    method: 'DELETE',
-    url: `${apiroot}${path}/${label}`,
     auth: {
-      bearer: oauthtoken,
+      bearer: oauthToken,
     },
     failOnStatusCode: false,
+    method: 'DELETE',
+    url: `${apiroot}${path}/${label}`,
   });
 };
 
-// @TODO Remove this in favor of constants defined in `../constants/cypress.ts`.
-export const testTag = 'cy-test';
-
 // Images do not have tags
-export const isTestEntity = (entity) =>
-  entity.tags?.includes(testTag) ||
+export const isTestEntity = (entity: {
+  label: string;
+  summary: string;
+  tags: string;
+}) =>
+  entity.tags?.includes(entityTag) ||
   entity.label?.startsWith(entityPrefix) ||
-  entity.summary?.includes(testTag);
+  entity.summary?.includes(entityTag);
 
 /**
  * Determines whether or not a label is a test label.

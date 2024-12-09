@@ -1,48 +1,33 @@
-import * as React from 'react';
-import { useFormik, FormikConfig } from 'formik';
-import {
-  useSecurityQuestions,
-  useMutateSecurityQuestions,
-} from 'src/queries/securityQuestions';
-import { QuestionAndAnswerPair } from './QuestionAndAnswerPair';
-import Button from 'src/components/Button';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Box from 'src/components/core/Box';
-import Typography from 'src/components/core/Typography';
-import { SecurityQuestionsData } from '@linode/api-v4';
-import { getAnsweredQuestions, securityQuestionsToItems } from './utilities';
-import CircleProgress from 'src/components/CircleProgress';
+import { Box } from '@linode/ui';
+import { styled } from '@mui/material/styles';
+import { useFormik } from 'formik';
 import { useSnackbar } from 'notistack';
+import * as React from 'react';
+
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
 import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
+import {
+  useMutateSecurityQuestions,
+  useSecurityQuestions,
+} from 'src/queries/profile/securityQuestions';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  copy: {
-    lineHeight: '20px',
-    marginTop: theme.spacing(),
-    marginBottom: theme.spacing(),
-    maxWidth: 960,
-  },
-  form: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  buttonContainer: {
-    marginTop: theme.spacing(2),
-    gap: theme.spacing(),
-    [theme.breakpoints.down('sm')]: {
-      marginTop: theme.spacing(2),
-    },
-  },
-}));
+import { QuestionAndAnswerPair } from './QuestionAndAnswerPair';
+import { getAnsweredQuestions, securityQuestionsToItems } from './utilities';
 
-const SecurityQuestions = () => {
-  const classes = useStyles();
+import type { SecurityQuestionsData } from '@linode/api-v4';
+import type { FormikConfig } from 'formik';
 
+export const SecurityQuestions = ({
+  securityQuestionRef,
+}: {
+  securityQuestionRef?: React.RefObject<HTMLInputElement>;
+}) => {
   const { data: securityQuestionsData, isLoading } = useSecurityQuestions();
   const {
+    isPending: isUpdating,
     mutateAsync: updateSecurityQuestions,
-    isLoading: isUpdating,
   } = useMutateSecurityQuestions();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -60,8 +45,8 @@ const SecurityQuestions = () => {
   const initalFormValues = { security_questions: answeredQuestions };
 
   const formikConfig: FormikConfig<SecurityQuestionsData> = {
-    initialValues: initalFormValues,
     enableReinitialize: true,
+    initialValues: initalFormValues,
     onSubmit: async (values) => {
       try {
         const action = hasSecurityQuestionsCompleted ? 'updated' : 'added';
@@ -112,12 +97,12 @@ const SecurityQuestions = () => {
   };
 
   const {
-    values,
-    handleSubmit,
-    setFieldValue,
-    handleChange,
     dirty,
+    handleChange,
+    handleSubmit,
     resetForm,
+    setFieldValue,
+    values,
   } = useFormik(formikConfig);
 
   const isButtonDisabled =
@@ -128,8 +113,8 @@ const SecurityQuestions = () => {
     );
 
   const qaProps = {
-    setFieldValue,
     handleChange,
+    setFieldValue,
   };
 
   if (isLoading) {
@@ -139,60 +124,58 @@ const SecurityQuestions = () => {
   return (
     <Box>
       <Typography variant="h3">Security Questions</Typography>
-      <Typography variant="body1" className={classes.copy}>
-        Security questions enable you to regain access to your Linode user
-        account in certain situations, such as when 2FA is enabled and you no
-        longer have access to the token or recovery codes. Answers to security
-        questions should not be easily guessed or discoverable through research.{' '}
-        <Link to="https://www.linode.com/docs/guides/user-security-controls#security-questions">
+      <StyledCopy variant="body1">
+        Security questions enable you to regain access to your Cloud Manager
+        user account in certain situations, such as when 2FA is enabled and you
+        no longer have access to the token or recovery codes. Answers to
+        security questions should not be easily guessed or discoverable through
+        research.{' '}
+        <Link to="https://techdocs.akamai.com/cloud-computing/docs/security-controls-for-user-accounts#security-questions">
           Learn more about security options.
         </Link>
-      </Typography>
-      <form className={classes.form} onSubmit={handleSubmit}>
+      </StyledCopy>
+      <StyledForm onSubmit={handleSubmit}>
         <QuestionAndAnswerPair
-          questionResponse={values.security_questions[0]}
-          index={0}
-          edit={questionEditStates[0]}
-          onEdit={() => onEdit(0)}
           options={options.filter((option) => {
             return (
               option.value !== values.security_questions[1]?.id &&
               option.value !== values.security_questions[2]?.id
             );
           })}
+          edit={questionEditStates[0]}
+          index={0}
+          onEdit={() => onEdit(0)}
+          questionResponse={values.security_questions[0]}
+          securityQuestionRef={securityQuestionRef}
           {...qaProps}
         />
         <QuestionAndAnswerPair
-          questionResponse={values.security_questions[1]}
-          index={1}
-          edit={questionEditStates[1]}
-          onEdit={() => onEdit(1)}
           options={options.filter((option) => {
             return (
               option.value !== values.security_questions[0]?.id &&
               option.value !== values.security_questions[2]?.id
             );
           })}
+          edit={questionEditStates[1]}
+          index={1}
+          onEdit={() => onEdit(1)}
+          questionResponse={values.security_questions[1]}
           {...qaProps}
         />
         <QuestionAndAnswerPair
-          questionResponse={values.security_questions[2]}
-          index={2}
-          edit={questionEditStates[2]}
-          onEdit={() => onEdit(2)}
           options={options.filter((option) => {
             return (
               option.value !== values.security_questions[0]?.id &&
               option.value !== values.security_questions[1]?.id
             );
           })}
+          edit={questionEditStates[2]}
+          index={2}
+          onEdit={() => onEdit(2)}
+          questionResponse={values.security_questions[2]}
           {...qaProps}
         />
-        <Box
-          display="flex"
-          justifyContent="flex-end"
-          className={classes.buttonContainer}
-        >
+        <StyledButtonContainer display="flex" justifyContent="flex-end">
           {hasSecurityQuestionsCompleted &&
           questionEditStates.includes(true) ? (
             <Button buttonType="secondary" onClick={onCancel}>
@@ -200,19 +183,44 @@ const SecurityQuestions = () => {
             </Button>
           ) : null}
           <Button
-            loading={isUpdating}
             buttonType="primary"
-            type="submit"
             disabled={isButtonDisabled}
+            loading={isUpdating}
+            type="submit"
           >
             {`${
               hasSecurityQuestionsCompleted ? 'Update' : 'Add'
             } Security Questions`}
           </Button>
-        </Box>
-      </form>
+        </StyledButtonContainer>
+      </StyledForm>
     </Box>
   );
 };
 
-export default SecurityQuestions;
+const StyledCopy = styled(Typography, {
+  label: 'StyledCopy',
+})(({ theme }) => ({
+  lineHeight: '20px',
+  marginBottom: theme.spacing(),
+  marginTop: theme.spacing(),
+  maxWidth: 960,
+}));
+
+const StyledForm = styled('form', {
+  label: 'StyledForm',
+})(() => ({
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%',
+}));
+
+const StyledButtonContainer = styled(Box, {
+  label: 'StyledButtonContainer',
+})(({ theme }) => ({
+  gap: theme.spacing(),
+  marginTop: theme.spacing(2),
+  [theme.breakpoints.down('md')]: {
+    marginTop: theme.spacing(2),
+  },
+}));

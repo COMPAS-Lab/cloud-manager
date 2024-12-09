@@ -1,25 +1,20 @@
 import * as React from 'react';
-import InlineMenuAction from 'src/components/InlineMenuAction';
+
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
 
 interface Props {
-  id: number;
-  label: string;
-  onDelete: (id: number, label: string) => void;
+  onDelete: () => void;
+  onEdit: () => void;
 }
 
-type CombinedProps = Props;
-
-export const SSHKeyActionMenu: React.FC<CombinedProps> = (props) => {
-  const { id, label, onDelete } = props;
+export const SSHKeyActionMenu = (props: Props) => {
+  const { onDelete, onEdit } = props;
 
   return (
-    <InlineMenuAction
-      key="Delete"
-      actionText="Delete"
-      onClick={() => {
-        onDelete(id, label);
-      }}
-    />
+    <>
+      <InlineMenuAction actionText="Edit" onClick={onEdit} />
+      <InlineMenuAction actionText="Delete" onClick={onDelete} />
+    </>
   );
 };
 

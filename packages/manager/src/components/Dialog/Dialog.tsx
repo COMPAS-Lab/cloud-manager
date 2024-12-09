@@ -1,159 +1,125 @@
+import { Box, omittedProps } from '@linode/ui';
+import _Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import { styled, useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import Close from '@material-ui/icons/Close';
-import Button from 'src/components/Button';
-import MUIDialog, {
-  DialogProps as _DialogProps,
-} from 'src/components/core/Dialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import { convertForAria } from 'src/components/TabLink/TabLink';
-import Notice from 'src/components/Notice';
+
+import { DialogTitle } from 'src/components/DialogTitle/DialogTitle';
+import { Notice } from 'src/components/Notice/Notice';
+import { convertForAria } from 'src/utilities/stringUtils';
+
+import type { DialogProps as _DialogProps } from '@mui/material/Dialog';
 
 export interface DialogProps extends _DialogProps {
   className?: string;
-  title: string;
-  fullHeight?: boolean;
-  titleBottomBorder?: boolean;
   error?: string;
+  fullHeight?: boolean;
+  subtitle?: string;
+  title: string;
+  titleBottomBorder?: boolean;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  paper: {
-    padding: `${theme.spacing(2)}px ${theme.spacing(4)}px`,
-    paddingTop: 0,
+/**
+ * ## Overview
+ * A modal dialog is a window that appears on top of a parent screen. It's called 'modal' because it creates a mode that disables the parent screen but keeps it visible. Users must interact with the modal to return to the main screen.
+ *
+ * > ⚠️ In Cloud Manager, dialogs will lock focus onto the dialog and prevent scrolling. For the sake of previewing dialogs, this does not occur in Storybook.
+ *
+ * ## Modal Types
+ * - **Standard**
+ *   - Has an "X" button in the top right
+ *  - Can contain anything in the body of the dialog
+ * - **Confirmation**
+ *  - Users must confirm a choice
+ * - **Deletion**
+ *  - The user must confirm the deleteion of an entity
+ *  - Can require user to type the entity name to confirm deletion
+ *
+ * > Clicking off of the modal will not close it.
+ * > A modal can only be closed by taking direct action, clicking on a button or the “X” button, or using the `esc` key.
+ *
+ */
+export const Dialog = React.forwardRef(
+  (props: DialogProps, ref: React.Ref<HTMLDivElement>) => {
+    const theme = useTheme();
+    const {
+      children,
+      className,
+      error,
+      fullHeight,
+      fullWidth,
+      maxWidth = 'md',
+      onClose,
+      subtitle,
+      title,
+      titleBottomBorder,
+      ...rest
+    } = props;
+
+    const titleID = convertForAria(title);
+
+    return (
+      <StyledDialog
+        aria-labelledby={titleID}
+        data-qa-dialog
+        data-qa-drawer
+        data-testid="drawer"
+        fullHeight={fullHeight}
+        fullWidth={fullWidth}
+        maxWidth={(fullWidth && maxWidth) ?? undefined}
+        onClose={onClose}
+        ref={ref}
+        role="dialog"
+        title={title}
+        {...rest}
+      >
+        <Box
+          sx={{
+            alignItems: 'center',
+          }}
+        >
+          <DialogTitle
+            id={titleID}
+            onClose={() => onClose && onClose({}, 'backdropClick')}
+            subtitle={subtitle}
+            title={title}
+          />
+          {titleBottomBorder && <StyledHr />}
+          <DialogContent
+            sx={{
+              overflowX: 'hidden',
+              paddingBottom: theme.spacing(3),
+            }}
+            className={className}
+          >
+            {error && <Notice text={error} variant="error" />}
+            {children}
+          </DialogContent>
+        </Box>
+      </StyledDialog>
+    );
+  }
+);
+
+const StyledDialog = styled(_Dialog, {
+  shouldForwardProp: omittedProps(['fullHeight', 'title']),
+})<DialogProps>(({ theme, ...props }) => ({
+  '& .MuiDialog-paper': {
+    height: props.fullHeight ? '100vh' : undefined,
     maxHeight: '100%',
-    '& .actionPanel': {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      marginTop: theme.spacing(2),
-    },
-    '& .selectionCard': {
-      maxWidth: '100%',
-      flexBasis: '100%',
-    },
-  },
-  fullHeight: {
-    '& .MuiDialog-paper': {
-      height: '100vh',
-    },
-  },
-  settingsBackdrop: {
-    backgroundColor: 'rgba(0,0,0,.3)',
-  },
-  drawerHeader: {
-    padding: theme.spacing(2),
-  },
-  dialogContent: {
-    padding: theme.spacing(2),
-    paddingTop: 0,
-  },
-  button: {
-    minWidth: 'auto',
-    minHeight: 'auto',
     padding: 0,
-    '& > span': {
-      padding: 2,
-    },
-    '& :hover, & :focus': {
-      color: 'white',
-      backgroundColor: theme.palette.primary.main,
-    },
   },
-  backDrop: {
-    backgroundColor: theme.color.drawerBackdrop,
-  },
-  sticky: {
-    backgroundColor: theme.bg.bgPaper,
-    position: 'sticky',
-    top: 0,
-    padding: theme.spacing(),
-    paddingTop: theme.spacing(4),
-    marginBottom: 20,
-    zIndex: 1,
-    width: '100%',
+  '& .MuiDialogActions-root': {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  titleBottomBorder: {
-    backgroundColor: '#e3e5e8',
-    height: 1,
-    width: '100%',
-    margin: '-2em 8px 0px 8px',
-    border: 'none',
-  },
-  error: {
-    color: theme.color.red,
+    justifyContent: 'flex-end',
     marginTop: theme.spacing(2),
   },
 }));
 
-const Dialog: React.FC<DialogProps> = (props) => {
-  const {
-    className,
-    title,
-    fullHeight,
-    titleBottomBorder,
-    children,
-    error,
-    ...rest
-  } = props;
-
-  const classes = useStyles();
-
-  const titleID = convertForAria(title);
-
-  return (
-    <MUIDialog
-      title={title}
-      maxWidth={props.maxWidth ?? 'md'}
-      {...rest}
-      classes={{ paper: classes.paper }}
-      data-qa-drawer
-      data-qa-dialog
-      data-testid="drawer"
-      role="dialog"
-      aria-labelledby={titleID}
-      BackdropProps={{
-        className: classes.settingsBackdrop,
-      }}
-      className={fullHeight ? classes.fullHeight : undefined}
-    >
-      <Grid
-        container
-        alignItems="center"
-        justifyContent="center"
-        updateFor={[title, props.children]}
-      >
-        <div className={classes.sticky}>
-          <Grid item>
-            <Typography variant="h2" id={titleID} data-qa-drawer-title={title}>
-              {title}
-            </Typography>
-          </Grid>
-          <Grid item>
-            <Button
-              buttonType="secondary"
-              onClick={props.onClose as (e: any) => void}
-              className={classes.button}
-              data-qa-close-drawer
-              aria-label="Close drawer"
-            >
-              <Close />
-            </Button>
-          </Grid>
-        </div>
-        {titleBottomBorder && <hr className={classes.titleBottomBorder} />}
-        <Grid container>
-          <div className={className ? className : classes.dialogContent}>
-            {error && <Notice text={error} error />}
-            {children}
-          </div>
-        </Grid>
-      </Grid>
-    </MUIDialog>
-  );
-};
-
-export default Dialog;
+const StyledHr = styled('hr')({
+  backgroundColor: '#e3e5e8',
+  border: 'none',
+  height: 1,
+  margin: '-2em 8px 0px 8px',
+  width: '100%',
+});

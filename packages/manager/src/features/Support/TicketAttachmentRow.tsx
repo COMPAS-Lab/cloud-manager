@@ -1,85 +1,35 @@
+import { Box, Paper } from '@linode/ui';
 import * as React from 'react';
-import Paper from 'src/components/core/Paper';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
 
-import Grid from 'src/components/Grid';
-
-type ClassNames =
-  | 'root'
-  | 'attachmentPaper'
-  | 'attachmentRow'
-  | 'attachmentIcon';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {},
-    attachmentPaper: {
-      marginTop: 4,
-      padding: `
-      ${theme.spacing(1) + theme.spacing(1) / 2}px
-      ${theme.spacing(3)}px
-      0
-    `,
-      overflowX: 'auto',
-      border: `1px solid ${theme.color.grey2}`,
-    },
-    attachmentRow: {
-      borderBottom: `1px solid ${theme.palette.divider}`,
-      marginBottom: 12,
-      '&:last-child': {
-        marginBottom: 0,
-        border: 0,
-      },
-    },
-    attachmentIcon: {
-      paddingLeft: `0 !important`,
-      color: theme.palette.text.primary,
-    },
-  });
+import { Divider } from 'src/components/Divider';
+import { Stack } from 'src/components/Stack';
+import { Typography } from 'src/components/Typography';
 
 interface Props {
   attachments: string[];
   icons: JSX.Element[];
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
-
-export const TicketAttachmentRow: React.FC<CombinedProps> = (props) => {
-  const { attachments, classes, icons } = props;
+export const TicketAttachmentRow = (props: Props) => {
+  const { attachments, icons } = props;
   return (
-    <Grid item>
-      <Paper className={classes.attachmentPaper}>
+    <Paper sx={{ padding: 2 }}>
+      <Stack divider={<Divider />}>
         {attachments.map((attachment, idx) => {
           return (
-            <Grid
-              container
-              wrap="nowrap"
-              key={idx}
-              className={classes.attachmentRow}
+            <Stack
+              alignItems="center"
               data-qa-attachment-row
+              direction="row"
+              key={idx}
+              spacing={2}
             >
-              <Grid item className={classes.attachmentIcon}>
-                {icons[idx]}
-              </Grid>
-              <Grid item>
-                <Typography component="span">{attachment}</Typography>
-              </Grid>
-            </Grid>
+              <Box>{icons[idx]}</Box>
+              <Typography component="span">{attachment}</Typography>
+            </Stack>
           );
         })}
-      </Paper>
-    </Grid>
+      </Stack>
+    </Paper>
   );
 };
-
-TicketAttachmentRow.displayName = 'TicketAttachmentRow';
-
-const styled = withStyles(styles);
-
-export default styled(TicketAttachmentRow);

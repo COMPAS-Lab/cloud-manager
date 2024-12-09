@@ -1,7 +1,9 @@
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { withTheme, WithTheme } from 'src/components/core/styles';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
 import { sumCPU } from 'src/features/Longview/shared/utilities';
+
 import {
   convertData,
   pathMaybeAddDataInThePast,
@@ -9,9 +11,7 @@ import {
 import { GraphProps } from './types';
 import { useGraphs } from './useGraphs';
 
-export type CombinedProps = GraphProps & WithTheme;
-
-export const CPUGraph: React.FC<CombinedProps> = (props) => {
+export const CPUGraph = (props: GraphProps) => {
   const {
     clientAPIKey,
     end,
@@ -19,11 +19,12 @@ export const CPUGraph: React.FC<CombinedProps> = (props) => {
     lastUpdated,
     lastUpdatedError,
     start,
-    theme,
     timezone,
   } = props;
 
-  const { data, loading, error, request } = useGraphs(
+  const theme = useTheme();
+
+  const { data, error, loading, request } = useGraphs(
     ['cpu'],
     clientAPIKey,
     start,
@@ -47,36 +48,35 @@ export const CPUGraph: React.FC<CombinedProps> = (props) => {
 
   return (
     <LongviewLineGraph
-      title="CPU"
-      subtitle="%"
-      unit="%"
-      nativeLegend
-      error={error}
-      loading={loading}
-      showToday={isToday}
-      timezone={timezone}
       data={[
         {
-          label: 'System',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.cpu.system,
+          borderColor: 'transparent',
           data: _convertData(cpuData.system, start, end),
+          label: 'System',
         },
         {
-          label: 'User',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.cpu.user,
+          borderColor: 'transparent',
           data: _convertData(cpuData.user, start, end),
+          label: 'User',
         },
         {
-          label: 'Wait',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.cpu.wait,
+          borderColor: 'transparent',
           data: _convertData(cpuData.wait, start, end),
+          label: 'Wait',
         },
       ]}
+      ariaLabel="CPU Usage Graph"
+      error={error}
+      loading={loading}
+      nativeLegend
+      showToday={isToday}
+      subtitle="%"
+      timezone={timezone}
+      title="CPU"
+      unit="%"
     />
   );
 };
-
-export default withTheme(CPUGraph);

@@ -1,23 +1,22 @@
+import { IconButton } from '@mui/material';
 import * as React from 'react';
-import classNames from 'classnames';
-import Community from 'src/assets/icons/community_nav.svg';
-import Link from 'src/components/Link';
-import { useStyles } from './iconStyles';
-import TopMenuIcon from './TopMenuIcon';
 
-export const Help: React.FC<{ className?: string }> = ({ className }) => {
-  const classes = useStyles();
+import CommunitySVGIcon from 'src/assets/icons/community_nav.svg';
+import { LINODE_COMMUNITY_URL } from 'src/constants';
+
+import { TopMenuTooltip, topMenuIconButtonSx } from './TopMenuTooltip';
+
+export const Community = () => {
   return (
-    <Link
-      aria-label="Link to Linode Community site"
-      className={classNames(className, { [classes.icon]: true })}
-      to="https://linode.com/community"
-    >
-      <TopMenuIcon title="Linode Cloud Community">
-        <Community />
-      </TopMenuIcon>
-    </Link>
+    <TopMenuTooltip title="Linode Cloud Community (opens in new tab)">
+      <IconButton
+        aria-label="Linode Cloud Community - link opens in a new tab"
+        href={LINODE_COMMUNITY_URL}
+        sx={topMenuIconButtonSx}
+        target="_blank"
+      >
+        <CommunitySVGIcon height="20px" width="20px" />
+      </IconButton>
+    </TopMenuTooltip>
   );
 };
-
-export default React.memo(Help);

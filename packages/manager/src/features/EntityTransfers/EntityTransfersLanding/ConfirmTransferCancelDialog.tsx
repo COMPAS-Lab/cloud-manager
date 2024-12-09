@@ -1,45 +1,38 @@
 import {
-  cancelTransfer,
   TransferEntities,
+  cancelTransfer,
 } from '@linode/api-v4/lib/entity-transfers';
 import { APIError } from '@linode/api-v4/lib/types';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import { queryClient } from 'src/queries/base';
-import { queryKey } from 'src/queries/entityTransfers';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { sendEntityTransferCancelEvent } from 'src/utilities/ga';
+import { useQueryClient } from '@tanstack/react-query';
 
-const useStyles = makeStyles(() => ({
-  actions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-}));
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { queryKey } from 'src/queries/entityTransfers';
+import { sendEntityTransferCancelEvent } from 'src/utilities/analytics/customEventAnalytics';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
 export interface Props {
+  entities?: TransferEntities;
   onClose: () => void;
   open: boolean;
   token?: string;
-  entities?: TransferEntities;
 }
 
-export const ConfirmTransferCancelDialog: React.FC<Props> = (props) => {
-  const { onClose, open, token, entities } = props;
+export const ConfirmTransferCancelDialog = React.memo((props: Props) => {
+  const { entities, onClose, open, token } = props;
 
-  const classes = useStyles();
   const { enqueueSnackbar } = useSnackbar();
 
   const [submitting, setSubmitting] = React.useState(false);
   const [submissionErrors, setSubmissionErrors] = React.useState<
     APIError[] | null
   >(null);
+
+  const queryClient = useQueryClient();
 
   React.useEffect(() => {
     if (open) {
@@ -62,7 +55,9 @@ export const ConfirmTransferCancelDialog: React.FC<Props> = (props) => {
         sendEntityTransferCancelEvent();
 
         // Refresh the query for Entity Transfers.
-        queryClient.invalidateQueries(queryKey);
+        queryClient.invalidateQueries({
+          queryKey: [queryKey],
+        });
 
         onClose();
         setSubmitting(false);
@@ -79,19 +74,19 @@ export const ConfirmTransferCancelDialog: React.FC<Props> = (props) => {
   };
 
   const actions = (
-    <ActionsPanel className={classes.actions}>
-      <Button buttonType="secondary" onClick={onClose}>
-        Keep Service Transfer
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={handleCancelTransfer}
-        disabled={submitting}
-        loading={submitting}
-      >
-        Cancel Service Transfer
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        disabled: submitting,
+        label: 'Cancel Service Transfer',
+        loading: submitting,
+        onClick: handleCancelTransfer,
+      }}
+      secondaryButtonProps={{
+        label: 'Keep Service Transfer',
+        onClick: onClose,
+      }}
+      sx={{ display: 'flex', justifyContent: 'flex-end' }}
+    />
   );
 
   // TS safety hatch (not possible in practice).
@@ -101,10 +96,10 @@ export const ConfirmTransferCancelDialog: React.FC<Props> = (props) => {
 
   return (
     <ConfirmationDialog
-      onClose={onClose}
-      title="Cancel this Service Transfer?"
-      open={open}
       actions={actions}
+      onClose={onClose}
+      open={open}
+      title="Cancel this Service Transfer?"
     >
       {
         // There could be multiple errors here that are relevant.
@@ -112,8 +107,8 @@ export const ConfirmTransferCancelDialog: React.FC<Props> = (props) => {
           ? submissionErrors.map((thisError, idx) => (
               <Notice
                 key={`form-submit-error-${idx}`}
-                error
                 text={thisError.reason}
+                variant="error"
               />
             ))
           : null
@@ -127,6 +122,4 @@ export const ConfirmTransferCancelDialog: React.FC<Props> = (props) => {
       </Typography>
     </ConfirmationDialog>
   );
-};
-
-export default React.memo(ConfirmTransferCancelDialog);
+});

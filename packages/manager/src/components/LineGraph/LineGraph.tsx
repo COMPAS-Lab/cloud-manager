@@ -1,91 +1,146 @@
+/**
+ * ONLY USED IN LONGVIEW
+ * Delete when Lonview is sunsetted, along with AccessibleGraphData
+ */
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { Chart } from 'chart.js';
+import { curry } from 'ramda';
+import * as React from 'react';
+
+import { humanizeLargeData } from 'src/components/AreaChart/utils';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { Typography } from 'src/components/Typography';
+import { setUpCharts } from 'src/utilities/charts';
+import { roundTo } from 'src/utilities/roundTo';
+
+import AccessibleGraphData from './AccessibleGraphData';
 import {
-  Chart,
+  StyledButton,
+  StyledButtonElement,
+  StyledCanvasContainer,
+  StyledContainer,
+  StyledTable,
+  StyledTableBody,
+  StyledTableCell,
+  StyledTableHead,
+  StyledWrapper,
+} from './LineGraph.styles';
+
+import type { SxProps, Theme } from '@mui/material/styles';
+import type {
   ChartData,
   ChartDataSets,
   ChartOptions,
   ChartTooltipItem,
   ChartXAxe,
 } from 'chart.js';
-import 'chartjs-adapter-luxon';
-import { curry } from 'ramda';
-import * as React from 'react';
-import Button from 'src/components/Button';
-import {
-  makeStyles,
-  Theme,
-  useMediaQuery,
-  useTheme,
-} from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import { setUpCharts } from 'src/utilities/charts';
-import roundTo from 'src/utilities/roundTo';
-import { Metrics } from 'src/utilities/statMetrics';
-import MetricDisplayStyles from './NewMetricDisplay.styles';
+import type { Metrics } from 'src/utilities/statMetrics';
 
 setUpCharts();
 
 export interface DataSet {
-  label: string;
+  backgroundColor?: string;
   borderColor: string;
-  // this data property type might not be the perfect fit, but it works for
-  // the data returned from /linodes/:linodeID/stats and
-  // /nodebalancers/:nodebalancer/stats
+  /**
+   * The data point to plot on the line graph that should be of type `DataSet`.
+   * This data property type might not be the perfect fit, but it works for the data returned from /linodes/:linodeID/stats and /nodebalancers/:nodebalancer/stats.
+   */
+  data: [number, null | number][];
   // the first number will be a UTC data and the second will be the amount per second
   fill?: boolean | string;
-  backgroundColor?: string;
-  data: [number, number | null][];
+  label: string;
 }
-export interface Props {
+
+export interface LineGraphProps {
+  /**
+   * `accessibleDataTable` is responsible to both rendering the accessible graph data table and an associated unit.
+   */
+  accessibleDataTable?: {
+    unit: string;
+  };
+  /**
+   * The accessible aria-label for the chart.
+   */
+  ariaLabel?: string;
+  /**
+   * The height in `px` of the chart.
+   */
   chartHeight?: number;
-  showToday: boolean;
-  suggestedMax?: number;
+  /**
+   * The data to be plotted on the line graph.
+   */
   data: DataSet[];
-  timezone: string;
-  rowHeaders?: Array<string>;
-  legendRows?: Array<any>;
-  unit?: string;
-  nativeLegend?: boolean; // Display chart.js native legend
-  formatData?: (value: number) => number | null;
+  /**
+   * The function that formats the data point values.
+   */
+  formatData?: (value: number) => null | number;
+  /**
+   * The function that formats the tooltip text.
+   */
   formatTooltip?: (value: number) => string;
+
+  /**
+   * To check whether legends should be shown in full size or predefined size
+   */
+  isLegendsFullSize?: boolean;
+  /**
+   * Legend row labels that are used in the legend.
+   */
+  legendRows?: Array<any>;
+  /**
+   * Show the native **Chart.js** legend
+   */
+  nativeLegend?: boolean;
+  /**
+   * Row headers for the legend.
+   */
+  rowHeaders?: Array<string>;
+  /**
+   * Determines whether dates or times are shown on the x-axis and also determines the x-axis step size.
+   */
+  showToday: boolean;
+  /**
+   * The suggested maximum y-axis value passed to **Chart,js**.
+   */
+  suggestedMax?: number;
+  /**
+   * Custom styles for the table.
+   */
+  sxTableStyles?: SxProps<Theme>;
+  /**
+   * The suggested maximum y-axis value passed to **Chart,js**.
+   */
+  tabIndex?: number;
+
+  /**
+   * The timezone the graph should use for interpreting the UNIX date-times in the data set.
+   */
+  timezone: string;
+  /**
+   * The unit to add to the mouse-over tooltip in the chart.
+   */
+  unit?: string;
 }
-
-type CombinedProps = Props;
-
-const useStyles = makeStyles((theme: Theme) => ({
-  ...MetricDisplayStyles(theme),
-  canvasContainer: {
-    position: 'relative',
-    width: '80%',
-  },
-}));
 
 const lineOptions: ChartDataSets = {
-  borderWidth: 1,
   borderJoinStyle: 'miter',
+  borderWidth: 1,
   lineTension: 0,
-  pointRadius: 0,
   pointHitRadius: 10,
+  pointRadius: 0,
 };
 
-const humanizeLargeData = (value: number) => {
-  if (value >= 1000000) {
-    return value / 1000000 + 'M';
-  }
-  if (value >= 1000) {
-    return value / 1000 + 'K';
-  }
-  return value;
-};
-
-const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
-  const classes = useStyles();
+/**
+ * **Chart.js** is the charting tool we use for analytics shown on the Linode detail page
+ * - Keep charts compact
+ * - When selecting a chart color palette make sure colors are distinct when viewed by a person with color blindness
+ * - Test the palette with a checker such as the [Coblis — Color Blindness Simulator](https://www.color-blindness.com/coblis-color-blindness-simulator/)
+ */
+export const LineGraph = (props: LineGraphProps) => {
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
   const inputEl: React.RefObject<any> = React.useRef(null);
   const chartInstance: React.MutableRefObject<any> = React.useRef(null);
@@ -93,16 +148,21 @@ const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
   const [hiddenDatasets, setHiddenDatasets] = React.useState<number[]>([]);
 
   const {
+    accessibleDataTable,
+    ariaLabel,
     chartHeight,
+    data,
     formatData,
     formatTooltip,
-    suggestedMax,
-    showToday,
-    timezone,
-    data,
-    rowHeaders,
+    isLegendsFullSize,
     legendRows,
     nativeLegend,
+    rowHeaders,
+    showToday,
+    suggestedMax,
+    sxTableStyles,
+    tabIndex,
+    timezone,
     unit,
   } = props;
 
@@ -134,48 +194,40 @@ const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
     _tooltipUnit?: string
   ) => {
     const finalChartOptions: ChartOptions = {
-      maintainAspectRatio: false,
-      responsive: true,
       animation: { duration: 0 },
+      layout: {
+        padding: {
+          left: 8,
+        },
+      },
       legend: {
         display: _nativeLegend,
+        onClick: (_e, legendItem) => {
+          if (legendItem && legendItem.datasetIndex !== undefined) {
+            handleLegendClick(legendItem.datasetIndex); // when we click on native legend, also call the handle legend click function
+          }
+        },
         position: _nativeLegend ? 'bottom' : undefined,
       },
+      maintainAspectRatio: false,
+      responsive: true,
       scales: {
-        yAxes: [
-          {
-            // Defines a fixed width for the Y-axis labels
-            afterFit(axes) {
-              axes.width = 35;
-            },
-            gridLines: {
-              borderDash: [3, 6],
-              drawTicks: false,
-              zeroLineWidth: 1,
-              zeroLineBorderDashOffset: 2,
-            },
-            ticks: {
-              beginAtZero: true,
-              fontColor: theme.textColors.tableHeader,
-              fontSize: 12,
-              fontStyle: 'normal',
-              maxTicksLimit: 8,
-              padding: 10,
-              suggestedMax: _suggestedMax ?? undefined,
-              callback(value: number, _index: number) {
-                return humanizeLargeData(value);
-              },
-            },
-          },
-        ],
         xAxes: [
           {
-            type: 'time',
+            adapters: {
+              date: {
+                zone: timezone,
+              },
+            },
             gridLines: {
               display: false,
             },
+            ticks: {
+              fontColor: theme.textColors.tableHeader,
+              fontSize: 12,
+              fontStyle: 'normal',
+            },
             time: {
-              stepSize: showToday ? 3 : 5,
               displayFormats: showToday
                 ? {
                     hour: 'HH:00',
@@ -185,38 +237,56 @@ const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
                     hour: 'LLL dd',
                     minute: 'LLL dd',
                   },
+              stepSize: showToday ? 3 : 5,
             },
-            adapters: {
-              date: {
-                zone: timezone,
-              },
-            },
-            ticks: {
-              fontColor: theme.textColors.tableHeader,
-              fontSize: 12,
-              fontStyle: 'normal',
-            },
+            type: 'time',
             // This cast is because the type definition does not include adapters
           } as ChartXAxe,
         ],
+        yAxes: [
+          {
+            // Defines a fixed width for the Y-axis labels
+            afterFit(axes) {
+              axes.width = 35;
+            },
+            gridLines: {
+              borderDash: [3, 6],
+              drawTicks: false,
+              zeroLineBorderDashOffset: 2,
+              zeroLineWidth: 1,
+            },
+            ticks: {
+              beginAtZero: true,
+              callback(value: number, _index: number) {
+                return humanizeLargeData(value);
+              },
+              fontColor: theme.textColors.tableHeader,
+              fontSize: 12,
+              fontStyle: 'normal',
+              maxTicksLimit: 8,
+              padding: 10,
+              suggestedMax: _suggestedMax ?? undefined,
+            },
+          },
+        ],
       },
       tooltips: {
-        cornerRadius: 0,
         backgroundColor: '#fbfbfb',
         bodyFontColor: '#32363C',
-        displayColors: false,
-        titleFontColor: '#606469',
-        xPadding: 8,
-        yPadding: 10,
-        borderWidth: 0.5,
         borderColor: '#999',
-        caretPadding: 10,
-        position: 'nearest',
+        borderWidth: 0.5,
         callbacks: {
           label: _formatTooltip(data, formatTooltip, _tooltipUnit),
         },
+        caretPadding: 10,
+        cornerRadius: 0,
+        displayColors: false,
         intersect: false,
         mode: 'index',
+        position: 'nearest',
+        titleFontColor: '#606469',
+        xPadding: 8,
+        yPadding: 10,
       },
     };
 
@@ -249,12 +319,12 @@ const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
         return acc;
       }, []);
       return {
-        label: dataSet.label,
-        borderColor: dataSet.borderColor,
         backgroundColor: dataSet.backgroundColor,
+        borderColor: dataSet.borderColor,
         data: timeData,
         fill: dataSet.fill,
         hidden: hiddenDatasets.includes(idx),
+        label: dataSet.label,
         ...lineOptions,
       };
     });
@@ -270,39 +340,59 @@ const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
       }
 
       chartInstance.current = new Chart(inputEl.current.getContext('2d'), {
-        type: 'line',
         data: {
           datasets: _formatData(),
         },
-        plugins,
         options: getChartOptions(suggestedMax, nativeLegend, unit),
+        plugins,
+        type: 'line',
       });
     }
   });
+
+  const sxTypography = {
+    fontSize: '0.75rem',
+  };
+
+  const sxTypographyHeader = {
+    ...sxTypography,
+    color: theme.textColors.tableHeader,
+  };
+
+  const sxLegend = {
+    [theme.breakpoints.up('md')]: {
+      width: '38%',
+    },
+  };
+
   return (
-    <div className={classes.wrapper}>
-      <div className={classes.canvasContainer}>
-        <canvas height={chartHeight || 300} ref={inputEl} />
-      </div>
+    // Allow `tabIndex` on `<div>` because it represents an interactive element.
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+
+    // Note on markup and styling: the legend is rendered first for accessibility reasons.
+    // Screen readers read from top to bottom, so the legend should be read before the data tables, esp considering their size
+    // and the fact that the legend can filter them.
+    // Meanwhile the CSS uses column-reverse to visually retain the original order
+    <StyledWrapper data-testid="linegraph-wrapper" tabIndex={tabIndex ?? 0}>
       {legendRendered && legendRows && (
-        <div className={classes.container}>
-          <Table
-            aria-label="Stats and metrics"
-            className={classes.root}
+        <StyledContainer>
+          <StyledTable
+            sx={{
+              ...sxTableStyles,
+              maxWidth: isLegendsFullSize ? '100%' : '600px',
+              width: isLegendsFullSize ? '100%' : '85%',
+            }} // this sx is added because styled table forcing the legends to be 85% width & 600px max width
+            aria-label={`Controls for ${ariaLabel || 'Stats and metrics'}`}
             noBorder
           >
-            <TableHead className={classes.tableHead}>
+            <StyledTableHead>
               {/* Repeat legend for each data set for mobile */}
               {matchesSmDown ? (
                 data.map((section) => (
                   <TableRow key={section.label}>
                     {finalRowHeaders.map((section, i) => (
-                      <TableCell
-                        key={i}
-                        data-qa-header-cell
-                        className={classes.tableHeadInner}
-                      >
-                        <Typography variant="body1" className={classes.text}>
+                      <TableCell data-qa-header-cell key={i}>
+                        <Typography sx={sxTypographyHeader} variant="body1">
                           {section}
                         </Typography>
                       </TableCell>
@@ -311,22 +401,26 @@ const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell style={{ height: 26 }} />
+                  <TableCell
+                    sx={{
+                      /**
+                       * TODO: TableCell needs to be refactored before
+                       * we can remove this !important
+                       */
+                      height: '26px !important',
+                    }}
+                  />
                   {finalRowHeaders.map((section, i) => (
-                    <TableCell
-                      key={i}
-                      data-qa-header-cell
-                      className={classes.tableHeadInner}
-                    >
-                      <Typography variant="body1" className={classes.text}>
+                    <TableCell data-qa-header-cell key={i}>
+                      <Typography sx={sxTypographyHeader} variant="body1">
                         {section}
                       </Typography>
                     </TableCell>
                   ))}
                 </TableRow>
               )}
-            </TableHead>
-            <TableBody>
+            </StyledTableHead>
+            <StyledTableBody>
               {legendRows?.map((_tick: any, idx: number) => {
                 const bgColor = data[idx].backgroundColor;
                 const title = data[idx].label;
@@ -334,54 +428,74 @@ const LineGraph: React.FC<CombinedProps> = (props: CombinedProps) => {
                 const { data: metricsData, format } = legendRows[idx];
                 return (
                   <TableRow key={idx}>
-                    <TableCell className={classes.legend} noWrap>
-                      <Button
-                        onClick={() => handleLegendClick(idx)}
-                        data-qa-legend-title
+                    <StyledTableCell noWrap sx={sxLegend}>
+                      <StyledButton
                         aria-label={`Toggle ${title} visibility`}
-                        className={classes.toggleButton}
+                        data-qa-legend-title
+                        onClick={() => handleLegendClick(idx)}
                       >
-                        <div
-                          className={`${classes.legendIcon} ${
-                            hidden && classes.crossedOut
-                          }`}
-                          style={{
+                        <StyledButtonElement
+                          sx={{
                             background: bgColor,
                             borderColor: bgColor,
+                            borderStyle: 'solid',
+                            borderWidth: '1px',
+                            height: '18px',
+                            marginRight: theme.spacing(1),
+                            width: '18px',
                           }}
+                          hidden={hidden}
                         />
-                        <span className={hidden ? classes.crossedOut : ''}>
+                        <StyledButtonElement hidden={hidden}>
                           {title}
-                        </span>
-                      </Button>
-                    </TableCell>
+                        </StyledButtonElement>
+                      </StyledButton>
+                    </StyledTableCell>
                     {metricsData &&
                       metricsBySection(metricsData).map((section, i) => {
                         return (
-                          <TableCell
-                            key={i}
+                          <StyledTableCell
                             parentColumn={
                               rowHeaders ? rowHeaders[idx] : undefined
                             }
                             data-qa-body-cell
+                            data-qa-graph-column-title={finalRowHeaders[i]}
+                            data-qa-graph-row-title={title}
+                            key={i}
                           >
                             <Typography
+                              sx={{ ...sxTypography, color: theme.color.black }}
                               variant="body1"
-                              className={classes.text}
                             >
                               {format(section)}
                             </Typography>
-                          </TableCell>
+                          </StyledTableCell>
                         );
                       })}
                   </TableRow>
                 );
               })}
-            </TableBody>
-          </Table>
-        </div>
+            </StyledTableBody>
+          </StyledTable>
+        </StyledContainer>
       )}
-    </div>
+      <StyledCanvasContainer>
+        <canvas
+          aria-label={ariaLabel || 'Stats and metrics'}
+          height={chartHeight || 300}
+          ref={inputEl}
+          role="img"
+        />
+      </StyledCanvasContainer>
+      {accessibleDataTable?.unit && (
+        <AccessibleGraphData
+          accessibleUnit={accessibleDataTable.unit}
+          ariaLabel={ariaLabel}
+          chartInstance={chartInstance.current}
+          hiddenDatasets={hiddenDatasets}
+        />
+      )}
+    </StyledWrapper>
   );
 };
 
@@ -417,5 +531,3 @@ export const _formatTooltip = curry(
     return `${label}: ${value}${unit ? unit : ''}`;
   }
 );
-
-export default LineGraph;

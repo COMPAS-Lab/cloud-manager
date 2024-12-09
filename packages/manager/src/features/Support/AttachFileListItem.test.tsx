@@ -1,17 +1,19 @@
 import { fireEvent } from '@testing-library/react';
 import * as React from 'react';
-import { renderWithTheme } from 'src/utilities/testHelpers';
+
 import {
   attachment1,
   attachment2,
   attachment3,
 } from 'src/__data__/fileAttachments';
+import { renderWithTheme } from 'src/utilities/testHelpers';
+
 import { AttachFileListItem } from './AttachFileListItem';
 
 const props = {
   fileIdx: 1,
-  onClick: jest.fn(),
-  removeFile: jest.fn(),
+  onClick: vi.fn(),
+  removeFile: vi.fn(),
 };
 
 describe('AttachFileListItem component', () => {
@@ -27,12 +29,12 @@ describe('AttachFileListItem component', () => {
     expect(queryAllByTestId('delete-button')).toHaveLength(1);
   });
   it('should call the removeFile method when the delete button is clicked', () => {
-    const { queryAllByTestId, getByTestId } = renderWithTheme(
+    const { getByTestId, queryAllByTestId } = renderWithTheme(
       <AttachFileListItem file={attachment1} {...props} />
     );
 
     fireEvent.click(getByTestId('delete-button'));
-    expect(props.onClick).toHaveBeenCalled();
+    expect(props.removeFile).toHaveBeenCalled();
     expect(queryAllByTestId('delete-button')).toHaveLength(1);
   });
   it('should render a progress bar when a file is uploading', () => {

@@ -1,52 +1,67 @@
-import { mount } from 'enzyme';
+import { waitForElementToBeRemoved } from '@testing-library/react';
 import * as React from 'react';
-import { Provider } from 'react-redux';
-import { StaticRouter } from 'react-router-dom';
-import LinodeThemeWrapper from 'src/LinodeThemeWrapper';
-import store from 'src/store';
-import { reactRouterProps } from 'src/__data__/reactRouterProps';
+
+import { nodeBalancerFactory } from 'src/factories';
+import { makeResourcePage } from 'src/mocks/serverHandlers';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { mockMatchMedia, renderWithTheme } from 'src/utilities/testHelpers';
+
 import { NodeBalancersLanding } from './NodeBalancersLanding';
 
-describe.skip('NodeBalancers', () => {
-  const component = mount(
-    <StaticRouter context={{}}>
-      <Provider store={store}>
-        <LinodeThemeWrapper theme="dark">
-          <NodeBalancersLanding
-            {...reactRouterProps}
-            nodeBalancersLoading={false}
-            nodeBalancersError={undefined}
-            nodeBalancersData={[]}
-            nodeBalancersLastUpdated={0}
-            nodeBalancersCount={0}
-            nodeBalancerActions={{
-              updateNodeBalancer: jest.fn(),
-              createNodeBalancer: jest.fn(),
-              deleteNodeBalancer: jest.fn(),
-              getAllNodeBalancers: jest.fn(),
-              getAllNodeBalancersWithConfigs: jest.fn(),
-              getNodeBalancerPage: jest.fn(),
-              getNodeBalancerWithConfigs: jest.fn(),
-            }}
-            setDocs={jest.fn()}
-            clearDocs={jest.fn()}
-          />
-        </LinodeThemeWrapper>
-      </Provider>
-    </StaticRouter>
-  );
+beforeAll(() => mockMatchMedia());
 
-  it('should render 7 columns', () => {
-    const numOfColumns = component
-      .find('WithStyles(TableHead)')
-      .find('WithStyles(TableCell)').length;
-    expect(numOfColumns).toBe(7);
+const loadingTestId = 'circle-progress';
+
+describe('NodeBalancersLanding', () => {
+  it('renders the NodeBalancer empty state if there are no NodeBalancers', async () => {
+    server.use(
+      http.get('*/nodebalancers', () => {
+        return HttpResponse.json(makeResourcePage([]));
+      })
+    );
+
+    const { getByTestId, getByText } = renderWithTheme(
+      <NodeBalancersLanding />
+    );
+
+    // expect loading state and wait for it to disappear
+    expect(getByTestId(loadingTestId)).toBeInTheDocument();
+    await waitForElementToBeRemoved(getByTestId(loadingTestId));
+
+    expect(getByText('NodeBalancers')).toBeVisible();
+    expect(getByText('Cloud-based load balancing service')).toBeVisible();
+    expect(
+      getByText(
+        'Add high availability and horizontal scaling to web applications hosted on Linode Compute Instances.'
+      )
+    ).toBeVisible();
   });
 
-  it.skip('should render a Kabob menu', () => {
-    const kabobMenu = component
-      .find('withRouter(NodeBalancerActionMenu)')
-      .first();
-    expect(kabobMenu).toHaveLength(1);
+  it('renders the NodeBalancer table if there are NodeBalancers', async () => {
+    server.use(
+      http.get('*/nodebalancers', () => {
+        const nodebalancers = nodeBalancerFactory.buildList(1);
+        return HttpResponse.json(makeResourcePage(nodebalancers));
+      })
+    );
+
+    const { getByTestId, getByText } = renderWithTheme(
+      <NodeBalancersLanding />
+    );
+
+    // expect loading state and wait for it to disappear
+    expect(getByTestId(loadingTestId)).toBeInTheDocument();
+    await waitForElementToBeRemoved(getByTestId(loadingTestId));
+
+    expect(getByText('NodeBalancers')).toBeVisible();
+    expect(getByText('Create NodeBalancer')).toBeVisible();
+
+    // confirm table headers
+    expect(getByText('Label')).toBeVisible();
+    expect(getByText('Backend Status')).toBeVisible();
+    expect(getByText('Transferred')).toBeVisible();
+    expect(getByText('Ports')).toBeVisible();
+    expect(getByText('IP Address')).toBeVisible();
+    expect(getByText('Region')).toBeVisible();
   });
 });

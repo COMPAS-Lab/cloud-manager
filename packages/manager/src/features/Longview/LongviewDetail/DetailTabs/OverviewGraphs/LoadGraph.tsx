@@ -1,25 +1,26 @@
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { withTheme, WithTheme } from 'src/components/core/styles';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
+
 import { convertData } from '../../../shared/formatters';
 import { GraphProps } from './types';
 import { useGraphs } from './useGraphs';
 
-export type CombinedProps = GraphProps & WithTheme;
-
-export const LoadGraph: React.FC<CombinedProps> = (props) => {
+export const LoadGraph = (props: GraphProps) => {
   const {
     clientAPIKey,
-    lastUpdated,
-    lastUpdatedError,
     end,
     isToday,
+    lastUpdated,
+    lastUpdatedError,
     start,
-    theme,
     timezone,
   } = props;
 
-  const { data, loading, error, request } = useGraphs(
+  const theme = useTheme();
+
+  const { data, error, loading, request } = useGraphs(
     ['load'],
     clientAPIKey,
     start,
@@ -34,23 +35,22 @@ export const LoadGraph: React.FC<CombinedProps> = (props) => {
 
   return (
     <LongviewLineGraph
-      title="Load"
-      subtitle="Target < 1.00"
-      error={error}
-      loading={loading}
-      showToday={isToday}
-      timezone={timezone}
-      nativeLegend
       data={[
         {
-          label: 'Load',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.load,
+          borderColor: 'transparent',
           data: _convertData(data.Load || [], start, end),
+          label: 'Load',
         },
       ]}
+      ariaLabel="Load Graph"
+      error={error}
+      loading={loading}
+      nativeLegend
+      showToday={isToday}
+      subtitle="Target < 1.00"
+      timezone={timezone}
+      title="Load"
     />
   );
 };
-
-export default withTheme(LoadGraph);

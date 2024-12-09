@@ -13,8 +13,8 @@ const domainSchemaBase = object().shape({
   status: mixed().oneOf(['disabled', 'active', 'edit_mode', 'has_errors']),
   tags: array(),
   description: string()
-    .min(1, 'Description must be between 1 and 255 characters.')
-    .max(255, 'Description must be between 1 and 255 characters.'),
+    .min(1, 'Description must be between 1 and 253 characters.')
+    .max(253, 'Description must be between 1 and 253 characters.'),
   retry_sec: number(),
   master_ips: array().of(string()),
   axfr_ips: array()
@@ -40,7 +40,8 @@ export const createDomainSchema = domainSchemaBase.shape({
       then: string().required('SOA Email is required.'),
       otherwise: string(),
     })
-    .email('SOA Email is not valid.'),
+    .email('SOA Email is not valid.')
+    .trim(),
   master_ips: array()
     .of(string())
     .when('type', {

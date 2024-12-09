@@ -1,14 +1,36 @@
-// import { fireEvent } from '@testing-library/react';
 import { PayPalScriptProvider } from '@paypal/react-paypal-js';
+import { fireEvent } from '@testing-library/react';
 import * as React from 'react';
+
 import { PAYPAL_CLIENT_ID } from 'src/constants';
+import { profileFactory } from 'src/factories';
 import { paymentMethodFactory } from 'src/factories';
+import { grantsFactory } from 'src/factories/grants';
 import { renderWithTheme, wrapWithTheme } from 'src/utilities/testHelpers';
+
 import PaymentInformation from './PaymentInformation';
 
-jest.mock('@linode/api-v4/lib/account', () => {
+const ADD_PAYMENT_METHOD_BUTTON_ID = 'payment-info-add-payment-method';
+
+vi.mock('@linode/api-v4/lib/account', async () => {
+  const actual = await vi.importActual<any>('@linode/api-v4/lib/account');
   return {
-    getClientToken: jest.fn().mockResolvedValue('mockedBraintreeClientToken'),
+    ...actual,
+    getClientToken: vi.fn().mockResolvedValue('mockedBraintreeClientToken'),
+  };
+});
+
+const queryMocks = vi.hoisted(() => ({
+  useGrants: vi.fn().mockReturnValue({}),
+  useProfile: vi.fn().mockReturnValue({}),
+}));
+
+vi.mock('src/queries/profile/profile', async () => {
+  const actual = await vi.importActual<any>('src/queries/profile/profile');
+  return {
+    ...actual,
+    useGrants: queryMocks.useGrants,
+    useProfile: queryMocks.useProfile,
   };
 });
 
@@ -28,15 +50,18 @@ const paymentMethods = [
   }),
 ];
 
+const props = {
+  isAkamaiCustomer: false,
+  loading: false,
+  paymentMethods,
+  profile: queryMocks.useProfile().data,
+};
+
 describe('Payment Info Panel', () => {
   it('Shows loading animation when loading', () => {
     const { getByLabelText } = renderWithTheme(
       <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
-        <PaymentInformation
-          loading={true}
-          paymentMethods={paymentMethods}
-          isAkamaiCustomer={false}
-        />
+        <PaymentInformation {...props} loading={true} />
       </PayPalScriptProvider>
     );
 
@@ -44,26 +69,18 @@ describe('Payment Info Panel', () => {
   });
 
   it('Shows Add Payment button for Linode customers and hides it for Akamai customers', () => {
-    const { queryByText, getByTestId, rerender } = renderWithTheme(
+    const { getByTestId, queryByText, rerender } = renderWithTheme(
       <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
-        <PaymentInformation
-          loading={false}
-          paymentMethods={paymentMethods}
-          isAkamaiCustomer={false}
-        />
+        <PaymentInformation {...props} loading={false} />
       </PayPalScriptProvider>
     );
 
-    expect(getByTestId('payment-info-add-payment-method')).toBeInTheDocument();
+    expect(getByTestId(ADD_PAYMENT_METHOD_BUTTON_ID)).toBeInTheDocument();
 
     rerender(
       wrapWithTheme(
         <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
-          <PaymentInformation
-            loading={false}
-            paymentMethods={paymentMethods}
-            isAkamaiCustomer={true}
-          />
+          <PaymentInformation {...props} isAkamaiCustomer={true} />
         </PayPalScriptProvider>
       )
     );
@@ -71,30 +88,23 @@ describe('Payment Info Panel', () => {
     expect(queryByText('Add Payment Method')).toBeNull();
   });
 
-  // @TODO: Restore `PaymentInformation.test.tsx` tests. See M3-5768 for more information.
-  // it('Opens "Add Payment Method" drawer when "Add Payment Method" is clicked', () => {
-  //   const { getByTestId } = renderWithTheme(
-  //     <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
-  //       <PaymentInformation loading={false} paymentMethods={paymentMethods} />
-  //     </PayPalScriptProvider>
-  //   );
+  it('Opens "Add Payment Method" drawer when "Add Payment Method" is clicked', () => {
+    const { getByTestId } = renderWithTheme(
+      <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
+        <PaymentInformation {...props} />
+      </PayPalScriptProvider>
+    );
 
-  //   const addPaymentMethodButton = getByTestId(
-  //     'payment-info-add-payment-method'
-  //   );
+    const addPaymentMethodButton = getByTestId(ADD_PAYMENT_METHOD_BUTTON_ID);
 
-  //   fireEvent.click(addPaymentMethodButton);
-  //   expect(getByTestId('drawer')).toBeVisible();
-  // });
+    fireEvent.click(addPaymentMethodButton);
+    expect(getByTestId('drawer')).toBeVisible();
+  });
 
   it('Lists all payment methods for Linode customers', () => {
     const { getByTestId } = renderWithTheme(
       <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
-        <PaymentInformation
-          loading={false}
-          paymentMethods={paymentMethods}
-          isAkamaiCustomer={false}
-        />
+        <PaymentInformation {...props} />
       </PayPalScriptProvider>
     );
 
@@ -108,11 +118,7 @@ describe('Payment Info Panel', () => {
   it('Hides payment methods and shows text for Akamai customers', () => {
     const { getByTestId, queryByTestId } = renderWithTheme(
       <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
-        <PaymentInformation
-          loading={false}
-          paymentMethods={paymentMethods}
-          isAkamaiCustomer={true}
-        />
+        <PaymentInformation {...props} isAkamaiCustomer={true} />
       </PayPalScriptProvider>
     );
 
@@ -122,5 +128,57 @@ describe('Payment Info Panel', () => {
       ).toBeNull();
     });
     expect(getByTestId('akamai-customer-text')).toBeInTheDocument();
+  });
+
+  describe('Add Payment Method', () => {
+    it('should be disabled for all child users', () => {
+      queryMocks.useProfile.mockReturnValue({
+        data: profileFactory.build({
+          restricted: false,
+          user_type: 'child',
+        }),
+      });
+
+      const { getByTestId } = renderWithTheme(
+        <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
+          <PaymentInformation
+            {...props}
+            profile={queryMocks.useProfile().data}
+          />
+        </PayPalScriptProvider>
+      );
+
+      expect(getByTestId(ADD_PAYMENT_METHOD_BUTTON_ID)).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      );
+    });
+
+    it('should be disabled for restricted users', () => {
+      queryMocks.useProfile.mockReturnValue({
+        data: profileFactory.build({
+          restricted: true,
+          user_type: 'default',
+        }),
+      });
+
+      queryMocks.useGrants.mockReturnValue({
+        data: grantsFactory.build({
+          global: {
+            account_access: 'read_only',
+          },
+        }),
+      });
+
+      const { getByTestId } = renderWithTheme(
+        <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID }}>
+          <PaymentInformation {...props} />
+        </PayPalScriptProvider>
+      );
+
+      const addPaymentMethodButton = getByTestId(ADD_PAYMENT_METHOD_BUTTON_ID);
+
+      expect(addPaymentMethodButton).toHaveAttribute('aria-disabled', 'true');
+    });
   });
 });

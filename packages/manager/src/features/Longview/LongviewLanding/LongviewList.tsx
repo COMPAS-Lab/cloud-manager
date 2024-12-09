@@ -1,45 +1,32 @@
-import { LongviewClient } from '@linode/api-v4/lib/longview/types';
+import { Box } from '@linode/ui';
 import * as React from 'react';
-import { compose } from 'recompose';
-import CircleProgress from 'src/components/CircleProgress';
-import Box from 'src/components/core/Box';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ErrorState from 'src/components/ErrorState';
-import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import { Props as LVProps } from 'src/containers/longview.container';
-import LongviewRows from './LongviewListRows';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  empty: {
-    height: '20em',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  button: {
-    ...theme.applyLinkStyles,
-  },
-  emptyText: {
-    fontSize: '1.1em',
-  },
-}));
+import { StyledLinkButton } from 'src/components/Button/StyledLinkButton';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import Paginate from 'src/components/Paginate';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Paper } from '@linode/ui';
+import { Typography } from 'src/components/Typography';
+
+import { LongviewListRows } from './LongviewListRows';
+
+import type { LongviewClient } from '@linode/api-v4/lib/longview/types';
+import type { Props as LVProps } from 'src/containers/longview.container';
 
 type LongviewProps = Omit<
   LVProps,
-  | 'longviewClientsData'
-  | 'getLongviewClients'
   | 'createLongviewClient'
   | 'deleteLongviewClient'
+  | 'getLongviewClients'
+  | 'longviewClientsData'
   | 'updateLongviewClient'
 >;
 
-interface Props {
-  loading: boolean;
-  filteredData: LongviewClient[];
+interface Props extends LongviewProps {
   createLongviewClient: () => void;
+  filteredData: LongviewClient[];
+  loading: boolean;
   openPackageDrawer: (id: number, label: string) => void;
   triggerDeleteLongviewClient: (
     longviewClientID: number,
@@ -48,13 +35,11 @@ interface Props {
   userCanCreateLongviewClient: boolean;
 }
 
-type CombinedProps = Props & LongviewProps;
-
-const LongviewList: React.FC<CombinedProps> = (props) => {
+export const LongviewList = React.memo((props: Props) => {
   const {
     createLongviewClient,
-    loading,
     filteredData,
+    loading,
     longviewClientsError,
     longviewClientsLastUpdated,
     longviewClientsLoading,
@@ -63,8 +48,6 @@ const LongviewList: React.FC<CombinedProps> = (props) => {
     triggerDeleteLongviewClient,
     userCanCreateLongviewClient,
   } = props;
-
-  const classes = useStyles();
 
   // Empty state and a new client is being created
   const newClientIsLoading = loading && longviewClientsResults === 0;
@@ -95,14 +78,22 @@ const LongviewList: React.FC<CombinedProps> = (props) => {
   /** Empty state */
   if (longviewClientsLastUpdated !== 0 && longviewClientsResults === 0) {
     return (
-      <Paper data-testid="no-client-list" className={classes.empty}>
-        <Typography variant="body1" className={classes.emptyText}>
+      <Paper
+        sx={{
+          alignItems: 'center',
+          display: 'flex',
+          height: '20em',
+          justifyContent: 'center',
+        }}
+        data-testid="no-client-list"
+      >
+        <Typography sx={{ fontSize: '1.1em' }} variant="body1">
           {userCanCreateLongviewClient ? (
             <React.Fragment>
               You have no Longview clients configured.{' '}
-              <button className={classes.button} onClick={createLongviewClient}>
+              <StyledLinkButton onClick={createLongviewClient}>
                 Click here to add one.
-              </button>
+              </StyledLinkButton>
             </React.Fragment>
           ) : (
             'You have no Longview clients configured.'
@@ -119,8 +110,8 @@ const LongviewList: React.FC<CombinedProps> = (props) => {
     // since displaying a large number of client rows has performance impacts.
     <Paginate data={filteredData} pageSize={pageSize}>
       {({
-        data: paginatedAndOrderedData,
         count,
+        data: paginatedAndOrderedData,
         handlePageChange,
         handlePageSizeChange,
         page,
@@ -128,27 +119,25 @@ const LongviewList: React.FC<CombinedProps> = (props) => {
       }) => (
         <>
           <Box flexDirection="column">
-            <LongviewRows
+            <LongviewListRows
               longviewClientsData={paginatedAndOrderedData}
-              triggerDeleteLongviewClient={triggerDeleteLongviewClient}
               openPackageDrawer={openPackageDrawer}
+              triggerDeleteLongviewClient={triggerDeleteLongviewClient}
             />
           </Box>
           {filteredData.length > pageSize ? (
             <PaginationFooter
               count={count}
+              eventCategory="Longview Table"
+              fixedSize
               handlePageChange={handlePageChange}
               handleSizeChange={handlePageSizeChange}
               page={page}
               pageSize={pageSize}
-              eventCategory="Longview Table"
-              fixedSize
             />
           ) : null}
         </>
       )}
     </Paginate>
   );
-};
-
-export default compose<CombinedProps, CombinedProps>(React.memo)(LongviewList);
+});

@@ -1,8 +1,10 @@
-import * as React from 'react';
-import { act, renderHook } from '@testing-library/react-hooks';
-import { Provider } from 'react-redux';
-import { OrderSet } from 'src/store/preferences/preferences.actions';
-import { baseStore, wrapWithStore } from 'src/utilities/testHelpers';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { queryClientFactory } from 'src/queries/base';
+import { usePreferences } from 'src/queries/profile/preferences';
+import { OrderSet } from 'src/types/ManagerPreferences';
+import { wrapWithTheme } from 'src/utilities/testHelpers';
+
 import { useOrder } from './useOrder';
 
 // Default for Sorting
@@ -29,83 +31,87 @@ const handleOrderChangeOrder: OrderSet = {
   orderBy: 'type',
 };
 
-// Store wrapper with custom preferences
-const wrapWithCustomStore = ({ children }: { children: any }) => {
-  return (
-    <Provider
-      store={baseStore({
-        preferences: {
-          data: {
-            sortKeys: {
-              'account-maintenance-order': {
-                order: preferenceOrder.order,
-                orderBy: preferenceOrder.orderBy,
-              },
-            },
-          },
-        },
-      })}
-    >
-      {children}
-    </Provider>
-  );
-};
-
 const mockHistory = {
-  push: jest.fn(),
-  replace: jest.fn(),
+  push: vi.fn(),
+  replace: vi.fn(),
 };
 
 // Used to mock query params
-jest.mock('react-router-dom', () => ({
-  useLocation: jest
-    .fn()
-    .mockReturnValueOnce({
-      search: '',
-    })
-    .mockReturnValueOnce({
-      search: `https://cloud.linode.com/account/maintenance?order=desc&orderBy=when`,
-    })
-    .mockReturnValue({
-      search: '',
-    }),
-  useHistory: jest.fn(() => mockHistory),
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<any>('react-router-dom');
+  return {
+    ...actual,
+    useHistory: vi.fn(() => mockHistory),
+  };
+});
+
+const queryClient = queryClientFactory();
 
 describe('useOrder hook', () => {
-  it('should use default stort options when there are no query params or preference', () => {
+  it('should use default sort options when there are no query params or preference', () => {
     const { result } = renderHook(() => useOrder(defaultOrder), {
-      wrapper: wrapWithStore,
+      wrapper: (ui) => wrapWithTheme(ui, { queryClient }),
     });
 
     expect(result.current.order).toBe(defaultOrder.order);
     expect(result.current.orderBy).toBe(defaultOrder.orderBy);
   });
 
-  it('query paramaters with sort data should take precedence over defaults', () => {
+  it('query parameters with sort data should take precedence over defaults', () => {
     const { result } = renderHook(() => useOrder(defaultOrder), {
-      wrapper: wrapWithStore,
+      wrapper: (ui) =>
+        wrapWithTheme(ui, {
+          MemoryRouter: {
+            initialEntries: [
+              'https://cloud.linode.com/account/maintenance?order=desc&orderBy=when',
+            ],
+          },
+          queryClient,
+        }),
     });
 
     expect(result.current.order).toBe(queryOrder.order);
     expect(result.current.orderBy).toBe(queryOrder.orderBy);
   });
 
-  it('use preferences are used when there are no query params', () => {
+  it('use preferences are used when there are no query params', async () => {
+    const queryClient = queryClientFactory();
+    server.use(
+      http.get('*/profile/preferences', () => {
+        return HttpResponse.json({
+          sortKeys: {
+            'account-maintenance-order': preferenceOrder,
+          },
+        });
+      })
+    );
+
+    const { result: preferencesResult } = renderHook(() => usePreferences(), {
+      wrapper: (ui) => wrapWithTheme(ui, { queryClient }),
+    });
+
+    // This is kind of a bug. useOrder currently requires preferences to be cached
+    // before it works properly.
+    await waitFor(() => {
+      expect(preferencesResult.current.data).toBeDefined();
+    });
+
     const { result } = renderHook(
       () => useOrder(defaultOrder, 'account-maintenance-order'),
       {
-        wrapper: wrapWithCustomStore,
+        wrapper: (ui) => wrapWithTheme(ui, { queryClient }),
       }
     );
 
-    expect(result.current.order).toBe(preferenceOrder.order);
-    expect(result.current.orderBy).toBe(preferenceOrder.orderBy);
+    await waitFor(() => {
+      expect(result.current.order).toBe(preferenceOrder.order);
+      expect(result.current.orderBy).toBe(preferenceOrder.orderBy);
+    });
   });
 
   it('should change order when handleOrderChange is called with new values', () => {
     const { result } = renderHook(() => useOrder(defaultOrder), {
-      wrapper: wrapWithStore,
+      wrapper: (ui) => wrapWithTheme(ui, { queryClient }),
     });
 
     act(() =>
@@ -121,7 +127,7 @@ describe('useOrder hook', () => {
 
   it('should update query params when handleOrderChange is called', () => {
     const { result } = renderHook(() => useOrder(defaultOrder), {
-      wrapper: wrapWithStore,
+      wrapper: (ui) => wrapWithTheme(ui, { queryClient }),
     });
 
     act(() =>
@@ -144,7 +150,7 @@ describe('useOrder hook', () => {
     const { result } = renderHook(
       () => useOrder(defaultOrder, undefined, prefix),
       {
-        wrapper: wrapWithStore,
+        wrapper: (ui) => wrapWithTheme(ui, { queryClient }),
       }
     );
 

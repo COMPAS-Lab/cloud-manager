@@ -1,20 +1,17 @@
 import * as React from 'react';
-import Notice from 'src/components/Notice';
+
+import { Notice } from 'src/components/Notice/Notice';
 
 interface Props {
   fileName: string;
   reason: string;
 }
 
-type CombinedProps = Props;
-
 const getText = (fileName: string, reason: string) => {
   return `Error attaching ${fileName}: ${reason}`;
 };
 
-const AttachmentError: React.FC<CombinedProps> = (props) => {
+export const AttachmentError = (props: Props) => {
   const { fileName, reason } = props;
-  return <Notice error text={getText(fileName, reason)} />;
+  return <Notice text={getText(fileName, reason)} variant="error" />;
 };
-
-export default AttachmentError;

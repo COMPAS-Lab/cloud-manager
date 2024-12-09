@@ -1,98 +1,149 @@
+import { Box } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { ObjectStorageKey } from '@linode/api-v4/lib/object-storage';
-import { makeStyles } from 'src/components/core/styles';
-import Notice from 'src/components/Notice';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import CopyableAndDownloadableTextField from 'src/components/CopyableAndDownloadableTextField';
-import Box from 'src/components/core/Box';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { CopyableTextField } from 'src/components/CopyableTextField/CopyableTextField';
+import { Notice } from 'src/components/Notice/Notice';
+import { CopyAllHostnames } from 'src/features/ObjectStorage/AccessKeyLanding/CopyAllHostnames';
+import { HostNamesList } from 'src/features/ObjectStorage/AccessKeyLanding/HostNamesList';
+import { useAccountManagement } from 'src/hooks/useAccountManagement';
+import { useFlags } from 'src/hooks/useFlags';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { isFeatureEnabledV2 } from 'src/utilities/accountCapabilities';
+import { getRegionsByRegionId } from 'src/utilities/regions';
+
+import type { ObjectStorageKey } from '@linode/api-v4/lib/object-storage';
 
 interface Props {
+  objectStorageKey?: ObjectStorageKey | null;
+  onClose: () => void;
+  open: boolean;
   title: string;
   value?: string | undefined;
-  objectStorageKey?: ObjectStorageKey | null;
-  open: boolean;
-  onClose: () => void;
 }
 
-const useStyles = makeStyles(() => ({
-  noticeText: {
-    '& .noticeText': {
-      color: 'inherit',
-      lineHeight: 'inherit',
-      fontFamily: 'inherit',
-      fontSize: '0.875rem',
-    },
-  },
-}));
-
-type CombinedProps = Props;
-
-const renderActions = (onClose: () => void) => (
-  <ActionsPanel>
-    <Button
-      buttonType="primary"
-      onClick={onClose}
-      data-qa-confirm
-      data-testid="dialog-confirm"
-    >
-      I Have Saved My Keys
-    </Button>
-  </ActionsPanel>
+const renderActions = (
+  onClose: () => void,
+  modalConfirmationButtonText: string
+) => (
+  <ActionsPanel
+    primaryButtonProps={{
+      'data-testid': 'confirm',
+      label: modalConfirmationButtonText,
+      onClick: onClose,
+    }}
+  />
 );
 
-export const SecretTokenDialog: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { title, value, objectStorageKey, open, onClose } = props;
+export const SecretTokenDialog = (props: Props) => {
+  const { objectStorageKey, onClose, open, title, value } = props;
 
-  const actions = renderActions(onClose);
+  const { data: regionsData } = useRegionsQuery();
+  const regionsLookup = regionsData && getRegionsByRegionId(regionsData);
+
+  const flags = useFlags();
+  const { account } = useAccountManagement();
+
+  const isObjMultiClusterEnabled = isFeatureEnabledV2(
+    'Object Storage Access Key Regions',
+    Boolean(flags.objMultiCluster),
+    account?.capabilities ?? []
+  );
+
+  const modalConfirmationButtonText = objectStorageKey
+    ? 'I Have Saved My Secret Key'
+    : `I Have Saved My ${title}`;
+
+  const actions = renderActions(onClose, modalConfirmationButtonText);
 
   return (
     <ConfirmationDialog
-      title={title}
-      open={open}
-      onClose={onClose}
-      disableEscapeKeyDown
-      maxWidth="sm"
+      sx={() => ({
+        '.MuiPaper-root': {
+          overflow: 'hidden',
+        },
+      })}
       actions={actions}
+      disableEscapeKeyDown
+      fullWidth
+      maxWidth="sm"
+      onClose={onClose}
+      open={open}
+      title={title}
     >
-      <Notice
-        spacingTop={8}
-        warning
-        className={classes.noticeText}
+      <StyledNotice
         text={`${
           objectStorageKey ? 'Your keys have been generated.' : ''
         } For security purposes, we can only display your ${
           objectStorageKey ? 'secret key' : title.toLowerCase()
         } once, after which it can\u{2019}t be recovered. Be sure to keep it in a safe place.`}
+        spacingTop={8}
+        variant="warning"
       />
+      {/* @TODO OBJ Multicluster: The objectStorageKey check is a temporary fix
+      to handle error cases when the feature flag is enabled without Mock
+      Service Worker (MSW). This can be removed during the feature flag cleanup. */}
+      {isObjMultiClusterEnabled &&
+        objectStorageKey &&
+        objectStorageKey?.regions?.length > 0 && (
+          <div>
+            <CopyAllHostnames
+              hideShowAll={Boolean(
+                objectStorageKey && objectStorageKey?.regions?.length <= 1
+              )}
+              text={
+                objectStorageKey?.regions
+                  .map(
+                    (region) =>
+                      `${regionsLookup?.[region.id]?.label}: ${
+                        region.s3_endpoint
+                      }`
+                  )
+                  .join('\n') ?? ''
+              }
+            />
+          </div>
+        )}
+      {/* @TODO OBJ Multicluster: The objectStorageKey check is a temporary fix
+      to handle error cases when the feature flag is enabled without Mock
+      Service Worker (MSW). This can be removed during the feature flag cleanup. */}
+      {isObjMultiClusterEnabled &&
+        objectStorageKey &&
+        objectStorageKey?.regions?.length > 0 && (
+          <HostNamesList objectStorageKey={objectStorageKey} />
+        )}
+
       {objectStorageKey ? (
         <>
           <Box marginBottom="16px">
-            <CopyableAndDownloadableTextField
+            <CopyableTextField
               expand
               label={'Access Key'}
-              value={objectStorageKey.access_key || ''}
+              showDownloadIcon
               spellCheck={false}
+              value={objectStorageKey.access_key || ''}
             />
           </Box>
           <Box marginBottom="16px">
-            <CopyableAndDownloadableTextField
+            <CopyableTextField
               expand
               label={'Secret Key'}
-              value={objectStorageKey.secret_key || ''}
+              showDownloadIcon
               spellCheck={false}
+              value={objectStorageKey.secret_key || ''}
             />
           </Box>
         </>
       ) : value ? (
         <Box marginBottom="16px">
-          <CopyableAndDownloadableTextField
+          <CopyableTextField
             expand
             label={title}
-            value={value || ''}
+            showDownloadIcon
             spellCheck={false}
+            value={value || ''}
           />
         </Box>
       ) : null}
@@ -100,4 +151,13 @@ export const SecretTokenDialog: React.FC<CombinedProps> = (props) => {
   );
 };
 
-export default SecretTokenDialog;
+const StyledNotice = styled(Notice, {
+  label: 'StyledNotice',
+})(() => ({
+  '& .noticeText': {
+    color: 'inherit',
+    fontFamily: 'inherit',
+    fontSize: '0.875rem',
+    lineHeight: 'inherit',
+  },
+}));

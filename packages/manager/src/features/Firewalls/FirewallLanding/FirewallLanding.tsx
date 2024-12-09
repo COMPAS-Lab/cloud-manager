@@ -1,27 +1,33 @@
-import { CreateFirewallPayload, Firewall } from '@linode/api-v4/lib/firewalls';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import {
-  RouteComponentProps,
-  useHistory,
-  useRouteMatch,
-} from 'react-router-dom';
-import { compose } from 'recompose';
-import CircleProgress from 'src/components/CircleProgress';
-import EntityTable from 'src/components/EntityTable';
-import LandingHeader from 'src/components/LandingHeader';
-import {
-  useCreateFirewall,
-  useDeleteFirewall,
-  useFirewallQuery,
-  useMutateFirewall,
-} from 'src/queries/firewalls';
-import { queryClient } from 'src/queries/base';
-import { useProfile, queryKey } from 'src/queries/profile';
-import AddFirewallDrawer from './AddFirewallDrawer';
-import { ActionHandlers as FirewallHandlers } from './FirewallActionMenu';
-import FirewallDialog, { Mode } from './FirewallDialog';
-import FirewallEmptyState from './FirewallEmptyState';
-import FirewallRow from './FirewallRow';
+import { useHistory, useLocation } from 'react-router-dom';
+
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { GenerateFirewallDialog } from 'src/components/GenerateFirewallDialog/GenerateFirewallDialog';
+import { Hidden } from 'src/components/Hidden';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableSortCell } from 'src/components/TableSortCell/TableSortCell';
+import { useFlags } from 'src/hooks/useFlags';
+import { useOrder } from 'src/hooks/useOrder';
+import { usePagination } from 'src/hooks/usePagination';
+import { useSecureVMNoticesEnabled } from 'src/hooks/useSecureVMNoticesEnabled';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { useFirewallsQuery } from 'src/queries/firewalls';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+
+import { CreateFirewallDrawer } from './CreateFirewallDrawer';
+import { FirewallDialog } from './FirewallDialog';
+import { FirewallLandingEmptyState } from './FirewallLandingEmptyState';
+import { FirewallRow } from './FirewallRow';
 
 type CombinedProps = RouteComponentProps<{}>;
 
@@ -70,157 +76,176 @@ const FirewallLanding: React.FC<CombinedProps> = () => {
   const { mutateAsync: _deleteFirewall } = useDeleteFirewall();
   const { mutateAsync: _createFirewall } = useCreateFirewall();
 
-  const [
-    addFirewallDrawerOpen,
-    toggleAddFirewallDrawer,
-  ] = React.useState<boolean>(false);
+  const isCreateFirewallDrawerOpen = location.pathname.endsWith('create');
 
-  const [modalOpen, toggleModal] = React.useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = React.useState<boolean>(false);
   const [dialogMode, setDialogMode] = React.useState<Mode>('enable');
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = React.useState(false);
 
-  const [selectedFirewallID, setSelectedFirewallID] = React.useState<
+  const flags = useFlags();
+  const { secureVMNoticesEnabled } = useSecureVMNoticesEnabled();
+
+  const [selectedFirewallId, setSelectedFirewallId] = React.useState<
     number | undefined
   >(undefined);
 
-  const [
-    selectedFirewallLabel,
-    setSelectedFirewallLabel,
-  ] = React.useState<string>('');
+  const selectedFirewall = data?.data.find(
+    (firewall) => firewall.id === selectedFirewallId
+  );
 
-  const enableFirewall = (id: number) => {
-    return updateFirewall({ id, payload: { status: 'enabled' } });
-  };
+  const isFirewallsCreationRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'add_firewalls',
+  });
 
-  const disableFirewall = (id: number) => {
-    return updateFirewall({ id, payload: { status: 'disabled' } });
-  };
-
-  const createFirewall = (
-    payload: CreateFirewallPayload
-  ): Promise<Firewall> => {
-    return _createFirewall(payload).then((firewall) => {
-      if (profile?.restricted) {
-        queryClient.invalidateQueries(`${queryKey}-grants`);
-      }
-      return firewall;
-    });
-  };
-
-  const deleteFirewall = (id: number) => {
-    return _deleteFirewall({ id });
-  };
-
-  const openModal = (mode: Mode, id: number, label: string) => {
-    setSelectedFirewallID(id);
-    setSelectedFirewallLabel(label);
+  const openModal = (mode: Mode, id: number) => {
+    setSelectedFirewallId(id);
     setDialogMode(mode);
-    toggleModal(true);
+    setIsModalOpen(true);
   };
 
-  const handleOpenDeleteFirewallModal = (id: number, label: string) => {
-    openModal('delete', id, label);
+  const handleOpenDeleteFirewallModal = (id: number) => {
+    openModal('delete', id);
   };
 
-  const handleOpenEnableFirewallModal = (id: number, label: string) => {
-    openModal('enable', id, label);
+  const handleOpenEnableFirewallModal = (id: number) => {
+    openModal('enable', id);
   };
 
-  const handleOpenDisableFirewallModal = (id: number, label: string) => {
-    openModal('disable', id, label);
+  const handleOpenDisableFirewallModal = (id: number) => {
+    openModal('disable', id);
   };
 
-  const openDrawer = React.useCallback(() => toggleAddFirewallDrawer(true), [
-    toggleAddFirewallDrawer,
-  ]);
+  const onOpenCreateDrawer = () => {
+    history.replace('/firewalls/create');
+  };
 
-  // On-the-fly route matching so this component can open the drawer itself.
-  const createFirewallRouteMatch = Boolean(useRouteMatch('/firewalls/create'));
-
-  React.useEffect(() => {
-    if (createFirewallRouteMatch) {
-      openDrawer();
-    }
-  }, [createFirewallRouteMatch, openDrawer]);
-
-  const { replace } = useHistory();
-
-  const closeDrawer = React.useCallback(() => {
-    toggleAddFirewallDrawer(false);
-    replace('/firewalls');
-  }, [toggleAddFirewallDrawer, replace]);
+  const onCloseCreateDrawer = () => {
+    history.replace('/firewalls');
+  };
 
   const handlers: FirewallHandlers = {
-    triggerEnableFirewall: handleOpenEnableFirewallModal,
-    triggerDisableFirewall: handleOpenDisableFirewallModal,
     triggerDeleteFirewall: handleOpenDeleteFirewallModal,
+    triggerDisableFirewall: handleOpenDisableFirewallModal,
+    triggerEnableFirewall: handleOpenEnableFirewallModal,
   };
-
-  const firewallArray = Object.values(data ?? {});
 
   if (isLoading) {
     return <CircleProgress />;
   }
 
-  // We'll fall back to showing a request error in the EntityTable
-  if (firewallArray.length === 0 && !error) {
+  if (data?.results === 0) {
     return (
-      // Some repetition here, which we need to resolve separately
-      // (move the create form to /firewalls/create, or as a top
-      // level drawer).
       <>
-        <FirewallEmptyState openAddFirewallDrawer={openDrawer} />
-        <AddFirewallDrawer
-          open={addFirewallDrawerOpen}
-          onClose={() => toggleAddFirewallDrawer(false)}
-          onSubmit={createFirewall}
-          title="Create Firewall"
+        <FirewallLandingEmptyState openAddFirewallDrawer={onOpenCreateDrawer} />
+        <CreateFirewallDrawer
+          createFlow={undefined}
+          onClose={onCloseCreateDrawer}
+          open={isCreateFirewallDrawerOpen}
         />
       </>
     );
   }
 
-  const firewallRow = {
-    handlers,
-    Component: FirewallRow,
-    data: firewallArray,
-    loading: isLoading,
-    lastUpdated: dataUpdatedAt,
-    error: error ?? undefined,
-  };
+  if (error) {
+    return (
+      <ErrorState
+        errorText={
+          getAPIErrorOrDefault(error, 'Error loading your Firewalls.')[0].reason
+        }
+      />
+    );
+  }
 
   return (
     <React.Fragment>
       <LandingHeader
-        title="Firewalls"
-        entity="Firewall"
+        extraActions={
+          secureVMNoticesEnabled && flags.secureVmCopy?.generateActionText ? (
+            <Button
+              buttonType="secondary"
+              onClick={() => setIsGenerateDialogOpen(true)}
+            >
+              {flags.secureVmCopy.generateActionText}
+            </Button>
+          ) : undefined
+        }
         breadcrumbProps={{ pathname: '/firewalls' }}
-        onAddNew={openDrawer}
-        docsLink="https://linode.com/docs/platform/cloud-firewall/getting-started-with-cloud-firewall/"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-cloud-firewalls"
+        entity="Firewall"
+        disabledCreateButton={isFirewallsCreationRestricted}
+        onButtonClick={onOpenCreateDrawer}
+        title="Firewalls"
+        buttonDataAttrs={{
+          tooltipText: getRestrictedResourceText({
+            action: 'create',
+            isSingular: false,
+            resourceType: 'Firewalls',
+          }),
+        }}
       />
-      <EntityTable
-        entity="firewall"
-        row={firewallRow}
-        headers={headers}
-        initialOrder={{ order: 'asc', orderBy: 'domain' }}
+      <Table aria-label="List of services attached to each firewall">
+        <TableHead>
+          <TableRow>
+            <TableSortCell
+              active={orderBy === 'label'}
+              direction={order}
+              handleClick={handleOrderChange}
+              label="label"
+            >
+              Label
+            </TableSortCell>
+            <TableSortCell
+              active={orderBy === 'status'}
+              direction={order}
+              handleClick={handleOrderChange}
+              label="status"
+            >
+              Status
+            </TableSortCell>
+            <Hidden smDown>
+              <TableCell>Rules</TableCell>
+              <TableCell>Services</TableCell>
+            </Hidden>
+            <TableCell></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data?.data.map((firewall) => (
+            <FirewallRow key={firewall.id} {...firewall} {...handlers} />
+          ))}
+        </TableBody>
+      </Table>
+      <PaginationFooter
+        count={data?.results ?? 0}
+        eventCategory="Firewalls Table"
+        handlePageChange={pagination.handlePageChange}
+        handleSizeChange={pagination.handlePageSizeChange}
+        page={pagination.page}
+        pageSize={pagination.pageSize}
       />
-      <AddFirewallDrawer
-        open={addFirewallDrawerOpen}
-        onClose={closeDrawer}
-        onSubmit={createFirewall}
-        title="Create Firewall"
+      <CreateFirewallDrawer
+        createFlow={undefined}
+        onClose={onCloseCreateDrawer}
+        open={isCreateFirewallDrawerOpen}
       />
-      <FirewallDialog
-        open={modalOpen}
-        mode={dialogMode}
-        enableFirewall={enableFirewall}
-        disableFirewall={disableFirewall}
-        deleteFirewall={deleteFirewall}
-        selectedFirewallID={selectedFirewallID}
-        selectedFirewallLabel={selectedFirewallLabel}
-        closeDialog={() => toggleModal(false)}
+      {selectedFirewall && (
+        <FirewallDialog
+          mode={dialogMode}
+          onClose={() => setIsModalOpen(false)}
+          open={isModalOpen}
+          selectedFirewall={selectedFirewall}
+        />
+      )}
+      <GenerateFirewallDialog
+        onClose={() => setIsGenerateDialogOpen(false)}
+        open={isGenerateDialogOpen}
       />
     </React.Fragment>
   );
 };
 
-export default compose<CombinedProps, {}>(React.memo)(FirewallLanding);
+export const firewallLandingLazyRoute = createLazyRoute('/firewalls')({
+  component: FirewallLanding,
+});
+
+export default React.memo(FirewallLanding);

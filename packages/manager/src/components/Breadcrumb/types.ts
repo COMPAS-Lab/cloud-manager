@@ -1,17 +1,17 @@
-import { CSSProperties } from 'src/components/core/styles';
+import { CSSProperties } from 'react';
 
 export interface LabelProps {
   linkTo?: string;
+  noCap?: boolean;
   prefixComponent?: JSX.Element | null;
   prefixStyle?: CSSProperties;
   suffixComponent?: JSX.Element | null;
-  subtitle?: string;
-  noCap?: boolean;
 }
 
 export interface EditableProps {
+  editableTextTitle: string;
+  errorText?: string;
+  handleAnalyticsEvent?: () => void;
   onCancel: () => void;
   onEdit: (value: string) => Promise<any>;
-  errorText?: string;
-  editableTextTitle: string;
 }

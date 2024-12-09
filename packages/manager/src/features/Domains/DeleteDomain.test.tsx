@@ -1,12 +1,14 @@
-import * as React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react';
+import * as React from 'react';
+
 import { wrapWithTheme } from 'src/utilities/testHelpers';
-import { Props, DeleteDomain } from './DeleteDomain';
+
+import { DeleteDomain, DeleteDomainProps } from './DeleteDomain';
 
 const domainId = 1;
 const domainLabel = 'example.com';
 
-const props: Props = {
+const props: DeleteDomainProps = {
   domainId,
   domainLabel,
 };
@@ -17,9 +19,12 @@ describe('DeleteDomain', () => {
     getByText('Delete Domain');
   });
 
-  it('displays the modal when the button is clicked', () => {
-    const { getByText } = render(wrapWithTheme(<DeleteDomain {...props} />));
+  it('displays the modal when the button is clicked', async () => {
+    const { findByText, getByText } = render(
+      wrapWithTheme(<DeleteDomain {...props} />)
+    );
     fireEvent.click(getByText('Delete Domain'));
+    await findByText('Delete Domain example.com?');
     expect(getByText('Delete Domain example.com?')).toBeInTheDocument();
   });
 

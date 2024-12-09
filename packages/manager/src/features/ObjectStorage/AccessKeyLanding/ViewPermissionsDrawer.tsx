@@ -1,32 +1,42 @@
-import { ObjectStorageKey } from '@linode/api-v4/lib/object-storage';
 import * as React from 'react';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
 
-import { AccessTable } from './LimitedAccessControls';
+import { Drawer } from 'src/components/Drawer';
+import { Typography } from 'src/components/Typography';
+import { useAccountManagement } from 'src/hooks/useAccountManagement';
+import { useFlags } from 'src/hooks/useFlags';
+import { isFeatureEnabledV2 } from 'src/utilities/accountCapabilities';
+
+import { AccessTable } from './AccessTable';
+import { BucketPermissionsTable } from './BucketPermissionsTable';
+
+import type { ObjectStorageKey } from '@linode/api-v4';
+
 export interface Props {
-  open: boolean;
-  onClose: () => void;
   objectStorageKey: ObjectStorageKey | null;
+  onClose: () => void;
+  open: boolean;
 }
 
-type CombinedProps = Props;
+export const ViewPermissionsDrawer = (props: Props) => {
+  const { objectStorageKey, onClose, open } = props;
 
-export const ViewPermissionsDrawer: React.FC<CombinedProps> = (props) => {
-  const { open, onClose, objectStorageKey } = props;
+  const flags = useFlags();
+  const { account } = useAccountManagement();
 
-  if (objectStorageKey === null) {
-    return null;
-  }
+  const isObjMultiClusterEnabled = isFeatureEnabledV2(
+    'Object Storage Access Key Regions',
+    Boolean(flags.objMultiCluster),
+    account?.capabilities ?? []
+  );
 
   return (
     <Drawer
-      title={`Permissions for ${objectStorageKey.label}`}
-      open={open}
       onClose={onClose}
+      open={open}
+      title={`Permissions for ${objectStorageKey?.label}`}
       wide
     >
-      {objectStorageKey.bucket_access === null ? (
+      {!objectStorageKey ? null : objectStorageKey.bucket_access === null ? (
         <Typography>
           This key has unlimited access to all buckets on your account.
         </Typography>
@@ -35,16 +45,23 @@ export const ViewPermissionsDrawer: React.FC<CombinedProps> = (props) => {
           <Typography>
             This access key has the following permissions:
           </Typography>
-          <AccessTable
-            mode={'viewing'}
-            bucket_access={objectStorageKey.bucket_access}
-            updateScopes={() => null}
-            checked={objectStorageKey.limited}
-          />
+          {isObjMultiClusterEnabled ? (
+            <BucketPermissionsTable
+              bucket_access={objectStorageKey.bucket_access}
+              checked={objectStorageKey.limited}
+              mode="viewing"
+              updateScopes={() => null}
+            />
+          ) : (
+            <AccessTable
+              bucket_access={objectStorageKey.bucket_access}
+              checked={objectStorageKey.limited}
+              mode="viewing"
+              updateScopes={() => null}
+            />
+          )}
         </>
       )}
     </Drawer>
   );
 };
-
-export default React.memo(ViewPermissionsDrawer);

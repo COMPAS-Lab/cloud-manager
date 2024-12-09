@@ -1,151 +1,79 @@
-import {
-  Disk,
-  getType,
-  LinodeSpecs,
-  LinodeType,
-  startMutation,
-} from '@linode/api-v4/lib/linodes';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
+import { styled } from '@mui/material/styles';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { connect, MapDispatchToProps } from 'react-redux';
-import { compose } from 'recompose';
-import { Action } from 'redux';
-import { ThunkDispatch } from 'redux-thunk';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
+
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
 import { MBpsIntraDC } from 'src/constants';
-import withTypes, { WithTypesProps } from 'src/containers/types.container';
-import { resetEventsPolling } from 'src/eventsPolling';
-import { ApplicationState } from 'src/store';
-import { requestLinodeForStore } from 'src/store/linodes/linode.requests';
-import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
-import { withLinodeDetailContext } from '../linodeDetailContext';
-import MutateDrawer from '../MutateDrawer';
-import withMutationDrawerState, {
-  MutationDrawerProps,
-} from './mutationDrawerState';
+import { useEventsPollingActions } from 'src/queries/events/events';
+import { useStartLinodeMutationMutation } from 'src/queries/linodes/actions';
+import { useAllLinodeDisksQuery } from 'src/queries/linodes/disks';
+import { useLinodeQuery } from 'src/queries/linodes/linodes';
+import { useTypeQuery } from 'src/queries/types';
 
-type ClassNames = 'pendingMutationLink';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    pendingMutationLink: {
-      ...theme.applyLinkStyles,
-    },
-  });
+import { addUsedDiskSpace } from '../LinodeStorage/LinodeDisks';
+import { MutateDrawer } from '../MutateDrawer/MutateDrawer';
 
 interface Props {
-  disks: Disk[];
+  linodeId: number;
 }
 
-type CombinedProps = Props &
-  MutationDrawerProps &
-  ContextProps &
-  WithTypesProps &
-  WithSnackbarProps &
-  DispatchProps &
-  WithStyles<ClassNames>;
+export const MutationNotification = (props: Props) => {
+  const { linodeId } = props;
+  const { enqueueSnackbar } = useSnackbar();
 
-const MutationNotification: React.FC<CombinedProps> = (props) => {
-  const {
-    classes,
-    typesData,
+  const { data: linode } = useLinodeQuery(linodeId);
+
+  const { checkForNewEvents } = useEventsPollingActions();
+
+  const { data: currentTypeInfo } = useTypeQuery(
+    linode?.type ?? '',
+    Boolean(linode?.type)
+  );
+
+  const { data: successorTypeInfo } = useTypeQuery(
+    currentTypeInfo?.successor ?? '',
+    Boolean(currentTypeInfo?.successor)
+  );
+
+  const { data: disks } = useAllLinodeDisksQuery(
     linodeId,
-    linodeType,
-    linodeSpecs,
-    enqueueSnackbar,
-    openMutationDrawer,
-    closeMutationDrawer,
-    mutationFailed,
-    mutationDrawerError,
-    mutationDrawerLoading,
-    mutationDrawerOpen,
-    updateLinode,
-  } = props;
+    successorTypeInfo !== undefined
+  );
 
-  const [
-    successorMetaData,
-    setSuccessorMetaData,
-  ] = React.useState<LinodeType | null>(null);
+  const [isMutationDrawerOpen, setIsMutationDrawerOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    if (!linodeType) {
-      return;
-    }
-
-    /** did we find successor meta data in GET /types or GET /types-legacy? */
-    const foundSuccessorInAllTypes = typesData.find(
-      ({ id }) => id === linodeType.successor
-    );
-
-    if (typesData.length > 0 && !!foundSuccessorInAllTypes) {
-      setSuccessorMetaData(foundSuccessorInAllTypes);
-    } else {
-      /**
-       * this means we couldn't find the Linode's successor in either
-       * GET request to /types or /types-legacy. This is a SUPER edge
-       * case but it *does* happen. An example type that would flatter this
-       * condition would be the "standard-4" plan. In this case, we need to actually
-       * request the successor metadata
-       */
-      if (linodeType.successor) {
-        getType(linodeType.successor)
-          .then((requestedType) => {
-            setSuccessorMetaData(requestedType);
-          })
-          /** just silently fail if we couldn't get the data */
-          .catch((e) => e);
-      }
-    }
-  }, [typesData, linodeType]);
+  const {
+    error,
+    isPending,
+    mutateAsync: startMutation,
+  } = useStartLinodeMutationMutation(linodeId);
 
   const initMutation = () => {
-    openMutationDrawer();
-
-    /*
-     * It's okay to disregard the possibility of linode
-     * being undefined. The upgrade message won't appear unless
-     * it's defined
-     */
-    startMutation(linodeId)
-      .then(() => {
-        closeMutationDrawer();
-        resetEventsPolling();
-        updateLinode(linodeId);
-        enqueueSnackbar('Linode upgrade has been initiated.', {
-          variant: 'info',
-        });
-      })
-      .catch((errors) => {
-        const e = getErrorStringOrDefault(
-          errors,
-          'Mutation could not be initiated.'
-        );
-        mutationFailed(e);
+    startMutation().then(() => {
+      setIsMutationDrawerOpen(false);
+      checkForNewEvents();
+      enqueueSnackbar('Linode upgrade has been initiated.', {
+        variant: 'info',
       });
+    });
   };
 
-  const usedDiskSpace = addUsedDiskSpace(props.disks);
+  const usedDiskSpace = addUsedDiskSpace(disks ?? []);
   const estimatedTimeToUpgradeInMins = Math.ceil(
     usedDiskSpace / MBpsIntraDC / 60
   );
 
   /** Mutate */
-  if (!linodeType || !successorMetaData) {
+  if (!currentTypeInfo || !successorTypeInfo) {
     return null;
   }
 
-  const { vcpus, network_out, disk, transfer, memory } = linodeType;
+  const { disk, memory, network_out, transfer, vcpus } = currentTypeInfo;
 
   return (
     <>
-      <Notice important warning>
+      <Notice important variant="warning">
         <Typography>
           You have a pending upgrade. The estimated time to complete this
           upgrade is
@@ -155,106 +83,65 @@ const MutationNotification: React.FC<CombinedProps> = (props) => {
               : estimatedTimeToUpgradeInMins)}
           {estimatedTimeToUpgradeInMins < 1 ? ` minute` : ` minutes`}. To learn
           more,&nbsp;
-          <span
-            className={classes.pendingMutationLink}
-            onClick={openMutationDrawer}
+          <StyledSpan
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                openMutationDrawer();
+                setIsMutationDrawerOpen(true);
               }
             }}
+            onClick={() => setIsMutationDrawerOpen(true)}
             role="button"
             tabIndex={0}
           >
             click here
-          </span>
+          </StyledSpan>
           .
         </Typography>
       </Notice>
       <MutateDrawer
-        estimatedTimeToUpgradeInMins={estimatedTimeToUpgradeInMins}
-        linodeId={linodeId}
-        open={mutationDrawerOpen}
-        loading={mutationDrawerLoading}
-        error={mutationDrawerError}
-        handleClose={closeMutationDrawer}
+        currentTypeInfo={{
+          disk: currentTypeInfo.disk,
+          memory: currentTypeInfo.memory,
+          network_out,
+          transfer: currentTypeInfo.transfer,
+          vcpus: currentTypeInfo.vcpus,
+        }}
         isMovingFromSharedToDedicated={isMovingFromSharedToDedicated(
-          linodeType.id,
-          successorMetaData.id
+          currentTypeInfo.id,
+          successorTypeInfo.id
         )}
         mutateInfo={{
-          vcpus:
-            successorMetaData.vcpus !== vcpus ? successorMetaData.vcpus : null,
-          network_out:
-            successorMetaData.network_out !== network_out
-              ? successorMetaData.network_out
-              : null,
-          disk: successorMetaData.disk !== disk ? successorMetaData.disk : null,
-          transfer:
-            successorMetaData.transfer !== transfer
-              ? successorMetaData.transfer
-              : null,
+          disk: successorTypeInfo.disk !== disk ? successorTypeInfo.disk : null,
           memory:
-            successorMetaData.memory !== memory
-              ? successorMetaData.memory
+            successorTypeInfo.memory !== memory
+              ? successorTypeInfo.memory
               : null,
+          network_out:
+            successorTypeInfo.network_out !== network_out
+              ? successorTypeInfo.network_out
+              : null,
+          transfer:
+            successorTypeInfo.transfer !== transfer
+              ? successorTypeInfo.transfer
+              : null,
+          vcpus:
+            successorTypeInfo.vcpus !== vcpus ? successorTypeInfo.vcpus : null,
         }}
-        currentTypeInfo={{
-          vcpus: linodeSpecs.vcpus,
-          transfer: linodeSpecs.transfer,
-          disk: linodeSpecs.disk,
-          memory: linodeSpecs.memory,
-          network_out,
-        }}
+        error={error?.[0].reason}
+        estimatedTimeToUpgradeInMins={estimatedTimeToUpgradeInMins}
+        handleClose={() => setIsMutationDrawerOpen(false)}
         initMutation={initMutation}
+        linodeId={linodeId}
+        loading={isPending}
+        open={isMutationDrawerOpen}
       />
     </>
   );
 };
 
-/**
- * add all the used disk space together
- */
-export const addUsedDiskSpace = (disks: Disk[]) => {
-  return disks.reduce((accum, eachDisk) => eachDisk.size + accum, 0);
-};
-
-const styled = withStyles(styles);
-
-interface ContextProps {
-  linodeSpecs: LinodeSpecs;
-  linodeId: number;
-  linodeType?: LinodeType | null;
-}
-
-interface DispatchProps {
-  updateLinode: (id: number) => void;
-}
-
-const mapDispatchToProps: MapDispatchToProps<DispatchProps, {}> = (
-  dispatch: ThunkDispatch<ApplicationState, undefined, Action<any>>
-) => {
-  return {
-    updateLinode: (id: number) => dispatch(requestLinodeForStore(id)),
-  };
-};
-
-const connected = connect(undefined, mapDispatchToProps);
-
-const enhanced = compose<CombinedProps, Props>(
-  styled,
-  connected,
-  withTypes,
-  withLinodeDetailContext<ContextProps>(({ linode }) => ({
-    linodeSpecs: linode.specs,
-    linodeId: linode.id,
-    linodeType: linode._type,
-  })),
-  withMutationDrawerState,
-  withSnackbar
-);
-
-export default enhanced(MutationNotification);
+const StyledSpan = styled('span', { label: 'StyledSpan' })(({ theme }) => ({
+  ...theme.applyLinkStyles,
+}));
 
 // Hack solution to determine if a type is moving from shared CPU cores to dedicated.
 const isMovingFromSharedToDedicated = (typeA: string, typeB: string) => {

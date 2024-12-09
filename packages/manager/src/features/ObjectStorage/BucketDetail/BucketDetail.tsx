@@ -1,99 +1,121 @@
-import {
-  getObjectURL,
-  ObjectStorageClusterID,
-  ObjectStorageObject,
-  ObjectStorageObjectListResponse,
-} from '@linode/api-v4/lib/object-storage';
+import { getObjectList, getObjectURL } from '@linode/api-v4/lib/object-storage';
+import { Box } from '@linode/ui';
+import { useQueryClient } from '@tanstack/react-query';
+import produce from 'immer';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 import { useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import { Waypoint } from 'react-waypoint';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import Grid from 'src/components/core/Grid';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
+import { debounce } from 'throttle-debounce';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Hidden } from 'src/components/Hidden';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { ObjectUploader } from 'src/components/Uploaders/ObjectUploader/ObjectUploader';
+import { OBJECT_STORAGE_DELIMITER } from 'src/constants';
+import { useFlags } from 'src/hooks/useFlags';
+import { useAccount } from 'src/queries/account/account';
 import {
-  prefixToQueryKey,
-  queryKey,
-  updateBucket,
-  useObjectBucketDetailsInfiniteQuery,
-} from 'src/queries/objectStorage';
-import { sendDownloadObjectEvent } from 'src/utilities/ga';
-import { getQueryParam } from 'src/utilities/queryParams';
+  getObjectBucketObjectsQueryKey,
+  objectStorageQueries,
+  useObjectBucketObjectsInfiniteQuery,
+  useObjectStorageBuckets,
+} from 'src/queries/object-storage/queries';
+import { fetchBucketAndUpdateCache } from 'src/queries/object-storage/utilities';
+import { isFeatureEnabledV2 } from 'src/utilities/accountCapabilities';
+import { sendDownloadObjectEvent } from 'src/utilities/analytics/customEventAnalytics';
+import { getQueryParamFromQueryString } from 'src/utilities/queryParams';
 import { truncateMiddle } from 'src/utilities/truncate';
-import ObjectUploader from '../ObjectUploader';
+
+import { deleteObject as _deleteObject } from '../requests';
 import {
   displayName,
   generateObjectUrl,
+  isEmptyObjectForFolder,
   tableUpdateAction,
 } from '../utilities';
-import BucketBreadcrumb from './BucketBreadcrumb';
-import ObjectDetailDrawer from './ObjectDetailsDrawer';
+import { BucketBreadcrumb } from './BucketBreadcrumb';
+import {
+  StyledCreateFolderButton,
+  StyledErrorFooter,
+  StyledFooter,
+  StyledNameColumn,
+  StyledSizeColumn,
+  StyledTryAgainButton,
+} from './BucketDetail.styles';
+import { CreateFolderDrawer } from './CreateFolderDrawer';
+import { ObjectDetailsDrawer } from './ObjectDetailsDrawer';
 import ObjectTableContent from './ObjectTableContent';
-import { deleteObject as _deleteObject } from '../requests';
-import { queryClient } from 'src/queries/base';
-import produce from 'immer';
-import { debounce } from 'throttle-debounce';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  objectTable: {
-    marginTop: theme.spacing(2),
-  },
-  nameColumn: {
-    width: '50%',
-  },
-  sizeColumn: {
-    width: '10%',
-  },
-  footer: {
-    marginTop: theme.spacing(3),
-    textAlign: 'center',
-    color: theme.color.headline,
-  },
-  tryAgainText: {
-    ...theme.applyLinkStyles,
-    color: theme.palette.primary.main,
-    textDecoration: 'underline',
-    cursor: 'pointer',
-  },
-}));
+import type {
+  ObjectStorageClusterID,
+  ObjectStorageEndpointTypes,
+  ObjectStorageObject,
+  ObjectStorageObjectList,
+} from '@linode/api-v4';
+import type { InfiniteData } from '@tanstack/react-query';
 
 interface MatchParams {
-  clusterId: ObjectStorageClusterID;
   bucketName: string;
+  clusterId: ObjectStorageClusterID;
+}
+interface Props {
+  endpointType: ObjectStorageEndpointTypes;
 }
 
-export const BucketDetail: React.FC = () => {
-  const classes = useStyles();
+export const BucketDetail = (props: Props) => {
+  const { endpointType } = props;
+  /**
+   * @note If `Object Storage Access Key Regions` is enabled, clusterId will actually contain
+   * the bucket's region id
+   */
   const match = useRouteMatch<MatchParams>(
     '/object-storage/buckets/:clusterId/:bucketName'
   );
   const location = useLocation();
   const history = useHistory();
   const { enqueueSnackbar } = useSnackbar();
-
   const bucketName = match?.params.bucketName || '';
   const clusterId = match?.params.clusterId || '';
-  const prefix = getQueryParam(location.search, 'prefix');
+  const prefix = getQueryParamFromQueryString(location.search, 'prefix');
+  const queryClient = useQueryClient();
+
+  const flags = useFlags();
+  const { data: account } = useAccount();
+
+  const isObjMultiClusterEnabled = isFeatureEnabledV2(
+    'Object Storage Access Key Regions',
+    Boolean(flags.objMultiCluster),
+    account?.capabilities ?? []
+  );
+
+  const { data: buckets } = useObjectStorageBuckets();
+
+  const bucket = buckets?.buckets.find((bucket) => {
+    if (isObjMultiClusterEnabled) {
+      return bucket.label === bucketName && bucket.region === clusterId;
+    }
+    return bucket.label === bucketName && bucket.cluster === clusterId;
+  });
 
   const {
     data,
     error,
-    isLoading,
     fetchNextPage,
     hasNextPage,
     isFetching,
     isFetchingNextPage,
-  } = useObjectBucketDetailsInfiniteQuery(clusterId, bucketName, prefix);
-
+    isLoading,
+  } = useObjectBucketObjectsInfiniteQuery(clusterId, bucketName, prefix);
+  const [
+    isCreateFolderDrawerOpen,
+    setIsCreateFolderDrawerOpen,
+  ] = React.useState(false);
   const [objectToDelete, setObjectToDelete] = React.useState<string>();
   const [deleteObjectError, setDeleteObjectError] = React.useState<string>();
   const [
@@ -147,9 +169,9 @@ export const BucketDetail: React.FC = () => {
   // If a user deletes many objects in a short amount of time,
   // we don't want to fetch for every delete action. Debounce
   // the updateBucket call by 3 seconds.
-  const debouncedUpdateBucket = debounce(3000, false, () =>
-    updateBucket(clusterId, bucketName)
-  );
+  const debouncedUpdateBucket = debounce(3000, false, () => {
+    fetchBucketAndUpdateCache(clusterId, bucketName, queryClient);
+  });
 
   const deleteObject = async () => {
     if (!objectToDelete) {
@@ -158,6 +180,31 @@ export const BucketDetail: React.FC = () => {
 
     setDeleteObjectLoading(true);
     setDeleteObjectError(undefined);
+
+    if (objectToDelete.endsWith('/')) {
+      const itemsInFolderData = await getObjectList({
+        bucket: bucketName,
+        clusterId,
+        params: {
+          delimiter: OBJECT_STORAGE_DELIMITER,
+          prefix: objectToDelete,
+        },
+      });
+
+      // Exclude the empty object the represents a folder so we can
+      // find the true number of objects on the page
+      const itemsInFolder = itemsInFolderData.data.filter(
+        (object) =>
+          !isEmptyObjectForFolder(object) &&
+          !objectToDelete.endsWith(object.name)
+      );
+
+      if (itemsInFolder.length > 0) {
+        setDeleteObjectLoading(false);
+        setDeleteObjectError('The folder must be empty to delete it.');
+        return;
+      }
+    }
 
     try {
       const { url } = await getObjectURL(
@@ -184,15 +231,15 @@ export const BucketDetail: React.FC = () => {
     }
   };
 
-  const updateStore = (pages: ObjectStorageObjectListResponse[]) => {
+  const updateStore = (pages: ObjectStorageObjectList[]) => {
     queryClient.setQueryData<{
-      pages: ObjectStorageObjectListResponse[];
       pageParams: string[];
+      pages: ObjectStorageObjectList[];
     }>(
-      [queryKey, clusterId, bucketName, ...prefixToQueryKey(prefix)],
+      getObjectBucketObjectsQueryKey(clusterId, bucketName, prefix),
       (data) => ({
-        pages,
         pageParams: data?.pageParams || [],
+        pages,
       })
     );
   };
@@ -227,25 +274,29 @@ export const BucketDetail: React.FC = () => {
   };
 
   const addOneFile = (objectName: string, sizeInBytes: number) => {
-    if (!data) {
+    const currentData = queryClient.getQueryData<
+      InfiniteData<ObjectStorageObjectList>
+    >(getObjectBucketObjectsQueryKey(clusterId, bucketName, prefix));
+
+    if (!currentData) {
       return;
     }
 
     const object: ObjectStorageObject = {
-      name: prefix + objectName,
       etag: '',
-      owner: '',
       last_modified: new Date().toISOString(),
+      name: prefix + objectName,
+      owner: '',
       size: sizeInBytes,
     };
 
-    for (let i = 0; i < data.pages.length; i++) {
-      const foundObjectIndex = data.pages[i].data.findIndex(
+    for (let i = 0; i < currentData.pages.length; i++) {
+      const foundObjectIndex = currentData.pages[i].data.findIndex(
         (_object) => _object.name === object.name
       );
       if (foundObjectIndex !== -1) {
-        const copy = [...data.pages];
-        const pageCopy = [...data.pages[i].data];
+        const copy = [...currentData.pages];
+        const pageCopy = [...currentData.pages[i].data];
 
         pageCopy[foundObjectIndex] = object;
 
@@ -257,50 +308,54 @@ export const BucketDetail: React.FC = () => {
       }
     }
 
-    const copy = [...data.pages];
-
+    const copy = [...currentData.pages];
     const dataCopy = [...copy[copy.length - 1].data];
 
     dataCopy.push(object);
-
-    copy[copy.length - 1].data = dataCopy;
+    copy[copy.length - 1] = {
+      ...copy[copy.length - 1],
+      data: dataCopy,
+    };
 
     updateStore(copy);
   };
 
   const addOneFolder = (objectName: string) => {
-    if (!data) {
+    const currentData = queryClient.getQueryData<
+      InfiniteData<ObjectStorageObjectList>
+    >(getObjectBucketObjectsQueryKey(clusterId, bucketName, prefix));
+
+    if (!currentData) {
       return;
     }
 
     const folder: ObjectStorageObject = {
-      name: prefix + objectName + '/',
       etag: null,
-      owner: null,
       last_modified: null,
+      name: `${prefix + objectName}/`,
+      owner: null,
       size: null,
     };
 
-    for (const page of data.pages) {
+    for (const page of currentData.pages) {
       if (page.data.find((object) => object.name === folder.name)) {
         // If a folder already exists in the store, invalidate that store for that specific
         // prefix. Due to how invalidateQueries works, all subdirectories also get invalidated.
-        queryClient.invalidateQueries([
-          queryKey,
-          clusterId,
-          bucketName,
-          ...`${prefix}${objectName}`.split('/'),
-        ]);
+        queryClient.invalidateQueries({
+          queryKey: [
+            ...objectStorageQueries.bucket(clusterId, bucketName)._ctx.objects
+              .queryKey,
+            ...`${prefix}${objectName}`.split('/'),
+          ],
+        });
         return;
       }
     }
 
-    const copy = [...data.pages];
-
+    const copy = [...currentData.pages];
     const dataCopy = [...copy[copy.length - 1].data];
 
     dataCopy.push(folder);
-
     copy[copy.length - 1].data = dataCopy;
 
     updateStore(copy);
@@ -324,126 +379,123 @@ export const BucketDetail: React.FC = () => {
   return (
     <>
       <BucketBreadcrumb
-        prefix={prefix}
-        history={history}
         bucketName={bucketName}
+        history={history}
+        prefix={prefix}
       />
-      <Grid container>
-        <Grid item xs={12}>
-          <ObjectUploader
-            clusterId={clusterId}
-            bucketName={bucketName}
+      <ObjectUploader
+        bucketName={bucketName}
+        clusterId={clusterId}
+        maybeAddObjectToTable={maybeAddObjectToTable}
+        prefix={prefix}
+      />
+      <Box display="flex" justifyContent="flex-end" mb={0.5} mt={1.5}>
+        <StyledCreateFolderButton
+          buttonType="outlined"
+          onClick={() => setIsCreateFolderDrawerOpen(true)}
+        >
+          Create Folder
+        </StyledCreateFolderButton>
+      </Box>
+      <Table aria-label="List of Bucket Objects">
+        <TableHead>
+          <TableRow>
+            <StyledNameColumn>Object</StyledNameColumn>
+            <StyledSizeColumn>Size</StyledSizeColumn>
+            <Hidden mdDown>
+              <TableCell>Last Modified</TableCell>
+            </Hidden>
+            {/* Empty TableCell for Action Menu */}
+            <TableCell />
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          <ObjectTableContent
+            data={data?.pages || []}
+            error={error ? error : undefined}
+            handleClickDelete={handleClickDelete}
+            handleClickDetails={handleClickDetails}
+            handleClickDownload={handleDownload}
+            isFetching={isFetching}
+            isFetchingNextPage={isFetchingNextPage}
+            numOfDisplayedObjects={numOfDisplayedObjects}
             prefix={prefix}
-            maybeAddObjectToTable={maybeAddObjectToTable}
           />
-        </Grid>
-        <Grid item xs={12}>
-          <>
-            <div className={classes.objectTable}>
-              <Table aria-label="List of Bucket Objects">
-                <TableHead>
-                  <TableRow>
-                    <TableCell className={classes.nameColumn}>Object</TableCell>
-                    <TableCell className={classes.sizeColumn}>Size</TableCell>
-                    <Hidden smDown>
-                      <TableCell>Last Modified</TableCell>
-                    </Hidden>
-                    {/* Empty TableCell for Action Menu */}
-                    <TableCell />
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <ObjectTableContent
-                    data={data?.pages || []}
-                    isFetching={isFetching}
-                    isFetchingNextPage={isFetchingNextPage}
-                    error={error ? error : undefined}
-                    handleClickDownload={handleDownload}
-                    handleClickDelete={handleClickDelete}
-                    handleClickDetails={handleClickDetails}
-                    numOfDisplayedObjects={numOfDisplayedObjects}
-                    prefix={prefix}
-                  />
-                </TableBody>
-              </Table>
-              {/* We shouldn't allow infinite scrolling if we're still loading,
-                if we've gotten all objects in the bucket (or folder), or if there
-                are errors. */}
-              {!isLoading && !isFetchingNextPage && !error && hasNextPage && (
-                <Waypoint onEnter={() => fetchNextPage()}>
-                  <div />
-                </Waypoint>
-              )}
-            </div>
-            {error && (
-              <Typography variant="subtitle2" className={classes.footer}>
-                The next objects in the list failed to load.{' '}
-                <button
-                  className={classes.tryAgainText}
-                  onClick={() => fetchNextPage()}
-                >
-                  Click here to try again.
-                </button>
-              </Typography>
-            )}
+        </TableBody>
+      </Table>
+      {/* We shouldn't allow infinite scrolling if we're still loading,
+              if we've gotten all objects in the bucket (or folder), or if there
+              are errors. */}
+      {!isLoading && !isFetchingNextPage && !error && hasNextPage && (
+        <Waypoint onEnter={() => fetchNextPage()}>
+          <div />
+        </Waypoint>
+      )}
+      {error && (
+        <StyledErrorFooter variant="subtitle2">
+          The next objects in the list failed to load.{' '}
+          <StyledTryAgainButton onClick={() => fetchNextPage()}>
+            Click here to try again.
+          </StyledTryAgainButton>
+        </StyledErrorFooter>
+      )}
 
-            {!hasNextPage && numOfDisplayedObjects >= 100 && (
-              <Typography variant="subtitle2" className={classes.footer}>
-                Showing all {numOfDisplayedObjects} items
-              </Typography>
-            )}
-            <ConfirmationDialog
-              open={deleteObjectDialogOpen}
-              onClose={closeDeleteObjectDialog}
-              title={
-                objectToDelete
-                  ? `Delete ${truncateMiddle(displayName(objectToDelete))}`
-                  : 'Delete object'
-              }
-              actions={() => (
-                <ActionsPanel>
-                  <Button
-                    buttonType="secondary"
-                    onClick={closeDeleteObjectDialog}
-                    data-qa-cancel
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    buttonType="primary"
-                    onClick={deleteObject}
-                    loading={deleteObjectLoading}
-                    data-qa-submit-rebuild
-                  >
-                    Delete
-                  </Button>
-                </ActionsPanel>
-              )}
-              error={deleteObjectError}
-            >
-              Are you sure you want to delete this object?
-            </ConfirmationDialog>
-          </>
-        </Grid>
-      </Grid>
-      <ObjectDetailDrawer
-        open={objectDetailDrawerOpen}
-        onClose={closeObjectDetailsDrawer}
+      {!hasNextPage && numOfDisplayedObjects >= 100 && (
+        <StyledFooter variant="subtitle2">
+          Showing all {numOfDisplayedObjects} items
+        </StyledFooter>
+      )}
+      <ConfirmationDialog
+        actions={() => (
+          <ActionsPanel
+            primaryButtonProps={{
+              'data-testid': 'submit-rebuild',
+              label: 'Delete',
+              loading: deleteObjectLoading,
+              onClick: deleteObject,
+            }}
+            secondaryButtonProps={{
+              'data-testid': 'cancel',
+              label: 'Cancel',
+              onClick: closeDeleteObjectDialog,
+            }}
+          />
+        )}
+        title={
+          objectToDelete
+            ? `Delete ${truncateMiddle(displayName(objectToDelete))}`
+            : 'Delete object'
+        }
+        error={deleteObjectError}
+        onClose={closeDeleteObjectDialog}
+        open={deleteObjectDialogOpen}
+      >
+        Are you sure you want to delete this object?
+      </ConfirmationDialog>
+      <ObjectDetailsDrawer
+        url={
+          selectedObject && bucket
+            ? generateObjectUrl(bucket.hostname, selectedObject.name)
+            : undefined
+        }
         bucketName={bucketName}
         clusterId={clusterId}
         displayName={selectedObject?.name}
-        name={selectedObject?.name}
+        endpointType={endpointType}
         lastModified={selectedObject?.last_modified}
+        name={selectedObject?.name}
+        onClose={closeObjectDetailsDrawer}
+        open={objectDetailDrawerOpen}
         size={selectedObject?.size}
-        url={
-          selectedObject
-            ? generateObjectUrl(clusterId, bucketName, selectedObject.name)
-                .absolute
-            : undefined
-        }
+      />
+      <CreateFolderDrawer
+        bucketName={bucketName}
+        clusterId={clusterId}
+        maybeAddObjectToTable={maybeAddObjectToTable}
+        onClose={() => setIsCreateFolderDrawerOpen(false)}
+        open={isCreateFolderDrawerOpen}
+        prefix={prefix}
       />
     </>
   );
 };
-
-export default BucketDetail;

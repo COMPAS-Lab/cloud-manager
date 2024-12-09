@@ -1,64 +1,84 @@
-import { shallow } from 'enzyme';
+import { waitFor } from '@testing-library/react';
 import * as React from 'react';
-import { formatOffset, TimezoneForm } from './TimezoneForm';
 
-const classes = {
-  root: '',
-  copy: '',
-  button: '',
-  loggedInAsCustomerNotice: '',
-};
+import { profileFactory } from 'src/factories';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { renderWithTheme } from 'src/utilities/testHelpers';
+
+import { TimezoneForm, getOptionLabel } from './TimezoneForm';
 
 describe('Timezone change form', () => {
-  const updateProfile = jest.fn();
-
-  const component = shallow(
-    <TimezoneForm
-      classes={classes}
-      timezone={'Pacific/Niue'}
-      updateTimezone={updateProfile}
-      loggedInAsCustomer={true}
-    />
-  );
-
-  it('should render .', () => {
-    expect(component).toHaveLength(1);
-  });
-
-  it('should show a message if an admin is logged in as a customer', () => {
-    expect(component.find('[data-qa-admin-notice]')).toHaveLength(1);
-  });
-
-  it('should not show a message if the user is logged in normally', () => {
-    component.setProps({ loggedInAsCustomer: false });
-    expect(component.find('[data-qa-admin-notice]')).toHaveLength(0);
-  });
-
-  xit("should include text with the user's current time zone", () => {
-    expect(component.find('[data-qa-copy]').html()).toContain(
-      'Europe/San_Marino'
+  beforeEach(() => {
+    // Use the MSW to mock a profile with America/New_York as the timezone
+    // for this specific suite of tests
+    server.use(
+      http.get('*/profile', () => {
+        return HttpResponse.json(
+          profileFactory.build({ timezone: 'America/New_York' })
+        );
+      })
     );
   });
 
-  xit("should have a select with the user's current timezone selected", () => {
-    expect(component.find('[data-qa-tz-select]').props().value).toBe(
-      'Europe/San_Marino'
-    );
+  it('should render input label', () => {
+    const { getByText } = renderWithTheme(<TimezoneForm />);
+
+    expect(getByText('Timezone')).toBeInTheDocument();
+  });
+
+  it('should show a message if an admin is logged in as a customer', async () => {
+    const { getByTestId } = renderWithTheme(<TimezoneForm />, {
+      customStore: { authentication: { loggedInAsCustomer: true } },
+    });
+
+    expect(getByTestId('admin-notice')).toBeInTheDocument();
+  });
+
+  it('should not show a message if the user is logged in normally', async () => {
+    const { queryByTestId } = renderWithTheme(<TimezoneForm />);
+
+    expect(queryByTestId('admin-notice')).not.toBeInTheDocument();
+  });
+
+  it("should include text with the user's current time zone in the admin warning", async () => {
+    const { queryByTestId } = renderWithTheme(<TimezoneForm />, {
+      customStore: { authentication: { loggedInAsCustomer: true } },
+    });
+
+    await waitFor(() => {
+      expect(queryByTestId('admin-notice')).toHaveTextContent(
+        'America/New_York'
+      );
+    });
+  });
+
+  it("should show the user's currently selected timezone", async () => {
+    const { getByLabelText } = renderWithTheme(<TimezoneForm />);
+
+    await waitFor(() => {
+      expect(getByLabelText('Timezone')).toHaveDisplayValue(
+        /Eastern Time - New York/
+      );
+    });
   });
 });
 
 describe('formatOffset', () => {
   it('formats the offset correctly', () => {
     const testMap = [
-      { offset: -3.5, label: 'Newfoundland Time', formattedOffset: '-3:30' },
-      { offset: 0, label: 'TrollTime', formattedOffset: '+0:00' },
-      { offset: 5.75, label: 'Nepal Time', formattedOffset: '+5:45' },
-      { offset: 13, label: 'New Zealand Time', formattedOffset: '+13:00' },
+      {
+        expectedOffset: '+0:00',
+        timezone: {
+          label: 'Coordinated Universal Time',
+          name: 'UTC',
+          offset: 0,
+        },
+      },
     ];
 
-    testMap.forEach(({ offset, label, formattedOffset }) =>
-      expect(formatOffset(offset, label)).toBe(
-        `(GMT ${formattedOffset}) ${label}`
+    testMap.forEach(({ expectedOffset, timezone }) =>
+      expect(getOptionLabel(timezone)).toBe(
+        `(GMT ${expectedOffset}) ${timezone.label}`
       )
     );
   });

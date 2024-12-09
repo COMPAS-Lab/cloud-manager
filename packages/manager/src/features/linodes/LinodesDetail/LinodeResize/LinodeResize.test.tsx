@@ -1,71 +1,32 @@
-import { shallow } from 'enzyme';
 import * as React from 'react';
-import { UseQueryResult } from 'react-query';
-import { profileFactory } from 'src/factories';
-import { mockMatchMedia } from 'src/utilities/testHelpers';
+
 import { extDisk, swapDisk } from 'src/__data__/disks';
 import { extendedTypes } from 'src/__data__/ExtendedType';
-import { reactRouterProps } from 'src/__data__/reactRouterProps';
-import { Grants, Profile, UserPreferences } from '@linode/api-v4/lib';
-import { APIError } from '@linode/api-v4/lib/types';
+import { mockMatchMedia, renderWithTheme } from 'src/utilities/testHelpers';
+
+import { LinodeResize } from './LinodeResize';
 import {
   isSmallerThanCurrentPlan,
-  LinodeResize,
   shouldEnableAutoResizeDiskOption,
-} from './LinodeResize';
-import { grantsFactory } from 'src/factories/grants';
-import { preferencesFactory } from 'src/factories/preferences';
+} from './LinodeResize.utils';
+
+import type { Props } from './LinodeResize';
+
+const props: Props = {
+  linodeId: 12,
+  linodeLabel: 'test-resize',
+  onClose: () => vi.fn(),
+  open: true,
+};
 
 beforeAll(() => {
   mockMatchMedia();
 });
 
 describe('LinodeResize', () => {
-  const component = shallow(
-    <LinodeResize
-      profile={
-        { data: profileFactory.build() } as UseQueryResult<Profile, APIError[]>
-      }
-      grants={
-        { data: grantsFactory.build() } as UseQueryResult<Grants, APIError[]>
-      }
-      closeSnackbar={jest.fn()}
-      enqueueSnackbar={jest.fn()}
-      {...reactRouterProps}
-      classes={{
-        title: '',
-        subTitle: '',
-        toolTip: '',
-        currentPlanContainer: '',
-        resizeTitle: '',
-        currentHeaderEmptyCell: '',
-        selectPlanPanel: '',
-        actionPanel: '',
-      }}
-      linodeId={12}
-      linodeLabel=""
-      open={false}
-      getUserPreferences={jest.fn()}
-      updateUserPreferences={jest.fn()}
-      preferences={{ data: preferencesFactory.build() } as UserPreferences}
-      onClose={jest.fn()}
-      getLinodeDisks={jest.fn()}
-      updateLinode={jest.fn()}
-      typesData={extendedTypes}
-      typesLoading={false}
-    />
-  );
-
-  it('submit button should be enabled if a plan is selected', () => {
-    component.setState({ selectedId: 'selected' });
-    const submitBtn = component.find('[data-qa-resize]');
-    expect(submitBtn.prop('disabled')).toBeFalsy();
-  });
-
-  it('submit button should be disabled if no plan is selected', () => {
-    component.setState({ selectedId: '' });
-    const submitBtn = component.find('[data-qa-resize]');
-    expect(submitBtn.prop('disabled')).toBeTruthy();
+  it('to render', async () => {
+    const { findByText } = renderWithTheme(<LinodeResize {...props} />);
+    await findByText('Resize Linode test-resize');
   });
 
   describe('utility functions', () => {

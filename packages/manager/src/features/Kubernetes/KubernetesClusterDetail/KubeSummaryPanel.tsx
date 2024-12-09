@@ -1,277 +1,86 @@
-import {
-  getKubeConfig,
-  KubernetesCluster,
-} from '@linode/api-v4/lib/kubernetes';
-import { APIError } from '@linode/api-v4/lib/types';
-import OpenInNewIcon from '@material-ui/icons/OpenInNew';
-import classNames from 'classnames';
+import { Box } from '@linode/ui';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { useDispatch } from 'react-redux';
-import { useHistory } from 'react-router-dom';
-import DetailsIcon from 'src/assets/icons/code-file.svg';
-import DownloadIcon from 'src/assets/icons/lke-download.svg';
-import ResetIcon from 'src/assets/icons/reset.svg';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import Chip from 'src/components/core/Chip';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme, useMediaQuery } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import TagsPanel from 'src/components/TagsPanel';
-import { dcDisplayNames } from 'src/constants';
-import { reportException } from 'src/exceptionReporting';
-import { ExtendedCluster } from 'src/features/Kubernetes/types';
-import { useDialog } from 'src/hooks/useDialog';
-import { useResetKubeConfigMutation } from 'src/queries/kubernetesConfig';
-import useKubernetesDashboardQuery from 'src/queries/kubernetesDashboard';
-import { deleteCluster } from 'src/store/kubernetes/kubernetes.requests';
-import { ThunkDispatch } from 'src/store/types';
-import { downloadFile } from 'src/utilities/downloadFile';
-import {
-  getAPIErrorOrDefault,
-  getErrorStringOrDefault,
-} from 'src/utilities/errorUtils';
-import { pluralize } from 'src/utilities/pluralize';
-import { getTotalClusterPrice } from '../kubeUtils';
-import KubeConfigDrawer from './KubeConfigDrawer';
-import KubernetesDialog from './KubernetesDialog';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginBottom: theme.spacing(3),
-    padding: `${theme.spacing(2) + 4}px ${
-      theme.spacing(2) + 4
-    }px ${theme.spacing(3)}px`,
-  },
-  mainGridContainer: {
-    position: 'relative',
-    [theme.breakpoints.up('lg')]: {
-      justifyContent: 'space-between',
-    },
-  },
-  item: {
-    '&:last-of-type': {
-      paddingBottom: 0,
-    },
-    paddingBottom: theme.spacing(1),
-  },
-  label: {
-    fontWeight: 'bold',
-    marginBottom: `${theme.spacing(1) - 3}px`,
-  },
-  kubeconfigElements: {
-    display: 'flex',
-    alignItems: 'center',
-    color: theme.palette.primary.main,
-  },
-  kubeconfigElement: {
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    borderRight: '1px solid #c4c4c4',
-    '&:hover': {
-      opacity: 0.7,
-    },
-    '&:last-child': {
-      borderRight: 'none',
-    },
-  },
-  kubeconfigFileText: {
-    color: theme.textColors.linkActiveLight,
-    marginRight: theme.spacing(1),
-    whiteSpace: 'nowrap',
-  },
-  kubeconfigIcons: {
-    height: 16,
-    width: 16,
-    margin: `0 ${theme.spacing(1)}px`,
-    objectFit: 'contain',
-  },
-  disabled: {
-    color: theme.palette.text.secondary,
-    pointer: 'default',
-    pointerEvents: 'none',
-    '& g': {
-      stroke: theme.palette.text.secondary,
-    },
-  },
-  iconTextOuter: {
-    flexBasis: '72%',
-    minWidth: 115,
-  },
-  tags: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignSelf: 'stretch',
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-    '&.MuiGrid-item': {
-      paddingBottom: 0,
-    },
-    // Tags Panel wrapper
-    '& > div:last-child': {
-      marginTop: 2,
-      marginBottom: 0,
-      width: '100%',
-    },
-    [theme.breakpoints.up('lg')]: {
-      '& .MuiChip-root': {
-        marginRight: 0,
-        marginLeft: 4,
-      },
-      // Add a Tag button
-      '& > div:first-child': {
-        justifyContent: 'flex-end',
-        marginTop: theme.spacing(5),
-      },
-      // Tags Panel wrapper
-      '& > div:last-child': {
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-end',
-      },
-    },
-    [theme.breakpoints.down('md')]: {
-      width: '100%',
-    },
-  },
-  dashboard: {
-    '& svg': {
-      height: 14,
-      marginLeft: 4,
-    },
-  },
-  buttons: {
-    marginRight: theme.spacing(),
-  },
-  actionRow: {
-    flexDirection: 'column',
-    [theme.breakpoints.down('md')]: {
-      justifyContent: 'flex-end',
-      flexDirection: 'row',
-    },
-  },
-}));
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { StyledActionButton } from 'src/components/Button/StyledActionButton';
+import { Chip } from 'src/components/Chip';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { EntityDetail } from 'src/components/EntityDetail/EntityDetail';
+import { EntityHeader } from 'src/components/EntityHeader/EntityHeader';
+import { Stack } from 'src/components/Stack';
+import { Typography } from 'src/components/Typography';
+import { KubeClusterSpecs } from 'src/features/Kubernetes/KubernetesClusterDetail/KubeClusterSpecs';
+import { getKubeControlPlaneACL } from 'src/features/Kubernetes/kubeUtils';
+import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
+import { useAccount } from 'src/queries/account/account';
+import {
+  useKubernetesControlPlaneACLQuery,
+  useKubernetesDashboardQuery,
+  useResetKubeConfigMutation,
+} from 'src/queries/kubernetes';
+import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
+
+import { DeleteKubernetesClusterDialog } from './DeleteKubernetesClusterDialog';
+import { KubeConfigDisplay } from './KubeConfigDisplay';
+import { KubeConfigDrawer } from './KubeConfigDrawer';
+import { KubeControlPlaneACLDrawer } from './KubeControlPaneACLDrawer';
+import { KubeEntityDetailFooter } from './KubeEntityDetailFooter';
+import { StyledActionRowGrid } from './KubeSummaryPanel.styles';
+
+import type { KubernetesCluster } from '@linode/api-v4/lib/kubernetes';
 
 interface Props {
-  cluster: ExtendedCluster;
-  endpoint: string | null;
-  endpointError?: string;
-  endpointLoading: boolean;
-  kubeconfigAvailable: boolean;
-  kubeconfigError?: string;
-  handleUpdateTags: (updatedTags: string[]) => Promise<KubernetesCluster>;
-  isClusterHighlyAvailable: boolean;
-  isKubeDashboardFeatureEnabled: boolean;
+  cluster: KubernetesCluster;
 }
 
-const renderEndpoint = (
-  endpoint: string | null,
-  endpointLoading: boolean,
-  endpointError?: string
-) => {
-  if (endpoint) {
-    return endpoint;
-  } else if (endpointLoading) {
-    return 'Loading...';
-  } else if (endpointError) {
-    return endpointError;
-  } else {
-    return 'Your endpoint will be displayed here once it is available.';
-  }
-};
+export const KubeSummaryPanel = React.memo((props: Props) => {
+  const { cluster } = props;
 
-export const KubeSummaryPanel: React.FunctionComponent<Props> = (props) => {
-  const {
-    cluster,
-    endpoint,
-    endpointError,
-    endpointLoading,
-    kubeconfigAvailable,
-    kubeconfigError,
-    handleUpdateTags,
-    isClusterHighlyAvailable,
-    isKubeDashboardFeatureEnabled,
-  } = props;
-  const classes = useStyles();
-  const { push } = useHistory();
+  const { data: account } = useAccount();
+  const { showControlPlaneACL } = getKubeControlPlaneACL(account);
+
+  const theme = useTheme();
+
   const { enqueueSnackbar } = useSnackbar();
+
   const [drawerOpen, setDrawerOpen] = React.useState<boolean>(false);
-  const [drawerError, setDrawerError] = React.useState<string | null>(null);
-  const [drawerLoading, setDrawerLoading] = React.useState<boolean>(false);
-  const region = dcDisplayNames[cluster.region] || 'Unknown region';
-  const matches = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
+  const [
+    isControlPlaneACLDrawerOpen,
+    setControlPlaneACLDrawerOpen,
+  ] = React.useState<boolean>(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
   const {
     data: dashboard,
     error: dashboardError,
-  } = useKubernetesDashboardQuery(cluster.id, isKubeDashboardFeatureEnabled);
+  } = useKubernetesDashboardQuery(cluster.id);
 
   const {
-    mutateAsync: resetKubeConfig,
-    isLoading: isResettingKubeConfig,
     error: resetKubeConfigError,
+    isPending: isResettingKubeConfig,
+    mutateAsync: resetKubeConfig,
   } = useResetKubeConfigMutation();
 
-  // Deletion handlers
-  // NB: this is using dispatch directly because I don't want to
-  // add re-render issues to our useKubernetesClusters hook, especially
-  // since we're going to switch to queries for all of these soon.
-  const dispatch: ThunkDispatch = useDispatch();
-  const _deleteCluster = () =>
-    dispatch(deleteCluster({ clusterID: cluster.id })).then(() =>
-      push('/kubernetes/clusters')
-    );
+  const isClusterReadOnly = useIsResourceRestricted({
+    grantLevel: 'read_only',
+    grantType: 'linode',
+    id: cluster.id,
+  });
 
-  const { dialog, closeDialog, openDialog, submitDialog } = useDialog(
-    _deleteCluster
-  );
+  const {
+    data: aclData,
+    error: isErrorKubernetesACL,
+    isLoading: isLoadingKubernetesACL,
+  } = useKubernetesControlPlaneACLQuery(cluster.id, !!showControlPlaneACL);
 
   const [
     resetKubeConfigDialogOpen,
     setResetKubeConfigDialogOpen,
   ] = React.useState(false);
-
-  const [kubeConfig, setKubeConfig] = React.useState<string>('');
-
-  const fetchKubeConfig = () => {
-    return getKubeConfig(cluster.id).then((response) => {
-      // Convert to utf-8 from base64
-      try {
-        return window.atob(response.kubeconfig);
-      } catch (e) {
-        reportException(e, {
-          'Encoded response': response.kubeconfig,
-        });
-        enqueueSnackbar('Error parsing your kubeconfig file', {
-          variant: 'error',
-        });
-        return;
-      }
-    });
-  };
-
-  const downloadKubeConfig = () => {
-    fetchKubeConfig()
-      .then((decodedFile) => {
-        if (decodedFile) {
-          downloadFile(`${cluster.label}-kubeconfig.yaml`, decodedFile);
-        } else {
-          // There was a parsing error, the user will see an error toast.
-          return;
-        }
-      })
-      .catch((errorResponse) => {
-        const error = getAPIErrorOrDefault(
-          errorResponse,
-          'Unable to download your kubeconfig'
-        )[0].reason;
-        enqueueSnackbar(error, { variant: 'error' });
-      });
-  };
 
   const handleResetKubeConfig = () => {
     return resetKubeConfig({ id: cluster.id }).then(() => {
@@ -283,301 +92,151 @@ export const KubeSummaryPanel: React.FunctionComponent<Props> = (props) => {
   };
 
   const handleOpenDrawer = () => {
-    setDrawerError(null);
-    setDrawerLoading(true);
     setDrawerOpen(true);
-    fetchKubeConfig()
-      .then((decodedFile) => {
-        setDrawerLoading(false);
-        if (decodedFile) {
-          setKubeConfig(decodedFile);
-        } else {
-          // There was a parsing error; the user will see an error toast.
-        }
-      })
-      .catch((error: APIError[]) => {
-        setDrawerError(error[0]?.reason || null);
-        setDrawerLoading(false);
-      });
   };
 
-  const setKubeconfigDisplay = () => {
-    return (
-      <Grid
-        item
-        container
-        direction="column"
-        justifyContent="space-between"
-        xs={12}
-        lg={5}
-      >
-        <Grid item>
-          <Typography className={classes.label}>
-            Kubernetes API Endpoint:
-          </Typography>
-          <Typography>
-            {renderEndpoint(endpoint, endpointLoading, endpointError)}
-          </Typography>
-        </Grid>
-        <Grid item>
-          <Typography className={classes.label}>Kubeconfig:</Typography>
-          {kubeconfigAvailable ? (
-            <div className={classes.kubeconfigElements}>
-              <Grid
-                item
-                onClick={downloadKubeConfig}
-                className={classes.kubeconfigElement}
-              >
-                <DownloadIcon
-                  className={classes.kubeconfigIcons}
-                  style={{ marginLeft: 0 }}
-                />
-                <Typography className={classes.kubeconfigFileText}>
-                  {`${cluster.label}-kubeconfig.yaml`}
-                </Typography>
-              </Grid>
-              <Grid
-                item
-                onClick={handleOpenDrawer}
-                className={classes.kubeconfigElement}
-              >
-                <DetailsIcon className={classes.kubeconfigIcons} />
-                <Typography className={classes.kubeconfigFileText}>
-                  View
-                </Typography>
-              </Grid>
-              <Grid
-                item
-                onClick={() => setResetKubeConfigDialogOpen(true)}
-                className={classes.kubeconfigElement}
-              >
-                <ResetIcon
-                  className={classNames({
-                    [classes.kubeconfigIcons]: true,
-                    [classes.disabled]: isResettingKubeConfig,
-                  })}
-                />
-                <Typography
-                  className={classNames({
-                    [classes.kubeconfigFileText]: true,
-                    [classes.disabled]: isResettingKubeConfig,
-                  })}
-                >
-                  Reset
-                </Typography>
-              </Grid>
-            </div>
-          ) : (
-            <Typography>
-              {kubeconfigError ??
-                'Your Kubeconfig will be viewable here once it is available.'}
-            </Typography>
-          )}
-        </Grid>
-      </Grid>
-    );
+  const sxSpacing = {
+    paddingLeft: theme.spacing(3),
+    paddingRight: theme.spacing(1),
+  };
+
+  const sxMainGridContainer = {
+    paddingBottom: theme.spacing(2.5),
+    paddingTop: theme.spacing(2),
+    position: 'relative',
   };
 
   return (
-    <React.Fragment>
-      <Paper className={classes.root}>
-        <Grid
-          container
-          alignItems="flex-start"
-          className={classes.mainGridContainer}
-        >
-          <Grid item container direction="row" xs={12} lg={3}>
-            <Grid item lg={6}>
-              <Grid
-                container
-                item
-                wrap="nowrap"
-                alignItems="center"
-                className={classes.item}
-              >
-                <Grid item className={classes.iconTextOuter}>
-                  <Typography>Version {cluster.k8s_version}</Typography>
-                </Grid>
-              </Grid>
-
-              <Grid
-                container
-                item
-                wrap="nowrap"
-                alignItems="center"
-                className={classes.item}
-              >
-                <Grid item className={classes.iconTextOuter}>
-                  <Typography>{region}</Typography>
-                </Grid>
-              </Grid>
-
-              <Grid
-                container
-                item
-                wrap="nowrap"
-                alignItems="center"
-                className={classes.item}
-              >
-                <Grid item className={classes.iconTextOuter}>
-                  <Typography>
-                    {`$${getTotalClusterPrice(
-                      cluster.node_pools,
-                      isClusterHighlyAvailable
-                    ).toFixed(2)}/month`}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Grid>
-
-            <Grid item lg={6}>
-              <Grid
-                container
-                item
-                wrap="nowrap"
-                alignItems="center"
-                className={classes.item}
-              >
-                <Grid item className={classes.iconTextOuter}>
-                  <Typography>
-                    {pluralize('CPU Core', 'CPU Cores', cluster.totalCPU)}
-                  </Typography>
-                </Grid>
-              </Grid>
-
-              <Grid
-                container
-                item
-                wrap="nowrap"
-                alignItems="center"
-                className={classes.item}
-              >
-                <Grid item className={classes.iconTextOuter}>
-                  <Typography>{cluster.totalMemory / 1024} GB RAM</Typography>
-                </Grid>
-              </Grid>
-
-              <Grid
-                container
-                item
-                wrap="nowrap"
-                alignItems="center"
-                className={classes.item}
-              >
-                <Grid item className={classes.iconTextOuter}>
-                  <Typography>
-                    {Math.floor(cluster.totalStorage / 1024)} GB Storage
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Grid>
-          </Grid>
-
+    <Stack sx={{ marginBottom: theme.spacing(3) }}>
+      <EntityDetail
+        body={
           <Grid
-            item
             container
-            direction="row"
-            lg={9}
-            justifyContent="space-between"
+            spacing={2}
+            sx={{ ...sxSpacing, ...sxMainGridContainer }}
           >
-            {setKubeconfigDisplay()}
+            <KubeClusterSpecs cluster={cluster} />
+            <Grid container direction="column" lg={4} xs={12}>
+              <KubeConfigDisplay
+                clusterId={cluster.id}
+                clusterLabel={cluster.label}
+                handleOpenDrawer={handleOpenDrawer}
+                isResettingKubeConfig={isResettingKubeConfig}
+                setResetKubeConfigDialogOpen={setResetKubeConfigDialogOpen}
+              />
+            </Grid>
             <Grid
-              item
               container
-              direction="row"
+              direction="column"
+              justifyContent="space-between"
+              lg={5}
               xs={12}
-              lg={7}
-              justifyContent="flex-end"
             >
-              <Grid
-                item
-                container
-                lg={12}
-                alignContent="flex-end"
-                style={matches ? { margin: 1 } : undefined}
-              >
-                <Grid
-                  item
-                  container
-                  direction={matches ? 'row-reverse' : 'row'}
-                  justifyContent={matches ? 'flex-start' : 'flex-end'}
-                >
-                  {isClusterHighlyAvailable ? (
-                    <Grid item>
-                      <Chip
-                        label="HA CLUSTER"
-                        variant="outlined"
-                        outlineColor="green"
-                      />
-                    </Grid>
-                  ) : null}
-                  {isKubeDashboardFeatureEnabled ? (
-                    <Button
-                      className={`${classes.dashboard} ${classes.buttons}`}
-                      buttonType="secondary"
-                      disabled={Boolean(dashboardError) || !dashboard}
-                      onClick={() => {
-                        window.open(dashboard?.url, '_blank');
-                      }}
-                    >
-                      Kubernetes Dashboard
-                      <OpenInNewIcon />
-                    </Button>
-                  ) : null}
-                  <Button
-                    className={classes.buttons}
-                    buttonType="secondary"
-                    onClick={() => openDialog(cluster.id)}
-                  >
-                    Delete Cluster
-                  </Button>
-                </Grid>
-              </Grid>
-              <Grid item className={classes.tags} xs={12} lg={12}>
-                <TagsPanel tags={cluster.tags} updateTags={handleUpdateTags} />
-              </Grid>
+              <StyledActionRowGrid>
+                {cluster.control_plane.high_availability && (
+                  <Chip
+                    label="HA CLUSTER"
+                    size="small"
+                    sx={(theme) => ({ borderColor: theme.color.green })}
+                    variant="outlined"
+                  />
+                )}
+              </StyledActionRowGrid>
             </Grid>
           </Grid>
-        </Grid>
-      </Paper>
+        }
+        footer={
+          <KubeEntityDetailFooter
+            aclData={aclData}
+            clusterCreated={cluster.created}
+            clusterId={cluster.id}
+            clusterLabel={cluster.label}
+            clusterTags={cluster.tags}
+            clusterUpdated={cluster.updated}
+            isClusterReadOnly={isClusterReadOnly}
+            isLoadingKubernetesACL={isLoadingKubernetesACL}
+            setControlPlaneACLDrawerOpen={setControlPlaneACLDrawerOpen}
+            showControlPlaneACL={!!showControlPlaneACL}
+          />
+        }
+        header={
+          <EntityHeader>
+            <Box
+              sx={{
+                ...sxSpacing,
+                paddingBottom: theme.spacing(),
+                paddingTop: theme.spacing(),
+              }}
+            >
+              <Typography variant="h2">Summary</Typography>
+            </Box>
+            <Box display="flex" justifyContent="end">
+              <StyledActionButton
+                onClick={() => {
+                  window.open(dashboard?.url, '_blank');
+                }}
+                sx={{
+                  '& svg': {
+                    height: '14px',
+                    marginLeft: '4px',
+                  },
+                  alignItems: 'center',
+                  display: 'flex',
+                }}
+                disabled={Boolean(dashboardError) || !dashboard}
+              >
+                Kubernetes Dashboard
+                <OpenInNewIcon />
+              </StyledActionButton>
+              <StyledActionButton
+                sx={{
+                  [theme.breakpoints.up('md')]: {
+                    paddingRight: '8px',
+                  },
+                }}
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                Delete Cluster
+              </StyledActionButton>
+            </Box>
+          </EntityHeader>
+        }
+        noBodyBottomBorder
+      />
 
       <KubeConfigDrawer
-        kubeConfig={kubeConfig}
+        closeDrawer={() => setDrawerOpen(false)}
+        clusterId={cluster.id}
         clusterLabel={cluster.label}
         open={drawerOpen}
-        closeDrawer={() => setDrawerOpen(false)}
-        error={drawerError}
-        loading={drawerLoading}
       />
-      <KubernetesDialog
-        open={dialog.isOpen}
-        loading={dialog.isLoading}
-        error={dialog.error}
+      <KubeControlPlaneACLDrawer
+        closeDrawer={() => setControlPlaneACLDrawerOpen(false)}
+        clusterId={cluster.id}
         clusterLabel={cluster.label}
-        clusterPools={cluster.node_pools}
-        onClose={closeDialog}
-        onDelete={() => submitDialog(cluster.id)}
+        clusterMigrated={!isErrorKubernetesACL}
+        open={isControlPlaneACLDrawerOpen}
+        showControlPlaneACL={!!showControlPlaneACL}
+      />
+      <DeleteKubernetesClusterDialog
+        clusterId={cluster.id}
+        clusterLabel={cluster.label}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        open={isDeleteDialogOpen}
       />
       <ConfirmationDialog
-        open={resetKubeConfigDialogOpen}
-        onClose={() => setResetKubeConfigDialogOpen(false)}
-        title="Reset Cluster Kubeconfig?"
         actions={
-          <ActionsPanel>
-            <Button
-              buttonType="secondary"
-              onClick={() => setResetKubeConfigDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              buttonType="primary"
-              onClick={() => handleResetKubeConfig()}
-              loading={isResettingKubeConfig}
-            >
-              Reset Kubeconfig
-            </Button>
-          </ActionsPanel>
+          <ActionsPanel
+            primaryButtonProps={{
+              label: 'Reset Kubeconfig',
+              loading: isResettingKubeConfig,
+              onClick: () => handleResetKubeConfig(),
+            }}
+            secondaryButtonProps={{
+              label: 'Cancel',
+              onClick: () => setResetKubeConfigDialogOpen(false),
+            }}
+          />
         }
         error={
           resetKubeConfigError && resetKubeConfigError.length > 0
@@ -587,13 +246,14 @@ export const KubeSummaryPanel: React.FunctionComponent<Props> = (props) => {
               )
             : undefined
         }
+        onClose={() => setResetKubeConfigDialogOpen(false)}
+        open={resetKubeConfigDialogOpen}
+        title="Reset Cluster Kubeconfig?"
       >
         This will delete and regenerate the cluster&rsquo;s Kubeconfig file. You
         will no longer be able to access this cluster via your previous
         Kubeconfig file. This action cannot be undone.
       </ConfirmationDialog>
-    </React.Fragment>
+    </Stack>
   );
-};
-
-export default React.memo(KubeSummaryPanel);
+});

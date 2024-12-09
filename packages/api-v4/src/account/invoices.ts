@@ -1,6 +1,6 @@
 import { API_ROOT } from '../constants';
 import Request, { setMethod, setParams, setURL, setXFilter } from '../request';
-import { ResourcePage } from '../types';
+import { Filter, Params, ResourcePage } from '../types';
 import { Invoice, InvoiceItem } from './types';
 
 /**
@@ -9,7 +9,7 @@ import { Invoice, InvoiceItem } from './types';
  * Retrieve a paginated list of invoices on your account.
  *
  */
-export const getInvoices = (params?: any, filter?: any) =>
+export const getInvoices = (params?: Params, filter?: Filter) =>
   Request<ResourcePage<Invoice>>(
     setURL(`${API_ROOT}/account/invoices`),
     setMethod('GET'),
@@ -27,7 +27,7 @@ export const getInvoices = (params?: any, filter?: any) =>
  */
 export const getInvoice = (invoiceId: string) =>
   Request<Invoice>(
-    setURL(`${API_ROOT}/account/invoices/${invoiceId}`),
+    setURL(`${API_ROOT}/account/invoices/${encodeURIComponent(invoiceId)}`),
     setMethod('GET')
   );
 
@@ -46,7 +46,9 @@ export const getInvoiceItems = (
   filter?: any
 ) =>
   Request<ResourcePage<InvoiceItem>>(
-    setURL(`${API_ROOT}/account/invoices/${invoiceId}/items`),
+    setURL(
+      `${API_ROOT}/account/invoices/${encodeURIComponent(invoiceId)}/items`
+    ),
     setMethod('GET'),
     setParams(params),
     setXFilter(filter)

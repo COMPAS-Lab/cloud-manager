@@ -1,23 +1,20 @@
+import Grid from '@mui/material/Unstable_Grid2';
+import { DateTime } from 'luxon';
 import * as React from 'react';
-import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'react-router-dom';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import useDismissibleNotifications from 'src/hooks/useDismissibleNotifications';
-import getAbuseTicket from 'src/store/selectors/getAbuseTicket';
-import { ApplicationState } from 'src/store';
 
-export const AbuseTicketBanner: React.FC<{}> = (_) => {
-  const abuseTickets = useSelector((state: ApplicationState) =>
-    getAbuseTicket(state.__resources)
-  );
+import { DismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
+import { Typography } from 'src/components/Typography';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
+import { getAbuseTickets } from 'src/store/selectors/getAbuseTicket';
+
+const preferenceKey = 'abuse-tickets';
+
+export const AbuseTicketBanner = () => {
+  const { data: notifications } = useNotificationsQuery();
+
+  const abuseTickets = getAbuseTickets(notifications ?? []);
   const location = useLocation();
-
-  const {
-    dismissNotifications,
-    hasDismissedNotifications,
-  } = useDismissibleNotifications();
 
   if (!abuseTickets || abuseTickets.length === 0) {
     return null;
@@ -33,20 +30,22 @@ export const AbuseTicketBanner: React.FC<{}> = (_) => {
     </>
   );
 
-  const onDismiss = () => {
-    dismissNotifications(abuseTickets);
-  };
-
-  if (hasDismissedNotifications(abuseTickets)) {
-    return null;
-  }
-
-  const href = multiple ? '/support/tickets' : abuseTickets[0].entity.url;
+  const href = multiple
+    ? '/support/tickets'
+    : abuseTickets[0].entity?.url ?? '';
   const isViewingTicket = location.pathname.match(href);
 
   return (
-    <Grid item xs={12}>
-      <Notice important warning dismissible onClose={onDismiss}>
+    <Grid xs={12}>
+      <DismissibleBanner
+        options={{
+          expiry: DateTime.utc().plus({ days: 7 }).toISO(),
+          label: preferenceKey,
+        }}
+        important
+        preferenceKey={preferenceKey}
+        variant="warning"
+      >
         <Typography>
           {message}
           {/** Don't link to /support/tickets if we're already on the landing page. */}
@@ -61,7 +60,7 @@ export const AbuseTicketBanner: React.FC<{}> = (_) => {
             </>
           ) : null}
         </Typography>
-      </Notice>
+      </DismissibleBanner>
     </Grid>
   );
 };

@@ -1,193 +1,77 @@
-import { getLinodeTransfer } from '@linode/api-v4/lib/linodes';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import BarPercent from 'src/components/BarPercent';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import { useAPIRequest } from 'src/hooks/useAPIRequest';
-import { useAccountTransfer } from 'src/queries/accountTransfer';
+
+import { Typography } from 'src/components/Typography';
+import { useAccountNetworkTransfer } from 'src/queries/account/transfer';
+import { useLinodeTransfer } from 'src/queries/linodes/stats';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { useTypeQuery } from 'src/queries/types';
+import {
+  getDynamicDCNetworkTransferData,
+  isLinodeInDynamicPricingDC,
+} from 'src/utilities/pricing/linodes';
 import { readableBytes } from 'src/utilities/unitConversions';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  header: {
-    paddingBottom: 10,
-  },
-  poolUsageProgress: {
-    marginBottom: theme.spacing(1) / 2,
-  },
-  legendItem: {
-    marginTop: 10,
-    display: 'flex',
-    alignItems: 'center',
-    '&:before': {
-      content: '""',
-      borderRadius: 5,
-      width: 20,
-      height: 20,
+import { TransferContent } from './TransferContent';
 
-      marginRight: 10,
-    },
-  },
-  darkGreen: {
-    '&:before': {
-      backgroundColor: '#5ad865',
-    },
-  },
-  grey: {
-    '&:before': {
-      backgroundColor: theme.color.grey2,
-    },
-  },
-}));
+import type { Region } from '@linode/api-v4';
 
 interface Props {
-  linodeID: number;
+  linodeId: number;
   linodeLabel: string;
+  linodeRegionId: Region['id'];
+  linodeType: null | string;
 }
 
-export const NetworkTransfer: React.FC<Props> = (props) => {
-  const { linodeID, linodeLabel } = props;
-  const classes = useStyles();
+export const NetworkTransfer = React.memo((props: Props) => {
+  const { linodeId, linodeLabel, linodeRegionId, linodeType } = props;
+  const theme = useTheme();
 
-  const linodeTransfer = useAPIRequest(
-    () => getLinodeTransfer(linodeID),
-    { used: 0, quota: 0, billable: 0 },
-    [linodeID]
-  );
-
+  const linodeTransfer = useLinodeTransfer(linodeId);
+  const regions = useRegionsQuery();
+  const { data: type } = useTypeQuery(linodeType || '', Boolean(linodeType));
   const {
     data: accountTransfer,
-    isLoading: accountTransferLoading,
     error: accountTransferError,
-  } = useAccountTransfer();
+    isLoading: accountTransferLoading,
+  } = useAccountNetworkTransfer();
 
-  const linodeUsedInGB = readableBytes(linodeTransfer.data.used, {
+  const currentRegion = regions.data?.find(
+    (region) => region.id === linodeRegionId
+  );
+  const dynamicDClinodeTransferData = getDynamicDCNetworkTransferData({
+    networkTransferData: linodeTransfer.data,
+    regionId: linodeRegionId,
+  });
+  const linodeUsedInGB = readableBytes(dynamicDClinodeTransferData.used, {
     unit: 'GB',
   }).value;
-  const totalUsedInGB = accountTransfer?.used || 0;
-  const accountQuotaInGB = accountTransfer?.quota || 0;
-
+  const dynamicDCPoolData = getDynamicDCNetworkTransferData({
+    networkTransferData: accountTransfer,
+    regionId: linodeRegionId,
+  });
+  const totalUsedInGB = dynamicDCPoolData.used;
+  const accountQuotaInGB = dynamicDCPoolData.quota;
   const error = Boolean(linodeTransfer.error || accountTransferError);
-  const loading = linodeTransfer.loading || accountTransferLoading;
+  const loading = linodeTransfer.isLoading || accountTransferLoading;
+  const isDynamicPricingDC = isLinodeInDynamicPricingDC(linodeRegionId, type);
 
   return (
     <div>
-      <Typography className={classes.header}>
+      <Typography marginBottom={theme.spacing()}>
         <strong>Monthly Network Transfer</strong>{' '}
       </Typography>
       <TransferContent
-        linodeUsedInGB={linodeUsedInGB}
-        totalUsedInGB={totalUsedInGB}
-        accountQuotaInGB={accountQuotaInGB}
         accountBillableInGB={accountTransfer?.billable || 0}
-        linodeLabel={linodeLabel}
+        accountQuotaInGB={accountQuotaInGB}
         error={error}
+        isDynamicPricingDC={isDynamicPricingDC}
+        linodeLabel={linodeLabel}
+        linodeUsedInGB={linodeUsedInGB}
         loading={loading}
+        regionName={currentRegion?.label || ''}
+        totalUsedInGB={totalUsedInGB}
       />
     </div>
   );
-};
-
-// =============================================================================
-// TransferContent (With loading and error states)
-// =============================================================================
-interface ContentProps {
-  linodeLabel: string;
-  linodeUsedInGB: number;
-  totalUsedInGB: number;
-  accountQuotaInGB: number;
-  accountBillableInGB: number;
-  loading: boolean;
-  error: boolean;
-}
-
-const TransferContent: React.FC<ContentProps> = (props) => {
-  const {
-    error,
-    linodeLabel,
-    loading,
-    linodeUsedInGB,
-    totalUsedInGB,
-    accountQuotaInGB,
-    // accountBillableInGB
-  } = props;
-  const classes = useStyles();
-
-  /**
-   * In this component we display three pieces of information:
-   *
-   * 1. Account-level transfer quota for this month
-   * 2. The amount of transfer THIS Linode has used this month
-   * 3. The remaining transfer on your account this month
-   */
-
-  const linodeUsagePercent = calculatePercentageWithCeiling(
-    linodeUsedInGB,
-    accountQuotaInGB
-  );
-
-  const totalUsagePercent = calculatePercentageWithCeiling(
-    totalUsedInGB,
-    accountQuotaInGB
-  );
-
-  const remainingInGB = Math.max(accountQuotaInGB - totalUsedInGB, 0);
-
-  if (error) {
-    return (
-      <Notice
-        text={
-          'Network transfer information for this Linode is currently unavailable.'
-        }
-        error={true}
-        important
-        spacingBottom={0}
-      />
-    );
-  }
-
-  if (loading) {
-    return (
-      <Grid container justifyContent="center">
-        <Grid item>
-          <CircleProgress mini />
-        </Grid>
-      </Grid>
-    );
-  }
-
-  return (
-    <div>
-      <BarPercent
-        max={100}
-        value={Math.ceil(linodeUsagePercent)}
-        valueBuffer={Math.ceil(totalUsagePercent)}
-        className={classes.poolUsageProgress}
-        rounded
-      />
-      <Typography className={`${classes.legendItem} ${classes.darkGreen}`}>
-        {linodeLabel} ({linodeUsedInGB} GB)
-      </Typography>
-      <Typography className={`${classes.legendItem} ${classes.grey}`}>
-        Remaining ({remainingInGB} GB)
-      </Typography>
-      {/* @todo: display overages  */}
-    </div>
-  );
-};
-
-export default React.memo(NetworkTransfer);
-
-// =============================================================================
-// Utilities
-// =============================================================================
-
-// Get the percentage of a value in relation to a given target. Caps return value at 100%.
-export const calculatePercentageWithCeiling = (
-  value: number,
-  target: number
-) => {
-  return target > value ? 100 - ((target - value) * 100) / target : 100;
-};
+});

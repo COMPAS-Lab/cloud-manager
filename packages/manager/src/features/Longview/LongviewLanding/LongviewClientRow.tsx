@@ -1,69 +1,57 @@
 import { Grant } from '@linode/api-v4/lib/account';
+import { default as Grid } from '@mui/material/Unstable_Grid2/Grid2';
 import * as React from 'react';
 import { compose } from 'recompose';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
+
+import { Paper } from '@linode/ui';
 import withLongviewClients, {
   DispatchProps,
 } from 'src/containers/longview.container';
 import withClientStats, {
   Props as LVDataProps,
 } from 'src/containers/longview.stats.container';
-import { useGrants } from 'src/queries/profile';
-import { useClientLastUpdated } from '../shared/useClientLastUpdated';
-import CPUGauge from './Gauges/CPU';
-import LoadGauge from './Gauges/Load';
-import NetworkGauge from './Gauges/Network';
-import RAMGauge from './Gauges/RAM';
-import StorageGauge from './Gauges/Storage';
-import SwapGauge from './Gauges/Swap';
-import ActionMenu, { ActionHandlers } from './LongviewActionMenu';
-import LongviewClientHeader from './LongviewClientHeader';
-import LongviewClientInstructions from './LongviewClientInstructions';
+import { useGrants } from 'src/queries/profile/profile';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginBottom: theme.spacing(4),
-    padding: theme.spacing(3),
-    [theme.breakpoints.up('md')]: {
-      height: theme.spacing() === 220,
-    },
-  },
-  gaugeContainer: {
-    [theme.breakpoints.down('sm')]: {
-      marginBottom: 30,
-    },
-  },
-}));
+import { useClientLastUpdated } from '../shared/useClientLastUpdated';
+import { CPUGauge } from './Gauges/CPU';
+import { LoadGauge } from './Gauges/Load';
+import { NetworkGauge } from './Gauges/Network';
+import { RAMGauge } from './Gauges/RAM';
+import { StorageGauge } from './Gauges/Storage';
+import { SwapGauge } from './Gauges/Swap';
+import { ActionHandlers, LongviewActionMenu } from './LongviewActionMenu';
+import { LongviewClientHeader } from './LongviewClientHeader';
+import { LongviewClientInstructions } from './LongviewClientInstructions';
 
 interface Props extends ActionHandlers {
-  clientID: number;
-  clientLabel: string;
   clientAPIKey: string;
+  clientID: number;
   clientInstallKey: string;
+  clientLabel: string;
   openPackageDrawer: () => void;
 }
 
-type CombinedProps = Props & LVDataProps & DispatchProps & GrantProps;
+interface LongviewClientRowProps
+  extends Props,
+    LVDataProps,
+    DispatchProps,
+    GrantProps {}
 
-const LongviewClientRow: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+const LongviewClientRow = (props: LongviewClientRowProps) => {
   const {
-    clientID,
-    clientLabel,
     clientAPIKey,
-    triggerDeleteLongviewClient,
+    clientID,
     clientInstallKey,
+    clientLabel,
     openPackageDrawer,
+    triggerDeleteLongviewClient,
     updateLongviewClient,
   } = props;
 
   const {
+    authed,
     lastUpdated,
     lastUpdatedError,
-    authed,
   } = useClientLastUpdated(clientAPIKey, (_lastUpdated) =>
     props.getClientStats(clientAPIKey, _lastUpdated).catch((_) => null)
   );
@@ -87,9 +75,9 @@ const LongviewClientRow: React.FC<CombinedProps> = (props) => {
   if (!authed || lastUpdated === 0) {
     return (
       <LongviewClientInstructions
+        clientAPIKey={clientAPIKey}
         clientID={clientID}
         clientLabel={clientLabel}
-        clientAPIKey={clientAPIKey}
         installCode={clientInstallKey}
         triggerDeleteLongviewClient={triggerDeleteLongviewClient}
         updateLongviewClient={updateLongviewClient}
@@ -99,81 +87,90 @@ const LongviewClientRow: React.FC<CombinedProps> = (props) => {
   }
 
   return (
-    <Paper data-testid={clientID} className={classes.root}>
+    <Paper
+      sx={(theme) => {
+        return {
+          marginBottom: theme.spacing(4),
+        };
+      }}
+      data-testid={clientID}
+    >
       <Grid
-        container
-        wrap="nowrap"
-        justifyContent="space-between"
         alignItems="flex-start"
         aria-label="List of Your Longview Clients"
+        container
         data-testid="longview-client-row"
+        justifyContent="space-between"
+        padding={1}
+        spacing={2}
+        wrap="nowrap"
       >
-        <Grid item xs={11}>
-          <Grid container>
-            <Grid item xs={12} md={3}>
-              <LongviewClientHeader
+        <Grid container xs={11}>
+          <Grid container md={3} xs={12}>
+            <LongviewClientHeader
+              clientID={clientID}
+              clientLabel={clientLabel}
+              lastUpdatedError={lastUpdatedError}
+              longviewClientLastUpdated={lastUpdated}
+              openPackageDrawer={openPackageDrawer}
+              updateLongviewClient={updateLongviewClient}
+              userCanModifyClient={userCanModifyClient}
+            />
+          </Grid>
+          <Grid
+            alignItems="center"
+            container
+            direction="row"
+            md={9}
+            mt={-4}
+            spacing={2}
+            xs={12}
+          >
+            <Grid sm={2} xs={4}>
+              <CPUGauge
                 clientID={clientID}
-                clientLabel={clientLabel}
                 lastUpdatedError={lastUpdatedError}
-                openPackageDrawer={openPackageDrawer}
-                updateLongviewClient={updateLongviewClient}
-                longviewClientLastUpdated={lastUpdated}
-                userCanModifyClient={userCanModifyClient}
               />
             </Grid>
-            <Grid item xs={12} md={9}>
-              <Grid container direction="row" alignItems="center">
-                <Grid item xs={4} sm={2} className={classes.gaugeContainer}>
-                  <CPUGauge
-                    clientID={clientID}
-                    lastUpdatedError={lastUpdatedError}
-                  />
-                </Grid>
-                <Grid item xs={4} sm={2} className={classes.gaugeContainer}>
-                  <RAMGauge
-                    clientID={clientID}
-                    lastUpdatedError={lastUpdatedError}
-                  />
-                </Grid>
-                <Grid item xs={4} sm={2} className={classes.gaugeContainer}>
-                  <SwapGauge
-                    clientID={clientID}
-                    lastUpdatedError={lastUpdatedError}
-                  />
-                </Grid>
-                <Grid item xs={4} sm={2} className={classes.gaugeContainer}>
-                  <LoadGauge
-                    clientID={clientID}
-                    lastUpdatedError={lastUpdatedError}
-                  />
-                </Grid>
-                <Grid item xs={4} sm={2} className={classes.gaugeContainer}>
-                  <NetworkGauge
-                    clientID={clientID}
-                    lastUpdatedError={lastUpdatedError}
-                  />
-                </Grid>
-                <Grid item xs={4} sm={2} className={classes.gaugeContainer}>
-                  <StorageGauge
-                    clientID={clientID}
-                    lastUpdatedError={lastUpdatedError}
-                  />
-                </Grid>
-              </Grid>
+            <Grid sm={2} xs={4}>
+              <RAMGauge
+                clientID={clientID}
+                lastUpdatedError={lastUpdatedError}
+              />
+            </Grid>
+            <Grid sm={2} xs={4}>
+              <SwapGauge
+                clientID={clientID}
+                lastUpdatedError={lastUpdatedError}
+              />
+            </Grid>
+            <Grid sm={2} xs={4}>
+              <LoadGauge
+                clientID={clientID}
+                lastUpdatedError={lastUpdatedError}
+              />
+            </Grid>
+            <Grid sm={2} xs={4}>
+              <NetworkGauge
+                clientID={clientID}
+                lastUpdatedError={lastUpdatedError}
+              />
+            </Grid>
+            <Grid sm={2} xs={4}>
+              <StorageGauge
+                clientID={clientID}
+                lastUpdatedError={lastUpdatedError}
+              />
             </Grid>
           </Grid>
         </Grid>
-        <Grid item xs={1}>
-          <Grid container justifyContent="flex-end">
-            <Grid item>
-              <ActionMenu
-                longviewClientID={clientID}
-                longviewClientLabel={clientLabel}
-                triggerDeleteLongviewClient={triggerDeleteLongviewClient}
-                userCanModifyClient={userCanModifyClient}
-              />
-            </Grid>
-          </Grid>
+        <Grid container justifyContent="flex-end" xs={1}>
+          <LongviewActionMenu
+            longviewClientID={clientID}
+            longviewClientLabel={clientLabel}
+            triggerDeleteLongviewClient={triggerDeleteLongviewClient}
+            userCanModifyClient={userCanModifyClient}
+          />
         </Grid>
       </Grid>
     </Paper>
@@ -184,7 +181,7 @@ interface GrantProps {
   userCanModifyClient: boolean;
 }
 
-export default compose<CombinedProps, Props>(
+export default compose<LongviewClientRowProps, Props>(
   React.memo,
   withClientStats<Props>((ownProps) => ownProps.clientID),
   /** We only need the update action here, easier than prop drilling through 4 components */

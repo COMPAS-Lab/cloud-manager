@@ -1,21 +1,23 @@
-import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Dialog from 'src/components/ConfirmationDialog';
-import Typography from 'src/components/core/Typography';
-import Link from 'src/components/Link';
-import { useVolumesMigrateMutation } from 'src/queries/volumesMigrations';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import { useSnackbar } from 'notistack';
+import * as React from 'react';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
+import { useVolumesMigrateMutation } from 'src/queries/volumes/volumes';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+
+import type { Volume } from '@linode/api-v4';
 
 interface CopyProps {
-  label: string;
-  type: 'volume' | 'linode';
   isManyVolumes?: boolean;
+  label: string;
+  type: 'linode' | 'volume';
 }
 
 export const VolumeUpgradeCopy = (props: CopyProps) => {
-  const { label, type, isManyVolumes } = props;
+  const { isManyVolumes, label, type } = props;
 
   const prefix =
     type === 'linode'
@@ -35,55 +37,60 @@ export const VolumeUpgradeCopy = (props: CopyProps) => {
 };
 
 interface Props {
-  open: boolean;
   onClose: () => void;
-  id: number;
-  label: string;
+  open: boolean;
+  volume: Volume | undefined;
 }
 
-export const UpgradeVolumeDialog: React.FC<Props> = (props) => {
-  const { open, onClose, id, label } = props;
+export const UpgradeVolumeDialog = (props: Props) => {
+  const { onClose, open, volume } = props;
   const { enqueueSnackbar } = useSnackbar();
 
   const {
-    mutateAsync: migrateVolumes,
-    isLoading,
     error,
+    isPending,
+    mutateAsync: migrateVolumes,
   } = useVolumesMigrateMutation();
 
   const onSubmit = () => {
-    migrateVolumes([id]).then(() => {
-      enqueueSnackbar(`Successfully added ${label} to the migration queue.`, {
-        variant: 'success',
-      });
+    if (!volume) {
+      return;
+    }
+    migrateVolumes([volume.id]).then(() => {
+      enqueueSnackbar(
+        `Successfully added ${volume.label} to the migration queue.`,
+        {
+          variant: 'success',
+        }
+      );
       onClose();
     });
   };
 
   const actions = (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={onClose}>
-        Cancel
-      </Button>
-      <Button buttonType="primary" onClick={onSubmit} loading={isLoading}>
-        Enter Upgrade Queue
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        label: 'Enter Upgrade Queue',
+        loading: isPending,
+        onClick: onSubmit,
+      }}
+      secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
+    />
   );
 
   return (
-    <Dialog
-      title={`Upgrade Volume ${label}`}
-      open={open}
-      onClose={onClose}
-      actions={actions}
+    <ConfirmationDialog
       error={
         error
           ? getAPIErrorOrDefault(error, 'Unable to migrate volume.')[0].reason
           : undefined
       }
+      actions={actions}
+      onClose={onClose}
+      open={open}
+      title={`Upgrade Volume ${volume?.label}`}
     >
-      <VolumeUpgradeCopy type="volume" label={label} />
-    </Dialog>
+      <VolumeUpgradeCopy label={volume?.label ?? ''} type="volume" />
+    </ConfirmationDialog>
   );
 };

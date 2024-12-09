@@ -1,35 +1,56 @@
 import * as kube from '@linode/api-v4/lib/kubernetes/kubernetes';
 import { fireEvent, render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import * as React from 'react';
-import { reactRouterProps } from 'src/__data__/reactRouterProps';
-import { ClusterActionMenu } from './ClusterActionMenu';
-import { includesActions, wrapWithTheme } from 'src/utilities/testHelpers';
 
-jest.mock('src/components/ActionMenu/ActionMenu');
-const mockGetKubeConfig = jest.spyOn<any, any>(kube, 'getKubeConfig');
+import { reactRouterProps } from 'src/__data__/reactRouterProps';
+import { wrapWithTheme } from 'src/utilities/testHelpers';
+
+import { ClusterActionMenu } from './ClusterActionMenu';
+
+const mockGetKubeConfig = vi.spyOn<any, any>(kube, 'getKubeConfig');
+
+// Mock snackbar to prevent "Can't perform a React state update on an unmounted component" warning.
+vi.mock('notistack', async () => {
+  const actual = await vi.importActual<any>('notistack');
+  return {
+    ...actual,
+    useSnackbar: () => {
+      return {
+        enqueueSnackbar: vi.fn(),
+      };
+    },
+  };
+});
 
 const props = {
+  closeSnackbar: vi.fn(),
   clusterId: 123456,
   clusterLabel: 'my-cluster',
-  enqueueSnackbar: jest.fn(),
-  closeSnackbar: jest.fn(),
-  openDialog: jest.fn(),
+  enqueueSnackbar: vi.fn(),
+  openDialog: vi.fn(),
   ...reactRouterProps,
 };
 
 describe('Kubernetes cluster action menu', () => {
-  it('should include the correct Kube actions', () => {
-    const { queryByText } = render(
+  it('should include the correct Kube actions', async () => {
+    const { getByText, queryByLabelText } = render(
       wrapWithTheme(<ClusterActionMenu {...props} />)
     );
-    includesActions(['Download kubeconfig', 'Delete'], queryByText);
+
+    const actionMenuButton = queryByLabelText(/^Action menu for/)!;
+
+    await userEvent.click(actionMenuButton);
+    for (const action of ['Download kubeconfig', 'Delete']) {
+      expect(getByText(action)).toBeVisible();
+    }
   });
 
-  it('should query the API for a config file when Download kubeconfig is clicked', () => {
+  it('should query the API for a config file when Download kubeconfig is clicked', async () => {
     const { getByText } = render(
       wrapWithTheme(<ClusterActionMenu {...props} />)
     );
-    fireEvent.click(getByText(/download/i));
+    await fireEvent.click(getByText(/download/i));
     expect(mockGetKubeConfig).toHaveBeenCalledWith(123456);
   });
 });

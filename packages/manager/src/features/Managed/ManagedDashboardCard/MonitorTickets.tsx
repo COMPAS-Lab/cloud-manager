@@ -1,39 +1,19 @@
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { Link, useHistory } from 'react-router-dom';
 
 import TicketIcon from 'src/assets/icons/ticket.svg';
-import Button from 'src/components/Button';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import { ExtendedIssue } from 'src/store/managed/issues.actions';
+import { Typography } from 'src/components/Typography';
+import { ExtendedIssue } from 'src/queries/managed/types';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: theme.spacing(),
-    textAlign: 'center',
-  },
-  openTicketButton: {
-    [theme.breakpoints.down('sm')]: {
-      paddingLeft: 12,
-      paddingRight: 12,
-    },
-  },
-  happyTicket: {
-    color: theme.color.grey1,
-  },
-  sadTicket: {
-    color: theme.color.red,
-  },
-}));
+import { StyledButton, StyledGrid } from './MonitorTickets.styles';
 
-interface Props {
+interface MonitorTicketsProps {
   issues: ExtendedIssue[];
 }
 
-export const MonitorTickets: React.FC<Props> = (props) => {
+export const MonitorTickets = (props: MonitorTicketsProps) => {
   const { issues } = props;
-  const classes = useStyles();
   const history = useHistory();
 
   const openIssues = issues.filter((thisIssue) => !thisIssue.dateClosed);
@@ -41,20 +21,21 @@ export const MonitorTickets: React.FC<Props> = (props) => {
   const hasIssues = openIssues.length > 0;
 
   return (
-    <Grid
+    <StyledGrid
+      alignItems="center"
       container
       direction="column"
       justifyContent="center"
-      alignItems="center"
-      className={classes.root}
     >
       <Grid
-        item
-        className={`${hasIssues ? classes.sadTicket : classes.happyTicket} py0`}
+        sx={(theme) => ({
+          color: hasIssues ? theme.color.red : theme.color.grey1,
+          padding: `0 ${theme.spacing(1)}`,
+        })}
       >
-        <TicketIcon width={50} height={39} />
+        <TicketIcon height={39} width={50} />
       </Grid>
-      <Grid item>
+      <Grid>
         <Typography variant="h2">
           {hasIssues
             ? `${openIssues.length} open support ${
@@ -63,15 +44,14 @@ export const MonitorTickets: React.FC<Props> = (props) => {
             : 'No open support tickets'}
         </Typography>
       </Grid>
-      <Grid item>
+      <Grid>
         {hasIssues ? (
           <Typography>
             View the <Link to="/support/tickets">Support tickets page</Link> for
             a full list of open tickets.
           </Typography>
         ) : (
-          <Button
-            buttonType="primary"
+          <StyledButton
             onClick={() =>
               history.push({
                 pathname: '/support/tickets',
@@ -81,13 +61,13 @@ export const MonitorTickets: React.FC<Props> = (props) => {
                 },
               })
             }
-            className={classes.openTicketButton}
+            buttonType="primary"
           >
             Open a ticket
-          </Button>
+          </StyledButton>
         )}
       </Grid>
-    </Grid>
+    </StyledGrid>
   );
 };
 

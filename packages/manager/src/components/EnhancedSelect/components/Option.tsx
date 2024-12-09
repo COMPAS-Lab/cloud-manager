@@ -1,17 +1,14 @@
 import * as React from 'react';
-import { components, OptionProps } from 'react-select';
+import { OptionProps, components } from 'react-select';
 
 interface Props extends OptionProps<any, any> {
+  attrs?: Record<string, boolean | string>;
   value: number | string;
-  attrs?: Record<string, string | boolean>;
 }
-
-const Option: React.FC<Props> = (props) => {
+export const Option = (props: Props) => {
   return (
     <div data-qa-option={String(props.value)} {...props.attrs}>
       <components.Option {...props} />
     </div>
   );
 };
-
-export default Option;

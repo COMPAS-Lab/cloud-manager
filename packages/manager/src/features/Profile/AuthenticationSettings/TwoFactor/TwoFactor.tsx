@@ -1,62 +1,37 @@
 import { getTFAToken } from '@linode/api-v4/lib/profile';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import FormControl from 'src/components/core/FormControl';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import Toggle from 'src/components/Toggle';
-import ToggleState from 'src/components/ToggleState';
-import { queryClient } from 'src/queries/base';
-import { queryKey } from 'src/queries/profile';
-import { useSecurityQuestions } from 'src/queries/securityQuestions';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { StyledLinkButton } from 'src/components/Button/StyledLinkButton';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { useSecurityQuestions } from 'src/queries/profile/securityQuestions';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import getAPIErrorFor from 'src/utilities/getAPIErrorFor';
-import DisableTwoFactorDialog from './DisableTwoFactorDialog';
-import EnableTwoFactorForm from './EnableTwoFactorForm';
-import ScratchDialog from './ScratchCodeDialog';
+import { getAPIErrorFor } from 'src/utilities/getAPIErrorFor';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  container: {
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    alignItems: 'center',
-    justifyContent: 'left',
-    marginTop: theme.spacing(3),
-    marginBottom: theme.spacing(3),
-  },
-  copy: {
-    lineHeight: '20px',
-    marginTop: theme.spacing(),
-    marginBottom: theme.spacing(),
-    maxWidth: 960,
-  },
-  button: {
-    ...theme.applyLinkStyles,
-  },
-  disabled: {
-    '& *': {
-      color: theme.color.disabledText,
-    },
-  },
-}));
+import { DisableTwoFactorDialog } from './DisableTwoFactorDialog';
+import { EnableTwoFactorForm } from './EnableTwoFactorForm';
+import { ScratchCodeDialog } from './ScratchCodeDialog';
+import {
+  StyledCTAWrapper,
+  StyledCopy,
+  StyledRootContainer,
+} from './TwoFactor.styles';
+import { TwoFactorToggle } from './TwoFactorToggle';
+import { profileQueries } from 'src/queries/profile/profile';
 
-interface Props {
-  username?: string;
-  twoFactor?: boolean;
-  clearState: () => void;
+export interface TwoFactorProps {
   disabled?: boolean;
+  twoFactor?: boolean;
+  username?: string;
 }
 
-export const TwoFactor: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
+export const TwoFactor = (props: TwoFactorProps) => {
   const needSecurityQuestionsCopy =
     'To use two-factor authentication you must set up your security questions listed below.';
-
-  const { clearState, disabled, twoFactor, username } = props;
-
+  const { disabled, twoFactor, username } = props;
+  const queryClient = useQueryClient();
   const [errors, setErrors] = React.useState<APIError[] | undefined>(undefined);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [secret, setSecret] = React.useState<string>('');
@@ -78,10 +53,6 @@ export const TwoFactor: React.FC<Props> = (props) => {
     ).length === 3;
 
   React.useEffect(() => {
-    clearState();
-  }, [twoFactorEnabled, clearState]);
-
-  React.useEffect(() => {
     setTwoFactorConfirmed(twoFactor);
   }, [twoFactor]);
 
@@ -90,7 +61,9 @@ export const TwoFactor: React.FC<Props> = (props) => {
    */
   const handleEnableSuccess = (scratchCode: string) => {
     // Refetch Profile with React Query so profile is up to date
-    queryClient.invalidateQueries(queryKey);
+    queryClient.invalidateQueries({
+      queryKey: profileQueries.profile().queryKey,
+    });
     setSuccess('Two-factor authentication has been enabled.');
     setShowQRCode(false);
     setTwoFactorEnabled(true);
@@ -102,8 +75,6 @@ export const TwoFactor: React.FC<Props> = (props) => {
    * success when TFA is disabled
    */
   const handleDisableSuccess = () => {
-    // Refetch Profile with React Query so profile is up to date
-    queryClient.invalidateQueries(queryKey);
     setErrors(undefined);
     setSuccess('Two-factor authentication has been disabled.');
     setTwoFactorEnabled(false);
@@ -180,148 +151,99 @@ export const TwoFactor: React.FC<Props> = (props) => {
   const hasErrorFor = getAPIErrorFor({}, errors);
   const generalError = hasErrorFor('none');
 
-  return (
-    <ToggleState>
-      {({ open: disable2FAOpen, toggle: toggleDisable2FA }) => (
-        <ToggleState>
-          {({ open: scratchDialogOpen, toggle: toggleScratchDialog }) => (
-            <React.Fragment>
-              <div className={disabled ? classes.disabled : undefined}>
-                <Typography variant="h3" data-qa-title>
-                  Two-Factor Authentication (2FA)
-                </Typography>
-                {success && (
-                  <Notice
-                    spacingTop={16}
-                    spacingBottom={16}
-                    success
-                    text={success}
-                  />
-                )}
-                {generalError && (
-                  <Notice
-                    spacingTop={16}
-                    spacingBottom={16}
-                    error
-                    text={generalError}
-                  />
-                )}
-                <Typography
-                  variant="body1"
-                  className={classes.copy}
-                  data-qa-copy
-                >
-                  Two-factor authentication increases the security of your
-                  Linode account by requiring two different forms of
-                  authentication to log in: your Linode account password and an
-                  authorized security token generated by another platform.
-                </Typography>
-                {(hasSecurityQuestions && !twoFactor) || twoFactor ? (
-                  typeof twoFactorConfirmed !== 'undefined' && (
-                    <TwoFactorToggle
-                      twoFactorEnabled={twoFactorEnabled || false}
-                      onChange={toggleTwoFactorEnabled}
-                      toggleDisableDialog={toggleDisable2FA}
-                      twoFactorConfirmed={twoFactorConfirmed}
-                      disabled={disabled}
-                    />
-                  )
-                ) : (
-                  <Notice
-                    warning
-                    text={needSecurityQuestionsCopy}
-                    style={{ marginTop: '8px' }}
-                    typeProps={{ style: { fontSize: '0.875rem' } }}
-                  />
-                )}
-                {twoFactorEnabled && (
-                  <div className={classes.container}>
-                    <button
-                      className={classes.button}
-                      onClick={toggleHidden}
-                      data-qa-hide-show-code
-                    >
-                      {showQRCode
-                        ? 'Hide QR Code'
-                        : twoFactorConfirmed
-                        ? 'Reset two-factor authentication'
-                        : 'Show QR Code'}
-                    </button>
-                  </div>
-                )}
-                {twoFactorEnabled &&
-                  showQRCode &&
-                  username &&
-                  twoFactorConfirmed !== undefined && (
-                    <EnableTwoFactorForm
-                      secret={secret}
-                      username={username}
-                      loading={loading}
-                      onSuccess={handleEnableSuccess}
-                      onCancel={handleCancel}
-                      twoFactorConfirmed={twoFactorConfirmed}
-                      toggleDialog={toggleScratchDialog}
-                    />
-                  )}
-              </div>
-              <ScratchDialog
-                open={scratchDialogOpen}
-                closeDialog={toggleScratchDialog}
-                scratchCode={scratchCode}
-              />
-              <DisableTwoFactorDialog
-                onSuccess={handleDisableSuccess}
-                open={disable2FAOpen}
-                closeDialog={toggleDisable2FA}
-              />
-            </React.Fragment>
-          )}
-        </ToggleState>
-      )}
-    </ToggleState>
-  );
-};
+  const [disable2FAOpen, setDisable2FAOpen] = React.useState(false);
+  const [scratchDialogOpen, setScratchDialogOpen] = React.useState(false);
 
-export default TwoFactor;
+  const toggleDisable2FA = () => {
+    setDisable2FAOpen((prev) => !prev);
+  };
 
-interface ToggleProps {
-  toggleDisableDialog: () => void;
-  onChange: (value: boolean) => void;
-  twoFactorEnabled: boolean;
-  twoFactorConfirmed: boolean;
-  disabled?: boolean;
-}
-
-const TwoFactorToggle: React.FC<ToggleProps> = (props) => {
-  const { disabled, twoFactorEnabled } = props;
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { twoFactorConfirmed, onChange } = props;
-    const enabled = e.currentTarget.checked;
-    /**
-     * only open the disable dialog if 2FA has been turned on and we're flipping the toggle off
-     */
-    if (!enabled && twoFactorConfirmed) {
-      props.toggleDisableDialog();
-    } else {
-      /** Otherwise flip the toggle. If toggling on, the parent will handle the API request. */
-      onChange(enabled);
-    }
+  const toggleScratchDialog = () => {
+    setScratchDialogOpen((prev) => !prev);
   };
 
   return (
-    <FormControl fullWidth style={{ marginTop: 0 }}>
-      <FormControlLabel
-        label={twoFactorEnabled ? 'Enabled' : 'Disabled'}
-        control={
-          <Toggle
-            checked={twoFactorEnabled}
-            onChange={handleChange}
-            data-qa-toggle-tfa={twoFactorEnabled}
-            disabled={disabled}
+    <React.Fragment>
+      <StyledRootContainer {...props}>
+        <Typography data-qa-title variant="h3">
+          Two-Factor Authentication (2FA)
+        </Typography>
+        {success && (
+          <Notice
+            spacingBottom={16}
+            spacingTop={16}
+            text={success}
+            variant="success"
           />
-        }
+        )}
+        {generalError && (
+          <Notice
+            spacingBottom={16}
+            spacingTop={16}
+            text={generalError}
+            variant="error"
+          />
+        )}
+        <StyledCopy data-qa-copy variant="body1">
+          Two-factor authentication increases the security of your Cloud Manager
+          account by requiring two different forms of authentication to log in:
+          your Cloud Manager account password and an authorized security token
+          generated by another platform.
+        </StyledCopy>
+        {(hasSecurityQuestions && !twoFactor) || twoFactor ? (
+          typeof twoFactorConfirmed !== 'undefined' && (
+            <TwoFactorToggle
+              disabled={disabled}
+              onChange={toggleTwoFactorEnabled}
+              toggleDisableDialog={toggleDisable2FA}
+              twoFactorConfirmed={twoFactorConfirmed}
+              twoFactorEnabled={twoFactorEnabled || false}
+            />
+          )
+        ) : (
+          <Notice
+            style={{ marginTop: '8px' }}
+            text={needSecurityQuestionsCopy}
+            typeProps={{ style: { fontSize: '0.875rem' } }}
+            variant="warning"
+          />
+        )}
+        {twoFactorEnabled && (
+          <StyledCTAWrapper>
+            <StyledLinkButton data-qa-hide-show-code onClick={toggleHidden}>
+              {showQRCode
+                ? 'Hide QR Code'
+                : twoFactorConfirmed
+                ? 'Reset two-factor authentication'
+                : 'Show QR Code'}
+            </StyledLinkButton>
+          </StyledCTAWrapper>
+        )}
+        {twoFactorEnabled &&
+          showQRCode &&
+          username &&
+          twoFactorConfirmed !== undefined && (
+            <EnableTwoFactorForm
+              loading={loading}
+              onCancel={handleCancel}
+              onSuccess={handleEnableSuccess}
+              secret={secret}
+              toggleDialog={toggleScratchDialog}
+              twoFactorConfirmed={twoFactorConfirmed}
+              username={username}
+            />
+          )}
+      </StyledRootContainer>
+      <ScratchCodeDialog
+        onClose={toggleScratchDialog}
+        open={scratchDialogOpen}
+        scratchCode={scratchCode}
       />
-    </FormControl>
+      <DisableTwoFactorDialog
+        onClose={toggleDisable2FA}
+        onSuccess={handleDisableSuccess}
+        open={disable2FAOpen}
+      />
+    </React.Fragment>
   );
 };

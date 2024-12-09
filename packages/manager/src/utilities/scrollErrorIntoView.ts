@@ -1,4 +1,8 @@
-const scrollErrorIntoView = (
+/**
+ * @deprecated
+ * Use `scrollErrorIntoViewV2` instead.
+ */
+export const scrollErrorIntoView = (
   errorGroup?: string,
   options?: ScrollIntoViewOptions
 ) => {
@@ -14,5 +18,3 @@ const scrollErrorIntoView = (
     });
   }
 };
-
-export default scrollErrorIntoView;

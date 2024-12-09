@@ -1,40 +1,42 @@
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
 import { pathOr } from 'ramda';
 import * as React from 'react';
-import { compose } from 'recompose';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableCell from 'src/components/core/TableCell';
-import TableHead from 'src/components/core/TableHead';
-import Drawer from 'src/components/Drawer';
-import Table from 'src/components/Table';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import withLongviewStats, {
+
+import { Drawer } from 'src/components/Drawer';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import withLongviewStats from 'src/containers/longview.stats.container';
+
+import { LongviewPackageRow } from './LongviewPackageRow';
+
+import type { LongviewPackage } from './request.types';
+import type {
   DispatchProps,
   LVClientData,
 } from 'src/containers/longview.stats.container';
-import LongviewPackageRow from './LongviewPackageRow';
-import { LongviewPackage } from './request.types';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  new: {
-    color: theme.color.green,
-  },
-}));
 
 interface Props {
-  clientLabel: string;
   clientID: number;
+  clientLabel: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-type CombinedProps = Props & DispatchProps & LVClientData;
+interface LongviewPackageDrawerProps
+  extends Props,
+    DispatchProps,
+    LVClientData {}
 
-export const LongviewPackageDrawer: React.FC<CombinedProps> = (props) => {
-  const { isOpen, clientLabel, longviewClientData, onClose } = props;
-
-  const classes = useStyles();
+export const LongviewPackageDrawer = withLongviewStats<Props>(
+  (own) => own.clientID
+)((props: LongviewPackageDrawerProps) => {
+  const { clientLabel, isOpen, longviewClientData, onClose } = props;
+  const theme = useTheme();
 
   const lvPackages: LongviewPackage[] = pathOr(
     [],
@@ -54,7 +56,9 @@ export const LongviewPackageDrawer: React.FC<CombinedProps> = (props) => {
             <TableCell style={{ width: '40%' }}>Package</TableCell>
             <TableCell>
               Installed Version{` `}/{` `}
-              <span className={classes.new}>Latest Version</span>
+              <Box color={theme.color.green} component="span">
+                Latest Version
+              </Box>
             </TableCell>
           </TableRow>
         </TableHead>
@@ -62,8 +66,8 @@ export const LongviewPackageDrawer: React.FC<CombinedProps> = (props) => {
           {lvPackages.length > 0 ? (
             lvPackages.map((thisPackage, idx) => (
               <LongviewPackageRow
-                lvPackage={thisPackage}
                 key={`package-drawer-row-${idx}`}
+                lvPackage={thisPackage}
               />
             ))
           ) : (
@@ -78,15 +82,10 @@ export const LongviewPackageDrawer: React.FC<CombinedProps> = (props) => {
              * not be open-able, so no explicit logic
              * is included here.
              */
-            <TableRowEmptyState colSpan={12} />
+            <TableRowEmpty colSpan={12} />
           )}
         </TableBody>
       </Table>
     </Drawer>
   );
-};
-
-const enhanced = compose<CombinedProps, Props>(
-  withLongviewStats<Props>((own) => own.clientID)
-);
-export default enhanced(LongviewPackageDrawer);
+});

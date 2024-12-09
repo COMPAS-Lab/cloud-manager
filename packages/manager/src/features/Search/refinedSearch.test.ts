@@ -1,8 +1,11 @@
 // import { searchableItems } from 'src/__data__/searchableItems
 import searchString from 'search-string';
+
 import { searchableItems } from 'src/__data__/searchableItems';
-import * as RefinedSearch from './refinedSearch';
+
+import { COMPRESSED_IPV6_REGEX } from './refinedSearch';
 import { QueryJSON } from './refinedSearch';
+import * as RefinedSearch from './refinedSearch';
 import { SearchableItem } from './search.interfaces';
 
 const {
@@ -168,16 +171,6 @@ describe('Refined Search', () => {
   });
 });
 
-const mockLinode: SearchableItem = {
-  value: 1234,
-  label: 'my-linode',
-  entityType: 'linode',
-  data: {
-    tags: ['my-app', 'production'],
-    ips: ['1234'],
-  },
-};
-
 describe('formatQuery', () => {
   it('trims whitespace', () => {
     expect(formatQuery('hello world  ')).toBe('hello world');
@@ -203,83 +196,73 @@ describe('formatQuery', () => {
   });
 });
 
+const mockLinode: SearchableItem = {
+  value: 1234,
+  label: 'my-linode',
+  entityType: 'linode',
+  data: {
+    tags: ['my-app', 'production'],
+    ips: ['1234'],
+  },
+};
+
+// Identical to above, but satisfies search queries.
+const mockLinodeMatch: SearchableItem = {
+  value: 1234,
+  label: 'my-2nd-linode',
+  entityType: 'linode',
+  data: {
+    tags: ['production', 'beta', 'lab'],
+    ips: ['1234'],
+  },
+};
+
 describe('recursivelyTestItem', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
-  const queryJSON1: QueryJSON = {
+  const basicQuery: QueryJSON = {
+    type: 'string',
+    value: 'tag:beta',
+  };
+
+  const andQuery: QueryJSON = {
     type: 'and',
     values: [
-      { type: 'string', value: 'tags:my-app' },
-      { type: 'string', value: 'tags:production' },
+      { type: 'string', value: 'tag:production' },
+      { type: 'string', value: 'tag:beta' },
     ],
   };
 
-  const queryJSON2: QueryJSON = {
+  const deepQuery: QueryJSON = {
     type: 'or',
     values: [
-      { type: 'string', value: 'tags:my-app' },
-      { type: 'string', value: 'tags:production' },
-    ],
-  };
-
-  const queryJSON3: QueryJSON = { type: 'string', value: 'tags:production' };
-
-  const queryJSON4: QueryJSON = {
-    type: 'or',
-    values: [
-      {
-        type: 'string',
-        value: 'type:linode',
-      },
+      { type: 'string', value: 'tag:beta' },
       {
         type: 'and',
         values: [
-          {
-            type: 'string',
-            value: 'tag:my-app',
-          },
-          {
-            type: 'string',
-            value: 'type:domain',
-          },
+          { type: 'string', value: 'tag:production' },
+          { type: 'string', value: 'tag:lab' },
         ],
       },
     ],
   };
 
-  const spy_areAnyTrue = jest.spyOn(RefinedSearch, 'areAnyTrue');
-  const spy_areAllTrue = jest.spyOn(RefinedSearch, 'areAllTrue');
-  const spy_recursivelyTestItem = jest.spyOn(
-    RefinedSearch,
-    'recursivelyTestItem'
-  );
-
-  it('calls the areAllTrue() function if the type is "and"', () => {
-    recursivelyTestItem(queryJSON1, mockLinode);
-    expect(spy_areAllTrue).toHaveBeenCalled();
+  it('returns true when item matches query', () => {
+    expect(recursivelyTestItem(basicQuery, mockLinodeMatch)).toBe(true);
+    expect(recursivelyTestItem(andQuery, mockLinodeMatch)).toBe(true);
+    expect(recursivelyTestItem(deepQuery, mockLinodeMatch)).toBe(true);
   });
 
-  it('calls the areAnyTrue() function if the type is "or"', () => {
-    recursivelyTestItem(queryJSON2, mockLinode);
-    expect(spy_areAnyTrue).toHaveBeenCalled();
+  it('returns false when item does not match query', () => {
+    expect(recursivelyTestItem(basicQuery, mockLinode)).toBe(false);
+    expect(recursivelyTestItem(andQuery, mockLinode)).toBe(false);
+    expect(recursivelyTestItem(deepQuery, mockLinode)).toBe(false);
   });
 
-  it('does not call areAnyTrue() or areAllTrue() if it is a single value', () => {
-    recursivelyTestItem(queryJSON3, mockLinode);
-    // testItem() WILL call areAllTrue, so we test that it's only been called once.
-    expect(spy_areAllTrue).toHaveBeenCalledTimes(1);
-    expect(spy_areAnyTrue).not.toHaveBeenCalled();
-  });
-
-  it('calls itself recursively', () => {
-    recursivelyTestItem(queryJSON4, mockLinode);
-    expect(spy_recursivelyTestItem).toHaveBeenCalledTimes(2);
-  });
-
-  it('returns false if given bad data', () => {
-    expect(recursivelyTestItem({} as QueryJSON, mockLinode)).toBe(false);
+  it('returns false when given invalid query', () => {
+    expect(recursivelyTestItem({} as QueryJSON, mockLinode)).toEqual(false);
   });
 });
 
@@ -297,25 +280,48 @@ describe('testItem', () => {
 
 describe('isSimpleQuery', () => {
   it('returns true if there are no specified search fields', () => {
-    let parsedQuery = searchString.parse('-hello world').getParsedQuery();
-    expect(isSimpleQuery(parsedQuery)).toBe(true);
+    let query = '-hello world';
+    let parsedQuery = searchString.parse(query).getParsedQuery();
+    expect(isSimpleQuery(query, parsedQuery)).toBe(true);
 
-    parsedQuery = searchString.parse('hello world').getParsedQuery();
-    expect(isSimpleQuery(parsedQuery)).toBe(true);
+    query = '-hello world';
+    parsedQuery = searchString.parse(query).getParsedQuery();
+    expect(isSimpleQuery(query, parsedQuery)).toBe(true);
 
-    parsedQuery = searchString.parse('hello -world').getParsedQuery();
-    expect(isSimpleQuery(parsedQuery)).toBe(true);
+    query = 'hello -world';
+    parsedQuery = searchString.parse(query).getParsedQuery();
+    expect(isSimpleQuery(query, parsedQuery)).toBe(true);
   });
 
   it('returns false if there are specified search fields', () => {
-    let parsedQuery = searchString.parse('label:hello').getParsedQuery();
-    expect(isSimpleQuery(parsedQuery)).toBe(false);
+    let query = 'label:hello';
+    let parsedQuery = searchString.parse(query).getParsedQuery();
+    expect(isSimpleQuery(query, parsedQuery)).toBe(false);
 
-    parsedQuery = searchString.parse('tags:hello,world').getParsedQuery();
-    expect(isSimpleQuery(parsedQuery)).toBe(false);
+    query = 'tags:hello,world';
+    parsedQuery = searchString.parse(query).getParsedQuery();
+    expect(isSimpleQuery(query, parsedQuery)).toBe(false);
 
-    parsedQuery = searchString.parse('-label:hello').getParsedQuery();
-    expect(isSimpleQuery(parsedQuery)).toBe(false);
+    query = '-label:hello';
+    parsedQuery = searchString.parse(query).getParsedQuery();
+    expect(isSimpleQuery(query, parsedQuery)).toBe(false);
+  });
+
+  it('returns true if we match a shouldSkipFieldSearch rule', () => {
+    const query = '2001:db8:3c4d:15::1a2f:1a2b';
+    const parsedQuery = searchString.parse(query).getParsedQuery();
+    expect(isSimpleQuery(query, parsedQuery)).toBe(true);
+  });
+});
+
+describe('IPv6 regex', () => {
+  it('matches compressed IPv6 addresses', () => {
+    expect(
+      '2001:db8:3c4d:15::1a2f:1a2b'.match(COMPRESSED_IPV6_REGEX)
+    ).toBeTruthy();
+    expect('2001:db8::'.match(COMPRESSED_IPV6_REGEX)).toBeTruthy();
+    expect('2001:db8::1234:5678'.match(COMPRESSED_IPV6_REGEX)).toBeTruthy();
+    expect('::1234:5678'.match(COMPRESSED_IPV6_REGEX)).toBeTruthy();
   });
 });
 

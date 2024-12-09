@@ -32,19 +32,6 @@ export const updateOAuthClientSchema = object({
   redirect_uri: string(),
 });
 
-export const StagePaypalPaymentSchema = object({
-  cancel_url: string().required(
-    'You must provide a URL to redirect on cancel.'
-  ),
-  redirect_url: string().required('You must provide a redirect URL.'),
-  usd: string().required('USD payment amount is required.'),
-});
-
-export const ExecutePaypalPaymentSchema = object({
-  payer_id: string().required('You must provide a payer ID.'),
-  payment_id: string().required('You must provide a payment ID (from Paypal).'),
-});
-
 export const PaymentSchema = object({
   usd: string().required('USD payment amount is required.'),
 });
@@ -55,7 +42,7 @@ export const CreditCardSchema = object({
     .min(13, 'Credit card number must be between 13 and 23 characters.')
     .max(23, 'Credit card number must be between 13 and 23 characters.'),
   expiry_year: number()
-    .test('length', 'Expiration year must be 2 for 4 digits.', (value) =>
+    .test('length', 'Expiration year must be 2 or 4 digits.', (value) =>
       [2, 4].includes(String(value).length)
     )
     .required('Expiration year is required.')

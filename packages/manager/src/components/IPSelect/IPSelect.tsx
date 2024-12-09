@@ -1,35 +1,25 @@
-import { Linode } from '@linode/api-v4/lib/linodes';
 import * as React from 'react';
-import { compose } from 'recompose';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import withLinodes, {
-  Props as LinodeProps,
-} from 'src/containers/withLinodes.container';
+
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { useLinodeQuery } from 'src/queries/linodes/linodes';
+
+interface Option {
+  label: string;
+  value: string;
+}
 
 interface Props {
-  linodeId: number;
-  value: Item<string>;
-  handleChange: (ip: string) => void;
-  customizeOptions?: (options: Item<string>[]) => Item<string>[];
+  customizeOptions?: (options: Option[]) => Option[];
   errorText?: string;
+  handleChange: (ip: string) => void;
+  linodeId: number;
+  value: Option;
 }
 
-interface WithLinodesProps
-  extends Pick<LinodeProps, 'linodesLoading' | 'linodesError'> {
-  linode?: Linode;
-}
+export const IPSelect = (props: Props) => {
+  const { customizeOptions, handleChange, linodeId, value } = props;
 
-type CombinedProps = Props & WithLinodesProps;
-
-const IPSelect: React.FC<CombinedProps> = (props) => {
-  const {
-    linode,
-    value,
-    handleChange,
-    linodesLoading,
-    linodesError,
-    customizeOptions,
-  } = props;
+  const { data: linode, error, isLoading } = useLinodeQuery(linodeId);
 
   const ips: string[] = [];
 
@@ -44,7 +34,7 @@ const IPSelect: React.FC<CombinedProps> = (props) => {
   }
 
   // Create React-Select-friendly options.
-  let options: Item<string>[] = ips.map((ip) => ({ value: ip, label: ip }));
+  let options = ips.map((ip) => ({ label: ip, value: ip }));
 
   // If a customizeOptions function was provided, apply it here.
   if (customizeOptions) {
@@ -55,35 +45,21 @@ const IPSelect: React.FC<CombinedProps> = (props) => {
 
   if (props.errorText) {
     errorText = props.errorText;
-  } else if (linodesError) {
+  } else if (error) {
     errorText =
       'There was an error retrieving this Linode\u{2019}s IP addresses.';
   }
 
   return (
-    <Select
-      value={options.find((option) => option.value === value.value)}
-      label="IP Address"
-      options={options}
-      isLoading={linodesLoading}
-      onChange={(selected: Item<string>) => handleChange(selected.value)}
+    <Autocomplete
+      disableClearable
       errorText={errorText}
-      isClearable={false}
+      label="IP Address"
+      loading={isLoading}
+      onChange={(_, selected) => handleChange(selected.value)}
+      options={options}
       placeholder="Select an IP Address..."
+      value={options.find((option) => option.value === value.value)}
     />
   );
 };
-
-const enhanced = compose<CombinedProps, Props>(
-  withLinodes<WithLinodesProps, Props>(
-    (ownProps, linodesData, linodesLoading, linodesError) => ({
-      ...ownProps,
-      // Find the Linode in Redux that corresponds with the given ID.
-      linode: linodesData.find((linode) => linode.id === ownProps.linodeId),
-      linodesLoading,
-      linodesError,
-    })
-  )
-);
-
-export default enhanced(IPSelect);

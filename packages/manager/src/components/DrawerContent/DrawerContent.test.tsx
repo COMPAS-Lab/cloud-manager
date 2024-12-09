@@ -1,18 +1,19 @@
 import { screen } from '@testing-library/react';
 import * as React from 'react';
+
 import { renderWithTheme } from 'src/utilities/testHelpers';
-import { DrawerContent, Props } from './DrawerContent';
 
-const renderDrawer = (props: Props) =>
-  renderWithTheme(
-    <DrawerContent {...props}>
-      <div>Content</div>
-    </DrawerContent>
-  );
+import { DrawerContent, DrawerContentProps } from './DrawerContent';
 
-const props: Props = {
-  loading: true,
+const defaultChildren = <div>Content</div>;
+
+const renderDrawer = (props: DrawerContentProps) =>
+  renderWithTheme(<DrawerContent {...props} />);
+
+const props: DrawerContentProps = {
+  children: defaultChildren,
   error: false,
+  loading: true,
   title: 'my-drawer',
 };
 
@@ -26,9 +27,9 @@ describe('DrawerContent', () => {
   it('should show error if loading is finished but the error persists', () => {
     renderDrawer({
       ...props,
-      loading: false,
       error: true,
       errorMessage: 'My Error',
+      loading: false,
     });
     expect(screen.getByText('My Error')).toBeInTheDocument();
     expect(screen.queryByText('Content')).not.toBeInTheDocument();

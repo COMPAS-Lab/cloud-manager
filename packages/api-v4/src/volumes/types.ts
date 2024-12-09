@@ -1,3 +1,5 @@
+export type VolumeEncryption = 'enabled' | 'disabled';
+
 export interface Volume {
   id: number;
   label: string;
@@ -5,14 +7,19 @@ export interface Volume {
   size: number;
   region: string;
   linode_id: null | number;
+  linode_label: null | string;
   created: string;
   updated: string;
   filesystem_path: string;
   tags: string[];
   hardware_type: VolumeHardwareType;
+  encryption?: VolumeEncryption; // @TODO BSE: Remove optionality once BSE is fully rolled out
 }
 
+type VolumeHardwareType = 'hdd' | 'nvme';
+
 export type VolumeStatus =
+  | 'active'
   | 'creating'
   | 'active'
   | 'resizing'

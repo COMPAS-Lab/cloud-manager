@@ -1,15 +1,19 @@
 import { FirewallStatus } from '@linode/api-v4/lib/firewalls';
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
-import { useProfile, useGrants } from 'src/queries/profile';
+
+import { Action, ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { useGrants, useProfile } from 'src/queries/profile/profile';
+
+import { checkIfUserCanModifyFirewall } from '../shared';
 
 export interface ActionHandlers {
-  triggerEnableFirewall: (firewallID: number, firewallLabel: string) => void;
-  triggerDisableFirewall: (firewallID: number, firewallLabel: string) => void;
-  triggerDeleteFirewall: (firewallID: number, firewallLabel: string) => void;
   [index: string]: any;
+  triggerDeleteFirewall: (firewallID: number, firewallLabel: string) => void;
+  triggerDisableFirewall: (firewallID: number, firewallLabel: string) => void;
+  triggerEnableFirewall: (firewallID: number, firewallLabel: string) => void;
 }
 
 interface Props extends ActionHandlers {
@@ -18,11 +22,12 @@ interface Props extends ActionHandlers {
   firewallStatus: FirewallStatus;
 }
 
-type CombinedProps = Props;
+export const noPermissionTooltipText =
+  "You don't have permissions to modify this Firewall.";
 
-const FirewallActionMenu: React.FC<CombinedProps> = (props) => {
+export const FirewallActionMenu = React.memo((props: Props) => {
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
   const { data: profile } = useProfile();
   const { data: grants } = useGrants();
 
@@ -35,13 +40,11 @@ const FirewallActionMenu: React.FC<CombinedProps> = (props) => {
     triggerDeleteFirewall,
   } = props;
 
-  const userCanModifyFirewall =
-    !profile?.restricted ||
-    grants?.firewall?.find((firewall) => firewall.id === firewallID)
-      ?.permissions === 'read_write';
-
-  const noPermissionTooltipText =
-    "You don't have permissions to modify this Firewall.";
+  const userCanModifyFirewall = checkIfUserCanModifyFirewall(
+    firewallID,
+    profile,
+    grants
+  );
 
   const disabledProps = !userCanModifyFirewall
     ? {
@@ -60,10 +63,10 @@ const FirewallActionMenu: React.FC<CombinedProps> = (props) => {
     //   ...disabledProps,
     // },
     {
-      title: 'Delete',
       onClick: () => {
         triggerDeleteFirewall(firewallID, firewallLabel);
       },
+      title: 'Delete',
       ...disabledProps,
     },
   ];
@@ -82,9 +85,10 @@ const FirewallActionMenu: React.FC<CombinedProps> = (props) => {
         actions.map((action) => {
           return (
             <InlineMenuAction
-              key={action.title}
               actionText={action.title}
+              aria-label={`${action.title} ${props.firewallLabel}`}
               disabled={action.disabled}
+              key={action.title}
               onClick={action.onClick}
               tooltip={action.tooltip}
             />
@@ -98,6 +102,4 @@ const FirewallActionMenu: React.FC<CombinedProps> = (props) => {
       )}
     </>
   );
-};
-
-export default React.memo(FirewallActionMenu);
+});

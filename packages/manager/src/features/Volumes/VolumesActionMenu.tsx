@@ -1,9 +1,13 @@
+import { Volume } from '@linode/api-v4';
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { splitAt } from 'ramda';
 import * as React from 'react';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
+
+import { Action, ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
 
 export interface ActionHandlers {
   openForConfig: (volumeLabel: string, volumePath: string) => void;
@@ -61,7 +65,7 @@ export const VolumesActionMenu: React.FC<CombinedProps> = (props) => {
   const { attached, poweredOff, isVolumesLanding } = props;
 
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
   // const handleShowConfig = () => {
   //   const { onShowConfig, label, filesystemPath } = props;
@@ -110,16 +114,28 @@ export const VolumesActionMenu: React.FC<CombinedProps> = (props) => {
     //   },
     // },
     {
+      disabled: isVolumeReadOnly,
+      onClick: handlers.handleEdit,
       title: 'Edit',
-      onClick: () => {
-        handleOpenEdit();
-      },
+      tooltip: isVolumeReadOnly
+        ? getRestrictedResourceText({
+            action: 'edit',
+            isSingular: true,
+            resourceType: 'Volumes',
+          })
+        : undefined,
     },
     {
+      disabled: isVolumeReadOnly,
+      onClick: handlers.handleResize,
       title: 'Resize',
-      onClick: () => {
-        handleResize();
-      },
+      tooltip: isVolumeReadOnly
+        ? getRestrictedResourceText({
+            action: 'resize',
+            isSingular: true,
+            resourceType: 'Volumes',
+          })
+        : undefined,
     },
     // {
     //   title: 'Clone',
@@ -131,28 +147,46 @@ export const VolumesActionMenu: React.FC<CombinedProps> = (props) => {
 
   if (!attached && isVolumesLanding) {
     actions.push({
+      disabled: isVolumeReadOnly,
+      onClick: handlers.handleAttach,
       title: 'Attach',
-      onClick: () => {
-        handleAttach();
-      },
+      tooltip: isVolumeReadOnly
+        ? getRestrictedResourceText({
+            action: 'attach',
+            isSingular: true,
+            resourceType: 'Volumes',
+          })
+        : undefined,
     });
   } else {
     actions.push({
+      disabled: isVolumeReadOnly,
+      onClick: handlers.handleDetach,
       title: 'Detach',
-      onClick: () => {
-        handleDetach();
-      },
+      tooltip: isVolumeReadOnly
+        ? getRestrictedResourceText({
+            action: 'detach',
+            isSingular: true,
+            resourceType: 'Volumes',
+          })
+        : undefined,
     });
   }
 
-  if (!attached || poweredOff) {
-    actions.push({
-      title: 'Delete',
-      onClick: () => {
-        handleDelete();
-      },
-    });
-  }
+  actions.push({
+    disabled: isVolumeReadOnly || attached,
+    onClick: handlers.handleDelete,
+    title: 'Delete',
+    tooltip: isVolumeReadOnly
+      ? getRestrictedResourceText({
+          action: 'delete',
+          isSingular: true,
+          resourceType: 'Volumes',
+        })
+      : attached
+      ? 'Your volume must be detached before it can be deleted.'
+      : undefined,
+  });
 
   const splitActionsArrayIndex = matchesSmDown ? 0 : 2;
   const [inlineActions, menuActions] = splitAt(splitActionsArrayIndex, actions);
@@ -163,18 +197,18 @@ export const VolumesActionMenu: React.FC<CombinedProps> = (props) => {
         inlineActions.map((action) => {
           return (
             <InlineMenuAction
-              key={action.title}
               actionText={action.title}
+              disabled={action.disabled}
+              key={action.title}
               onClick={action.onClick}
+              tooltip={action.tooltip}
             />
           );
         })}
       <ActionMenu
         actionsList={menuActions}
-        ariaLabel={`Action menu for Volume ${props.volumeLabel}`}
+        ariaLabel={`Action menu for Volume ${volume.label}`}
       />
     </>
   );
 };
-
-export default withRouter(VolumesActionMenu);

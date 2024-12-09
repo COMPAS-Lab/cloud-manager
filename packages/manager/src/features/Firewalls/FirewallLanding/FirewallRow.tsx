@@ -53,25 +53,11 @@ export const FirewallRow: React.FC<CombinedProps> = (props) => {
   const count = getCountOfRules(rules);
 
   return (
-    <TableRow
-      key={`firewall-row-${id}`}
-      data-testid={`firewall-row-${id}`}
-      ariaLabel={`Firewall ${label}`}
-    >
+    <TableRow data-testid={`firewall-row-${id}`}>
       <TableCell>
-        <Grid container wrap="nowrap" alignItems="center">
-          <Grid item className="py0">
-            <div className={classes.labelWrapper}>
-              <Link
-                className={classes.link}
-                to={`/firewalls/${id}`}
-                tabIndex={0}
-              >
-                {label}
-              </Link>
-            </div>
-          </Grid>
-        </Grid>
+        <Link tabIndex={0} to={`/firewalls/${id}`}>
+          {label}
+        </Link>
       </TableCell>
       {/* <TableCell>
         <StatusIcon status={status === 'enabled' ? 'active' : 'inactive'} />
@@ -83,8 +69,8 @@ export const FirewallRow: React.FC<CombinedProps> = (props) => {
           {getLinodesCellString(devices, loading, error.read)}
         </TableCell> */}
       </Hidden>
-      <TableCell actionCell>
-        <ActionMenu
+      <TableCell sx={{ textAlign: 'end', whiteSpace: 'nowrap' }}>
+        <FirewallActionMenu
           firewallID={id}
           firewallLabel={label}
           firewallStatus={status}
@@ -93,7 +79,7 @@ export const FirewallRow: React.FC<CombinedProps> = (props) => {
       </TableCell>
     </TableRow>
   );
-};
+});
 
 /**
  *
@@ -143,30 +129,24 @@ export const getCountOfRules = (rules: Firewall['rules']): [number, number] => {
 //   return getDeviceLinks(data);
 // };
 
-export const getDeviceLinks = (data: FirewallDevice[]): JSX.Element => {
-  const firstThree = data.slice(0, 3);
+export const getDeviceLinks = (entities: FirewallDeviceEntity[]) => {
+  const firstThree = entities.slice(0, 3);
+
   return (
     <>
-      {firstThree.map((thisDevice, idx) => (
-        <Link
-          className="link secondaryLink"
-          key={thisDevice.id}
-          to={`/linodes/${thisDevice.entity.id}`}
-          data-testid="firewall-row-link"
-        >
-          {idx > 0 && `, `}
-          {thisDevice.entity.label}
-        </Link>
+      {firstThree.map((entity, idx) => (
+        <React.Fragment key={entity.url}>
+          {idx > 0 && ', '}
+          <Link
+            className="link secondaryLink"
+            data-testid="firewall-row-link"
+            to={`/${entity.type}s/${entity.id}`}
+          >
+            {entity.label}
+          </Link>
+        </React.Fragment>
       ))}
-      {data.length > 3 && (
-        <span>
-          {`, `}plus {data.length - 3} more.
-        </span>
-      )}
+      {entities.length > 3 && <span>, plus {entities.length - 3} more.</span>}
     </>
   );
 };
-
-export default compose<CombinedProps, ActionHandlers & Firewall>(React.memo)(
-  FirewallRow
-);

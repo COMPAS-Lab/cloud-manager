@@ -1,40 +1,29 @@
 import * as React from 'react';
-import { Route, Switch } from 'react-router-dom';
+import { Redirect, Route, Switch, useRouteMatch } from 'react-router-dom';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import SuspenseLoader from 'src/components/SuspenseLoader';
-import useAccountManagement from 'src/hooks/useAccountManagement';
-import useFlags from 'src/hooks/useFlags';
-import { isFeatureEnabled } from 'src/utilities/accountCapabilities';
+import { ProductInformationBanner } from 'src/components/ProductInformationBanner/ProductInformationBanner';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
 
 const DatabaseLanding = React.lazy(() => import('./DatabaseLanding'));
 const DatabaseDetail = React.lazy(() => import('./DatabaseDetail'));
 const DatabaseCreate = React.lazy(() => import('./DatabaseCreate'));
 
-const Database: React.FC = () => {
-  // @TODO: Remove when Database goes to GA
-  const { account } = useAccountManagement();
-  const flags = useFlags();
-
-  const showDatabases = isFeatureEnabled(
-    'Managed Databases',
-    Boolean(flags.databases),
-    account?.capabilities ?? []
-  );
-
-  if (!showDatabases) {
-    return null;
-  }
+const Database = () => {
+  const { path } = useRouteMatch();
 
   return (
     <React.Suspense fallback={<SuspenseLoader />}>
       <DocumentTitleSegment segment="Databases" />
+      <ProductInformationBanner bannerLocation="Databases" />
       <Switch>
-        <Route component={DatabaseCreate} path="/databases/create" />
+        <Route component={DatabaseLanding} exact path={path} />
+        <Route component={DatabaseCreate} path={`${path}/create`} />
         <Route
           component={DatabaseDetail}
-          path="/databases/:engine/:databaseId"
+          path={`${path}/:engine/:databaseId`}
         />
-        <Route component={DatabaseLanding} exact strict />
+        <Redirect to="/databases" />
       </Switch>
     </React.Suspense>
   );

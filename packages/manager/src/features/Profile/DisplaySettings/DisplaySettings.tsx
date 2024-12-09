@@ -1,78 +1,15 @@
-import { updateUser } from '@linode/api-v4/lib/account';
-import * as React from 'react';
-import { useSelector } from 'react-redux';
-import { useLocation } from 'react-router-dom';
-import { compose } from 'recompose';
-import UserIcon from 'src/assets/icons/account.svg';
-import Box from 'src/components/core/Box';
-import Divider from 'src/components/core/Divider';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ExternalLink from 'src/components/ExternalLink';
-import HelpIcon from 'src/components/HelpIcon';
-import Link from 'src/components/Link';
-import Notice from 'src/components/Notice';
-import { SingleTextFieldForm } from 'src/components/SingleTextFieldForm/SingleTextFieldForm';
-import { useAccountGravatar } from 'src/queries/account';
-import { useMutateProfile, useProfile } from 'src/queries/profile';
-import { ApplicationState } from 'src/store';
-import withNotifications, {
-  WithNotifications,
-} from 'src/store/notification/notification.containers';
-import getUserTimezone from 'src/utilities/getUserTimezone';
-import { v4 } from 'uuid';
-import TimezoneForm from './TimezoneForm';
+import { Paper } from '@linode/ui';
+import { createLazyRoute } from '@tanstack/react-router';
+import React from 'react';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  profile: {
-    marginTop: theme.spacing(),
-    marginBottom: theme.spacing(4),
-  },
-  profileTitle: {
-    fontSize: '1rem',
-  },
-  profileCopy: {
-    marginTop: 4,
-    marginBottom: theme.spacing(2),
-    maxWidth: 360,
-  },
-  avatar: {
-    borderRadius: '50%',
-    marginRight: 28,
-    '& svg': {
-      color: '#c9c7c7',
-      height: 88,
-      width: 88,
-    },
-  },
-  gravatar: {
-    borderRadius: '50%',
-    height: 88,
-    width: 88,
-  },
-  helpIcon: {
-    marginTop: -2,
-    marginLeft: 6,
-    padding: 0,
-  },
-  tooltip: {
-    '& .MuiTooltip-tooltip': {
-      minWidth: 350,
-    },
-  },
-  addImageLink: {
-    fontFamily: theme.font.bold,
-    fontSize: '1rem',
-    '& svg': {
-      height: '1rem',
-      width: '1rem',
-      position: 'relative',
-      top: 3,
-      left: 6,
-    },
-  },
-}));
+import { Divider } from 'src/components/Divider';
+import { Stack } from 'src/components/Stack';
+import { useProfile } from 'src/queries/profile/profile';
+
+import { AvatarForm } from './AvatarForm';
+import { EmailForm } from './EmailForm';
+import { TimezoneForm } from './TimezoneForm';
+import { UsernameForm } from './UsernameForm';
 
 export const DisplaySettings: React.FC<WithNotifications> = (props) => {
   /* -- Clanode Change -- */
@@ -259,6 +196,6 @@ export const DisplaySettings: React.FC<WithNotifications> = (props) => {
   );
 };
 
-const enhanced = compose<WithNotifications, {}>(withNotifications());
-
-export default enhanced(DisplaySettings);
+export const displaySettingsLazyRoute = createLazyRoute('/profile/display')({
+  component: DisplaySettings,
+});

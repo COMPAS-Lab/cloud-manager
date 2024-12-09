@@ -1,14 +1,16 @@
 import * as React from 'react';
+
 import { longviewPortFactory } from 'src/factories/longviewService';
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
-import ActiveConnections, { TableProps } from './ActiveConnections';
+import { ActiveConnections } from './ActiveConnections';
+import type { TableProps } from './ActiveConnections';
 
 const mockConnections = longviewPortFactory.buildList(10);
 
 const props: TableProps = {
-  connectionsLoading: false,
   connections: mockConnections,
+  connectionsLoading: false,
 };
 
 describe('ActiveConnections (and by extension ListeningServices)', () => {
@@ -39,8 +41,8 @@ describe('ActiveConnections (and by extension ListeningServices)', () => {
     const { getByTestId, getByText } = renderWithTheme(
       <ActiveConnections
         {...props}
-        connectionsLoading={true}
         connectionsError={'an error'}
+        connectionsLoading={true}
       />
     );
     getByText('an error');

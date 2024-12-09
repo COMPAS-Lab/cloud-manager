@@ -1,20 +1,18 @@
-import { pathOr } from 'ramda';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { compose } from 'recompose';
-import { withTheme, WithTheme } from 'src/components/core/styles';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
 import {
   formatNetworkTooltip,
   getMaxUnitAndFormatNetwork,
   sumNetwork,
 } from 'src/features/Longview/shared/utilities';
+
 import { convertData } from '../../../shared/formatters';
 import { GraphProps } from './types';
 import { useGraphs } from './useGraphs';
 
-export type CombinedProps = GraphProps & WithTheme;
-
-export const NetworkGraph: React.FC<CombinedProps> = (props) => {
+export const NetworkGraph = React.memo((props: GraphProps) => {
   const {
     clientAPIKey,
     end,
@@ -22,11 +20,12 @@ export const NetworkGraph: React.FC<CombinedProps> = (props) => {
     lastUpdated,
     lastUpdatedError,
     start,
-    theme,
     timezone,
   } = props;
 
-  const { data, loading, error, request } = useGraphs(
+  const theme = useTheme();
+
+  const { data, error, loading, request } = useGraphs(
     ['network'],
     clientAPIKey,
     start,
@@ -34,7 +33,7 @@ export const NetworkGraph: React.FC<CombinedProps> = (props) => {
   );
 
   const networkData = React.useMemo(
-    () => sumNetwork(pathOr({}, ['Interface'], data.Network)),
+    () => sumNetwork(data.Network?.Interface ?? {}),
     [data.Network]
   );
 
@@ -46,41 +45,38 @@ export const NetworkGraph: React.FC<CombinedProps> = (props) => {
 
   const { rx_bytes, tx_bytes } = networkData;
 
-  const { maxUnit, formatNetwork } = getMaxUnitAndFormatNetwork(
+  const { formatNetwork, maxUnit } = getMaxUnitAndFormatNetwork(
     rx_bytes,
     tx_bytes
   );
 
   return (
     <LongviewLineGraph
-      title="Network"
-      subtitle={maxUnit + '/s'}
-      unit={'/s'}
-      formatData={formatNetwork}
-      formatTooltip={formatNetworkTooltip}
-      error={error}
-      loading={loading}
-      showToday={isToday}
-      timezone={timezone}
-      nativeLegend
       data={[
         {
-          label: 'Inbound',
+          backgroundColor: theme.graphs.darkGreen,
           borderColor: 'transparent',
-          backgroundColor: theme.graphs.network.inbound,
           data: _convertData(rx_bytes, start, end),
+          label: 'Inbound',
         },
         {
-          label: 'Outbound',
+          backgroundColor: theme.graphs.lightGreen,
           borderColor: 'transparent',
-          backgroundColor: theme.graphs.network.outbound,
           data: _convertData(tx_bytes, start, end),
+          label: 'Outbound',
         },
       ]}
+      ariaLabel="Network Usage Graph"
+      error={error}
+      formatData={formatNetwork}
+      formatTooltip={formatNetworkTooltip}
+      loading={loading}
+      nativeLegend
+      showToday={isToday}
+      subtitle={maxUnit + '/s'}
+      timezone={timezone}
+      title="Network"
+      unit={'/s'}
     />
   );
-};
-
-const enhanced = compose<CombinedProps, GraphProps>(React.memo, withTheme);
-
-export default enhanced(NetworkGraph);
+});

@@ -1,5 +1,6 @@
 import {
   createImageSchema,
+  updateImageRegionsSchema,
   updateImageSchema,
   uploadImageSchema,
 } from '@linode/validation/lib/images.schema';
@@ -11,8 +12,15 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
-import { Image, ImageUploadPayload, UploadImageResponse } from './types';
+import type { Filter, Params, ResourcePage as Page } from '../types';
+import type {
+  CreateImagePayload,
+  Image,
+  ImageUploadPayload,
+  UpdateImagePayload,
+  UpdateImageRegionsPayload,
+  UploadImageResponse,
+} from './types';
 
 /**
  * Get information about a single Image.
@@ -20,13 +28,16 @@ import { Image, ImageUploadPayload, UploadImageResponse } from './types';
  * @param imageId { string } ID of the Image to look up.
  */
 export const getImage = (imageId: string) =>
-  Request<Image>(setURL(`${API_ROOT}/images/${imageId}`), setMethod('GET'));
+  Request<Image>(
+    setURL(`${API_ROOT}/images/${encodeURIComponent(imageId)}`),
+    setMethod('GET')
+  );
 
 /**
  * Returns a paginated list of Images.
  *
  */
-export const getImages = (params: any = {}, filters: any = {}) =>
+export const getImages = (params: Params = {}, filters: Filter = {}) =>
   Request<Page<Image>>(
     setURL(`${API_ROOT}/images`),
     setMethod('GET'),
@@ -36,22 +47,8 @@ export const getImages = (params: any = {}, filters: any = {}) =>
 
 /**
  * Create a private gold-master Image from a Linode Disk.
- *
- * @param diskId { number } The ID of the Linode Disk that this Image will be created from.
- * @param label { string } A short description of the Image. Labels cannot contain special characters.
- * @param description { string } A detailed description of this Image.
  */
-export const createImage = (
-  diskId: number,
-  label?: string,
-  description?: string
-) => {
-  const data = {
-    disk_id: diskId,
-    ...(label && { label }),
-    ...(description && { description }),
-  };
-
+export const createImage = (data: CreateImagePayload) => {
   return Request<Image>(
     setURL(`${API_ROOT}/images`),
     setMethod('POST'),
@@ -63,21 +60,11 @@ export const createImage = (
  * Updates a private Image that you have permission to read_write.
  *
  * @param imageId { string } ID of the Image to look up.
- * @param label { string } A short description of the Image. Labels cannot contain special characters.
- * @param description { string } A detailed description of this Image.
+ * @param data { UpdateImagePayload } the updated image details
  */
-export const updateImage = (
-  imageId: string,
-  label?: string,
-  description?: string
-) => {
-  const data = {
-    ...(label && { label }),
-    ...(description && { description }),
-  };
-
+export const updateImage = (imageId: string, data: UpdateImagePayload) => {
   return Request<Image>(
-    setURL(`${API_ROOT}/images/${imageId}`),
+    setURL(`${API_ROOT}/images/${encodeURIComponent(imageId)}`),
     setMethod('PUT'),
     setData(data, updateImageSchema)
   );
@@ -90,7 +77,7 @@ export const updateImage = (
  */
 export const deleteImage = (imageId: string) => {
   return Request<{}>(
-    setURL(`${API_ROOT}/images/${imageId}`),
+    setURL(`${API_ROOT}/images/${encodeURIComponent(imageId)}`),
     setMethod('DELETE')
   );
 };
@@ -109,5 +96,21 @@ export const uploadImage = (data: ImageUploadPayload) => {
     setURL(`${API_ROOT}/images/upload`),
     setMethod('POST'),
     setData(data, uploadImageSchema)
+  );
+};
+
+/**
+ * updateImageRegions
+ *
+ * Selects the regions to which this image will be replicated.
+ */
+export const updateImageRegions = (
+  imageId: string,
+  data: UpdateImageRegionsPayload
+) => {
+  return Request<Image>(
+    setURL(`${API_ROOT}/images/${encodeURIComponent(imageId)}/regions`),
+    setMethod('POST'),
+    setData(data, updateImageRegionsSchema)
   );
 };

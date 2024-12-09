@@ -1,20 +1,30 @@
+import { userEvent } from '@testing-library/user-event';
 import * as React from 'react';
-import { includesActions, renderWithTheme } from 'src/utilities/testHelpers';
-import { DomainActionMenu } from './DomainActionMenu';
+
 import { domainFactory } from 'src/factories/domain';
+import { renderWithTheme } from 'src/utilities/testHelpers';
+
+import { DomainActionMenu } from './DomainActionMenu';
 
 const props = {
-  onClone: jest.fn(),
-  onRemove: jest.fn(),
-  onEdit: jest.fn(),
-  onDisableOrEnable: jest.fn(),
+  onClone: vi.fn(),
+  onDisableOrEnable: vi.fn(),
+  onEdit: vi.fn(),
+  onRemove: vi.fn(),
 };
 
 describe('Domain action menu', () => {
-  it('should include basic Domain actions', () => {
-    const { queryByText } = renderWithTheme(
+  it('should include basic Domain actions', async () => {
+    const { getByText, queryByLabelText } = renderWithTheme(
       <DomainActionMenu domain={domainFactory.build()} {...props} />
     );
-    includesActions(['Edit', 'Clone', 'Delete'], queryByText);
+
+    const actionMenuButton = queryByLabelText(/^Action menu for/)!;
+
+    await userEvent.click(actionMenuButton);
+
+    for (const action of ['Edit', 'Clone', 'Delete']) {
+      expect(getByText(action)).toBeVisible();
+    }
   });
 });

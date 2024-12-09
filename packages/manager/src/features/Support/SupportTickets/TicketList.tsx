@@ -1,24 +1,27 @@
 import * as React from 'react';
-import { SupportTicket } from '@linode/api-v4/lib/support';
-import Hidden from 'src/components/core/Hidden';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+
+import { Hidden } from 'src/components/Hidden';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
-import TableSortCell from 'src/components/TableSortCell';
-import TicketRow from './TicketRow';
-import { useSupportTicketsQuery } from 'src/queries/support';
-import { usePagination } from 'src/hooks/usePagination';
+import { TableSortCell } from 'src/components/TableSortCell';
 import { useOrder } from 'src/hooks/useOrder';
-import { getStatusFilter } from './ticketUtils';
+import { usePagination } from 'src/hooks/usePagination';
+import { useSupportTicketsQuery } from 'src/queries/support';
+
+import { TicketRow } from './TicketRow';
+import { getStatusFilter, useTicketSeverityCapability } from './ticketUtils';
+
+import type { SupportTicket } from '@linode/api-v4/lib/support';
 
 export interface Props {
-  filterStatus: 'open' | 'closed';
+  filterStatus: 'closed' | 'open';
   newTicket?: SupportTicket;
 }
 
@@ -27,22 +30,24 @@ const preferenceKey = 'support-tickets';
 export const TicketList = (props: Props) => {
   const { filterStatus, newTicket } = props;
 
+  const hasSeverityCapability = useTicketSeverityCapability();
+
   const pagination = usePagination(1, preferenceKey);
 
-  const { order, orderBy, handleOrderChange } = useOrder(
+  const { handleOrderChange, order, orderBy } = useOrder(
     {
-      orderBy: 'opened',
       order: 'desc',
+      orderBy: 'opened',
     },
     `${preferenceKey}-order`
   );
 
   const filter = {
-    ['+order_by']: orderBy,
     ['+order']: order,
+    ['+order_by']: orderBy,
   };
 
-  const { data, isLoading, error, refetch } = useSupportTicketsQuery(
+  const { data, error, isLoading, refetch } = useSupportTicketsQuery(
     {
       page: pagination.page,
       page_size: pagination.pageSize,
@@ -58,12 +63,15 @@ export const TicketList = (props: Props) => {
     if (isLoading) {
       return (
         <TableRowLoading
-          columns={6}
           responsive={{
-            1: { smDown: true },
-            3: { xsDown: true },
-            5: { smDown: true },
+            1: { mdDown: true },
+            2: { mdDown: true },
+            3: !hasSeverityCapability ? { smDown: true } : { smDown: false },
+            4: hasSeverityCapability ? { smDown: true } : { smDown: false },
+            5: !hasSeverityCapability ? { mdDown: true } : { mdDown: false },
+            6: hasSeverityCapability ? { mdDown: true } : { mdDown: false },
           }}
+          columns={hasSeverityCapability ? 7 : 6}
         />
       );
     }
@@ -83,7 +91,7 @@ export const TicketList = (props: Props) => {
       ));
     }
 
-    return <TableRowEmptyState colSpan={8} />;
+    return <TableRowEmpty colSpan={8} />;
   };
 
   const isActive = (label: string) => label === orderBy;
@@ -94,57 +102,71 @@ export const TicketList = (props: Props) => {
         <TableHead>
           <TableRow>
             <TableSortCell
-              label="summary"
-              direction={order}
-              handleClick={handleOrderChange}
               active={isActive('summary')}
               data-qa-support-subject-header
+              direction={order}
+              handleClick={handleOrderChange}
+              label="summary"
               noWrap
             >
               Subject
             </TableSortCell>
-            <Hidden smDown>
+            <Hidden mdDown>
               <TableSortCell
-                label="id"
-                direction={order}
-                handleClick={handleOrderChange}
                 active={isActive('id')}
                 data-qa-support-id-header
+                direction={order}
+                handleClick={handleOrderChange}
+                label="id"
                 noWrap
               >
                 Ticket ID
               </TableSortCell>
             </Hidden>
-            <TableCell data-qa-support-regarding-header>Regarding</TableCell>
-            <Hidden xsDown>
+            <Hidden mdDown>
+              <TableCell data-qa-support-regarding-header>Regarding</TableCell>
+            </Hidden>
+            {hasSeverityCapability && (
               <TableSortCell
-                label="opened"
+                active={isActive('severity')}
+                data-qa-support-severity-header
                 direction={order}
                 handleClick={handleOrderChange}
+                label="severity"
+                noWrap
+              >
+                Severity
+              </TableSortCell>
+            )}
+            <Hidden smDown>
+              <TableSortCell
                 active={isActive('opened')}
                 data-qa-support-date-header
+                direction={order}
+                handleClick={handleOrderChange}
+                label="opened"
                 noWrap
               >
                 Date Created
               </TableSortCell>
             </Hidden>
             <TableSortCell
-              label="updated"
-              direction={order}
-              handleClick={handleOrderChange}
               active={isActive('updated')}
               data-qa-support-updated-header
+              direction={order}
+              handleClick={handleOrderChange}
+              label="updated"
               noWrap
             >
               Last Updated
             </TableSortCell>
-            <Hidden smDown>
+            <Hidden mdDown>
               <TableSortCell
-                label="updated_by"
-                direction={order}
-                handleClick={handleOrderChange}
                 active={isActive('updated_by')}
                 data-qa-support-updated-by-header
+                direction={order}
+                handleClick={handleOrderChange}
+                label="updated_by"
                 noWrap
               >
                 Updated By
@@ -156,12 +178,11 @@ export const TicketList = (props: Props) => {
       </Table>
       <PaginationFooter
         count={data?.results ?? 0}
-        page={pagination.page}
-        pageSize={pagination.pageSize}
+        eventCategory="ticket list"
         handlePageChange={pagination.handlePageChange}
         handleSizeChange={pagination.handlePageSizeChange}
-        eventCategory="ticket list"
-        padded
+        page={pagination.page}
+        pageSize={pagination.pageSize}
       />
     </>
   );

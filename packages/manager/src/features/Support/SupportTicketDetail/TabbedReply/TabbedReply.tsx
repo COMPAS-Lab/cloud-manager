@@ -1,72 +1,40 @@
-import * as React from 'react';
-import { compose } from 'recompose';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TabbedPanel, { Tab } from 'src/components/TabbedPanel';
-import Preview from './PreviewReply';
-import Reply, { Props as ReplyProps } from './TicketReply';
+import React from 'react';
 
-interface Props {
-  rootClass?: string;
-  innerClass?: string;
+import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
+import { Tab } from 'src/components/Tabs/Tab';
+import { TabList } from 'src/components/Tabs/TabList';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import { Tabs } from 'src/components/Tabs/Tabs';
+
+import { PreviewReply } from './PreviewReply';
+import { TicketReply } from './TicketReply';
+
+import type { Props as ReplyProps } from './TicketReply';
+
+interface Props extends ReplyProps {
   isReply?: boolean;
   required?: boolean;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    backgroundColor: 'transparent',
-    padding: 0,
-    '& div[role="tablist"]': {
-      marginTop: theme.spacing(),
-      marginBottom: theme.spacing(),
-    },
-  },
-}));
-
-type CombinedProps = Props & ReplyProps;
-
-const TabbedReply: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { innerClass, rootClass, value, error, ...rest } = props;
+export const TabbedReply = (props: Props) => {
+  const { error, value, ...rest } = props;
 
   const title = props.isReply ? 'Reply' : 'Description';
 
-  const tabs: Tab[] = [
-    {
-      title: props.required ? `${title} (required)` : title,
-      render: () => {
-        return <Reply {...rest} value={value} error={error} />;
-      },
-    },
-    {
-      title: 'Preview',
-      render: () => {
-        return <Preview value={value} error={error} />;
-      },
-    },
-  ];
-
   return (
-    <TabbedPanel
-      rootClass={rootClass || classes.root}
-      header=""
-      tabs={tabs}
-      innerClass={innerClass}
-      noPadding
-    />
+    <Tabs>
+      <TabList>
+        <Tab>{props.required ? `${title} (required)` : title}</Tab>
+        <Tab>Preview</Tab>
+      </TabList>
+      <TabPanels>
+        <SafeTabPanel index={0}>
+          <TicketReply {...rest} error={error} value={value} />
+        </SafeTabPanel>
+        <SafeTabPanel index={1}>
+          <PreviewReply error={error} value={value} />
+        </SafeTabPanel>
+      </TabPanels>
+    </Tabs>
   );
 };
-
-/** only update on error and value change */
-const memoized = (component: React.FC<CombinedProps>) =>
-  React.memo<CombinedProps>(component, (prevProps, nextProps) => {
-    return (
-      prevProps.error === nextProps.error &&
-      prevProps.value === nextProps.value &&
-      prevProps.innerClass === nextProps.innerClass
-    );
-  });
-
-export default compose<CombinedProps, ReplyProps & Props>(memoized)(
-  TabbedReply
-);

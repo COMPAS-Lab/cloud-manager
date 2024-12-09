@@ -1,131 +1,60 @@
-import { FirewallPolicyType } from '@linode/api-v4/lib/firewalls/types';
-import classNames from 'classnames';
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { prop, uniqBy } from 'ramda';
 import * as React from 'react';
-import {
-  DragDropContext,
-  Draggable,
-  Droppable,
-  DropResult,
-} from 'react-beautiful-dnd';
-import DragIndicator from 'src/assets/icons/drag-indicator.svg';
+import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
+
 import Undo from 'src/assets/icons/undo.svg';
-import Button from 'src/components/Button';
-import Hidden from 'src/components/core/Hidden';
-import {
-  makeStyles,
-  Theme,
-  useMediaQuery,
-  useTheme,
-} from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableFooter from 'src/components/core/TableFooter';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { Hidden } from 'src/components/Hidden';
+import { MaskableText } from 'src/components/MaskableText/MaskableText';
+import { Typography } from 'src/components/Typography';
 import {
   generateAddressesLabel,
   generateRuleLabel,
   predefinedFirewallFromRule as ruleToPredefinedFirewall,
 } from 'src/features/Firewalls/shared';
-import capitalize from 'src/utilities/capitalize';
-import FirewallRuleActionMenu from './FirewallRuleActionMenu';
-import { Mode } from './FirewallRuleDrawer';
-import { ExtendedFirewallRule, RuleStatus } from './firewallRuleEditor';
-import { Category, FirewallRuleError, sortPortString } from './shared';
+import { capitalize } from 'src/utilities/capitalize';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexDirection: 'row',
-    [theme.breakpoints.down('sm')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
-  },
-  undoButtonContainer: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    alignContent: 'center',
-    flexDirection: 'row',
-  },
-  undoButton: {
-    cursor: 'pointer',
-    backgroundColor: 'transparent',
-    border: 'none',
-  },
-  highlight: {
-    backgroundColor: theme.bg.lightBlue1,
-  },
-  error: {
-    '& p': { color: theme.color.red },
-  },
-  button: {
-    margin: '8px 0px',
-  },
-  dragIcon: {
-    color: theme.color.grey8,
-    marginRight: theme.spacing(1.5),
-    position: 'relative',
-    top: 2,
-  },
-  labelCol: {
-    paddingLeft: 6,
-    whiteSpace: 'nowrap',
-  },
-  table: {
-    backgroundColor: theme.color.border3,
-  },
-  addLabelButton: {
-    ...theme.applyLinkStyles,
-  },
-  dragging: {
-    display: 'table',
-    border: `solid 0.5px ${theme.color.grey8}`,
-    boxShadow: '0 1px 1.5px 0 rgba(0, 0, 0, 0.15)',
-    '& svg': {
-      color: theme.textColors.tableHeader,
-    },
-  },
-  footer: {
-    '&:before': {
-      display: 'block',
-      content: '""',
-      height: theme.spacing(),
-    },
-  },
-  policyText: {
-    textAlign: 'right',
-  },
-  policySelect: {
-    paddingLeft: 4,
-  },
-  policySelectInner: {
-    width: 90,
-  },
-  policyRow: {
-    marginTop: '10px !important',
-  },
-}));
+import { FirewallRuleActionMenu } from './FirewallRuleActionMenu';
+import {
+  MoreStyledLinkButton,
+  StyledButtonDiv,
+  StyledDragIndicator,
+  StyledErrorDiv,
+  StyledFirewallRuleBox,
+  StyledFirewallRuleButton,
+  StyledFirewallTableButton,
+  StyledHeaderDiv,
+  StyledInnerBox,
+  StyledUl,
+  StyledUlBox,
+  sxBox,
+  sxItemSpacing,
+} from './FirewallRuleTable.styles';
+import { sortPortString } from './shared';
+
+import type { FirewallRuleDrawerMode } from './FirewallRuleDrawer.types';
+import type { ExtendedFirewallRule, RuleStatus } from './firewallRuleEditor';
+import type { Category, FirewallRuleError } from './shared';
+import type { FirewallPolicyType } from '@linode/api-v4/lib/firewalls/types';
+import type { Theme } from '@mui/material/styles';
+import type { DropResult } from 'react-beautiful-dnd';
+import type { FirewallOptionItem } from 'src/features/Firewalls/shared';
 
 interface RuleRow {
-  type: string;
-  label?: string;
-  description?: string;
   action?: string;
-  protocol: string;
-  ports: string;
   addresses: string;
-  id: number;
-  status: RuleStatus;
+  description?: null | string;
   errors?: FirewallRuleError[];
+  id: number;
+  label?: null | string;
   originalIndex: number;
+  ports: string;
+  protocol: string;
+  status: RuleStatus;
+  type: string;
 }
 
 // =============================================================================
@@ -136,41 +65,39 @@ interface RowActionHandlers {
   triggerCloneFirewallRule: (idx: number) => void;
   triggerDeleteFirewallRule: (idx: number) => void;
   triggerOpenRuleDrawerForEditing: (idx: number) => void;
-  triggerUndo: (idx: number) => void;
   triggerReorder: (startIdx: number, endIdx: number) => void;
+  triggerUndo: (idx: number) => void;
 }
-interface Props extends RowActionHandlers {
+
+interface FirewallRuleTableProps extends RowActionHandlers {
   category: Category;
-  policy: FirewallPolicyType;
+  disabled: boolean;
   handlePolicyChange: (
     category: Category,
     newPolicy: FirewallPolicyType
   ) => void;
-  openRuleDrawer: (category: Category, mode: Mode) => void;
+  openRuleDrawer: (category: Category, mode: FirewallRuleDrawerMode) => void;
+  policy: FirewallPolicyType;
   rulesWithStatus: ExtendedFirewallRule[];
-  disabled: boolean;
 }
 
-type CombinedProps = Props;
-
-const FirewallRuleTable: React.FC<CombinedProps> = (props) => {
+export const FirewallRuleTable = (props: FirewallRuleTableProps) => {
   const {
     category,
+    disabled,
+    handlePolicyChange,
     openRuleDrawer,
     policy,
-    handlePolicyChange,
     rulesWithStatus,
-    disabled,
     triggerCloneFirewallRule,
     triggerDeleteFirewallRule,
     triggerOpenRuleDrawerForEditing,
-    triggerUndo,
     triggerReorder,
+    triggerUndo,
   } = props;
 
-  const classes = useStyles();
   const theme: Theme = useTheme();
-  const xsDown = useMediaQuery(theme.breakpoints.down('xs'));
+  const xsDown = useMediaQuery(theme.breakpoints.down('sm'));
 
   const addressColumnLabel =
     category === 'inbound' ? 'sources' : 'destinations';
@@ -182,6 +109,9 @@ const FirewallRuleTable: React.FC<CombinedProps> = (props) => {
   }, [openRuleDrawer, category]);
 
   const zeroRulesMessage = `No ${category} rules have been added.`;
+
+  const screenReaderMessage =
+    'Some screen readers may require you to enter focus mode to interact with firewall rule list items. In focus mode, press spacebar to begin a drag or tab to access item actions.';
 
   const onDragEnd = (result: DropResult) => {
     if (result.destination) {
@@ -195,13 +125,12 @@ const FirewallRuleTable: React.FC<CombinedProps> = (props) => {
 
   return (
     <>
-      <div className={classes.header}>
+      <StyledHeaderDiv>
         <Typography variant="h2">{`${capitalize(category)} Rules`}</Typography>
-        <Button
+        <StyledFirewallTableButton
           buttonType="primary"
-          onClick={openDrawerForCreating}
-          className={classes.button}
           disabled={disabled}
+          onClick={openDrawerForCreating}
         >
           Add an {capitalize(category)} Rule
         </Button>
@@ -255,30 +184,35 @@ const FirewallRuleTable: React.FC<CombinedProps> = (props) => {
                             isDragging={snapshot.isDragging}
                             disabled={disabled}
                             key={thisRuleRow.id}
-                            {...thisRuleRow}
-                            triggerCloneFirewallRule={triggerCloneFirewallRule}
-                            triggerDeleteFirewallRule={
-                              triggerDeleteFirewallRule
-                            }
-                            triggerOpenRuleDrawerForEditing={
-                              triggerOpenRuleDrawerForEditing
-                            }
-                            triggerUndo={triggerUndo}
-                            innerRef={provided.innerRef}
+                            ref={provided.innerRef}
+                            role="option"
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                          />
-                        );
-                      }}
-                    </Draggable>
-                  ))
-                )}
-                {provided.placeholder}
-              </TableBody>
-            )}
-          </Droppable>
-        </DragDropContext>
-        <TableFooter className={classes.footer}>
+                          >
+                            <FirewallRuleTableRow
+                              triggerCloneFirewallRule={
+                                triggerCloneFirewallRule
+                              }
+                              triggerDeleteFirewallRule={
+                                triggerDeleteFirewallRule
+                              }
+                              triggerOpenRuleDrawerForEditing={
+                                triggerOpenRuleDrawerForEditing
+                              }
+                              disabled={disabled}
+                              triggerUndo={triggerUndo}
+                              {...thisRuleRow}
+                            />
+                          </li>
+                        )}
+                      </Draggable>
+                    ))
+                  )}
+                  {provided.placeholder}
+                </StyledUl>
+              )}
+            </Droppable>
+          </DragDropContext>
           <PolicyRow
             category={category}
             policy={policy}
@@ -286,57 +220,58 @@ const FirewallRuleTable: React.FC<CombinedProps> = (props) => {
               /* -- Clanode Change -- */ /* disabled */ true /* -- Clanode Change End -- */
             }
             handlePolicyChange={onPolicyChange}
+            policy={policy}
           />
-        </TableFooter>
-      </Table>
+        </Box>
+      </Box>
     </>
   );
 };
 
-export default React.memo(FirewallRuleTable);
-
 // =============================================================================
 // <FirewallRuleTableRow />
 // =============================================================================
-type FirewallRuleTableRowProps = RuleRow &
-  Omit<RowActionHandlers, 'triggerReorder'> & {
-    innerRef: any;
-    isDragging: boolean;
-    disabled: boolean;
+interface RowActionHandlersWithDisabled
+  extends Omit<RowActionHandlers, 'triggerReorder'> {
+  disabled: boolean;
+}
+
+export interface FirewallRuleTableRowProps extends RuleRow {
+  disabled: RowActionHandlersWithDisabled['disabled'];
+  triggerCloneFirewallRule: RowActionHandlersWithDisabled['triggerCloneFirewallRule'];
+  triggerDeleteFirewallRule: RowActionHandlersWithDisabled['triggerDeleteFirewallRule'];
+  triggerOpenRuleDrawerForEditing: RowActionHandlersWithDisabled['triggerOpenRuleDrawerForEditing'];
+  triggerUndo: RowActionHandlersWithDisabled['triggerUndo'];
+}
+
+const FirewallRuleTableRow = React.memo((props: FirewallRuleTableRowProps) => {
+  const theme: Theme = useTheme();
+  const xsDown = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const {
+    action,
+    addresses,
+    disabled,
+    errors,
+    id,
+    label,
+    originalIndex,
+    ports,
+    protocol,
+    status,
+    triggerCloneFirewallRule,
+    triggerDeleteFirewallRule,
+    triggerOpenRuleDrawerForEditing,
+    triggerUndo,
+  } = props;
+
+  const actionMenuProps = {
+    disabled: status === 'PENDING_DELETION' || disabled,
+    idx: id,
+    triggerCloneFirewallRule,
+    triggerDeleteFirewallRule,
+    triggerOpenRuleDrawerForEditing,
   };
-
-const FirewallRuleTableRow: React.FC<FirewallRuleTableRowProps> = React.memo(
-  (props) => {
-    const classes = useStyles();
-
-    const {
-      id,
-      action,
-      label,
-      description,
-      protocol,
-      ports,
-      addresses,
-      status,
-      triggerCloneFirewallRule,
-      triggerDeleteFirewallRule,
-      triggerOpenRuleDrawerForEditing,
-      triggerUndo,
-      errors,
-      innerRef,
-      isDragging,
-      disabled,
-      originalIndex,
-      ...rest
-    } = props;
-
-    const actionMenuProps = {
-      idx: id,
-      disabled: status === 'PENDING_DELETION' || disabled,
-      triggerCloneFirewallRule,
-      triggerDeleteFirewallRule,
-      triggerOpenRuleDrawerForEditing,
-    };
 
     return (
       <TableRow
@@ -415,26 +350,20 @@ const FirewallRuleTableRow: React.FC<FirewallRuleTableRowProps> = React.memo(
 
 interface PolicyRowProps {
   category: Category;
-  policy: FirewallPolicyType;
   disabled: boolean;
   handlePolicyChange: (newPolicy: FirewallPolicyType) => void;
+  policy: FirewallPolicyType;
 }
 
-const policyOptions: Item<FirewallPolicyType>[] = [
+const policyOptions: FirewallOptionItem<FirewallPolicyType>[] = [
   { label: 'Accept', value: 'ACCEPT' },
   { label: 'Drop', value: 'DROP' },
 ];
 
-export const PolicyRow: React.FC<PolicyRowProps> = React.memo((props) => {
-  const { category, policy, disabled, handlePolicyChange } = props;
-  const classes = useStyles();
-
-  // Calculate how many cells the text should span so that the Select lines up
-  // with the Action column
-  const theme: Theme = useTheme();
-  const xsDown = useMediaQuery(theme.breakpoints.down('xs'));
-  const mdDown = useMediaQuery(theme.breakpoints.down('md'));
-  const colSpan = xsDown ? 1 : mdDown ? 3 : 4;
+export const PolicyRow = React.memo((props: PolicyRowProps) => {
+  const { category, disabled, handlePolicyChange, policy } = props;
+  const theme = useTheme();
+  const mdDown = useMediaQuery(theme.breakpoints.down('lg'));
 
   const helperText = mdDown ? (
     <strong>{capitalize(category)} policy:</strong>
@@ -445,64 +374,103 @@ export const PolicyRow: React.FC<PolicyRowProps> = React.memo((props) => {
     </span>
   );
 
+  // Using a grid here to keep the Select and the helper text aligned
+  // with the Action column.
+  const sxBoxGrid = {
+    alignItems: 'center',
+    backgroundColor: theme.bg.bgPaper,
+    borderBottom: `1px solid ${theme.borderColors.borderTable}`,
+    color: theme.textColors.tableStatic,
+    display: 'grid',
+    fontSize: '.875rem',
+    gridTemplateAreas: `'one two three four five'`,
+    gridTemplateColumns: '32% 10% 10% 15% 120px',
+    height: '40px',
+    marginTop: '10px',
+    [theme.breakpoints.down('lg')]: {
+      gridTemplateAreas: `'one two three four'`,
+      gridTemplateColumns: '32% 15% 15% 120px',
+    },
+    [theme.breakpoints.down('sm')]: {
+      gridTemplateAreas: `'one two'`,
+      gridTemplateColumns: '50% 50%',
+    },
+    width: '100%',
+  };
+
+  const sxBoxPolicyText = {
+    gridArea: '1 / 1 / 1 / 5',
+    padding: '0px 15px 0px 15px',
+
+    textAlign: 'right',
+    [theme.breakpoints.down('lg')]: {
+      gridArea: '1 / 1 / 1 / 4',
+    },
+    [theme.breakpoints.down('sm')]: {
+      gridArea: 'one',
+    },
+  };
+
+  const sxBoxPolicySelect = {
+    gridArea: 'five',
+    [theme.breakpoints.down('lg')]: {
+      gridArea: 'four',
+    },
+    [theme.breakpoints.down('sm')]: {
+      gridArea: 'two',
+    },
+  };
+
   return (
-    <TableRow className={classes.policyRow}>
-      <TableCell colSpan={colSpan} className={classes.policyText}>
-        {helperText}
-      </TableCell>
-      <TableCell colSpan={1} className={classes.policySelect}>
-        <Select
-          className={classes.policySelectInner}
-          label={`${category} policy`}
-          menuPlacement="top"
-          hideLabel
-          isClearable={false}
+    <Box sx={sxBoxGrid}>
+      <Box sx={sxBoxPolicyText}>{helperText}</Box>
+      <Box sx={sxBoxPolicySelect}>
+        <Autocomplete
+          textFieldProps={{
+            hideLabel: true,
+          }}
           value={policyOptions.find(
             (thisOption) => thisOption.value === policy
           )}
-          options={policyOptions}
+          autoHighlight
+          disableClearable
           disabled={disabled}
-          onChange={(selected: Item<FirewallPolicyType>) =>
-            handlePolicyChange(selected.value)
-          }
+          label={`${category} policy`}
+          onChange={(_, selected) => handlePolicyChange(selected?.value)}
+          options={policyOptions}
         />
-      </TableCell>
-      <TableCell />
-    </TableRow>
+      </Box>
+    </Box>
   );
 });
 
 interface ConditionalErrorProps {
-  formField: string;
   errors?: FirewallRuleError[];
+  formField: string;
 }
 
-export const ConditionalError: React.FC<ConditionalErrorProps> = React.memo(
-  (props) => {
-    const classes = useStyles();
+export const ConditionalError = React.memo((props: ConditionalErrorProps) => {
+  const { errors, formField } = props;
 
-    const { formField, errors } = props;
+  // It's possible to have multiple IP errors, but we only want to display ONE in the table row.
+  const uniqueByFormField = uniqBy(prop('formField'), errors ?? []);
 
-    // It's possible to have multiple IP errors, but we only want to display ONE in the table row.
-    const uniqueByFormField = uniqBy(prop('formField'), errors ?? []);
-
-    return (
-      // eslint-disable-next-line react/jsx-no-useless-fragment
-      <>
-        {uniqueByFormField.map((thisError) => {
-          if (formField !== thisError.formField || !thisError.reason) {
-            return null;
-          }
-          return (
-            <div key={thisError.idx} className={classes.error}>
-              <Typography variant="body1">{thisError.reason}</Typography>
-            </div>
-          );
-        })}
-      </>
-    );
-  }
-);
+  return (
+    // eslint-disable-next-line react/jsx-no-useless-fragment
+    <>
+      {uniqueByFormField.map((thisError) => {
+        if (formField !== thisError.formField || !thisError.reason) {
+          return null;
+        }
+        return (
+          <StyledErrorDiv key={thisError.idx}>
+            <Typography variant="body1">{thisError.reason}</Typography>
+          </StyledErrorDiv>
+        );
+      })}
+    </>
+  );
+});
 
 // =============================================================================
 // Utilities
@@ -520,10 +488,10 @@ export const firewallRuleToRowData = (
 
     return {
       ...thisRule,
-      ports: sortPortString(thisRule.ports || ''),
-      type: generateRuleLabel(ruleType),
       addresses: generateAddressesLabel(thisRule.addresses),
       id: idx,
+      ports: sortPortString(thisRule.ports || ''),
+      type: generateRuleLabel(ruleType),
     };
   });
 };

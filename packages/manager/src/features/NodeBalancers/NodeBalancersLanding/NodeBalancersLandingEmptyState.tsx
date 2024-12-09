@@ -1,39 +1,56 @@
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
-import NodeBalancer from 'src/assets/icons/entityIcons/nodebalancer.svg';
-import Typography from 'src/components/core/Typography';
-import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Link from 'src/components/Link';
-import Placeholder from 'src/components/Placeholder';
 
-const NodeBalancerLandingEmptyState: React.FC<{}> = (_) => {
-  const history = useHistory();
+import NodeBalancerIcon from 'src/assets/icons/entityIcons/nodebalancer.svg';
+import { DocumentTitleSegment } from 'src/components/DocumentTitle';
+import { ResourcesSection } from 'src/components/EmptyLandingPageResources/ResourcesSection';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { sendEvent } from 'src/utilities/analytics/utils';
+
+import {
+  gettingStartedGuides,
+  headers,
+  linkAnalyticsEvent,
+  youtubeLinkData,
+} from './NodeBalancersLandingEmptyStateData';
+
+export const NodeBalancerLandingEmptyState = () => {
+  const { push } = useHistory();
+
+  const isRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'add_nodebalancers',
+  });
+
   return (
     <React.Fragment>
       <DocumentTitleSegment segment="NodeBalancers" />
-      <Placeholder
-        title="NodeBalancers"
-        isEntity
-        icon={NodeBalancer}
+      <ResourcesSection
         buttonProps={[
           {
-            onClick: () => history.push('/nodebalancers/create'),
             children: 'Create NodeBalancer',
+            disabled: isRestricted,
+            onClick: () => {
+              sendEvent({
+                action: 'Click:button',
+                category: linkAnalyticsEvent.category,
+                label: 'Create NodeBalancer',
+              });
+              push('/nodebalancers/create');
+            },
+            tooltipText: getRestrictedResourceText({
+              action: 'create',
+              isSingular: false,
+              resourceType: 'NodeBalancers',
+            }),
           },
         ]}
-      >
-        <Typography variant="subtitle1">
-          <Link to="https://www.linode.com/docs/platform/nodebalancer/getting-started-with-nodebalancers/">
-            Learn how to use NodeBalancers with your Linode
-          </Link>
-          &nbsp;or&nbsp;
-          <Link to="https://www.linode.com/docs/">
-            visit our guides and tutorials.
-          </Link>
-        </Typography>
-      </Placeholder>
+        gettingStartedGuidesData={gettingStartedGuides}
+        headers={headers}
+        icon={NodeBalancerIcon}
+        linkAnalyticsEvent={linkAnalyticsEvent}
+        youtubeLinkData={youtubeLinkData}
+      />
     </React.Fragment>
   );
 };
-
-export default React.memo(NodeBalancerLandingEmptyState);

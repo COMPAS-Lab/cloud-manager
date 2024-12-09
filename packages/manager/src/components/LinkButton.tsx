@@ -1,68 +1,69 @@
+import { Box } from '@linode/ui';
 import * as React from 'react';
-import classNames from 'classnames';
-import Box from './core/Box';
-import CircularProgress from './core/CircularProgress';
-import { makeStyles, Theme } from './core/styles';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  link: {
-    ...theme.applyLinkStyles,
-  },
+import { CircleProgress } from 'src/components/CircleProgress';
+
+import { StyledLinkButton } from './Button/StyledLinkButton';
+
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   disabled: {
     color: theme.palette.text.primary,
-    pointerEvents: 'none',
     cursor: 'default',
-  },
-  spinner: {
-    marginLeft: theme.spacing(),
+    pointerEvents: 'none',
   },
 }));
 
 interface Props {
+  children: React.ReactNode | string;
+  className?: string;
   isDisabled?: boolean;
   isLoading?: boolean;
-  className?: string;
-  children: React.ReactNode | string;
   onClick: () => void;
   style?: React.CSSProperties;
 }
 
 export const LinkButton = (props: Props) => {
-  const classes = useStyles();
+  const { classes, cx } = useStyles();
   const {
-    isLoading = false,
-    isDisabled = false,
-    onClick,
-    className,
     children,
+    className,
+    isDisabled = false,
+    isLoading = false,
+    onClick,
     style,
   } = props;
 
-  const Button = () => (
-    <button
-      style={style}
-      className={classNames(
+  const Button = (
+    <StyledLinkButton
+      className={cx(
         {
           [classes.disabled]: isDisabled,
         },
-        className,
-        classes.link
+        className
       )}
       disabled={isDisabled}
       onClick={onClick}
+      style={style}
+      tabIndex={0}
+      type="button"
     >
       {children}
-    </button>
+    </StyledLinkButton>
   );
 
   if (isLoading) {
     return (
-      <Box display="flex" alignItems="center">
-        <Button />
-        <CircularProgress size={12} className={classes.spinner} />
+      <Box alignItems="center" display="flex">
+        {Button}
+        <Box marginLeft={1}>
+          <CircleProgress noPadding size="xs" />
+        </Box>
       </Box>
     );
   }
 
-  return <Button />;
+  return Button;
 };

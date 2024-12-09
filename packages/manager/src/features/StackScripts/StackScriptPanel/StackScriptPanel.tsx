@@ -3,10 +3,11 @@ import { Linode } from '@linode/api-v4/lib/linodes';
 import * as React from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { compose } from 'recompose';
-import NavTabs from 'src/components/NavTabs';
-import { NavTab } from 'src/components/NavTabs/NavTabs';
-import RenderGuard from 'src/components/RenderGuard';
-import { useProfile } from 'src/queries/profile';
+
+import { NavTab, NavTabs } from 'src/components/NavTabs/NavTabs';
+import { RenderGuard } from 'src/components/RenderGuard';
+import { useProfile } from 'src/queries/profile/profile';
+
 import {
   // getCommunityStackscripts,
   getMineAndAccountStackScripts,
@@ -23,32 +24,32 @@ export interface ExtendedLinode extends Linode {
 
 interface Props {
   error?: string;
-  publicImages: Record<string, Image>;
-  queryString: string;
   history: RouteComponentProps<{}>['history'];
   location: RouteComponentProps<{}>['location'];
+  publicImages: Record<string, Image>;
+  queryString: string;
 }
 
-type CombinedProps = Props & RouteComponentProps<{}>;
+interface SelectStackScriptPanelProps extends Props, RouteComponentProps<{}> {}
 
-const SelectStackScriptPanel: React.FC<CombinedProps> = (props) => {
+const SelectStackScriptPanel = (props: SelectStackScriptPanelProps) => {
   const { publicImages } = props;
   const { data: profile } = useProfile();
   const username = profile?.username || '';
 
   const tabs: NavTab[] = [
     {
-      title: 'Account StackScripts',
-      routeName: `/stackscripts/account`,
       render: (
         <StackScriptPanelContent
           category="account"
+          currentUser={username}
           key="account-tab"
           publicImages={publicImages}
-          currentUser={username}
           request={getMineAndAccountStackScripts}
         />
       ),
+      routeName: `/stackscripts/account`,
+      title: 'Account StackScripts',
     },
     // {
     //   title: 'Community StackScripts',
@@ -68,6 +69,6 @@ const SelectStackScriptPanel: React.FC<CombinedProps> = (props) => {
   return <NavTabs tabs={tabs} />;
 };
 
-export default compose<CombinedProps, Props>(RenderGuard)(
+export default compose<SelectStackScriptPanelProps, Props>(RenderGuard)(
   SelectStackScriptPanel
 );

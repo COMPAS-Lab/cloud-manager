@@ -1,93 +1,101 @@
-// @todo: this import?
-import { InputBaseProps } from '@material-ui/core/InputBase';
-import Close from '@material-ui/icons/Close';
-import classNames from 'classnames';
+import { InputLabel } from '@linode/ui';
+import Close from '@mui/icons-material/Close';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import InputLabel from 'src/components/core/InputLabel';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import HelpIcon from 'src/components/HelpIcon';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import { ExtendedIP } from 'src/utilities/ipUtils';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
+import { Button } from 'src/components/Button/Button';
+import { LinkButton } from 'src/components/LinkButton';
+import { Notice } from 'src/components/Notice/Notice';
+import { StyledLinkButtonBox } from 'src/components/SelectFirewallPanel/SelectFirewallPanel';
+import { TextField } from 'src/components/TextField';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { Typography } from 'src/components/Typography';
+
+import type { InputBaseProps } from '@mui/material/InputBase';
+import type { Theme } from '@mui/material/styles';
+import type { ExtendedIP } from 'src/utilities/ipUtils';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   addIP: {
-    paddingLeft: 0,
-    paddingTop: theme.spacing(1.5),
     '& span:first-of-type': {
       justifyContent: 'flex-start',
     },
+    paddingLeft: 0,
+    paddingTop: theme.spacing(1.5),
+  },
+  button: {
+    '& :hover, & :focus': {
+      backgroundColor: theme.palette.primary.main,
+      color: theme.tokens.color.Neutrals.White,
+    },
+    '& > span': {
+      padding: 2,
+    },
+    marginLeft: `-${theme.spacing()}`,
+    marginTop: 4,
+    minHeight: 'auto',
+    minWidth: 'auto',
+    padding: 0,
+  },
+  helperText: {
+    marginBottom: theme.spacing(),
   },
   input: {
     'nth-child(n+2)': {
       marginTop: theme.spacing(),
     },
   },
-  root: {
-    marginTop: theme.spacing(),
-  },
-  button: {
-    marginTop: 4,
-    marginLeft: -theme.spacing(),
-    minWidth: 'auto',
-    minHeight: 'auto',
-    padding: 0,
-    '& > span': {
-      padding: 2,
-    },
-    '& :hover, & :focus': {
-      color: 'white',
-      backgroundColor: theme.palette.primary.main,
-    },
-  },
-  helperText: {
-    marginBottom: theme.spacing(),
-  },
   ipNetmaskTooltipSection: {
     display: 'flex',
     flexDirection: 'row',
   },
-  helpIcon: {
-    marginTop: -15,
-    marginLeft: -4,
-  },
   required: {
     fontFamily: theme.font.normal,
   },
+  root: {
+    marginTop: theme.spacing(),
+  },
 }));
 
-export interface Props {
-  title: string;
-  helperText?: string;
-  tooltip?: string;
-  placeholder?: string;
-  error?: string;
-  ips: ExtendedIP[];
-  onChange: (ips: ExtendedIP[]) => void;
-  onBlur?: (ips: ExtendedIP[]) => void;
-  inputProps?: InputBaseProps;
+export interface MultipeIPInputProps {
+  buttonText?: string;
   className?: string;
-  required?: boolean;
+  disabled?: boolean;
+  error?: string;
   forDatabaseAccessControls?: boolean;
+  forVPCIPv4Ranges?: boolean;
+  helperText?: string;
+  inputProps?: InputBaseProps;
+  ips: ExtendedIP[];
+  isLinkStyled?: boolean;
+  onBlur?: (ips: ExtendedIP[]) => void;
+  onChange: (ips: ExtendedIP[]) => void;
+  placeholder?: string;
+  required?: boolean;
+  title: string;
+  tooltip?: string;
 }
 
-export const MultipleIPInput: React.FC<Props> = (props) => {
+export const MultipleIPInput = React.memo((props: MultipeIPInputProps) => {
   const {
+    buttonText,
+    className,
+    disabled,
     error,
-    onChange,
-    onBlur,
-    ips,
-    title,
+    forDatabaseAccessControls,
+    forVPCIPv4Ranges,
     helperText,
-    tooltip,
+    ips,
+    isLinkStyled,
+    onBlur,
+    onChange,
     placeholder,
     required,
-    forDatabaseAccessControls,
+    title,
+    tooltip,
   } = props;
-  const classes = useStyles();
+  const { classes, cx } = useStyles();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -102,7 +110,7 @@ export const MultipleIPInput: React.FC<Props> = (props) => {
     e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
     idx: number
   ) => {
-    if (!onBlur) {
+    if (!onBlur || e.target.value === '') {
       return;
     }
 
@@ -125,19 +133,34 @@ export const MultipleIPInput: React.FC<Props> = (props) => {
     return null;
   }
 
+  const addIPButton =
+    forVPCIPv4Ranges || isLinkStyled ? (
+      <StyledLinkButtonBox sx={{ marginTop: isLinkStyled ? '8px' : '12px' }}>
+        <LinkButton onClick={addNewInput}>{buttonText}</LinkButton>
+      </StyledLinkButtonBox>
+    ) : (
+      <Button
+        buttonType="secondary"
+        className={classes.addIP}
+        compactX
+        disabled={disabled}
+        onClick={addNewInput}
+      >
+        {buttonText ?? 'Add an IP'}
+      </Button>
+    );
+
   return (
-    <div
-      className={classNames({
-        [classes.root]: true,
-        // Inject the className if given as as prop.
-        [props.className ?? '']: Boolean(props.className),
-      })}
-    >
+    <div className={cx(classes.root, className)}>
       {tooltip ? (
         <div className={classes.ipNetmaskTooltipSection}>
           <InputLabel>{title}</InputLabel>
-          <HelpIcon
-            className={classes.helpIcon}
+          <TooltipIcon
+            sxTooltipIcon={{
+              marginLeft: '-4px',
+              marginTop: '-15px',
+            }}
+            status="help"
             text={tooltip}
             tooltipPosition="right"
           />
@@ -153,57 +176,54 @@ export const MultipleIPInput: React.FC<Props> = (props) => {
       {helperText && (
         <Typography className={classes.helperText}>{helperText}</Typography>
       )}
-      {error && <Notice error text={error} spacingTop={8} />}
+      {error && <Notice spacingTop={8} text={error} variant="error" />}
       {ips.map((thisIP, idx) => (
         <Grid
           container
-          key={`domain-transfer-ip-${idx}`}
+          data-testid="domain-transfer-input"
           direction="row"
           justifyContent="center"
-          data-testid="domain-transfer-input"
+          key={`domain-transfer-ip-${idx}`}
+          maxWidth={forVPCIPv4Ranges ? '415px' : undefined}
+          spacing={2}
         >
-          <Grid item xs={11}>
+          <Grid xs={11}>
             <TextField
-              className={classes.input}
-              // Prevent unique ID errors, since TextField sets the input element's ID to the label
-              label={`domain-transfer-ip-${idx}`}
               InputProps={{
                 'aria-label': `${title} ip-address-${idx}`,
+                disabled,
                 ...props.inputProps,
               }}
-              value={thisIP.address}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 handleChange(e, idx)
               }
-              onBlur={(e) => handleBlur(e, idx)}
+              className={classes.input}
               errorText={thisIP.error}
-              placeholder={placeholder}
               hideLabel
+              // Prevent unique ID errors, since TextField sets the input element's ID to the label
+              label={`domain-transfer-ip-${idx}`}
+              onBlur={(e) => handleBlur(e, idx)}
+              placeholder={placeholder}
+              value={thisIP.address}
             />
           </Grid>
-          {/** Don't show the button for the first input since it won't do anything, unless this component is used in DBaaS */}
-          <Grid item xs={1}>
-            {idx > 0 || forDatabaseAccessControls ? (
+          {/** Don't show the button for the first input since it won't do anything, unless this component is
+           * used in DBaaS or for Linode VPC interfaces
+           */}
+          <Grid xs={1}>
+            {(idx > 0 || forDatabaseAccessControls || forVPCIPv4Ranges) && (
               <Button
                 className={classes.button}
+                disabled={disabled}
                 onClick={() => removeInput(idx)}
               >
                 <Close data-testid={`delete-ip-${idx}`} />
               </Button>
-            ) : null}
+            )}
           </Grid>
         </Grid>
       ))}
-      <Button
-        buttonType="secondary"
-        onClick={addNewInput}
-        className={classes.addIP}
-        compact
-      >
-        Add an IP
-      </Button>
+      {addIPButton}
     </div>
   );
-};
-
-export default React.memo(MultipleIPInput);
+});

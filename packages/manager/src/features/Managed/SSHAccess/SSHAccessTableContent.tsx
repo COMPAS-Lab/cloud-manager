@@ -1,34 +1,25 @@
 import { ManagedLinodeSetting } from '@linode/api-v4/lib/managed';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import TableRowEmpty from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
 import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
+
 import SSHAccessRow from './SSHAccessRow';
 
-interface Props {
+interface SSHAccessTableContentProps {
+  error?: APIError[] | null;
   linodeSettings: ManagedLinodeSetting[];
   loading: boolean;
-  lastUpdated: number;
-  updateOne: (linodeSetting: ManagedLinodeSetting) => void;
   openDrawer: (linodeId: number) => void;
-  error?: APIError[];
 }
 
-export type CombinedProps = Props;
+export const SSHAccessTableContent = (props: SSHAccessTableContentProps) => {
+  const { error, linodeSettings, loading, openDrawer } = props;
 
-export const SSHAccessTableContent: React.FC<CombinedProps> = (props) => {
-  const {
-    linodeSettings,
-    loading,
-    lastUpdated,
-    updateOne,
-    openDrawer,
-    error,
-  } = props;
-
-  if (loading && lastUpdated === 0) {
+  if (loading) {
     return <TableRowLoading columns={6} />;
   }
 
@@ -37,7 +28,7 @@ export const SSHAccessTableContent: React.FC<CombinedProps> = (props) => {
     return <TableRowError colSpan={6} message={errorMessage} />;
   }
 
-  if (linodeSettings.length === 0 && lastUpdated !== 0) {
+  if (linodeSettings.length === 0) {
     return (
       <TableRowEmpty
         colSpan={5}
@@ -53,7 +44,6 @@ export const SSHAccessTableContent: React.FC<CombinedProps> = (props) => {
         (linodeSetting: ManagedLinodeSetting, idx: number) => (
           <SSHAccessRow
             key={`linode-setting-row-${idx}`}
-            updateOne={updateOne}
             linodeSetting={linodeSetting}
             openDrawer={openDrawer}
           />

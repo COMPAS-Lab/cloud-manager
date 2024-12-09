@@ -1,57 +1,27 @@
+import { Box } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
 
-import CopyTooltip from 'src/components/CopyTooltip';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
+import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
+import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  copyContainer: {
-    backgroundColor: theme.color.grey5,
-    margin: `${theme.spacing(1)}px 0`,
-    borderRadius: theme.shape.borderRadius,
-    maxWidth: '100%',
-  },
-  copyCode: {
-    overflowX: 'auto',
-  },
-  apiKey: {
-    color: theme.color.grey1,
-  },
-  instruction: {
-    width: '100%',
-    [theme.breakpoints.up('sm')]: {
-      width: 'auto',
-      '&:not(:first-of-type)': {
-        position: 'relative',
-        marginLeft: theme.spacing(2),
-        paddingLeft: theme.spacing(2),
-        '&:before': {
-          content: "'|'",
-          position: 'absolute',
-          top: theme.spacing(1) - 3,
-          left: -theme.spacing(1) + 2,
-        },
-      },
-    },
-  },
-}));
+import {
+  StyledContainerGrid,
+  StyledInstructionGrid,
+} from './InstallationInstructions.styles';
 
 interface Props {
   APIKey: string;
   installationKey: string;
 }
 
-type CombinedProps = Props;
-
-const InstallationInstructions: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const InstallationInstructions = React.memo((props: Props) => {
   const command = `curl -s https://lv.linode.com/${props.installationKey} | sudo bash`;
 
   return (
-    <Grid container>
-      <Grid item>
+    <Grid container spacing={2}>
+      <Grid>
         <Typography>
           Before this client can gather data, you need to install the Longview
           Agent on your server by running the following command. After
@@ -59,65 +29,61 @@ const InstallationInstructions: React.FC<CombinedProps> = (props) => {
           receiving data.
         </Typography>
       </Grid>
-      <Grid item xs={12}>
-        <Grid
-          container
-          wrap="nowrap"
-          alignItems="center"
-          className={classes.copyContainer}
-        >
-          <Grid item className="py0">
+      <Grid xs={12}>
+        <StyledContainerGrid spacing={2}>
+          <Grid sx={{ padding: '8px' }}>
             <CopyTooltip text={command} />
           </Grid>
-          <Grid item className={`${classes.copyCode} py0`}>
+          <Grid
+            sx={{
+              overflowX: 'auto',
+              paddingBottom: 0,
+              paddingLeft: '8px',
+              paddingTop: 0,
+            }}
+          >
             <pre>
               <code>{command}</code>
             </pre>
           </Grid>
-        </Grid>
+        </StyledContainerGrid>
       </Grid>
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <Typography>
           This should work for most installations, but if you have issues,
           please consult our troubleshooting guide and manual installation
           instructions (API key required):
         </Typography>
       </Grid>
-      <Grid item xs={12}>
-        <Grid container>
-          <Grid item className={classes.instruction}>
+      <Grid xs={12}>
+        <Grid container spacing={2}>
+          <StyledInstructionGrid>
             <Typography>
-              <a
-                href="https://www.linode.com/docs/platform/longview/troubleshooting-linode-longview/"
-                target="_blank"
-                aria-describedby="external-site"
-                rel="noopener noreferrer"
-              >
+              <Link to="https://techdocs.akamai.com/cloud-computing/docs/troubleshooting-linode-longview">
                 Troubleshooting guide
-              </a>
+              </Link>
             </Typography>
-          </Grid>
-          <Grid item className={classes.instruction}>
+          </StyledInstructionGrid>
+          <StyledInstructionGrid>
             <Typography>
-              <a
-                href="https://www.linode.com/docs/platform/longview/what-is-longview/#install-the-longview-agent"
-                target="_blank"
-                aria-describedby="external-site"
-                rel="noopener noreferrer"
-              >
+              <Link to="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-longview#install-the-longview-agent">
                 Manual installation instructions
-              </a>
+              </Link>
             </Typography>
-          </Grid>
-          <Grid item className={classes.instruction}>
+          </StyledInstructionGrid>
+          <StyledInstructionGrid>
             <Typography data-testid="api-key">
-              API Key: <span className={classes.apiKey}>{props.APIKey}</span>
+              API Key:{' '}
+              <Box
+                component="span"
+                sx={(theme) => ({ color: theme.color.grey1 })}
+              >
+                {props.APIKey}
+              </Box>
             </Typography>
-          </Grid>
+          </StyledInstructionGrid>
         </Grid>
       </Grid>
     </Grid>
   );
-};
-
-export default React.memo(InstallationInstructions);
+});

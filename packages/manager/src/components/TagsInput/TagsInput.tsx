@@ -1,68 +1,89 @@
-import { getTags } from '@linode/api-v4/lib/tags';
+import CloseIcon from '@mui/icons-material/Close';
 import { APIError } from '@linode/api-v4/lib/types';
+import { useQueryClient } from '@tanstack/react-query';
 import { concat } from 'ramda';
 import * as React from 'react';
-import Select, {
-  Item,
-  NoOptionsMessageProps,
-} from 'src/components/EnhancedSelect/Select';
-import useAccountManagement from 'src/hooks/useAccountManagement';
+
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { Chip } from 'src/components/Chip';
+import { useProfile } from 'src/queries/profile/profile';
+import { updateTagsSuggestionsData, useAllTagsQuery } from 'src/queries/tags';
 import { getErrorMap } from 'src/utilities/errorUtils';
 
 export interface Tag {
-  value: string;
   label: string;
+  value: string;
 }
 
-export interface Props {
-  label?: string;
-  hideLabel?: boolean;
-  name?: string;
-  tagError?: string;
-  value: Item[];
-  onChange: (selected: Item[]) => void;
+export interface TagsInputProps {
+  /**
+   * If true, the component is disabled.
+   *
+   * @default false
+   */
   disabled?: boolean;
-  menuPlacement?: 'bottom' | 'top' | 'auto' | undefined;
+  /**
+   * If true, the label is hidden, yet still accessible to screen readers.
+   */
+  hideLabel?: boolean;
+  /**
+   * The label for the input.
+   */
+  label?: string;
+  /**
+   * The placement of the menu, relative to the select input.
+   */
+  menuPlacement?: 'auto' | 'bottom' | 'top';
+  /**
+   * The name of the input.
+   */
+  name?: string;
+  /**
+   * Removes the default top margin
+   */
+  noMarginTop?: boolean;
+  /**
+   * Callback fired when the value changes.
+   */
+  onChange: (selected: Tag[]) => void;
+  /**
+   * An error to display beneath the input.
+   */
+  tagError?: string;
+  /**
+   * The value of the input.
+   */
+  value: Tag[];
 }
 
-const TagsInput: React.FC<Props> = (props) => {
+export const TagsInput = (props: TagsInputProps) => {
   const {
-    label,
+    disabled,
     hideLabel,
-    name,
+    label,
+    noMarginTop,
+    onChange,
     tagError,
     value,
-    onChange,
-    disabled,
-    menuPlacement,
   } = props;
 
-  const [accountTags, setAccountTags] = React.useState<Tag[]>([]);
   const [errors, setErrors] = React.useState<APIError[]>([]);
 
-  const { _isRestrictedUser } = useAccountManagement();
+  const { data: profile } = useProfile();
+  const { data: accountTags, error: accountTagsError } = useAllTagsQuery(
+    !profile?.restricted
+  );
 
-  React.useEffect(() => {
-    if (!_isRestrictedUser) {
-      getTags()
-        .then((response) => {
-          const accountTags = response.data.map((tag: Tag) => {
-            return { label: tag.label, value: tag.label };
-          });
-          setAccountTags(accountTags);
-        })
-        .catch((e) => {
-          const defaultError = [
-            { reason: 'There was an error retrieving your tags.' },
-          ];
+  const queryClient = useQueryClient();
 
-          setErrors(defaultError);
-        });
-    }
-  }, [_isRestrictedUser]);
+  const accountTagItems: Tag[] =
+    accountTags?.map((tag) => ({
+      label: tag.label,
+      value: tag.label,
+    })) ?? [];
 
   const createTag = (inputValue: string) => {
-    const newTag = { value: inputValue, label: inputValue };
+    const newTag = { label: inputValue, value: inputValue };
     const updatedSelectedTags = concat(value, [newTag]);
 
     if (inputValue.length < 3 || inputValue.length > 50) {
@@ -75,42 +96,90 @@ const TagsInput: React.FC<Props> = (props) => {
     } else {
       setErrors([]);
       onChange(updatedSelectedTags);
+      if (accountTags) {
+        updateTagsSuggestionsData([...accountTags, newTag], queryClient);
+      }
     }
   };
 
-  const getEmptyMessage = (value: NoOptionsMessageProps) => {
-    const { value: tags } = props;
-    if (tags.map((tag) => tag.value).includes(value.inputValue)) {
-      return 'This tag is already selected.';
-    } else {
-      return 'No results.';
+  const handleRemoveOption = (tagToRemove: Tag) => {
+    onChange(value.filter((t) => t.value !== tagToRemove.value));
+  };
+
+  const filterOptions = (
+    options: Tag[],
+    { inputValue }: { inputValue: string }
+  ) => {
+    const filtered = options.filter((o) =>
+      o.label.toLowerCase().includes(inputValue.toLowerCase())
+    );
+
+    const isExistingTag = options.some(
+      (o) => o.label.toLowerCase() === inputValue.toLowerCase()
+    );
+
+    if (inputValue !== '' && !isExistingTag) {
+      filtered.push({
+        label: `Create "${inputValue}"`,
+        value: inputValue,
+      });
     }
+
+    return filtered;
   };
 
   const errorMap = getErrorMap(['label'], errors);
   const labelError = errorMap.label;
   const generalError = errorMap.none;
 
-  const error = disabled ? undefined : labelError || tagError || generalError;
+  const error = disabled
+    ? undefined
+    : labelError ||
+      tagError ||
+      generalError ||
+      (accountTagsError !== null
+        ? 'There was an error retrieving your tags.'
+        : undefined);
 
   return (
-    <Select
-      name={name}
-      creatable
-      isMulti={true}
-      label={label || 'Add Tags'}
-      hideLabel={hideLabel}
-      options={accountTags}
-      placeholder={'Type to choose or create a tag.'}
-      errorText={error}
-      value={value}
-      onChange={onChange}
-      createNew={createTag}
-      noOptionsMessage={getEmptyMessage}
+    <Autocomplete
+      onChange={(_, newValue, reason, details) => {
+        const detailsOption = details?.option;
+        if (
+          reason === 'selectOption' &&
+          detailsOption?.label.includes(`Create "${detailsOption?.value}"`)
+        ) {
+          createTag(detailsOption.value);
+        } else {
+          setErrors([]);
+          onChange(newValue);
+        }
+      }}
+      renderTags={(tagValue, getTagProps) => {
+        return tagValue.map((option, index) => (
+          <Chip
+            {...getTagProps({ index })}
+            deleteIcon={<CloseIcon />}
+            key={index}
+            label={option.label}
+            onDelete={() => handleRemoveOption(option)}
+          />
+        ));
+      }}
+      autoHighlight
+      clearOnBlur
+      disableCloseOnSelect={false}
       disabled={disabled}
-      menuPlacement={menuPlacement}
+      errorText={error}
+      filterOptions={filterOptions}
+      isOptionEqualToValue={(option, value) => option.value === value.value}
+      label={label || 'Add Tags'}
+      multiple
+      noOptionsText={'No results.'}
+      options={accountTagItems}
+      placeholder={value.length === 0 ? 'Type to choose or create a tag.' : ''}
+      textFieldProps={{ hideLabel, noMarginTop }}
+      value={value}
     />
   );
 };
-
-export default TagsInput;

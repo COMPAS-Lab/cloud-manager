@@ -1,28 +1,66 @@
-import * as React from 'react';
-import LinodeThemeWrapper from 'src/LinodeThemeWrapper';
-import { renderWithTheme } from 'src/utilities/testHelpers';
 import { fireEvent } from '@testing-library/react';
+import { createMemoryHistory } from 'history';
+import React from 'react';
+import { Router } from 'react-router-dom';
 
-import AddNewMenu from './AddNewMenu';
+import { renderWithTheme } from 'src/utilities/testHelpers';
+
+import { AddNewMenu } from './AddNewMenu';
 
 describe('AddNewMenu', () => {
-  it('should render without error', () => {
-    renderWithTheme(
-      <LinodeThemeWrapper theme="light">
-        <AddNewMenu />
-      </LinodeThemeWrapper>
-    );
+  test('renders the Create button', () => {
+    const { getByText } = renderWithTheme(<AddNewMenu />);
+    const createButton = getByText('Create');
+    expect(createButton).toBeInTheDocument();
   });
 
-  it('should have an entry for database', () => {
-    const { getByText } = renderWithTheme(
-      <LinodeThemeWrapper theme="light">
-        <AddNewMenu />
-      </LinodeThemeWrapper>,
-      { flags: { databases: true } }
-    );
+  test('opens the menu on button click', () => {
+    const { getByText, getByRole } = renderWithTheme(<AddNewMenu />);
     const createButton = getByText('Create');
     fireEvent.click(createButton);
-    expect(getByText('Database')).not.toBe(undefined);
+    const menu = getByRole('menu');
+    expect(menu).toBeInTheDocument();
+  });
+
+  test('renders Linode menu item', () => {
+    const { getByText } = renderWithTheme(<AddNewMenu />);
+    const createButton = getByText('Create');
+    fireEvent.click(createButton);
+    const menuItem = getByText('Linode');
+    expect(menuItem).toBeInTheDocument();
+  });
+
+  test('navigates to Linode create page on Linode menu item click', () => {
+    // Create a mock history object
+    const history = createMemoryHistory();
+
+    // Render the component with the Router and history
+    const { getByText } = renderWithTheme(
+      <Router history={history}>
+        <AddNewMenu />
+      </Router>
+    );
+
+    const createButton = getByText('Create');
+    fireEvent.click(createButton);
+
+    const menuItem = getByText('Linode');
+    fireEvent.click(menuItem);
+
+    // Assert that the history's location has changed to the expected URL
+    expect(history.location.pathname).toBe('/linodes/create');
+  });
+
+  test('does not render hidden menu items', () => {
+    const { getByText, queryByText } = renderWithTheme(<AddNewMenu />, {
+      flags: { databases: false },
+    });
+    const createButton = getByText('Create');
+    fireEvent.click(createButton);
+
+    ['Database'].forEach((createMenuItem: string) => {
+      const hiddenMenuItem = queryByText(createMenuItem);
+      expect(hiddenMenuItem).toBeNull();
+    });
   });
 });

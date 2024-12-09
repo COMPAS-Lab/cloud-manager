@@ -1,55 +1,46 @@
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import ActionMenu from 'src/components/ActionMenu';
-import {
-  makeStyles,
-  Theme,
-  useMediaQuery,
-  useTheme,
-} from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
+
+import { ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+
+import type { Theme } from '@mui/material/styles';
 
 interface Props {
-  nodeId?: string;
   instanceLabel?: string;
+  nodeId?: string;
   openRecycleNodeDialog: (nodeID: string, linodeLabel: string) => void;
 }
 
-const useStyles = makeStyles(() => ({
-  root: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-}));
-
-export const NodeActionMenu: React.FC<Props> = (props) => {
-  const { nodeId, instanceLabel, openRecycleNodeDialog } = props;
+export const NodeActionMenu = (props: Props) => {
+  const { instanceLabel, nodeId, openRecycleNodeDialog } = props;
   const theme = useTheme<Theme>();
-  const classes = useStyles();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
   const actions = [
     {
-      title: 'Recycle',
+      disabled: !nodeId || !instanceLabel,
       onClick: () => {
         if (!nodeId || !instanceLabel) {
           return;
         }
         openRecycleNodeDialog(nodeId!, instanceLabel!);
       },
-      disabled: !nodeId || !instanceLabel,
+      title: 'Recycle',
     },
   ];
 
   return (
-    <div className={classes.root}>
+    <Box alignItems="center" display="flex" justifyContent="flex-end">
       {!matchesSmDown ? (
         actions.map((action) => (
           <InlineMenuAction
-            key={action.title}
             actionText={action.title}
-            onClick={action.onClick}
             disabled={action.disabled}
+            key={action.title}
+            onClick={action.onClick}
           />
         ))
       ) : (
@@ -58,7 +49,7 @@ export const NodeActionMenu: React.FC<Props> = (props) => {
           ariaLabel={`Action menu for Node ${instanceLabel}`}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

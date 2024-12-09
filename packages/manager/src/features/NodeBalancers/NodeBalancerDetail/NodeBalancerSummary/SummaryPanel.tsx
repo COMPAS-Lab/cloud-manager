@@ -1,147 +1,196 @@
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import { compose } from 'recompose';
-import Paper from 'src/components/core/Paper';
+import { Link, useParams } from 'react-router-dom';
+
+import { Paper } from '@linode/ui';
+import { TagCell } from 'src/components/TagCell/TagCell';
+import { Typography } from 'src/components/Typography';
+import { IPAddress } from 'src/features/Linodes/LinodesLanding/IPAddress';
+import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
+import { useNodeBalancersFirewallsQuery } from 'src/queries/nodebalancers';
 import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import TagsPanel from 'src/components/TagsPanel';
-import summaryPanelStyles, {
-  StyleProps,
-} from 'src/containers/SummaryPanels.styles';
-import IPAddress from 'src/features/linodes/LinodesLanding/IPAddress';
-import { ExtendedNodeBalancer } from 'src/features/NodeBalancers/types';
-import { formatRegion } from 'src/utilities';
+  useAllNodeBalancerConfigsQuery,
+  useNodeBalancerQuery,
+  useNodebalancerUpdateMutation,
+} from 'src/queries/nodebalancers';
+import { useRegionsQuery } from 'src/queries/regions/regions';
 import { convertMegabytesTo } from 'src/utilities/unitConversions';
-import { NodeBalancerConsumer } from '../context';
 
-type ClassNames =
-  | 'NBsummarySection'
-  | 'IPgrouping'
-  | 'nodeTransfer'
-  | 'hostName';
+export const SummaryPanel = () => {
+  const { nodeBalancerId } = useParams<{ nodeBalancerId: string }>();
+  const id = Number(nodeBalancerId);
+  const { data: nodebalancer } = useNodeBalancerQuery(id);
+  const { data: configs } = useAllNodeBalancerConfigsQuery(id);
+  const { data: regions } = useRegionsQuery();
+  const { data: attachedFirewallData } = useNodeBalancersFirewallsQuery(id);
+  const linkText = attachedFirewallData?.data[0]?.label;
+  const linkID = attachedFirewallData?.data[0]?.id;
+  const region = regions?.find((r) => r.id === nodebalancer?.region);
+  const { mutateAsync: updateNodeBalancer } = useNodebalancerUpdateMutation(id);
+  const displayFirewallLink = !!attachedFirewallData?.data?.length;
 
-const styles = (theme: Theme) =>
-  createStyles({
-    ...summaryPanelStyles(theme),
-    root: {
-      paddingTop: theme.spacing(),
-    },
-    NBsummarySection: {
-      [theme.breakpoints.up('md')]: {
-        marginTop: theme.spacing(3) + 24,
-      },
-    },
-    IPgrouping: {
-      margin: '-2px 0 0 2px',
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    nodeTransfer: {
-      marginTop: 12,
-    },
-    hostName: {
-      wordBreak: 'break-word',
-    },
+  const isNodeBalancerReadOnly = useIsResourceRestricted({
+    grantLevel: 'read_only',
+    grantType: 'nodebalancer',
+    id: nodebalancer?.id,
   });
 
-interface Props {
-  nodeBalancer: ExtendedNodeBalancer;
-}
+  const configPorts = configs?.reduce((acc, config) => {
+    return [...acc, { configId: config.id, port: config.port }];
+  }, []);
 
-type CombinedProps = Props & StyleProps & WithStyles<ClassNames>;
+  const down = configs?.reduce((acc: number, config) => {
+    return acc + config.nodes_status.down;
+  }, 0); // add the downtime for each config together
 
-const SummaryPanel: React.FC<CombinedProps> = (props) => {
-  const { nodeBalancer, classes } = props;
+  const up = configs?.reduce((acc: number, config) => {
+    return acc + config.nodes_status.up;
+  }, 0); // add the uptime for each config together
+
+  if (!nodebalancer || !configs) {
+    return null;
+  }
 
   return (
-    <NodeBalancerConsumer>
-      {({ updateTags }) => {
-        return (
-          <div className={classes.root}>
-            <Paper
-              className={`${classes.summarySection} ${classes.NBsummarySection}`}
-            >
-              <Typography variant="h3" className={classes.title} data-qa-title>
-                NodeBalancer Details
-              </Typography>
-              <div className={classes.section}>
-                <Typography variant="body1" data-qa-ports>
-                  <strong>Ports: </strong>
-                  {nodeBalancer.configPorts.length === 0 && 'None'}
-                  {nodeBalancer.configPorts.map(({ port, configId }, i) => (
-                    <React.Fragment key={configId}>
-                      <Link
-                        to={`/nodebalancers/${nodeBalancer.id}/configurations/${configId}`}
-                        className="secondaryLink"
-                      >
-                        {port}
-                      </Link>
-                      {i < nodeBalancer.configPorts.length - 1 ? ', ' : ''}
-                    </React.Fragment>
-                  ))}
-                </Typography>
-              </div>
-              <div className={classes.section}>
-                <Typography variant="body1" data-qa-node-status>
-                  <strong>Backend Status: </strong>
-                  {`${nodeBalancer.up} up, ${nodeBalancer.down} down`}
-                </Typography>
-              </div>
-              <div className={classes.section}>
-                <Typography variant="body1" data-qa-transferred>
-                  <strong>Transferred: </strong>
-                  {convertMegabytesTo(nodeBalancer.transfer.total)}
-                </Typography>
-              </div>
-              <div className={classes.section}>
-                <Typography
-                  variant="body1"
-                  className={classes.hostName}
-                  data-qa-hostname
-                >
-                  <strong>Host Name: </strong>
-                  {nodeBalancer.hostname}
-                </Typography>
-              </div>
-              <div className={classes.section}>
-                <Typography variant="body1" data-qa-region>
-                  <strong>Region:</strong> {formatRegion(nodeBalancer.region)}
-                </Typography>
-              </div>
-            </Paper>
-
-            <Paper className={classes.summarySection}>
-              <Typography variant="h3" className={classes.title} data-qa-title>
-                IP Addresses
-              </Typography>
-              <div className={`${classes.section}`}>
-                <div className={classes.IPgrouping} data-qa-ip>
-                  <IPAddress ips={[nodeBalancer.ipv4]} showMore />
-                  {nodeBalancer.ipv6 && <IPAddress ips={[nodeBalancer.ipv6]} />}
-                </div>
-              </div>
-            </Paper>
-
-            <Paper className={classes.summarySection}>
-              <Typography variant="h3" className={classes.title} data-qa-title>
-                Tags
-              </Typography>
-              <TagsPanel tags={nodeBalancer.tags} updateTags={updateTags} />
-            </Paper>
-          </div>
-        );
-      }}
-    </NodeBalancerConsumer>
+    <StyledRootDiv>
+      <StyledSummarySectionWrapper>
+        <StyledSummarySection>
+          <StyledTitle data-qa-title variant="h3">
+            NodeBalancer Details
+          </StyledTitle>
+          <StyledSection>
+            <Typography data-qa-ports variant="body1">
+              <strong>Ports: </strong>
+              {configPorts?.length === 0 && 'None'}
+              {configPorts?.map(({ configId, port }, i) => (
+                <React.Fragment key={configId}>
+                  <Link
+                    className="secondaryLink"
+                    to={`/nodebalancers/${nodebalancer?.id}/configurations/${configId}`}
+                  >
+                    {port}
+                  </Link>
+                  {i < configPorts?.length - 1 ? ', ' : ''}
+                </React.Fragment>
+              ))}
+            </Typography>
+          </StyledSection>
+          <StyledSection>
+            <Typography variant="body1">
+              <strong>Backend Status: </strong>
+              {`${up} up, ${down} down`}
+            </Typography>
+          </StyledSection>
+          <StyledSection>
+            <Typography variant="body1">
+              <strong>Transferred: </strong>
+              {convertMegabytesTo(nodebalancer.transfer.total)}
+            </Typography>
+          </StyledSection>
+          <StyledSection>
+            <Typography style={{ wordBreak: 'break-word' }} variant="body1">
+              <strong>Host Name: </strong>
+              {nodebalancer.hostname}
+            </Typography>
+          </StyledSection>
+          <StyledSection>
+            <Typography data-qa-region variant="body1">
+              <strong>Region:</strong> {region?.label}
+            </Typography>
+          </StyledSection>
+        </StyledSummarySection>
+      </StyledSummarySectionWrapper>
+      {displayFirewallLink && (
+        <StyledSummarySection>
+          <StyledTitle data-qa-title variant="h3">
+            Firewall
+          </StyledTitle>
+          <Typography data-qa-firewall variant="body1">
+            <Link className="secondaryLink" to={`/firewalls/${linkID}`}>
+              {linkText}
+            </Link>
+          </Typography>
+        </StyledSummarySection>
+      )}
+      <StyledSummarySection>
+        <StyledTitle data-qa-title variant="h3">
+          IP Addresses
+        </StyledTitle>
+        <StyledSection>
+          <StyledIPGrouping data-qa-ip>
+            {nodebalancer?.ipv4 && (
+              <IPAddress ips={[nodebalancer?.ipv4]} isHovered={true} showMore />
+            )}
+            {nodebalancer?.ipv6 && (
+              <IPAddress ips={[nodebalancer?.ipv6]} isHovered={true} />
+            )}
+          </StyledIPGrouping>
+        </StyledSection>
+      </StyledSummarySection>
+      <StyledSummarySection>
+        <StyledTitle data-qa-title variant="h3">
+          Tags
+        </StyledTitle>
+        <TagCell
+          disabled={isNodeBalancerReadOnly}
+          tags={nodebalancer?.tags}
+          updateTags={(tags) => updateNodeBalancer({ tags })}
+          view="panel"
+        />
+      </StyledSummarySection>
+    </StyledRootDiv>
   );
 };
 
-const localStyles = withStyles(styles);
+const StyledRootDiv = styled('div', {
+  label: 'StyledRootDiv',
+})(({ theme }) => ({
+  paddingTop: theme.spacing(),
+}));
 
-const enhanced = compose<CombinedProps, Props>(localStyles);
+const StyledSummarySectionWrapper = styled('div', {
+  label: 'StyledSummarySectionWrapper',
+})(({ theme }) => ({
+  [theme.breakpoints.up('md')]: {
+    marginTop: theme.spacing(6),
+  },
+}));
 
-export default enhanced(SummaryPanel);
+const StyledSummarySection = styled(Paper, {
+  label: 'StyledSummarySection',
+})(({ theme }) => ({
+  height: '93%',
+  marginBottom: theme.spacing(2),
+  minHeight: '160px',
+  padding: theme.spacing(2.5),
+}));
+
+const StyledTitle = styled(Typography, {
+  label: 'StyledTitle',
+})(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+}));
+
+const StyledSection = styled('div', {
+  label: 'StyledSection',
+})(({ theme }) => ({
+  marginBottom: theme.spacing(1),
+  ...theme.typography.body1,
+  '& .dif': {
+    '& .chip': {
+      position: 'absolute',
+      right: -10,
+      top: '-4px',
+    },
+    position: 'relative',
+    width: 'auto',
+  },
+}));
+
+const StyledIPGrouping = styled('div', {
+  label: 'StyledIPGrouping',
+})(() => ({
+  display: 'flex',
+  flexDirection: 'column',
+  margin: '-2px 0 0 2px',
+}));

@@ -1,70 +1,80 @@
+import { Paper } from '@linode/ui';
+import { styled } from '@mui/material/styles';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import CircleProgress from 'src/components/CircleProgress';
-import Divider from 'src/components/core/Divider';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
+import { useLocation } from 'react-router-dom';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Divider } from 'src/components/Divider';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import ErrorState from 'src/components/ErrorState';
-import Notice from 'src/components/Notice';
-import { useMutateProfile, useProfile } from 'src/queries/profile';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
+import { useProfile } from 'src/queries/profile/profile';
+
 import { PhoneVerification } from './PhoneVerification/PhoneVerification';
-import ResetPassword from './ResetPassword';
-import SecuritySettings from './SecuritySettings';
+import { ResetPassword } from './ResetPassword';
+import { SecurityQuestions } from './SecurityQuestions/SecurityQuestions';
 import { SMSMessaging } from './SMSMessaging';
-import TPAProviders from './TPAProviders';
+import { TPAProviders } from './TPAProviders';
 import TrustedDevices from './TrustedDevices';
-import TwoFactor from './TwoFactor';
-import SecurityQuestions from './SecurityQuestions';
-import Link from 'src/components/Link';
+import { TwoFactor } from './TwoFactor/TwoFactor';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginBottom: theme.spacing(3),
-    padding: theme.spacing(3),
-    paddingTop: 17,
-  },
-  linode: {
-    marginBottom: theme.spacing(2),
-  },
-  copy: {
-    maxWidth: 960,
-    lineHeight: '20px',
-    marginTop: theme.spacing(),
-  },
-}));
-
-export const AuthenticationSettings: React.FC = () => {
-  const classes = useStyles();
-
+export const AuthenticationSettings = () => {
   const {
     data: profile,
-    isLoading: profileLoading,
     error: profileError,
+    isLoading: profileLoading,
   } = useProfile();
-
-  const {
-    mutateAsync: updateProfile,
-    error: profileUpdateError,
-  } = useMutateProfile();
-
   const authType = profile?.authentication_type ?? 'password';
-  const ipAllowlisting = profile?.ip_whitelist_enabled ?? false;
   const twoFactor = Boolean(profile?.two_factor_auth);
   const username = profile?.username;
   const showSecuritySettings = false;
 
   const isThirdPartyAuthEnabled = authType !== 'password';
 
-  const [success, setSuccess] = React.useState<string | undefined>(undefined);
+  const location = useLocation<{
+    focusSecurityQuestions: boolean;
+    focusTel: boolean;
+  }>();
+  const phoneNumberRef = React.createRef<HTMLInputElement>();
+  const securityQuestionRef = React.createRef<HTMLInputElement>();
 
-  const clearState = () => {
-    setSuccess(undefined);
-  };
+  React.useEffect(() => {
+    if (!location.state) {
+      return;
+    }
 
-  const onAllowlistingDisable = () => {
-    setSuccess('IP allowlisting disabled. This feature cannot be re-enabled.');
-  };
+    const { focusSecurityQuestions, focusTel } = location.state;
+
+    // Determine the target ref based on the location state values
+    const targetRef = focusTel
+      ? phoneNumberRef
+      : focusSecurityQuestions
+      ? securityQuestionRef
+      : null;
+
+    const isValidTargetRef =
+      targetRef &&
+      targetRef.current &&
+      !targetRef.current.getAttribute('data-scrolled');
+
+    if (isValidTargetRef) {
+      const currentTargetRef = targetRef.current;
+
+      currentTargetRef.focus();
+
+      // Using a short timeout here to ensure the element
+      // is in the DOM before scrolling
+      // TODO: Look into mutation observer to remove the need for this timeout
+      setTimeout(() => {
+        if (currentTargetRef) {
+          currentTargetRef.scrollIntoView();
+          currentTargetRef.setAttribute('data-scrolled', 'true');
+        }
+      }, 100);
+    }
+  }, [phoneNumberRef, securityQuestionRef, location.state]);
 
   if (profileError) {
     return <ErrorState errorText="Unable to load your profile" />;
@@ -75,9 +85,8 @@ export const AuthenticationSettings: React.FC = () => {
   }
 
   return (
-    <div data-testid="authSettings">
+    <>
       <DocumentTitleSegment segment="Login & Authentication" />
-      {success && <Notice success text={success} />}
       <TPAProviders authType={authType} />
       {showSecuritySettings ? (
         <Paper className={classes.root}>
@@ -136,4 +145,30 @@ export const AuthenticationSettings: React.FC = () => {
   );
 };
 
-export default AuthenticationSettings;
+export const authenticationSettingsLazyRoute = createLazyRoute('/profile/auth')(
+  {
+    component: AuthenticationSettings,
+  }
+);
+
+export const StyledRootContainer = styled(Paper, {
+  label: 'StyledRootContainer',
+})(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+  padding: theme.spacing(3),
+  paddingTop: 17,
+}));
+
+export const StyledSecuritySettingsCopy = styled(Typography, {
+  label: 'StyledSecuritySettingsCopy',
+})(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+}));
+
+export const StyledMainCopy = styled(Typography, {
+  label: 'StyledMainCopy',
+})(({ theme }) => ({
+  lineHeight: '20px',
+  marginTop: theme.spacing(),
+  maxWidth: 960,
+}));

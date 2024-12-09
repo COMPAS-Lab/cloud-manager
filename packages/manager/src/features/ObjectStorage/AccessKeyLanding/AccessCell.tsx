@@ -1,66 +1,82 @@
 /* eslint-disable jsx-a11y/no-noninteractive-tabindex */
+import { Tooltip } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import Check from 'src/assets/icons/monitor-ok.svg';
-import Radio from 'src/components/Radio';
-import { makeStyles } from 'src/components/core/styles';
 
-const useStyles = makeStyles(() => ({
-  checkIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    '& svg': {
-      height: 25,
-      width: 25,
-    },
-  },
-}));
+import Check from 'src/assets/icons/monitor-ok.svg';
+import { Radio } from 'src/components/Radio/Radio';
 
 interface RadioButton extends HTMLInputElement {
   name: string;
 }
 
 interface AccessCellProps {
-  disabled: boolean;
   active: boolean;
-  viewOnly: boolean;
+  disabled: boolean;
+  onChange: (e: React.SyntheticEvent<RadioButton>) => void;
   scope: string;
   scopeDisplay: string;
-  onChange: (e: React.SyntheticEvent<RadioButton>) => void;
+  tooltipText?: string;
+  viewOnly: boolean;
 }
 
-export const AccessCell: React.FC<AccessCellProps> = (props) => {
-  const { active, disabled, onChange, scope, scopeDisplay, viewOnly } = props;
-  const classes = useStyles();
+export const AccessCell = React.memo((props: AccessCellProps) => {
+  const {
+    active,
+    disabled,
+    onChange,
+    scope,
+    scopeDisplay,
+    tooltipText,
+    viewOnly,
+  } = props;
 
   if (viewOnly) {
     if (!active) {
       return null;
     }
     return (
-      <span
-        className={classes.checkIcon}
+      <StyledCheckIcon
         aria-label={`This token has ${scope} access for ${scopeDisplay}`}
+        data-testid={`perm-${scopeDisplay}`}
         tabIndex={0}
       >
         <Check />
-      </span>
+      </StyledCheckIcon>
     );
   }
 
-  return (
+  const radioBtn = (
     <Radio
-      name={scopeDisplay}
-      disabled={disabled}
-      checked={active}
-      value={scope}
-      onChange={onChange}
-      data-testid={`perm-${scopeDisplay}-radio`}
       inputProps={{
         'aria-label': `${scope} for ${scopeDisplay}`,
       }}
+      checked={active}
+      data-testid={`perm-${scopeDisplay}-radio`}
+      disabled={disabled}
+      name={scopeDisplay}
+      onChange={onChange}
+      value={scope}
     />
   );
-};
 
-export default React.memo(AccessCell);
+  return tooltipText ? (
+    <Tooltip placement="top" title={tooltipText}>
+      <span>{radioBtn}</span>
+    </Tooltip>
+  ) : (
+    radioBtn
+  );
+});
+
+const StyledCheckIcon = styled('span', {
+  label: 'StyledCheckIcon',
+})(() => ({
+  '& svg': {
+    height: 25,
+    width: 25,
+  },
+  alignItems: 'center',
+  display: 'flex',
+  justifyContent: 'center',
+}));

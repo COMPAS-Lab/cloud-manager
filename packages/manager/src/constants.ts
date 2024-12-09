@@ -9,7 +9,13 @@ const PRODUCTION = 'production';
 export const isProductionBuild = process.env.NODE_ENV === PRODUCTION;
 
 // allow us to explicity enable dev tools
-export const ENABLE_DEV_TOOLS = Boolean(process.env.REACT_APP_ENABLE_DEV_TOOLS);
+export const ENABLE_DEV_TOOLS = getBooleanEnv(
+  import.meta.env.REACT_APP_ENABLE_DEV_TOOLS
+);
+
+// allow us to explicity enable maintenance mode
+export const ENABLE_MAINTENANCE_MODE =
+  import.meta.env.REACT_APP_ENABLE_MAINTENANCE_MODE === 'true';
 
 /** required for the app to function */
 export const APP_ROOT =
@@ -26,64 +32,68 @@ export const BETA_API_ROOT = API_ROOT + '/beta';
 export const LISH_ROOT =
   process.env.REACT_APP_LISH_ROOT || 'webconsole.linode.com';
 /** generate a client_id by navigating to https://cloud.linode.com/profile/clients */
-export const CLIENT_ID = process.env.REACT_APP_CLIENT_ID;
+export const CLIENT_ID = import.meta.env.REACT_APP_CLIENT_ID;
 /** All of the following used specifically for Algolia search */
 export const DOCS_BASE_URL = 'https://linode.com';
 export const COMMUNITY_BASE_URL = 'https://linode.com/community/';
 export const DOCS_SEARCH_URL =
-  'https://linode.com/docs/search/?sections=guides&q=';
+  'https://www.linode.com/docs/topresults/?docType=products%2Cguides%2Capi%2Creference-architecture&lndq=';
 export const COMMUNITY_SEARCH_URL =
   'https://linode.com/community/questions/search?query=';
 export const ALGOLIA_APPLICATION_ID =
-  process.env.REACT_APP_ALGOLIA_APPLICATION_ID || '';
+  import.meta.env.REACT_APP_ALGOLIA_APPLICATION_ID || '';
 export const ALGOLIA_SEARCH_KEY =
-  process.env.REACT_APP_ALGOLIA_SEARCH_KEY || '';
+  import.meta.env.REACT_APP_ALGOLIA_SEARCH_KEY || '';
 export const LAUNCH_DARKLY_API_KEY =
-  process.env.REACT_APP_LAUNCH_DARKLY_ID || '';
+  import.meta.env.REACT_APP_LAUNCH_DARKLY_ID || '';
 export const LINODE_STATUS_PAGE_URL =
-  process.env.REACT_APP_STATUS_PAGE_URL || 'https://status.linode.com/api/v2';
+  import.meta.env.REACT_APP_STATUS_PAGE_URL ||
+  'https://status.linode.com/api/v2';
 
 // Maximum page size allowed by the API. Used in the `getAll()` helper function
 // to request as many items at once as possible.
 export const API_MAX_PAGE_SIZE =
-  Number(process.env.REACT_APP_API_MAX_PAGE_SIZE) || 500;
+  Number(import.meta.env.REACT_APP_API_MAX_PAGE_SIZE) || 500;
 
 // Having more of a single entity than this number classifies you as having
 // a "large account".
 export const LARGE_ACCOUNT_THRESHOLD = 1500;
 
 // PayPal Client ID
-export const PAYPAL_CLIENT_ID = process.env.REACT_APP_PAYPAL_CLIENT_ID || 'sb';
-
-// Sets Paypal Environment, valid values: 'sandbox|production'
-// @todo lets depreate this with the PayPal + Braintree work
-export const PAYPAL_CLIENT_ENV =
-  process.env.REACT_APP_PAYPAL_ENV || 'production';
+export const PAYPAL_CLIENT_ID =
+  import.meta.env.REACT_APP_PAYPAL_CLIENT_ID || 'sb';
 
 // Google Pay Merchant ID
-export const GPAY_MERCHANT_ID = process.env.REACT_APP_GPAY_MERCHANT_ID;
+export const GPAY_MERCHANT_ID = import.meta.env.REACT_APP_GPAY_MERCHANT_ID;
 
 // Google Pay Environment: 'TEST|PRODUCTION'
-export const GPAY_CLIENT_ENV = process.env.REACT_APP_GPAY_ENV || 'PRODUCTION';
+export const GPAY_CLIENT_ENV =
+  import.meta.env.REACT_APP_GPAY_ENV || 'PRODUCTION';
 
 export const LONGVIEW_ROOT = 'https://longview.linode.com/fetch';
 
 /** optional variables */
-export const SENTRY_URL = process.env.REACT_APP_SENTRY_URL;
+export const SENTRY_URL = import.meta.env.REACT_APP_SENTRY_URL;
 export const LOGIN_SESSION_LIFETIME_MS = 45 * 60 * 1000;
 export const OAUTH_TOKEN_REFRESH_TIMEOUT = LOGIN_SESSION_LIFETIME_MS / 2;
-/** Google Analytics and Tag Manager */
-export const GA_ID = process.env.REACT_APP_GA_ID;
-export const GTM_ID = process.env.REACT_APP_GTM_ID;
+
+/** Adobe Analytics */
+export const ADOBE_ANALYTICS_URL = import.meta.env
+  .REACT_APP_ADOBE_ANALYTICS_URL;
+export const NUM_ADOBE_SCRIPTS = 3;
+
+/** Pendo */
+export const PENDO_API_KEY = import.meta.env.REACT_APP_PENDO_API_KEY;
+
 /** for hard-coding token used for API Requests. Example: "Bearer 1234" */
-export const ACCESS_TOKEN = process.env.REACT_APP_ACCESS_TOKEN;
+export const ACCESS_TOKEN = import.meta.env.REACT_APP_ACCESS_TOKEN;
 
 export const LOG_PERFORMANCE_METRICS =
   !isProductionBuild &&
-  process.env.REACT_APP_LOG_PERFORMANCE_METRICS === 'true';
+  import.meta.env.REACT_APP_LOG_PERFORMANCE_METRICS === 'true';
 
 export const DISABLE_EVENT_THROTTLE =
-  Boolean(process.env.REACT_APP_DISABLE_EVENT_THROTTLE) || false;
+  Boolean(import.meta.env.REACT_APP_DISABLE_EVENT_THROTTLE) || false;
 
 // read about luxon formats https://moment.github.io/luxon/docs/manual/formatting.html
 // this format is not ISO
@@ -92,7 +102,7 @@ export const DATETIME_DISPLAY_FORMAT = 'yyyy-MM-dd HH:mm';
 export const ISO_DATE_FORMAT = 'yyyy-MM-dd';
 export const ISO_DATETIME_NO_TZ_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
 
-export const MAX_VOLUME_SIZE = 10240;
+export const MAX_VOLUME_SIZE = 16384;
 
 /* -- Clanode Change -- */
 export const MIN_VOLUME_SIZE = 1;
@@ -260,22 +270,27 @@ export const DEFAULT_ERROR_MESSAGE = 'An unexpected error occurred.';
 // Default size limit for Images (some users have custom limits)
 export const IMAGE_DEFAULT_LIMIT = 6144;
 
-export const allowedHTMLTags = [
+export const allowedHTMLTagsStrict: string[] = [
   'a',
-  'abbr',
-  'acronym',
+  'p',
   'b',
-  'blockquote',
-  'br',
-  'code',
   'del',
   'em',
-  'hr',
   'i',
+  'code',
+  'strong',
+];
+
+export const allowedHTMLTagsFlexible: string[] = [
+  ...allowedHTMLTagsStrict,
+  'abbr',
+  'acronym',
+  'blockquote',
+  'br',
+  'hr',
   'li',
   'ol',
   'ul',
-  'p',
   'pre',
   'h1',
   'h2',
@@ -284,7 +299,6 @@ export const allowedHTMLTags = [
   'h5',
   'h6',
   'span',
-  'strong',
   'table',
   'tbody',
   'td',
@@ -309,12 +323,12 @@ export const allowedHTMLAttr = ['href', 'lang', 'title', 'align'];
 /**
  * MBps rate for intra DC migrations (AKA Mutations)
  */
-export const MBpsIntraDC = 75;
+export const MBpsIntraDC = 200;
 
 /**
- * MBps rate for inter DC migrations (AKA Cross-Datacenter migrations )
+ * MBps rate for inter DC migrations (AKA Cross-Data-Center migrations )
  */
-export const MBpsInterDC = 1.5;
+export const MBpsInterDC = 7.5;
 
 /**
  * The incoming network rate (in Gbps) that is standard for all Linodes
@@ -349,19 +363,106 @@ export const OBJECT_STORAGE_ROOT = 'linodeobjects.com';
 export const OBJECT_STORAGE_DELIMITER = '/';
 
 // Value from  1-4 reflecting a minimum score from zxcvbn
-export const MINIMUM_PASSWORD_STRENGTH = 2;
+export const MINIMUM_PASSWORD_STRENGTH = 4;
 
 // When true, use the mock API defined in serverHandlers.ts instead of making network requests
 export const MOCK_SERVICE_WORKER =
-  process.env.REACT_APP_MOCK_SERVICE_WORKER === 'true';
+  import.meta.env.REACT_APP_MOCK_SERVICE_WORKER === 'true';
 
 // Maximum payment methods
 export const MAXIMUM_PAYMENT_METHODS = 6;
 
-// Price of LKE's High Availability offering in USD
-export const HIGH_AVAILABILITY_PRICE =
-  process.env.REACT_APP_LKE_HIGH_AVAILABILITY_PRICE === undefined
-    ? undefined
-    : Number(process.env.REACT_APP_LKE_HIGH_AVAILABILITY_PRICE);
+// Default payment limits of Braintree payments in USD ($)
+export const PAYMENT_MIN = 5;
+export const PAYMENT_SOFT_MAX = 2_000;
+export const PAYMENT_HARD_MAX = 50_000;
 
 export const DB_ROOT_USERNAME = 'linroot';
+
+// The date Linode switching to Akamai (for purposes of billing)
+export const AKAMAI_DATE = '2022-12-15 00:00:00';
+
+export const ADDRESSES = {
+  akamai: {
+    international: {
+      address1: 'Grafenauweg 8',
+      city: 'Zug',
+      country: 'Switzerland',
+      entity: 'Akamai Technologies International AG',
+      state: 'Zug',
+      zip: 'CH-6300',
+    },
+    us: {
+      address1: '145 Broadway',
+      city: 'Cambridge',
+      country: 'USA',
+      entity: 'Akamai Technologies, Inc.',
+      state: 'MA',
+      zip: '02142',
+    },
+  },
+  linode: {
+    address1: '249 Arch St.',
+    city: 'Philadelphia',
+    country: 'USA',
+    entity: 'Linode',
+    state: 'PA',
+    zip: '19106',
+  },
+};
+
+export const ACCESS_LEVELS = {
+  none: 'none',
+  readOnly: 'read_only',
+  readWrite: 'read_write',
+};
+
+// Linode Community URL accessible from the TopMenu Community icon
+export const LINODE_COMMUNITY_URL = 'https://linode.com/community';
+
+export const FEEDBACK_LINK = 'https://www.linode.com/feedback/';
+
+export const DEVELOPERS_LINK = 'https://developers.linode.com';
+
+// URL validators
+export const OFFSITE_URL_REGEX = /(?=.{1,2000}$)((\s)*((ht|f)tp(s?):\/\/|mailto:)[A-Za-z0-9]+[~a-zA-Z0-9-_\.@\#\$%&amp;;:,\?=/\+!\(\)]*(\s)*)/;
+export const ONSITE_URL_REGEX = /^([A-Za-z0-9/\.\?=&\-~]){1,2000}$/;
+
+// Firewall links
+export const CREATE_FIREWALL_LINK =
+  'https://techdocs.akamai.com/cloud-computing/docs/create-a-cloud-firewall';
+export const FIREWALL_GET_STARTED_LINK =
+  'https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-cloud-firewalls';
+export const FIREWALL_LIMITS_CONSIDERATIONS_LINK =
+  'https://techdocs.akamai.com/cloud-computing/docs/cloud-firewall#limits-and-considerations';
+
+// A/B Testing LD metrics keys for DX Tools
+export const LD_DX_TOOLS_METRICS_KEYS = {
+  CURL_CODE_SNIPPET: 'A/B Test: Step 2 : cURL copy code snippet (copy icon)',
+  CURL_RESOURCE_LINKS: 'A/B Test: Step 2 : DX Tools cURL resources links',
+  CURL_TAB_SELECTION: 'A/B Test: Step 2 : DX Tools cURL tab selection',
+  INTEGRATION_ANSIBLE_CODE_SNIPPET:
+    'A/B Test: Step 2 : Integrations: Ansible copy code snippet (copy icon)',
+  INTEGRATION_ANSIBLE_RESOURCE_LINKS:
+    'a-b-test-step-2-dx-tools-integrations-ansible-resources-links',
+  INTEGRATION_TAB_SELECTION:
+    'A/B Test: Step 2 : DX Tools Integrations tab selection',
+  INTEGRATION_TERRAFORM_CODE_SNIPPET:
+    'A/B Test: Step 2 : Integrations: Terraform copy code snippet (copy icon)',
+  INTEGRATION_TERRAFORM_RESOURCE_LINKS:
+    'A/B Test: Step 2 : DX Tools integrations terraform resources links',
+  LINODE_CLI_CODE_SNIPPET:
+    'A/B Test: Step 2 : Linode CLI Tab selection and copy code snippet (copy icon)',
+  LINODE_CLI_RESOURCE_LINKS:
+    'A/B Test: Step 2 : DX Tools Linode CLI resources links',
+  LINODE_CLI_TAB_SELECTION: 'A/B Test: Step 2 : Linode CLI Tab Selection',
+  OPEN_MODAL: 'A/B Test: Step 1 : DX Tools Open Modal',
+  SDK_GO_CODE_SNIPPET:
+    'A/B Test: Step 2 : SDK: GO copy code snippet (copy icon)',
+  SDK_GO_RESOURCE_LINKS: 'A/B Test: Step 2 : DX Tools SDK GO resources links',
+  SDK_PYTHON_CODE_SNIPPET:
+    'A/B Test: Step 2 : SDK: Python copy code snippet (copy icon)',
+  SDK_PYTHON_RESOURCE_LINKS:
+    'A/B Test: Step 2 : DX Tools SDK Python resources links',
+  SDK_TAB_SELECTION: 'A/B Test: Step 2 : DX Tools SDK tab selection',
+};

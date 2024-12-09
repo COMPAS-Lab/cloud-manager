@@ -1,14 +1,14 @@
-import { ResourcePage } from '@linode/api-v4/lib/types';
-import { Response } from 'support/util/response';
+import type { ResourcePage } from '@linode/api-v4';
+import type { StaticResponse } from 'cypress/types/net-stubbing';
 
 /**
  * Paginated data.
  */
 export interface PaginatedData {
   data: any[];
-  results: number;
   page: number;
   pages: number;
+  results: number;
 }
 
 /**
@@ -22,9 +22,9 @@ export const paginate = (data: any | any[]): PaginatedData => {
   const arrayData = Array.isArray(data) ? data : [data];
   return {
     data: arrayData,
-    results: arrayData.length,
     page: 1,
     pages: 1,
+    results: arrayData.length,
   };
 };
 
@@ -46,7 +46,7 @@ export const paginate = (data: any | any[]): PaginatedData => {
  */
 export const depaginate = async <T>(
   resultGenerator: (page: number) => Promise<ResourcePage<T>>
-): Promise<Array<T>> => {
+): Promise<T[]> => {
   const firstResult: ResourcePage<T> = await resultGenerator(1);
   const data = firstResult.data;
   if (firstResult.pages > 1) {
@@ -86,15 +86,15 @@ export const paginateResponse = (
   statusCode: number = 200,
   page: number = 1,
   totalPages: number = 1
-): Response => {
+): StaticResponse => {
   const dataArray = Array.isArray(data) ? data : [data];
   return {
-    statusCode,
     body: {
-      results: dataArray.length,
       data: dataArray,
       page,
       pages: totalPages,
+      results: dataArray.length,
     },
+    statusCode,
   };
 };

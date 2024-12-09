@@ -1,75 +1,129 @@
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import Typography from 'src/components/core/Typography';
-import DisplayPrice from 'src/components/DisplayPrice';
-import useStyles from './styles';
 
-interface Props {
-  onDeploy: () => void;
-  heading: string;
-  calculatedPrice?: number;
-  disabled?: boolean;
-  isMakingRequest?: boolean;
-  priceHelperText?: string;
-  submitText?: string;
-  children?: JSX.Element;
-  footer?: JSX.Element;
+import { DisplayPrice } from 'src/components/DisplayPrice';
+import { Typography } from 'src/components/Typography';
+
+import {
+  StyledButton,
+  StyledCheckoutSection,
+  StyledRoot,
+  SxTypography,
+} from './styles';
+
+export interface CheckoutBarProps {
+  /**
+   * JSX element to be displayed as an agreement section.
+   */
   agreement?: JSX.Element;
+  /**
+   * Calculated price to be displayed.
+   */
+  calculatedPrice?: number;
+  /**
+   * JSX element for additional content to be rendered within the component.
+   */
+  children?: JSX.Element;
+  /**
+   * Boolean to disable the `CheckoutBar` component, making it non-interactive.
+   * @default false
+   */
+  disabled?: boolean;
+  /**
+   * JSX element to be displayed as a footer.
+   */
+  footer?: JSX.Element;
+  /**
+   * The heading text to be displayed in the `CheckoutBar`.
+   */
+  heading: string;
+  /**
+   * Boolean indicating if a request is currently being processed.
+   */
+  isMakingRequest?: boolean;
+  /**
+   * Callback function to be called when the deploy action is triggered.
+   */
+  onDeploy: () => void;
+  /**
+   * Helper text to be displayed alongside the price.
+   */
+  priceHelperText?: string;
+  /**
+   * Text to describe the price selection.
+   */
+  priceSelectionText?: string;
+  /**
+   * Text for the submit button.
+   */
+  submitText?: string;
 }
 
-type CombinedProps = Props;
-
-const CheckoutBar: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+const CheckoutBar = (props: CheckoutBarProps) => {
   const {
-    onDeploy,
-    heading,
-    calculatedPrice,
-    disabled,
-    isMakingRequest,
-    priceHelperText,
-    submitText,
-    footer,
     agreement,
+    calculatedPrice,
+    children,
+    disabled,
+    footer,
+    heading,
+    isMakingRequest,
+    onDeploy,
+    priceHelperText,
+    priceSelectionText,
+    submitText,
   } = props;
+
+  const theme = useTheme();
 
   const price = calculatedPrice ?? 0;
 
   return (
-    <div className={classes.root}>
+    <StyledRoot>
       <Typography
-        variant="h2"
-        className={classes.sidebarTitle}
+        sx={{
+          color: theme.color.headline,
+          fontSize: '1.125rem',
+          wordBreak: 'break-word',
+        }}
         data-qa-order-summary
+        variant="h2"
       >
         {heading}
       </Typography>
-      {props.children}
+      {children}
       {
-        <div className={classes.checkoutSection} data-qa-total-price>
-          <DisplayPrice price={price} interval="mo" />
-          {priceHelperText && price > 0 && (
-            <Typography className={classes.price}>{priceHelperText}</Typography>
+        <StyledCheckoutSection data-qa-total-price>
+          {(price >= 0 && !disabled) || price ? (
+            <DisplayPrice interval="mo" price={price} />
+          ) : (
+            <Typography>{priceSelectionText}</Typography>
           )}
-        </div>
+          {priceHelperText && price > 0 && (
+            <Typography
+              sx={{
+                ...SxTypography,
+                marginTop: theme.spacing(),
+              }}
+            >
+              {priceHelperText}
+            </Typography>
+          )}
+        </StyledCheckoutSection>
       }
       {agreement ? agreement : null}
-      <div className={classes.checkoutSection}>
-        <Button
-          buttonType="primary"
-          className={classes.createButton}
-          disabled={disabled}
-          onClick={onDeploy}
-          data-qa-deploy-linode
-          loading={isMakingRequest}
-        >
-          {submitText ?? 'Create'}
-        </Button>
-      </div>
+      <StyledButton
+        buttonType="primary"
+        data-qa-deploy-linode
+        disabled={disabled}
+        loading={isMakingRequest}
+        onClick={onDeploy}
+      >
+        {submitText ?? 'Create'}
+      </StyledButton>
       {footer ? footer : null}
-    </div>
+    </StyledRoot>
   );
 };
 
-export default CheckoutBar;
+export { CheckoutBar };

@@ -1,39 +1,22 @@
-import * as React from 'react';
+import { Box } from '@linode/ui';
 import { DateTime } from 'luxon';
+import * as React from 'react';
+
+import { Divider } from 'src/components/Divider';
+import { Link } from 'src/components/Link';
+import { Stack } from 'src/components/Stack';
+import { Typography } from 'src/components/Typography';
 import { parseAPIDate } from 'src/utilities/date';
-import Divider from 'src/components/core/Divider';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
+
 import { OFFICIAL_USERNAMES } from './ticketUtils';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  hivelyContainer: {
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    alignItems: 'center',
-    margin: `${theme.spacing(3)}px ${theme.spacing(1)}px 0`,
-    paddingTop: theme.spacing(1),
-    borderTop: `1px solid ${theme.color.grey2}`,
-  },
-  hivelyLink: {
-    textDecoration: 'none',
-    color: theme.color.black,
-    marginRight: theme.spacing(2),
-  },
-  hivelyImage: {
-    width: '25px',
-    margin: 3,
-  },
-  hivelyLinkIcon: {
-    display: 'inline-block',
-    marginRight: theme.spacing(1),
-  },
-}));
-
 interface Props {
+  /** The username of the Linode user who created the ticket. */
   linodeUsername: string;
-  ticketId: string;
+  /** The ID of the reply. */
   replyId: string;
+  /** The ID of the ticket. */
+  ticketId: string;
 }
 
 export const shouldRenderHively = (
@@ -61,72 +44,63 @@ export const shouldRenderHively = (
   }
 };
 
-export const Hively: React.FC<Props> = (props) => {
-  const classes = useStyles();
-  const { linodeUsername, ticketId, replyId } = props;
+export const Hively = (props: Props) => {
+  const { linodeUsername, replyId, ticketId } = props;
   const href = `https://secure.teamhively.com/ratings/add/account/587/source/hs/ext/${linodeUsername}/ticket/${ticketId}-${replyId}/rating/`;
 
   return (
-    <div className={classes.hivelyContainer}>
+    <Box sx={{ padding: 1 }}>
       <Divider />
-      <Typography component="span">
-        <a
-          className={classes.hivelyLink}
-          href={href + '3'}
-          target="_blank"
-          aria-describedby="external-site"
-          rel="noopener noreferrer"
+      <Stack alignItems="center" direction="row" pl={1} spacing={1.5}>
+        <Typography
+          sx={{
+            padding: '2px 20px 2px 0',
+          }}
         >
-          How did I do?
-        </a>
-      </Typography>
-      <span>
-        <a
-          href={href + '3'}
-          target="_blank"
-          aria-describedby="external-site"
-          rel="noopener noreferrer"
-          className={classes.hivelyLinkIcon}
+          <Link external to={href + '3'}>
+            How did I do?
+          </Link>
+        </Typography>
+        <Link
+          accessibleAriaLabel="Happy feedback"
+          external
+          hideIcon
+          to={href + '3'}
         >
           <img
-            className={classes.hivelyImage}
             src={
-              'https://secure.teamhively.com/system/smileys/icons/000/000/541/px_25/icon_positive.png'
+              'https://secure.teamhively.com/system/smileys/icons/000/000/841/px_25/Happy_square_gradient_icon.png?1704911301'
             }
-            alt="Face symbol outlined in green with a happy expression."
+            alt="Happy face emoji"
           />
-        </a>
-        <a
-          href={href + '2'}
-          target="_blank"
-          aria-describedby="external-site"
-          rel="noopener noreferrer"
-          className={classes.hivelyLinkIcon}
+        </Link>
+        <Link
+          accessibleAriaLabel="Mediocre feedback"
+          external
+          hideIcon
+          to={href + '2'}
         >
           <img
-            className={classes.hivelyImage}
             src={
-              'https://secure.teamhively.com/system/smileys/icons/000/000/542/px_25/icon_indifferent.png'
+              'https://secure.teamhively.com/system/smileys/icons/000/000/842/px_25/Neutral_square_gradient_icon.png?1704911301'
             }
-            alt="Face symbol outlined in yellow with an indifferent expression."
+            alt="Indifferent face emoji"
           />
-        </a>
-        <a
-          href={href + '1'}
-          target="_blank"
-          aria-describedby="external-site"
-          rel="noopener noreferrer"
-          className={classes.hivelyLinkIcon}
+        </Link>
+        <Link
+          accessibleAriaLabel="Unhappy feedback"
+          external
+          hideIcon
+          to={href + '1'}
         >
           <img
-            className={classes.hivelyImage}
             src={
-              'https://secure.teamhively.com/system/smileys/icons/000/000/543/px_25/icon_negative.png'
+              'https://secure.teamhively.com/system/smileys/icons/000/000/843/px_25/Unhappy_square_gradient_icon.png?1704911301'
             }
-            alt="Face symbol outlined in red with an unhappy expression."
+            alt="Sad Face emoji"
           />
-        </a>
-      </span>
-    </div>
+        </Link>
+      </Stack>
+    </Box>
   );
 };

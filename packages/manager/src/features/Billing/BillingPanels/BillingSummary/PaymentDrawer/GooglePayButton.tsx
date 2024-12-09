@@ -1,102 +1,106 @@
-import { APIWarning } from '@linode/api-v4/lib/types';
-import classNames from 'classnames';
+import { Tooltip } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
+import { useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
+import { makeStyles } from 'tss-react/mui';
+
 import GooglePayIcon from 'src/assets/icons/payment/gPayButton.svg';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Tooltip from 'src/components/core/Tooltip';
-import Grid from 'src/components/Grid';
-import { PaymentMessage } from 'src/features/Billing/BillingPanels/PaymentInfoPanel/AddPaymentMethodDrawer/AddPaymentMethodDrawer';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { getPaymentLimits } from 'src/features/Billing/billingUtils';
 import {
   gPay,
   initGooglePaymentInstance,
 } from 'src/features/Billing/GooglePayProvider';
 import { useScript } from 'src/hooks/useScript';
-import { useClientToken } from 'src/queries/accountPayment';
-import { SetSuccess } from './types';
+import { useAccount } from 'src/queries/account/account';
+import { useClientToken } from 'src/queries/account/payment';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    position: 'relative',
-  },
+import type { SetSuccess } from './types';
+import type { APIWarning } from '@linode/api-v4/lib/types';
+import type { Theme } from '@mui/material/styles';
+import type { QueryClient } from '@tanstack/react-query';
+import type { PaymentMessage } from 'src/features/Billing/BillingPanels/PaymentInfoPanel/AddPaymentMethodDrawer/AddPaymentMethodDrawer';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   button: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.name === 'lightTheme' ? '#000' : '#fff',
-    border: 0,
-    borderRadius: 4,
-    cursor: 'pointer',
-    height: 35,
-    width: '100%',
-    transition: theme.transitions.create(['opacity']),
+    '& svg': {
+      color:
+        theme.name === 'light' ? theme.tokens.color.Neutrals.White : '#616161',
+      height: 16,
+    },
     '&:hover': {
       opacity: 0.8,
       transition: 'none',
     },
-    '& svg': {
-      color: theme.name === 'lightTheme' ? '#fff' : '#616161',
-      height: 16,
-    },
-    [theme.breakpoints.down('sm')]: {
+    alignItems: 'center',
+    backgroundColor:
+      theme.name === 'light'
+        ? theme.tokens.color.Neutrals.Black
+        : theme.tokens.color.Neutrals.White,
+    border: 0,
+    borderRadius: 4,
+    cursor: 'pointer',
+    display: 'flex',
+    height: 35,
+    justifyContent: 'center',
+    [theme.breakpoints.down('md')]: {
       marginLeft: 0,
       width: '101.5%',
     },
-  },
-  loading: {
-    padding: 4,
+    transition: theme.transitions.create(['opacity']),
+    width: '100%',
   },
   disabled: {
     opacity: 0.3,
   },
+  loading: {
+    padding: 4,
+  },
   mask: {
-    width: 200,
     height: 38,
-    position: 'absolute',
-    zIndex: 10,
     left: 0,
+    position: 'absolute',
     top: 0,
+    width: 200,
+    zIndex: 10,
+  },
+  root: {
+    position: 'relative',
   },
 }));
 
 interface Props {
-  transactionInfo: google.payments.api.TransactionInfo;
-  balance: false | number;
-  setSuccess: SetSuccess;
+  disabled: boolean;
+  renderError: (errorMsg: string) => JSX.Element;
   setError: (error: string) => void;
   setProcessing: (processing: boolean) => void;
-  renderError: (errorMsg: string) => JSX.Element;
-  disabled: boolean;
+  setSuccess: SetSuccess;
+  transactionInfo: google.payments.api.TransactionInfo;
 }
 
-export const GooglePayButton: React.FC<Props> = (props) => {
-  const classes = useStyles();
+export const GooglePayButton = (props: Props) => {
+  const { classes, cx } = useStyles();
   const status = useScript('https://pay.google.com/gp/p/js/pay.js');
-  const { data, isLoading, error: clientTokenError } = useClientToken();
+  const { data, error: clientTokenError, isLoading } = useClientToken();
+  const queryClient = useQueryClient();
   const [initializationError, setInitializationError] = React.useState<boolean>(
     false
   );
+  const { data: account } = useAccount();
 
   const {
-    transactionInfo,
-    balance,
     disabled: disabledDueToProcessing,
-    setSuccess,
+    renderError,
     setError,
     setProcessing,
-    renderError,
+    setSuccess,
+    transactionInfo,
   } = props;
 
-  /**
-   * We're following API's validation logic:
-   *
-   * GPay min is $5, max of $2000.
-   * If the customer has a balance over $2000, then the max is $50000
-   */
+  const { max, min } = getPaymentLimits(account?.balance);
+
   const disabledDueToPrice =
-    +transactionInfo.totalPrice < 5 ||
-    (+transactionInfo.totalPrice > 2000 && balance < 2000) ||
-    +transactionInfo.totalPrice > 50000;
+    +transactionInfo.totalPrice < min || +transactionInfo.totalPrice > max;
 
   React.useEffect(() => {
     const init = async () => {
@@ -120,8 +124,14 @@ export const GooglePayButton: React.FC<Props> = (props) => {
     }
   };
 
-  const handlePay = () => {
-    gPay('one-time-payment', transactionInfo, handleMessage, setProcessing);
+  const handlePay = (queryClient: QueryClient) => {
+    gPay(
+      'one-time-payment',
+      transactionInfo,
+      handleMessage,
+      setProcessing,
+      queryClient
+    );
   };
 
   if (status === 'error' || clientTokenError) {
@@ -135,12 +145,12 @@ export const GooglePayButton: React.FC<Props> = (props) => {
   if (isLoading) {
     return (
       <Grid
-        container
-        className={classes.loading}
-        justifyContent="center"
         alignContent="center"
+        className={classes.loading}
+        container
+        justifyContent="center"
       >
-        <CircleProgress mini />
+        <CircleProgress size="sm" />
       </Grid>
     );
   }
@@ -149,24 +159,22 @@ export const GooglePayButton: React.FC<Props> = (props) => {
     <div className={classes.root}>
       {disabledDueToPrice && (
         <Tooltip
-          title={`Payment amount must be between $5 and ${
-            balance > 2000 ? '$50000' : '$2000'
-          }`}
           data-qa-help-tooltip
           enterTouchDelay={0}
           leaveTouchDelay={5000}
+          title={`Payment amount must be between $${min} and $${max}`}
         >
           <div className={classes.mask} />
         </Tooltip>
       )}
       <button
-        className={classNames({
+        className={cx({
           [classes.button]: true,
           [classes.disabled]: disabledDueToPrice || disabledDueToProcessing,
         })}
-        disabled={disabledDueToPrice || disabledDueToProcessing}
-        onClick={handlePay}
         data-qa-button="gpayButton"
+        disabled={disabledDueToPrice || disabledDueToProcessing}
+        onClick={() => handlePay(queryClient)}
       >
         <GooglePayIcon />
       </button>

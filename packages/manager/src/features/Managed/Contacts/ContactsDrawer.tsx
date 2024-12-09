@@ -1,51 +1,54 @@
-import {
-  ContactPayload,
-  createContact,
-  ManagedContact,
-  updateContact,
-} from '@linode/api-v4/lib/managed';
+import { ContactPayload, ManagedContact } from '@linode/api-v4/lib/managed';
 import { createContactSchema } from '@linode/validation/lib/managed.schema';
+import Grid from '@mui/material/Unstable_Grid2';
 import { Formik, FormikHelpers } from 'formik';
 import { pathOr, pick } from 'ramda';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Drawer from 'src/components/Drawer';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Drawer } from 'src/components/Drawer';
+import Select from 'src/components/EnhancedSelect/Select';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import {
+  useCreateContactMutation,
+  useUpdateContactMutation,
+} from 'src/queries/managed/managed';
 import {
   handleFieldErrors,
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
+import { handleFormikBlur } from 'src/utilities/formikTrimUtil';
+
 import { ManagedContactGroup, Mode } from './common';
 
-interface Props {
-  isOpen: boolean;
+interface ContactsDrawerProps {
   closeDrawer: () => void;
-  mode: Mode;
-  updateOrAdd: (contact: ManagedContact) => void;
-  groups: ManagedContactGroup[];
   contact?: ManagedContact;
+  groups: ManagedContactGroup[];
+  isOpen: boolean;
+  mode: Mode;
 }
 
-type CombinedProps = Props;
-
 const emptyContactPayload: ContactPayload = {
-  name: '',
   email: '',
+  group: '',
+  name: '',
   phone: {
     primary: '',
     secondary: '',
   },
-  group: '',
 };
 
-const ContactsDrawer: React.FC<CombinedProps> = (props) => {
-  const { isOpen, closeDrawer, mode, contact, updateOrAdd, groups } = props;
+const ContactsDrawer = (props: ContactsDrawerProps) => {
+  const { closeDrawer, contact, groups, isOpen, mode } = props;
 
   const isEditing = mode === 'edit' && contact;
+
+  const { mutateAsync: createContact } = useCreateContactMutation();
+  const { mutateAsync: updateContact } = useUpdateContactMutation(
+    contact?.id || -1
+  );
 
   // If we're in Edit mode, take the initialValues from the contact we're editing.
   // Otherwise, all initial values should be empty strings.
@@ -56,7 +59,7 @@ const ContactsDrawer: React.FC<CombinedProps> = (props) => {
 
   const onSubmit = (
     values: ContactPayload,
-    { setErrors, setSubmitting, setStatus }: FormikHelpers<ContactPayload>
+    { setErrors, setStatus, setSubmitting }: FormikHelpers<ContactPayload>
   ) => {
     setStatus(undefined);
 
@@ -71,15 +74,14 @@ const ContactsDrawer: React.FC<CombinedProps> = (props) => {
     let createOrUpdate: () => Promise<ManagedContact>;
 
     if (mode === 'edit' && contact) {
-      createOrUpdate = () => updateContact(contact.id, payload);
+      createOrUpdate = () => updateContact(payload);
     } else {
       createOrUpdate = () => createContact(payload);
     }
 
     createOrUpdate()
-      .then((updatedContact) => {
+      .then(() => {
         setSubmitting(false);
-        updateOrAdd(updatedContact);
         closeDrawer();
       })
       .catch((err) => {
@@ -98,27 +100,29 @@ const ContactsDrawer: React.FC<CombinedProps> = (props) => {
 
   return (
     <Drawer
-      title={`${isEditing ? 'Edit' : 'Add'} Contact`}
-      open={isOpen}
       onClose={closeDrawer}
+      open={isOpen}
+      title={`${isEditing ? 'Edit' : 'Add'} Contact`}
     >
       <Formik
         initialValues={initialValues}
-        validationSchema={createContactSchema}
-        validateOnChange={false}
-        validateOnBlur={false}
         onSubmit={onSubmit}
+        validateOnBlur={false}
+        validateOnChange={false}
+        validationSchema={createContactSchema}
       >
-        {({
-          values,
-          errors,
-          status,
-          handleChange,
-          handleBlur,
-          handleSubmit,
-          isSubmitting,
-          setFieldValue,
-        }) => {
+        {(formikProps) => {
+          const {
+            errors,
+            handleBlur,
+            handleChange,
+            handleSubmit,
+            isSubmitting,
+            setFieldValue,
+            status,
+            values,
+          } = formikProps;
+
           const primaryPhoneError = pathOr('', ['phone', 'primary'], errors);
           // prettier-ignore
           const secondaryPhoneError = pathOr('', ['phone', 'secondary'], errors);
@@ -126,15 +130,19 @@ const ContactsDrawer: React.FC<CombinedProps> = (props) => {
           return (
             <>
               {status && (
-                <Notice key={status} text={status.generalError} error />
+                <Notice
+                  key={status}
+                  text={status.generalError}
+                  variant="error"
+                />
               )}
 
               <form onSubmit={handleSubmit}>
                 <TextField
-                  label="Name"
-                  name="name"
                   error={!!errors.name}
                   errorText={errors.name}
+                  label="Name"
+                  name="name"
                   onBlur={handleBlur}
                   onChange={handleChange}
                   required
@@ -142,74 +150,73 @@ const ContactsDrawer: React.FC<CombinedProps> = (props) => {
                 />
 
                 <TextField
-                  label="E-mail"
-                  name="email"
                   error={!!errors.email}
                   errorText={errors.email}
-                  onBlur={handleBlur}
+                  label="E-mail"
+                  name="email"
+                  onBlur={(e) => handleFormikBlur(e, formikProps)}
                   onChange={handleChange}
                   required
+                  type="email"
                   value={values.email}
                 />
 
-                <Grid container>
-                  <Grid item xs={12} md={6}>
+                <Grid container spacing={2}>
+                  <Grid md={6} xs={12}>
                     <TextField
-                      name="phone.primary"
-                      label="Primary Phone"
-                      value={pathOr('', ['phone', 'primary'], values)}
                       error={!!primaryPhoneError}
                       errorText={primaryPhoneError}
-                      onChange={handleChange}
+                      label="Primary Phone"
+                      name="phone.primary"
                       onBlur={handleBlur}
+                      onChange={handleChange}
+                      value={pathOr('', ['phone', 'primary'], values)}
                     />
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid md={6} xs={12}>
                     <TextField
-                      name="phone.secondary"
-                      label="Secondary Phone"
-                      value={pathOr('', ['phone', 'secondary'], values)}
                       error={!!secondaryPhoneError}
                       errorText={secondaryPhoneError}
-                      onChange={handleChange}
+                      label="Secondary Phone"
+                      name="phone.secondary"
                       onBlur={handleBlur}
+                      onChange={handleChange}
+                      value={pathOr('', ['phone', 'secondary'], values)}
                     />
                   </Grid>
                 </Grid>
 
                 {/* @todo: This <Select /> should be clearable eventually, but isn't currently allowed by the API. */}
                 <Select
-                  label="Group"
-                  placeholder="Create or Select a Group"
-                  creatable
-                  isClearable={false}
-                  value={
-                    values.group
-                      ? {
-                          value: values.group,
-                          label: values.group,
-                        }
-                      : ''
+                  onChange={(selectedGroup) =>
+                    setFieldValue('group', selectedGroup?.value)
                   }
                   options={groups.map((group) => ({
                     label: group.groupName,
                     value: group.groupName,
                   }))}
-                  onChange={(selectedGroup: Item) =>
-                    setFieldValue('group', selectedGroup.value)
+                  value={
+                    values.group
+                      ? {
+                          label: values.group,
+                          value: values.group,
+                        }
+                      : null
                   }
+                  creatable
                   errorText={errors.group}
+                  isClearable={false}
+                  label="Group"
+                  placeholder="Create or Select a Group"
                 />
 
-                <ActionsPanel>
-                  <Button
-                    buttonType="primary"
-                    loading={isSubmitting}
-                    onClick={() => handleSubmit()}
-                  >
-                    {isEditing ? 'Save Changes' : 'Add Contact'}
-                  </Button>
-                </ActionsPanel>
+                <ActionsPanel
+                  primaryButtonProps={{
+                    label: isEditing ? 'Save Changes' : 'Add Contact',
+                    loading: isSubmitting,
+                    onClick: () => handleSubmit(),
+                  }}
+                />
               </form>
             </>
           );

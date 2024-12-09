@@ -1,13 +1,26 @@
-import * as Factory from 'factory.ts';
 import { AccountMaintenance } from '@linode/api-v4/lib/account/types';
+import Factory from 'src/factories/factoryProxy';
+
 import { pickRandom, randomDate } from 'src/utilities/random';
 
 export const accountMaintenanceFactory = Factory.Sync.makeFactory<AccountMaintenance>(
   {
-    type: Factory.each(() =>
-      pickRandom(['cold_migration', 'live_migration', 'reboot'])
+    entity: Factory.each((id) =>
+      pickRandom([
+        {
+          id,
+          label: `linode-${id}`,
+          type: 'linode',
+          url: `/v4/linode/instances/${id}`,
+        },
+        {
+          id,
+          label: `volume-${id}`,
+          type: 'volume',
+          url: `/v4/volume/${id}`,
+        },
+      ])
     ),
-    status: Factory.each(() => pickRandom(['pending', 'started'])),
     reason: Factory.each(() =>
       pickRandom([
         `This maintenance will allow us to update the BIOS on the host’s motherboard.`,
@@ -21,12 +34,10 @@ export const accountMaintenanceFactory = Factory.Sync.makeFactory<AccountMainten
         `We must replace faulty RAM in your Linode's host.`,
       ])
     ),
+    status: Factory.each(() => pickRandom(['pending', 'started'])),
+    type: Factory.each(() =>
+      pickRandom(['cold_migration', 'live_migration', 'reboot'])
+    ),
     when: Factory.each(() => randomDate().toISOString()),
-    entity: Factory.each((id) => ({
-      label: `my-linode-${id}`,
-      id,
-      type: 'linode',
-      url: `/v4/linode/instances/${id}`,
-    })),
   }
 );

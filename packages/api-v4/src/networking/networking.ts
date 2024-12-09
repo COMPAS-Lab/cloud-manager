@@ -12,7 +12,7 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
+import { Filter, Params, ResourcePage as Page } from '../types';
 import {
   CreateIPv6RangePayload,
   IPAddress,
@@ -27,7 +27,7 @@ import {
  * addresses.
  *
  */
-export const getIPs = (params?: any, filters?: any) =>
+export const getIPs = (params?: Params, filters?: Filter) =>
   Request<Page<IPAddress>>(
     setURL(`${API_ROOT}/networking/ips`),
     setMethod('GET'),
@@ -42,7 +42,7 @@ export const getIPs = (params?: any, filters?: any) =>
  */
 export const getIP = (address: string) =>
   Request<IPAddress>(
-    setURL(`${API_ROOT}/networking/ips/${address}`),
+    setURL(`${API_ROOT}/networking/ips/${encodeURIComponent(address)}`),
     setMethod('GET')
   );
 
@@ -58,7 +58,7 @@ export const getIP = (address: string) =>
  */
 export const updateIP = (address: string, rdns: string | null = null) =>
   Request<IPAddress>(
-    setURL(`${API_ROOT}/networking/ips/${address}`),
+    setURL(`${API_ROOT}/networking/ips/${encodeURIComponent(address)}`),
     setData({ rdns }, updateIPSchema),
     setMethod('PUT')
   );
@@ -149,7 +149,7 @@ export const shareAddresses = (payload: IPSharingPayload) =>
  * Displays the IPv6 pools on your Account.
  *
  */
-export const getIPv6Pools = (params?: unknown) =>
+export const getIPv6Pools = (params?: Params) =>
   Request<Page<IPRange>>(
     setURL(`${API_ROOT}/networking/ipv6/pools`),
     setMethod('GET'),
@@ -160,11 +160,12 @@ export const getIPv6Pools = (params?: unknown) =>
  * View IPv6 range information.
  *
  */
-export const getIPv6Ranges = (params?: any) =>
+export const getIPv6Ranges = (params?: Params, filter?: Filter) =>
   Request<Page<IPRange>>(
     setURL(`${API_ROOT}/networking/ipv6/ranges`),
     setMethod('GET'),
-    setParams(params)
+    setParams(params),
+    setXFilter(filter)
   );
 
 /**
@@ -172,9 +173,9 @@ export const getIPv6Ranges = (params?: any) =>
  *
  * @param range { string } The range address to operate on.
  */
-export const getIPv6RangeInfo = (range: string, params?: any) =>
+export const getIPv6RangeInfo = (range: string, params?: Params) =>
   Request<IPRangeInformation>(
-    setURL(`${API_ROOT}/networking/ipv6/ranges/${range}`),
+    setURL(`${API_ROOT}/networking/ipv6/ranges/${encodeURIComponent(range)}`),
     setMethod('GET'),
     setParams(params)
   );

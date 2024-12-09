@@ -4,71 +4,46 @@ import {
 } from '@linode/api-v4/lib/entity-transfers';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import Accordion from 'src/components/Accordion';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableContentWrapper from 'src/components/TableContentWrapper';
-import TableRow from 'src/components/TableRow';
-import capitalize from 'src/utilities/capitalize';
-import ConfirmTransferCancelDialog from './EntityTransfersLanding/ConfirmTransferCancelDialog';
-import TransferDetailsDialog from './EntityTransfersLanding/TransferDetailsDialog';
-import RenderTransferRow from './RenderTransferRow';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginBottom: theme.spacing(2),
-    '& .MuiAccordionDetails-root': {
-      padding: 0,
-    },
-    '& .MuiAccordion-root table': {
-      border: 'none',
-    },
-  },
-  table: {
-    width: '100%',
-  },
-  cellContents: {
-    paddingLeft: '1rem',
-  },
-  link: {
-    ...theme.applyLinkStyles,
-    fontSize: '0.875rem',
-  },
-}));
+import { Accordion } from 'src/components/Accordion';
+import { Hidden } from 'src/components/Hidden';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableContentWrapper } from 'src/components/TableContentWrapper/TableContentWrapper';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { capitalize } from 'src/utilities/capitalize';
+
+import { ConfirmTransferCancelDialog } from './EntityTransfersLanding/ConfirmTransferCancelDialog';
+import { TransferDetailsDialog } from './EntityTransfersLanding/TransferDetailsDialog';
+import { RenderTransferRow } from './RenderTransferRow';
+import { StyledDiv, StyledTable } from './TransfersTable.styles';
 
 interface Props {
-  transferType: 'pending' | 'received' | 'sent';
   error: APIError[] | null;
-  isLoading: boolean;
-  transfers?: EntityTransfer[];
-  results: number;
-  page: number;
-  pageSize: number;
   handlePageChange: (v: number, showSpinner?: boolean | undefined) => void;
   handlePageSizeChange: (v: number) => void;
+  isLoading: boolean;
+  page: number;
+  pageSize: number;
+  results: number;
+  transferType: 'pending' | 'received' | 'sent';
+  transfers?: EntityTransfer[];
 }
 
-type CombinedProps = Props;
-
-export const TransfersTable: React.FC<CombinedProps> = (props) => {
+export const TransfersTable = React.memo((props: Props) => {
   const {
-    transferType,
-    isLoading,
     error,
-    transfers,
-    results,
-    page,
-    pageSize,
     handlePageChange,
     handlePageSizeChange,
+    isLoading,
+    page,
+    pageSize,
+    results,
+    transferType,
+    transfers,
   } = props;
-
-  const classes = useStyles();
 
   const [cancelPendingDialogOpen, setCancelPendingDialogOpen] = React.useState(
     false
@@ -107,19 +82,19 @@ export const TransfersTable: React.FC<CombinedProps> = (props) => {
 
   return (
     <>
-      <div className={classes.root}>
+      <StyledDiv>
         <Accordion
-          heading={`${capitalize(transferType)} Service Transfers`}
           defaultExpanded={transfersCount > 0}
+          heading={`${capitalize(transferType)} Service Transfers`}
         >
-          <Table className={classes.table}>
+          <StyledTable>
             <TableHead>
               <TableRow>
                 <TableCell key="transfer-token-table-header-token">
                   Token
                 </TableCell>
                 {transferTypeIsPending || transferTypeIsSent ? (
-                  <Hidden smDown>
+                  <Hidden mdDown>
                     <TableCell key="transfer-token-table-header-created">
                       Created
                     </TableCell>
@@ -131,7 +106,7 @@ export const TransfersTable: React.FC<CombinedProps> = (props) => {
                 )}
                 {transferTypeIsPending ? (
                   <>
-                    <Hidden xsDown>
+                    <Hidden smDown>
                       <TableCell key="transfer-token-table-header-entities">
                         Services
                       </TableCell>
@@ -166,55 +141,53 @@ export const TransfersTable: React.FC<CombinedProps> = (props) => {
                     // @TODO do this
                   },
                 }}
-                loading={isLoading}
                 error={error ?? undefined}
                 length={transfers?.length ?? 0}
+                loading={isLoading}
               >
                 {transfers?.map((transfer, idx) => (
                   <RenderTransferRow
-                    key={`${transferType}-${idx}`}
-                    token={transfer.token}
-                    created={transfer.created}
-                    entities={transfer.entities}
-                    expiry={transfer.expiry}
-                    status={transfer.status}
-                    transferType={transferType}
                     handleCancelPendingTransferClick={
                       handleCancelPendingTransferClick
                     }
+                    created={transfer.created}
+                    entities={transfer.entities}
+                    expiry={transfer.expiry}
                     handleTokenClick={handleTokenClick}
+                    key={`${transferType}-${idx}`}
+                    status={transfer.status}
+                    token={transfer.token}
+                    transferType={transferType}
                   />
                 ))}
               </TableContentWrapper>
             </TableBody>
-          </Table>
+          </StyledTable>
           <PaginationFooter
             count={results}
+            eventCategory="Service Transfer Table"
             handlePageChange={handlePageChange}
             handleSizeChange={handlePageSizeChange}
             page={page}
             pageSize={pageSize}
-            eventCategory="Service Transfer Table"
           />
         </Accordion>
         {transferTypeIsPending ? (
           // Only Pending Transfers can be canceled.
           <ConfirmTransferCancelDialog
-            open={cancelPendingDialogOpen}
-            onClose={closeCancelPendingDialog}
-            token={tokenBeingCanceled}
             entities={currentEntities}
+            onClose={closeCancelPendingDialog}
+            open={cancelPendingDialogOpen}
+            token={tokenBeingCanceled}
           />
         ) : null}
-      </div>
+      </StyledDiv>
       <TransferDetailsDialog
+        entities={currentEntities}
         isOpen={detailsDialogOpen}
         onClose={() => setDetailsDialogOpen(false)}
         token={currentToken}
-        entities={currentEntities}
       />
     </>
   );
-};
-
-export default React.memo(TransfersTable);
+});

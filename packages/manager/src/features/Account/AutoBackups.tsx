@@ -1,54 +1,56 @@
-import { makeStyles, Theme } from 'src/components/core/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
-import Accordion from 'src/components/Accordion';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import OpenInNew from '@material-ui/icons/OpenInNew';
-import Toggle from 'src/components/Toggle';
-import Typography from 'src/components/core/Typography';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  footnote: {
+import { Accordion } from 'src/components/Accordion';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { Toggle } from 'src/components/Toggle/Toggle';
+import { Typography } from 'src/components/Typography';
+
+const useStyles = makeStyles()((theme: Theme) => ({
+  enableBackupsButton: {
+    ...theme.applyLinkStyles,
     fontSize: '0.875rem',
+  },
+  footnote: {
     cursor: 'pointer',
+    fontSize: '0.875rem',
   },
   icon: {
     display: 'inline-block',
     fontSize: '0.8em',
-    marginLeft: theme.spacing(1) / 3,
-  },
-  enableBackupsButton: {
-    ...theme.applyLinkStyles,
-    fontSize: '0.875rem',
+    marginLeft: `calc(${theme.spacing(1)} / 3)`,
   },
 }));
 
 interface Props {
   backups_enabled: boolean;
   hasLinodesWithoutBackups: boolean;
+  isManagedCustomer: boolean;
   onChange: () => void;
   openBackupsDrawer: () => void;
-  isManagedCustomer: boolean;
 }
 
-const AutoBackups: React.FC<Props> = (props) => {
+const AutoBackups = (props: Props) => {
   const {
     backups_enabled,
     hasLinodesWithoutBackups,
+    isManagedCustomer,
     onChange,
     openBackupsDrawer,
-    isManagedCustomer,
   } = props;
 
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   return (
-    <Accordion heading="Backup Auto Enrollment" defaultExpanded={true}>
-      <Grid container direction="column">
-        <Grid item>
+    <Accordion defaultExpanded={true} heading="Backup Auto Enrollment">
+      <Grid container direction="column" spacing={2}>
+        <Grid>
           {!!isManagedCustomer ? (
-            <Notice success spacingBottom={20}>
+            <Notice spacingBottom={20} variant="info">
               You&rsquo;re a Managed customer, which means your Linodes are
               already automatically backed up - no need to toggle this setting.
             </Notice>
@@ -58,28 +60,24 @@ const AutoBackups: React.FC<Props> = (props) => {
             all Linodes when they are initially created. For each Linode with
             Backups enabled, your account will be billed the additional hourly
             rate noted on the&nbsp;
-            <a
+            <Link
               data-qa-backups-price
-              href="https://linode.com/backups"
-              target="_blank"
-              aria-describedby="external-site"
-              rel="noopener noreferrer"
+              to="https://www.linode.com/products/backups/"
             >
               Backups pricing page
-              <OpenInNew className={classes.icon} />
-            </a>
+            </Link>
             .
           </Typography>
         </Grid>
-        <Grid item container direction="row" alignItems="center">
-          <Grid item>
+        <Grid alignItems="center" container direction="row">
+          <Grid>
             <FormControlLabel
               control={
                 <Toggle
-                  onChange={onChange}
                   checked={!!isManagedCustomer ? true : backups_enabled}
                   data-qa-toggle-auto-backup
                   disabled={!!isManagedCustomer}
+                  onChange={onChange}
                 />
               }
               label={
@@ -91,13 +89,13 @@ const AutoBackups: React.FC<Props> = (props) => {
           </Grid>
         </Grid>
         {!isManagedCustomer && !backups_enabled && hasLinodesWithoutBackups && (
-          <Grid item>
-            <Typography variant="body1" className={classes.footnote}>
+          <Grid>
+            <Typography className={classes.footnote} variant="body1">
               For existing Linodes without backups,&nbsp;
               <button
+                className={classes.enableBackupsButton}
                 data-qa-backup-existing
                 onClick={openBackupsDrawer}
-                className={classes.enableBackupsButton}
               >
                 enable now
               </button>

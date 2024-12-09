@@ -1,60 +1,43 @@
-import { makeStyles, Theme } from 'src/components/core/styles';
+import { styled, useTheme } from '@mui/material/styles';
 
-export const useStyles = makeStyles((theme: Theme) => ({
-  '@keyframes fadeIn': {
-    from: {
-      opacity: 0,
-    },
-    to: {
-      opacity: 1,
-    },
+import { Button } from 'src/components/Button/Button';
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  marginTop: 18,
+  [theme.breakpoints.up('lg')]: {
+    width: '100%',
   },
-  root: {
-    minHeight: '24px',
-    minWidth: '24px',
-    [theme.breakpoints.down('sm')]: {
-      background: theme.color.white,
-      padding: theme.spacing(2),
-      position: 'relative !important' as 'relative',
-      left: '0 !important' as '0',
-      bottom: '0 !important' as '0',
-    },
+}));
+
+const StyledRoot = styled('div')(({ theme }) => ({
+  minHeight: '24px',
+  minWidth: '24px',
+  [theme.breakpoints.down(1280)]: {
+    background: theme.color.white,
+    bottom: '0 !important' as '0',
+    left: '0 !important' as '0',
+    padding: theme.spacing(2),
+    position: 'relative !important' as 'relative',
   },
-  sidebarTitle: {
-    color: theme.color.headline,
-    fontSize: '1.125rem',
-    wordBreak: 'break-word',
-  },
-  checkoutSection: {
-    animation: '$fadeIn 225ms linear forwards',
-    opacity: 0,
-    padding: '12px 0',
-    [theme.breakpoints.down('sm')]: {
-      '& button': {
-        marginLeft: 0,
-      },
-    },
-    [theme.breakpoints.down('md')]: {
-      paddingBottom: `0px !important`,
-    },
-  },
-  price: {
-    color: theme.color.headline,
-    fontSize: '.8rem',
-    lineHeight: '1.5em',
-    marginTop: theme.spacing(),
-  },
-  detail: {
-    color: theme.color.headline,
-    fontSize: '.8rem',
-    lineHeight: '1.5em',
-  },
-  createButton: {
-    marginTop: 18,
-    [theme.breakpoints.up('lg')]: {
-      width: '100%',
+}));
+
+const StyledCheckoutSection = styled('div')(({ theme }) => ({
+  padding: '12px 0',
+  [theme.breakpoints.down('md')]: {
+    '& button': {
+      marginLeft: 0,
     },
   },
 }));
 
-export default useStyles;
+const SxTypography = () => {
+  const theme = useTheme();
+
+  return {
+    color: theme.color.headline,
+    fontSize: '.8rem',
+    lineHeight: '1.5em',
+  };
+};
+
+export { StyledButton, StyledCheckoutSection, StyledRoot, SxTypography };

@@ -1,199 +1,42 @@
-import '@reach/menu-button/styles.css';
 import '@reach/tabs/styles.css';
-import { Image } from '@linode/api-v4/lib/images';
-import { Linode } from '@linode/api-v4/lib/linodes';
-import { Region } from '@linode/api-v4/lib/regions';
-import { APIError } from '@linode/api-v4/lib/types';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
-import { path, pathOr } from 'ramda';
+import { ErrorBoundary } from '@sentry/react';
 import * as React from 'react';
-import { connect } from 'react-redux';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'redux';
-import { Subscription } from 'rxjs/Subscription';
+
 import {
   DocumentTitleSegment,
   withDocumentTitleProvider,
 } from 'src/components/DocumentTitle';
-import 'highlight.js/styles/a11y-light.css';
-import 'highlight.js/styles/a11y-dark.css';
-
 import withFeatureFlagProvider from 'src/containers/withFeatureFlagProvider.container';
-import withFeatureFlagConsumer, {
-  FeatureFlagConsumerProps,
-} from 'src/containers/withFeatureFlagConsumer.container';
-import { events$ } from 'src/events';
 import TheApplicationIsOnFire from 'src/features/TheApplicationIsOnFire';
 
-import composeState from 'src/utilities/composeState';
-import { MapState } from './store/types';
+import { SplashScreen } from './components/SplashScreen';
+import { GoTo } from './GoTo';
+import { useAdobeAnalytics } from './hooks/useAdobeAnalytics';
+import { useInitialRequests } from './hooks/useInitialRequests';
+import { useNewRelic } from './hooks/useNewRelic';
+import { usePendo } from './hooks/usePendo';
+import { MainContent } from './MainContent';
+import { useEventsPoller } from './queries/events/events';
+// import { Router } from './Router';
+import { useSetupFeatureFlags } from './useSetupFeatureFlags';
 
-import IdentifyUser from './IdentifyUser';
-import MainContent from './MainContent';
-import GoTo from './GoTo';
-import { databaseEventsHandler } from './queries/databases';
-import { domainEventsHandler } from './queries/domains';
+// Ensure component's display name is 'App'
+export const App = () => <BaseApp />;
 
-interface Props {
-  toggleTheme: () => void;
-  location: RouteComponentProps['location'];
-  history: RouteComponentProps['history'];
-}
+const BaseApp = withDocumentTitleProvider(
+  withFeatureFlagProvider(() => {
+    const { isLoading } = useInitialRequests();
 
-interface State {
-  menuOpen: boolean;
-  welcomeBanner: boolean;
-  hasError: boolean;
-  goToOpen: boolean;
-}
+    const { areFeatureFlagsLoading } = useSetupFeatureFlags();
 
-type CombinedProps = Props &
-  StateProps &
-  RouteComponentProps &
-  WithSnackbarProps &
-  FeatureFlagConsumerProps;
-
-export class App extends React.Component<CombinedProps, State> {
-  composeState = composeState;
-
-  eventsSub: Subscription;
-
-  state: State = {
-    menuOpen: false,
-    welcomeBanner: false,
-    hasError: false,
-    goToOpen: false,
-  };
-
-  componentDidCatch() {
-    this.setState({ hasError: true });
-  }
-
-  componentDidMount() {
-    /**
-     * Send pageviews unless blocklisted.
-     */
-    this.props.history.listen(({ pathname }) => {
-      if ((window as any).ga) {
-        (window as any).ga('send', 'pageview', pathname);
-      }
-    });
-
-    /**
-     * Allow an Easter egg for toggling the theme with
-     * a key combination
-     */
-    // eslint-disable-next-line
-    document.addEventListener('keydown', (event: KeyboardEvent) => {
-      const isOSMac = navigator.userAgent.includes('Mac');
-      const letterForThemeShortcut = 'D';
-      const letterForGoToOpen = 'K';
-      const modifierKey = isOSMac ? 'ctrlKey' : 'altKey';
-      if (event[modifierKey] && event.shiftKey) {
-        switch (event.key) {
-          case letterForThemeShortcut:
-            this.props.toggleTheme();
-            break;
-          case letterForGoToOpen:
-            this.setState((prevState) => ({
-              ...prevState,
-              goToOpen: !prevState.goToOpen,
-            }));
-            break;
-        }
-      }
-    });
-
-    /*
-     * Send any Database events to the Database events handler in the queries file
-     */
-    events$
-      .filter((event) => event.action.startsWith('database') && !event._initial)
-      .subscribe(databaseEventsHandler);
-
-    /*
-     * Send any Domain events to the Domain events handler in the queries file
-     */
-    events$
-      .filter((event) => event.action.startsWith('domain') && !event._initial)
-      .subscribe(domainEventsHandler);
-
-    /*
-     * We want to listen for migration events side-wide
-     * It's unpredictable when a migration is going to happen. It could take
-     * hours and it could take days. We want to notify to the user when it happens
-     * and then update the Linodes in LinodesDetail and LinodesLanding
-     */
-    this.eventsSub = events$
-      .filter(
-        (event) => !event._initial && ['linode_migrate'].includes(event.action)
-      )
-      .subscribe((event) => {
-        const { entity: migratedLinode } = event;
-        if (event.action === 'linode_migrate' && event.status === 'finished') {
-          this.props.enqueueSnackbar(
-            `Linode ${migratedLinode!.label} migrated successfully.`,
-            {
-              variant: 'success',
-            }
-          );
-        }
-
-        if (event.action === 'linode_migrate' && event.status === 'failed') {
-          this.props.enqueueSnackbar(
-            `Linode ${migratedLinode!.label} migration failed.`,
-            {
-              variant: 'error',
-            }
-          );
-        }
-      });
-  }
-
-  goToClose = () => {
-    this.setState({ goToOpen: false });
-  };
-
-  render() {
-    const { hasError } = this.state;
-    const {
-      toggleTheme,
-      linodesError,
-      typesError,
-      imagesError,
-      notificationsError,
-      volumesError,
-      bucketsError,
-      nodeBalancersError,
-    } = this.props;
-
-    if (hasError) {
-      return <TheApplicationIsOnFire />;
-    }
-
-    /**
-     * basically, if we get an "invalid oauth token"
-     * error from the API, just render nothing because the user is
-     * about to get shot off to login
-     */
-    if (
-      hasOauthError(
-        linodesError,
-        typesError,
-        imagesError,
-        notificationsError,
-        volumesError,
-        bucketsError,
-        nodeBalancersError
-      )
-    ) {
-      return null;
+    if (isLoading || areFeatureFlagsLoading) {
+      return <SplashScreen />;
     }
 
     return (
-      <React.Fragment>
+      <ErrorBoundary fallback={<TheApplicationIsOnFire />}>
         {/** Accessibility helper */}
-        <a href="#main-content" className="skip-link">
+        <a className="skip-link" href="#main-content">
           Skip to main content
         </a>
         <div hidden>

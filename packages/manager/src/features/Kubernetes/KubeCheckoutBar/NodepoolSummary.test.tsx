@@ -3,20 +3,21 @@ import * as React from 'react';
 
 import { extendedTypes } from 'src/__data__/ExtendedType';
 import { renderWithTheme } from 'src/utilities/testHelpers';
-import NodePoolSummary, { Props } from './NodePoolSummary';
+
+import { NodePoolSummary, Props } from './NodePoolSummary';
 
 const props: Props = {
   nodeCount: 3,
+  onRemove: vi.fn(),
   poolType: extendedTypes[1],
   price: 1000,
-  onRemove: jest.fn(),
-  updateNodeCount: jest.fn(),
+  updateNodeCount: vi.fn(),
 };
 
 describe('Node Pool Summary', () => {
   it("should render the label of its pool's plan", () => {
     const { getByText } = renderWithTheme(<NodePoolSummary {...props} />);
-    getByText(/Linode 2GB Plan/i);
+    getByText(/Linode 2 GB Plan/i);
     getByText(/1 CPU, 50 GB Storage/i);
   });
 

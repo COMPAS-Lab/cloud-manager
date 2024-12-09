@@ -2,6 +2,7 @@ import { fireEvent } from '@testing-library/react';
 import * as React from 'react';
 
 import { renderWithTheme } from 'src/utilities/testHelpers';
+
 import DatabaseSettingsMenuItem from './DatabaseSettingsMenuItem';
 
 describe('DatabaseSettingsMenuItem Component', () => {
@@ -14,8 +15,8 @@ describe('DatabaseSettingsMenuItem Component', () => {
       <DatabaseSettingsMenuItem
         buttonText={buttonText}
         descriptiveText={descriptiveText}
+        onClick={vi.fn()}
         sectionTitle={sectionTitle}
-        onClick={jest.fn()}
       />
     );
     const title = getByRole('heading');
@@ -27,8 +28,8 @@ describe('DatabaseSettingsMenuItem Component', () => {
       <DatabaseSettingsMenuItem
         buttonText={buttonText}
         descriptiveText={descriptiveText}
+        onClick={vi.fn()}
         sectionTitle={sectionTitle}
-        onClick={jest.fn()}
       />
     );
     getByText(descriptiveText);
@@ -39,8 +40,8 @@ describe('DatabaseSettingsMenuItem Component', () => {
       <DatabaseSettingsMenuItem
         buttonText={buttonText}
         descriptiveText={descriptiveText}
+        onClick={vi.fn()}
         sectionTitle={sectionTitle}
-        onClick={jest.fn()}
       />
     );
     const button = getByRole('button');
@@ -48,13 +49,13 @@ describe('DatabaseSettingsMenuItem Component', () => {
   });
 
   it('Should have a primary button that calls the provided callback when clicked', () => {
-    const onClick = jest.fn();
+    const onClick = vi.fn();
     const { getByRole } = renderWithTheme(
       <DatabaseSettingsMenuItem
         buttonText={buttonText}
         descriptiveText={descriptiveText}
-        sectionTitle={sectionTitle}
         onClick={onClick}
+        sectionTitle={sectionTitle}
       />
     );
     const button = getByRole('button');

@@ -1,33 +1,35 @@
 import * as React from 'react';
-import Typography from 'src/components/core/Typography';
-import useStyles from './styles';
 
-export interface Props {
+import { Typography } from 'src/components/Typography';
+
+import { StyledCheckoutSection, SxTypography } from './styles';
+
+export interface DisplaySectionProps {
+  details?: number | string;
   title: string;
-  details?: string | number;
 }
 
-export const DisplaySection: React.FC<Props> = (props) => {
-  const { title, details } = props;
-  const classes = useStyles();
+const DisplaySection = React.memo((props: DisplaySectionProps) => {
+  const { details, title } = props;
+
   return (
-    <div className={classes.checkoutSection}>
+    <StyledCheckoutSection>
       {title && (
-        <Typography variant="h3" data-qa-subheading={title}>
+        <Typography data-qa-subheading={title} variant="h3">
           {title}
         </Typography>
       )}
-      {details && (
+      {details ? (
         <Typography
           component="span"
           data-qa-details={details}
-          className={classes.detail}
+          sx={SxTypography}
         >
           {details}
         </Typography>
-      )}
-    </div>
+      ) : null}
+    </StyledCheckoutSection>
   );
-};
+});
 
-export default React.memo(DisplaySection);
+export { DisplaySection };

@@ -1,58 +1,104 @@
-// .storybook/preview.js
-import { select, withKnobs } from '@storybook/addon-knobs';
-import { MINIMAL_VIEWPORTS } from '@storybook/addon-viewport';
 import React from 'react';
-import '../public/fonts/fonts.css';
-import CssBaseline from '../src/components/core/CssBaseline';
-import { ThemeProvider } from '../src/components/core/styles';
-import '../src/index.css';
-import { dark, light } from '../src/themes';
+import { Preview } from '@storybook/react';
+import { MINIMAL_VIEWPORTS } from '@storybook/addon-viewport';
+import {
+  Title,
+  Subtitle,
+  Description,
+  Primary,
+  Controls,
+  Stories,
+} from '@storybook/blocks';
 import { wrapWithTheme } from '../src/utilities/testHelpers';
+import { useDarkMode } from 'storybook-dark-mode';
+import { DocsContainer as BaseContainer } from '@storybook/addon-docs';
+import { themes } from '@storybook/theming';
+import { storybookWorker } from '../src/mocks/mswWorkers';
 
-const options = {
-  dark,
-  light,
-};
-
-export const decorators = [
-  withKnobs,
-  (Story) => {
-    const _key = select('theme', ['light', 'dark'], 'light');
-
-    return wrapWithTheme(
-      <ThemeProvider theme={options[_key]}>
-        <CssBaseline />
-        {/* Keep this in case we want to change the background color based on the mode */}
-        {/* <div
-          style={{
-            backgroundColor: options[_key]().bg.app,
-          }}
-        > */}
-        <Story />
-        {/* </div> */}
-      </ThemeProvider>
-    );
-  },
-];
+import '../src/index.css';
+// TODO: M3-6705 Remove this when replacing @reach/tabs with MUI Tabs
+import '@reach/tabs/styles.css';
 
 MINIMAL_VIEWPORTS.mobile1.styles = {
   height: '667px',
   width: '375px',
 };
 
-export const parameters = {
-  controls: { expanded: true },
-  options: {
-    storySort: {
-      method: 'alphabetical',
-      order: ['Intro', 'Features', 'Components', 'Elements', 'Core Styles'],
+export const DocsContainer = ({ children, context }) => {
+  const isDark = useDarkMode();
+
+  return (
+    <BaseContainer
+      theme={{
+        ...themes[isDark ? 'dark' : 'normal'],
+        base: isDark ? 'dark' : 'light',
+      }}
+      context={context}
+    >
+      {children}
+    </BaseContainer>
+  );
+};
+
+const preview: Preview = {
+  decorators: [
+    (Story) => {
+      const isDark = useDarkMode();
+      return wrapWithTheme(<Story />, { theme: isDark ? 'dark' : 'light' });
+    },
+  ],
+  loaders: [
+    async () => ({
+      msw: await storybookWorker?.start(),
+    }),
+  ],
+  parameters: {
+    backgrounds: {
+      grid: {
+        disable: true,
+      },
+    },
+    options: {
+      storySort: {
+        method: 'alphabetical',
+        order: [
+          'Intro',
+          'Design System',
+          'Icons',
+          'Foundations',
+          'Components',
+          'Features',
+        ],
+      },
+    },
+    viewport: {
+      viewports: MINIMAL_VIEWPORTS,
+    },
+    darkMode: {
+      dark: { ...themes.dark },
+      light: { ...themes.normal },
+    },
+    controls: {
+      expanded: true,
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/,
+      },
+      sort: 'requiredFirst',
+    },
+    docs: {
+      container: DocsContainer,
+      page: () => (
+        <>
+          <Title />
+          <Subtitle />
+          <Description />
+          <Primary />
+          <Controls />
+        </>
+      ),
     },
   },
-  previewTabs: {
-    'storybook/docs/panel': { index: -1 },
-  },
-  viewMode: 'docs',
-  viewport: {
-    viewports: MINIMAL_VIEWPORTS,
-  },
 };
+
+export default preview;

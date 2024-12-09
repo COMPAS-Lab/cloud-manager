@@ -1,73 +1,70 @@
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
+
 import OrderBy from 'src/components/OrderBy';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
-import TableSortCell from 'src/components/TableSortCell';
+import { TableSortCell } from 'src/components/TableSortCell';
+import { Typography } from 'src/components/Typography';
 import { LongviewPort } from 'src/features/Longview/request.types';
-import ConnectionRow from './ConnectionRow';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  container: {
-    [theme.breakpoints.down('sm')]: {
-      marginTop: theme.spacing(3),
-    },
-  },
-  title: {
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
-  },
-}));
+import { ConnectionRow } from './ConnectionRow';
 
 export interface TableProps {
   connections: LongviewPort[];
-  connectionsLoading: boolean;
   connectionsError?: string;
+  connectionsLoading: boolean;
 }
 
-export const ActiveConnections: React.FC<TableProps> = (props) => {
+export const ActiveConnections = (props: TableProps) => {
   const { connections, connectionsError, connectionsLoading } = props;
-  const classes = useStyles();
+  const theme = useTheme();
 
   return (
-    <Grid item xs={12} md={4} className={classes.container}>
-      <Typography className={classes.title} variant="h2">
+    <Grid md={4} xs={12}>
+      <Typography
+        sx={{
+          [theme.breakpoints.down('lg')]: {
+            marginLeft: theme.spacing(),
+            marginRight: theme.spacing(),
+          },
+        }}
+        variant="h2"
+      >
         Active Connections
       </Typography>
       <ConnectionsTable
         connections={connections}
-        connectionsLoading={connectionsLoading}
         connectionsError={connectionsError}
+        connectionsLoading={connectionsLoading}
       />
     </Grid>
   );
 };
-export const ConnectionsTable: React.FC<TableProps> = (props) => {
-  const { connections, connectionsLoading, connectionsError } = props;
+
+export const ConnectionsTable = (props: TableProps) => {
+  const { connections, connectionsError, connectionsLoading } = props;
 
   return (
     <OrderBy
       data={connections}
-      orderBy={'process'}
       order={'asc'}
+      orderBy={'process'}
       preferenceKey={'active-connections'}
     >
       {({ data: orderedData, handleOrderChange, order, orderBy }) => (
         <Paginate data={orderedData} pageSize={25}>
           {({
-            data: paginatedData,
             count,
+            data: paginatedData,
             handlePageChange,
             handlePageSizeChange,
             page,
@@ -78,29 +75,29 @@ export const ConnectionsTable: React.FC<TableProps> = (props) => {
                 <TableHead>
                   <TableRow>
                     <TableSortCell
-                      data-qa-table-header="Name"
                       active={orderBy === 'name'}
-                      label="name"
+                      data-qa-table-header="Name"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="name"
                     >
                       Name
                     </TableSortCell>
                     <TableSortCell
-                      data-qa-table-header="User"
                       active={orderBy === 'user'}
-                      label="user"
+                      data-qa-table-header="User"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="user"
                     >
                       User
                     </TableSortCell>
                     <TableSortCell
-                      data-qa-table-header="Count"
                       active={orderBy === 'count'}
-                      label="count"
+                      data-qa-table-header="Count"
                       direction={order}
                       handleClick={handleOrderChange}
+                      label="count"
                     >
                       Count
                     </TableSortCell>
@@ -116,11 +113,11 @@ export const ConnectionsTable: React.FC<TableProps> = (props) => {
               </Table>
               <PaginationFooter
                 count={count}
-                page={page}
-                pageSize={pageSize}
+                eventCategory="Longview active connections"
                 handlePageChange={handlePageChange}
                 handleSizeChange={handlePageSizeChange}
-                eventCategory="Longview active connections"
+                page={page}
+                pageSize={pageSize}
               />
             </>
           )}
@@ -142,17 +139,13 @@ const renderLoadingErrorData = (
     return <TableRowLoading columns={3} />;
   }
   if (data.length === 0) {
-    return (
-      <TableRowEmptyState colSpan={12} message={'No active connections.'} />
-    );
+    return <TableRowEmpty colSpan={12} message={'No active connections.'} />;
   }
 
   return data.map((thisConnection, idx) => (
     <ConnectionRow
-      key={`longview-active-connection-${idx}`}
       connection={thisConnection}
+      key={`longview-active-connection-${idx}`}
     />
   ));
 };
-
-export default ActiveConnections;

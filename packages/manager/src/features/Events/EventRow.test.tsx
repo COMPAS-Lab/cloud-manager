@@ -1,41 +1,34 @@
 import * as React from 'react';
-import { renderWithTheme, wrapWithTableBody } from 'src/utilities/testHelpers';
-import { Row, RowProps } from './EventRow';
 
-const message = 'this is a message.';
-const props: RowProps = {
-  action: 'linode_boot',
-  message,
-  type: 'linode',
-  created: '2018-01-01',
-  username: null,
-};
+import { eventFactory } from 'src/factories';
+import {
+  renderWithTheme,
+  resizeScreenSize,
+  wrapWithTableBody,
+} from 'src/utilities/testHelpers';
 
-describe('EventRow component', () => {
-  it('should render an event with a message', () => {
-    const { getByText } = renderWithTheme(
-      wrapWithTableBody(<Row {...props} />)
-    );
+import { EventRow } from './EventRow';
 
-    expect(getByText(message)).toBeInTheDocument();
+import type { Event } from '@linode/api-v4/lib/account';
+
+describe('EventRow', () => {
+  const mockEvent: Event = eventFactory.build({
+    action: 'tfa_enabled',
+    status: 'notification',
+    username: 'test_user',
   });
 
-  it("shouldn't render events without a message", () => {
-    const emptyMessageProps = { ...props, message: undefined };
-    const { container } = renderWithTheme(
-      wrapWithTableBody(<Row {...emptyMessageProps} />)
-    );
-    expect(container.closest('tr')).toBeNull();
-  });
-
-  it('should display the message with a username if one exists', () => {
-    const username = 'banks';
-    const propsWithUsername = { ...props, username };
-
-    const { getByText } = renderWithTheme(
-      wrapWithTableBody(<Row {...propsWithUsername} />)
+  it('displays the correct data', () => {
+    resizeScreenSize(1600);
+    const { getByRole } = renderWithTheme(
+      wrapWithTableBody(<EventRow event={mockEvent} />)
     );
 
-    expect(getByText(`this is a message by ${username}.`)).toBeInTheDocument();
+    expect(
+      getByRole('cell', {
+        name: /Two-factor authentication has been enabled./i,
+      })
+    ).toBeInTheDocument();
+    expect(getByRole('cell', { name: /test_user/i })).toBeInTheDocument();
   });
 });

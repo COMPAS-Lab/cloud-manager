@@ -1,124 +1,40 @@
-import classNames from 'classnames';
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableHead from 'src/components/core/TableHead';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableSortCell from 'src/components/TableSortCell';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    '& th': {
-      backgroundColor: theme.bg.tableHeader,
-      borderTop: `2px solid ${theme.borderColors.borderTable}`,
-      borderBottom: `2px solid ${theme.borderColors.borderTable}`,
-      fontFamily: theme.font.bold,
-      padding: '10px 15px',
-      '&:first-of-type': {
-        borderLeft: 'none',
-      },
-      '&:last-of-type': {
-        borderRight: 'none',
-      },
-      '&:hover': {
-        ...theme.applyTableHeaderStyles,
-      },
-    },
-  },
-  tableHead: {
-    color: theme.textColors.tableHeader,
-    top: 104,
-    '& span': {
-      color: theme.textColors.tableHeader,
-    },
-  },
-  noHover: {
-    cursor: 'default !important',
-  },
-  stackscriptTitles: {
-    width: '36%',
-    [theme.breakpoints.down('md')]: {
-      width: '48%',
-    },
-    [theme.breakpoints.down('sm')]: {
-      width: '50%',
-    },
-    [theme.breakpoints.down('xs')]: {
-      width: '60%',
-    },
-  },
-  stackscriptTitlesAccount: {
-    width: '26%',
-    [theme.breakpoints.down('md')]: {
-      width: '38%',
-    },
-    [theme.breakpoints.down('sm')]: {
-      width: '50%',
-    },
-    [theme.breakpoints.down('xs')]: {
-      width: '60%',
-    },
-  },
-  selectingStackscriptTitles: {
-    paddingLeft: '20px !important',
-    width: 'calc(100% - 65px)',
-  },
-  deploys: {
-    width: '10%',
-    [theme.breakpoints.down('md')]: {
-      width: '15%',
-    },
-    [theme.breakpoints.down('sm')]: {
-      width: '17%',
-    },
-    [theme.breakpoints.down('xs')]: {
-      width: '28%',
-    },
-  },
-  revisions: {
-    whiteSpace: 'nowrap',
-    width: '13%',
-    [theme.breakpoints.down('md')]: {
-      width: '17%',
-    },
-    [theme.breakpoints.down('sm')]: {
-      width: '23%',
-    },
-  },
-  images: {
-    width: '26%',
-  },
-  imagesAccount: {
-    width: '20%',
-  },
-  status: {
-    width: '7%',
-  },
-}));
+import { Hidden } from 'src/components/Hidden';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { TableSortCell } from 'src/components/TableSortCell';
+
+import {
+  StyledCompatibleImagesCell,
+  StyledEmptyTableCell,
+  StyledRootTableHead,
+  StyledStatusCell,
+  sharedDeployCellStyles,
+  sharedRevisionsCellStyles,
+  sharedStackScriptCellStyles,
+} from './StackScriptTableHead.styles';
 
 type SortOrder = 'asc' | 'desc';
 
-type CurrentFilter = 'label' | 'deploys' | 'revision';
+type CurrentFilter = 'deploys' | 'label' | 'revision';
 
-interface Props {
+export interface StackScriptTableHeadProps {
   category?: string;
-  isSelecting?: boolean;
-  handleClickTableHeader?: (value: string) => void;
-  sortOrder?: SortOrder;
   currentFilterType: CurrentFilter | null;
+  handleClickTableHeader?: (value: string) => void;
+  isSelecting?: boolean;
+  sortOrder?: SortOrder;
 }
 
-type CombinedProps = Props;
-
-export const StackScriptTableHead: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const StackScriptTableHead = (props: StackScriptTableHeadProps) => {
   const {
-    currentFilterType,
-    isSelecting,
-    handleClickTableHeader,
-    sortOrder,
     category,
+    currentFilterType,
+    handleClickTableHeader,
+    isSelecting,
+    sortOrder,
   } = props;
 
   const Cell: React.ComponentType<any> =
@@ -127,17 +43,17 @@ export const StackScriptTableHead: React.FC<CombinedProps> = (props) => {
   const maybeAddSortingProps = (orderBy: string) =>
     !!handleClickTableHeader && sortOrder
       ? {
-          direction: sortOrder,
           active: currentFilterType === orderBy,
-          label: orderBy,
+          direction: sortOrder,
           handleClick: handleClickTableHeader,
+          label: orderBy,
         }
       : {};
 
   const communityStackScripts = category === 'community';
 
   return (
-    <TableHead className={classes.root}>
+    <StyledRootTableHead>
       <TableRow>
         {/* The column width jumps in the Linode Create flow when the user
             clicks on the table header. This is currently also happening in
@@ -145,11 +61,8 @@ export const StackScriptTableHead: React.FC<CombinedProps> = (props) => {
             the panels in the StackScript landing page and the one in the
             Linode Create flow.  */}
         <Cell
-          className={classNames({
-            [classes.tableHead]: true,
-            [classes.stackscriptTitles]: true,
-            [classes.stackscriptTitlesAccount]: category === 'account',
-            [classes.selectingStackscriptTitles]: isSelecting,
+          sx={(theme: Theme) => ({
+            ...sharedStackScriptCellStyles(category, isSelecting, theme),
           })}
           colSpan={isSelecting ? 2 : 1}
           data-qa-stackscript-table-header
@@ -159,18 +72,18 @@ export const StackScriptTableHead: React.FC<CombinedProps> = (props) => {
         </Cell>
         {!isSelecting && (
           <Cell
-            className={`${classes.tableHead} ${classes.deploys}`}
             data-qa-stackscript-active-deploy-header
+            sx={(theme: Theme) => ({ ...sharedDeployCellStyles(theme) })}
             {...maybeAddSortingProps('deploys')}
           >
             Deploys
           </Cell>
         )}
         {!isSelecting && (
-          <Hidden xsDown>
+          <Hidden smDown>
             <Cell
-              className={`${classes.tableHead} ${classes.revisions}`}
               data-qa-stackscript-revision-header
+              sx={(theme: Theme) => ({ ...sharedRevisionsCellStyles(theme) })}
               {...maybeAddSortingProps('revision')}
             >
               Last Revision
@@ -178,36 +91,24 @@ export const StackScriptTableHead: React.FC<CombinedProps> = (props) => {
           </Hidden>
         )}
         {!isSelecting && (
-          <Hidden mdDown>
-            <TableCell
-              className={classNames({
-                [classes.tableHead]: true,
-                [classes.images]: true,
-                [classes.imagesAccount]: category === 'account',
-                [classes.noHover]: true,
-              })}
+          <Hidden lgDown>
+            <StyledCompatibleImagesCell
+              category={category}
               data-qa-stackscript-compatible-images
             >
               Compatible Images
-            </TableCell>
+            </StyledCompatibleImagesCell>
           </Hidden>
         )}
         {!isSelecting && !communityStackScripts ? (
-          <Hidden mdDown>
-            <TableCell
-              className={`${classes.tableHead} ${classes.status} ${classes.noHover}`}
-              data-qa-stackscript-status-header
-            >
+          <Hidden lgDown>
+            <StyledStatusCell data-qa-stackscript-status-header>
               Status
-            </TableCell>
+            </StyledStatusCell>
           </Hidden>
         ) : null}
-        {!isSelecting && (
-          <TableCell className={`${classes.tableHead} ${classes.noHover}`} />
-        )}
+        {!isSelecting && <StyledEmptyTableCell />}
       </TableRow>
-    </TableHead>
+    </StyledRootTableHead>
   );
 };
-
-export default StackScriptTableHead;

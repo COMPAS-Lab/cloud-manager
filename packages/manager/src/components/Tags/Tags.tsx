@@ -1,32 +1,34 @@
 import { splitAt } from 'ramda';
 import * as React from 'react';
-import ShowMore from 'src/components/ShowMore';
-import Tag from 'src/components/Tag';
 
-export interface Props {
+import { ShowMore } from 'src/components/ShowMore/ShowMore';
+import { Tag } from 'src/components/Tag/Tag';
+
+export interface TagsProps {
+  /**
+   * An array of tags to be displayed.
+   */
   tags: string[];
 }
 
-type CombinedProps = Props;
-
-export const Tags: React.FC<CombinedProps> = (props) => {
+export const Tags = (props: TagsProps) => {
   const { tags } = props;
 
   const renderTags = (tags: string[]) => {
     return tags.map((eachTag) => {
       return (
         <Tag
-          label={eachTag}
-          key={eachTag}
-          component={'button' as 'div'}
           colorVariant="lightBlue"
+          component={'button' as 'div'}
+          key={eachTag}
+          label={eachTag}
         />
       );
     });
   };
 
   const renderMoreTags = (tags: string[]) => {
-    return <ShowMore items={tags} render={renderTags} ariaItemType="tags" />;
+    return <ShowMore ariaItemType="tags" items={tags} render={renderTags} />;
   };
 
   if (!tags) {
@@ -41,5 +43,3 @@ export const Tags: React.FC<CombinedProps> = (props) => {
     </>
   );
 };
-
-export default Tags;

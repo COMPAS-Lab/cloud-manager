@@ -1,29 +1,29 @@
 import * as React from 'react';
-import CircleProgress from 'src/components/CircleProgress';
-import Notice from 'src/components/Notice';
 
-export interface Props {
-  title: string;
-  loading: boolean;
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Notice } from 'src/components/Notice/Notice';
+
+export interface DrawerContentProps {
+  children: React.ReactNode;
   error: boolean;
   errorMessage?: string;
+  loading: boolean;
+  title: string;
 }
 
-export const DrawerContent: React.FC<Props> = (props) => {
-  const { title, loading, error, errorMessage, children } = props;
+export const DrawerContent = (props: DrawerContentProps) => {
+  const { children, error, errorMessage, loading, title } = props;
   if (loading) {
     return <CircleProgress />;
   }
 
   if (error) {
     return (
-      <Notice error spacingTop={8}>
+      <Notice spacingTop={8} variant="error">
         {errorMessage ?? `Couldn't load ${title}`}
       </Notice>
     );
   }
   // eslint-disable-next-line
-  return <React.Fragment>{children}</React.Fragment>;
+  return <>{children}</>;
 };
-
-export default DrawerContent;

@@ -1,141 +1,102 @@
+import { Paper } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import Paper from 'src/components/core/Paper';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ExternalLink from 'src/components/ExternalLink';
-import Grid from 'src/components/Grid';
+import { makeStyles } from 'tss-react/mui';
 
-type ClassNames = 'root' | 'postTitle' | 'post' | 'withSeparator' | 'postLink';
+import { Link } from 'src/components/Link';
+import { Typography } from 'src/components/Typography';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      margin: `${theme.spacing(6)}px 0`,
-    },
-    postTitle: {
-      marginBottom: theme.spacing(2),
-    },
-    post: {
-      marginBottom: theme.spacing(1) / 2,
-      ...theme.typography.body1,
-    },
-    postLink: {
-      color: theme.textColors.linkActiveLight,
-      '&:hover': {
-        color: theme.palette.primary.main,
-        textDecoration: 'underline',
-      },
-    },
-    withSeparator: {
-      borderLeft: `1px solid ${theme.palette.divider}`,
-      '&.MuiGrid-item': {
-        paddingLeft: theme.spacing(4),
-      },
-    },
-  });
+import type { Theme } from '@mui/material/styles';
 
-type CombinedProps = WithStyles<ClassNames>;
+const useStyles = makeStyles()((theme: Theme) => ({
+  post: {
+    marginBottom: theme.spacing(0.5),
+  },
+  postTitle: {
+    marginBottom: theme.spacing(2),
+  },
+  root: {
+    margin: `${theme.spacing(6)} 0`,
+  },
+  withSeparator: {
+    borderLeft: `1px solid ${theme.borderColors.divider}`,
+    paddingLeft: theme.spacing(4),
+    [theme.breakpoints.down('sm')]: {
+      borderLeft: 'none',
+      marginTop: theme.spacing(4),
+      paddingLeft: 0,
+    },
+  },
+}));
 
-class PopularPosts extends React.Component<CombinedProps, {}> {
-  renderPopularDocs = () => {
-    const { classes } = this.props;
+export const PopularPosts = () => {
+  const { classes } = useStyles();
+
+  const renderPopularDocs = () => {
     return (
       <React.Fragment>
         <div className={classes.post}>
-          <ExternalLink
-            link="https://www.linode.com/docs/getting-started/"
-            text="Getting Started with Linode"
-            className={classes.postLink}
-            absoluteIcon
-          />
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/getting-started">
+            Getting Started with Linode
+          </Link>
         </div>
         <div className={classes.post}>
-          <ExternalLink
-            link="https://www.linode.com/docs/security/securing-your-server/"
-            text="How to Secure Your Server"
-            className={classes.postLink}
-            absoluteIcon
-          />
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/set-up-and-secure-a-compute-instance">
+            How to Secure Your Server
+          </Link>
         </div>
         <div className={classes.post}>
-          <ExternalLink
-            link="https://www.linode.com/docs/troubleshooting/troubleshooting/"
-            text="Troubleshooting"
-            className={classes.postLink}
-            absoluteIcon
-          />
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/troubleshooting-general-issues-on-compute-instances">
+            Troubleshooting
+          </Link>
         </div>
       </React.Fragment>
     );
   };
 
-  renderPopularForumPosts = () => {
-    const { classes } = this.props;
+  const renderPopularForumPosts = () => {
     return (
       <React.Fragment>
         <div className={classes.post}>
-          <ExternalLink
-            link="https://www.linode.com/community/questions/323/my-linode-is-unreachable-after-maintenance"
-            text="My Linode is unreachable after maintenance"
-            className={classes.postLink}
-            absoluteIcon
-          />
+          <Link to="https://www.linode.com/community/questions/323/my-linode-is-unreachable-after-maintenance">
+            My Linode is unreachable after maintenance
+          </Link>
         </div>
         <div className={classes.post}>
-          <ExternalLink
-            link="https://www.linode.com/community/questions/232/why-is-my-website-so-slow"
-            text="Why is my website so slow?"
-            className={classes.postLink}
-            absoluteIcon
-          />
+          <Link to="https://www.linode.com/community/questions/232/why-is-my-website-so-slow">
+            Why is my website so slow?
+          </Link>
         </div>
         <div className={classes.post}>
-          <ExternalLink
-            link="https://www.linode.com/community/questions/19082/i-just-created-my-first-linode-and-i-cant-send-emails-why"
-            text="Ports 25, 465, and 587 blocked?"
-            className={classes.postLink}
-            absoluteIcon
-          />
+          <Link to="https://www.linode.com/community/questions/19082/i-just-created-my-first-linode-and-i-cant-send-emails-why">
+            Ports 25, 465, and 587 blocked?
+          </Link>
         </div>
       </React.Fragment>
     );
   };
 
-  render() {
-    const { classes } = this.props;
-
-    return (
-      <Paper className={classes.root} variant="outlined">
-        <Grid container>
-          <Grid item xs={12} sm={6} data-qa-documentation-link>
-            <Typography variant="h3" className={classes.postTitle}>
-              Most Popular Documentation:
-            </Typography>
-            {this.renderPopularDocs()}
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            className={classes.withSeparator}
-            data-qa-community-link
-          >
-            <Typography variant="h3" className={classes.postTitle}>
-              Most Popular Community Posts:
-            </Typography>
-            {this.renderPopularForumPosts()}
-          </Grid>
+  return (
+    <Paper className={classes.root} variant="outlined">
+      <Grid container>
+        <Grid data-qa-documentation-link sm={6} xs={12}>
+          <Typography className={classes.postTitle} variant="h3">
+            Most Popular Documentation:
+          </Typography>
+          {renderPopularDocs()}
         </Grid>
-      </Paper>
-    );
-  }
-}
-
-const styled = withStyles(styles);
-
-export default styled(PopularPosts);
+        <Grid
+          className={classes.withSeparator}
+          data-qa-community-link
+          sm={6}
+          xs={12}
+        >
+          <Typography className={classes.postTitle} variant="h3">
+            Most Popular Community Posts:
+          </Typography>
+          {renderPopularForumPosts()}
+        </Grid>
+      </Grid>
+    </Paper>
+  );
+};

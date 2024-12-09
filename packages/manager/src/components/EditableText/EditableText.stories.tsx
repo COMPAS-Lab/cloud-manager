@@ -1,46 +1,50 @@
+import { action } from '@storybook/addon-actions';
+import { useArgs } from '@storybook/preview-api';
 import * as React from 'react';
-import EditableText from './EditableText';
 
-class InteractiveEditableText extends React.Component {
-  mounted: boolean = false;
-  state = {
+import { EditableText } from './EditableText';
+
+import type { Meta, StoryObj } from '@storybook/react';
+
+type Story = StoryObj<typeof EditableText>;
+
+export const Default: Story = {
+  args: {
+    onCancel: action('onCancel'),
     text: 'Edit me!',
-  };
+  },
+  render: (args) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [, setLocalArgs] = useArgs();
+    const onEdit = (updatedText: string) => {
+      return Promise.resolve(setLocalArgs({ text: updatedText }));
+    };
 
-  componentWillUnmount() {
-    this.mounted = false;
-  }
+    return <EditableText {...args} onEdit={onEdit} />;
+  },
+};
 
-  omponentDidMount() {
-    this.mounted = true;
-  }
+export const WithSuffix: Story = {
+  args: {
+    onCancel: action('onCancel'),
+    text: 'I have a suffix',
+  },
+  render: (args) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [, setLocalArgs] = useArgs();
+    const onEdit = (updatedText: string) => {
+      return Promise.resolve(setLocalArgs({ text: updatedText }));
+    };
 
-  editText = (value: string) => {
-    this.setState({ text: value });
-    return Promise.resolve('hello world');
-  };
-
-  cancelEdit = () => {
-    this.forceUpdate();
-  };
-
-  render() {
     return (
-      <EditableText
-        text={this.state.text}
-        onEdit={this.editText}
-        onCancel={this.cancelEdit}
-      />
+      <EditableText {...args} onEdit={onEdit} textSuffix=" (I am the suffix)" />
     );
-  }
-}
-
-export default {
-  title: 'Components/Editable Text',
+  },
 };
 
-export const HeadlineTitle = () => <InteractiveEditableText />;
-
-HeadlineTitle.story = {
-  name: 'Headline & Title',
+const meta: Meta<typeof EditableText> = {
+  component: EditableText,
+  title: 'Components/Input/Editable Text',
 };
+
+export default meta;

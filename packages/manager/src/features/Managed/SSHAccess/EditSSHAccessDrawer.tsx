@@ -1,64 +1,49 @@
+import { ManagedLinodeSetting } from '@linode/api-v4/lib/managed';
+import Grid from '@mui/material/Unstable_Grid2';
 import { Formik, FormikHelpers } from 'formik';
-import {
-  ManagedLinodeSetting,
-  updateLinodeSettings,
-} from '@linode/api-v4/lib/managed';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
-import Grid from 'src/components/Grid';
-import IPSelect from 'src/components/IPSelect';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import Toggle from 'src/components/Toggle';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Drawer } from 'src/components/Drawer';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { IPSelect } from 'src/components/IPSelect/IPSelect';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import { Toggle } from 'src/components/Toggle/Toggle';
+import { useUpdateLinodeSettingsMutation } from 'src/queries/managed/managed';
 import {
   handleFieldErrors,
   handleGeneralErrors,
 } from 'src/utilities/formikErrorUtils';
-import { privateIPRegex, removePrefixLength } from 'src/utilities/ipUtils';
+import { isPrivateIP, removePrefixLength } from 'src/utilities/ipUtils';
+
+import {
+  StyledIPGrid,
+  StyledPortGrid,
+  StyledTypography,
+} from './EditSSHAccessDrawer.styles';
 import { DEFAULTS } from './common';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  ip: {
-    [theme.breakpoints.down('sm')]: {
-      paddingBottom: '0px !important',
-    },
-  },
-  port: {
-    [theme.breakpoints.down('sm')]: {
-      paddingTop: '0px !important',
-    },
-  },
-  helperText: {
-    marginBottom: theme.spacing(1) + 2,
-  },
-}));
-
-interface Props {
-  isOpen: boolean;
+interface EditSSHAccessDrawerProps {
   closeDrawer: () => void;
-  updateOne: (linodeSetting: ManagedLinodeSetting) => void;
+  isOpen: boolean;
   linodeSetting?: ManagedLinodeSetting;
 }
 
-type CombinedProps = Props;
+const EditSSHAccessDrawer = (props: EditSSHAccessDrawerProps) => {
+  const { closeDrawer, isOpen, linodeSetting } = props;
 
-const EditSSHAccessDrawer: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
-  const { isOpen, closeDrawer, linodeSetting, updateOne } = props;
+  const { mutateAsync: updateLinodeSettings } = useUpdateLinodeSettingsMutation(
+    linodeSetting?.id || -1
+  );
 
   const title = linodeSetting
     ? `Edit SSH Access for ${linodeSetting.label}`
     : 'Edit SSH Access';
 
   const onSubmit = (
-    values: Omit<ManagedLinodeSetting, 'id' | 'label' | 'group'>,
-    { setErrors, setSubmitting, setStatus }: FormikHelpers<ManagedLinodeSetting>
+    values: Omit<ManagedLinodeSetting, 'group' | 'id' | 'label'>,
+    { setErrors, setStatus, setSubmitting }: FormikHelpers<ManagedLinodeSetting>
   ) => {
     // It probably isn't possible to end up here without linodeSetting,
     // but we'll include an early return to make TypeScript happy.
@@ -74,12 +59,11 @@ const EditSSHAccessDrawer: React.FC<CombinedProps> = (props) => {
     const port =
       String(values.ssh.port) !== '' ? values.ssh.port : DEFAULTS.port;
 
-    updateLinodeSettings(linodeSetting.id, {
-      ssh: { ...values.ssh, user, port },
+    updateLinodeSettings({
+      ssh: { ...values.ssh, port, user },
     })
-      .then((updatedLinodeSetting) => {
+      .then(() => {
         setSubmitting(false);
-        updateOne(updatedLinodeSetting);
         closeDrawer();
       })
       .catch((err) => {
@@ -94,7 +78,7 @@ const EditSSHAccessDrawer: React.FC<CombinedProps> = (props) => {
   };
 
   return (
-    <Drawer title={title} open={isOpen} onClose={closeDrawer}>
+    <Drawer onClose={closeDrawer} open={isOpen} title={title}>
       {!linodeSetting ? null : (
         <>
           {/* We're intentionally not validating with Formik, because we want to allow "Port" to
@@ -105,51 +89,57 @@ const EditSSHAccessDrawer: React.FC<CombinedProps> = (props) => {
               // These values are nested this way to mach the API request/response.
               ssh: {
                 access: linodeSetting.ssh.access,
-                user: linodeSetting.ssh.user,
                 ip: linodeSetting.ssh.ip,
                 port: linodeSetting.ssh.port,
+                user: linodeSetting.ssh.user,
               },
             }}
             onSubmit={onSubmit}
           >
             {({
-              values,
               errors,
-              status,
-              handleChange,
               handleBlur,
+              handleChange,
               handleSubmit,
               isSubmitting,
               setFieldValue,
+              status,
+              values,
             }) => {
-              const { access, user, ip, port } = values.ssh;
+              const { access, ip, port, user } = values.ssh;
 
+              // @ts-expect-error This form intentionally breaks Formik's error type
               const userError = errors['ssh.user'];
 
               // API oddity: IP errors come back as {field: 'ip'} instead of {field: 'ssh.ip'} liked we'd expect.
-              // tslint:disable-next-line
+              // @ts-expect-error This form intentionally breaks Formik's error type
               const ipError = errors['ssh.ip'] || errors['ip'];
 
+              // @ts-expect-error This form intentionally breaks Formik's error type
               const portError = errors['ssh.port'];
 
               return (
                 <>
                   {status && (
-                    <Notice key={status} text={status.generalError} error />
+                    <Notice
+                      key={status}
+                      text={status.generalError}
+                      variant="error"
+                    />
                   )}
 
                   <form>
-                    <Typography variant="body1" className={classes.helperText}>
+                    <StyledTypography variant="body1">
                       We’ll use the default settings for User Account (
                       {DEFAULTS.user}) and Port ({DEFAULTS.port}) if you leave
                       those fields empty.
-                    </Typography>
+                    </StyledTypography>
 
                     <FormControlLabel
                       control={
                         <Toggle
-                          name="ssh.access"
                           checked={access}
+                          name="ssh.access"
                           onChange={() => setFieldValue('ssh.access', !access)}
                         />
                       }
@@ -157,24 +147,19 @@ const EditSSHAccessDrawer: React.FC<CombinedProps> = (props) => {
                     />
 
                     <TextField
-                      name="ssh.user"
-                      label="User Account"
-                      value={user}
                       error={!!userError}
                       errorText={userError}
-                      onChange={handleChange}
+                      label="User Account"
+                      name="ssh.user"
                       onBlur={handleBlur}
+                      onChange={handleChange}
                       placeholder={user || DEFAULTS.user}
+                      value={user}
                     />
 
-                    <Grid container>
-                      <Grid item xs={12} md={8} className={classes.ip}>
+                    <Grid container spacing={2}>
+                      <StyledIPGrid md={8} xs={12}>
                         <IPSelect
-                          linodeId={linodeSetting.id}
-                          value={{
-                            label: ip === 'any' ? 'Any' : ip,
-                            value: ip,
-                          }}
                           customizeOptions={(options) => [
                             // The first option should always be "Any".
                             {
@@ -183,9 +168,7 @@ const EditSSHAccessDrawer: React.FC<CombinedProps> = (props) => {
                             },
                             ...options
                               // Remove Private IPs
-                              .filter(
-                                (option) => !privateIPRegex.test(option.value)
-                              )
+                              .filter((option) => !isPrivateIP(option.value))
                               // Remove the prefix length from each option.
                               .map((option) => ({
                                 label: removePrefixLength(option.value),
@@ -195,33 +178,36 @@ const EditSSHAccessDrawer: React.FC<CombinedProps> = (props) => {
                           handleChange={(selectedIp: string) =>
                             setFieldValue('ssh.ip', selectedIp)
                           }
+                          value={{
+                            label: ip === 'any' ? 'Any' : ip,
+                            value: ip,
+                          }}
                           errorText={ipError}
+                          linodeId={linodeSetting.id}
                         />
-                      </Grid>
+                      </StyledIPGrid>
 
-                      <Grid item xs={12} md={4} className={classes.port}>
+                      <StyledPortGrid md={4} xs={12}>
                         <TextField
-                          name="ssh.port"
-                          label="Port"
-                          type="number"
-                          value={port}
                           error={!!portError}
                           errorText={portError}
-                          onChange={handleChange}
+                          label="Port"
+                          name="ssh.port"
                           onBlur={handleBlur}
+                          onChange={handleChange}
                           placeholder={String(port || DEFAULTS.port)}
+                          type="number"
+                          value={port}
                         />
-                      </Grid>
+                      </StyledPortGrid>
                     </Grid>
-                    <ActionsPanel>
-                      <Button
-                        buttonType="primary"
-                        onClick={() => handleSubmit()}
-                        loading={isSubmitting}
-                      >
-                        Save Changes
-                      </Button>
-                    </ActionsPanel>
+                    <ActionsPanel
+                      primaryButtonProps={{
+                        label: 'Save Changes',
+                        loading: isSubmitting,
+                        onClick: () => handleSubmit(),
+                      }}
+                    />
                   </form>
                 </>
               );

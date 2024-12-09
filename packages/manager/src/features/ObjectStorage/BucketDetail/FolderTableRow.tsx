@@ -1,47 +1,43 @@
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import EntityIcon from 'src/components/EntityIcon';
-import Grid from 'src/components/Grid';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  manuallyCreated: {
-    '&:before': {
-      backgroundColor: theme.bg.lightBlue1,
-    },
-  },
-  iconWrapper: {
-    margin: '2px 0',
-  },
-}));
+import { EntityIcon } from 'src/components/EntityIcon/EntityIcon';
+import { Hidden } from 'src/components/Hidden';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow, TableRowProps } from 'src/components/TableRow';
 
-interface Props {
-  folderName: string;
+import { FolderActionMenu } from './FolderActionMenu';
+
+export interface FolderTableRowProps extends TableRowProps {
   displayName: string;
+  folderName: string;
+  handleClickDelete: (objectName: string) => void;
   manuallyCreated: boolean;
 }
 
-const FolderTableRow: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
-  const { folderName, displayName, manuallyCreated } = props;
+export const FolderTableRow = (props: FolderTableRowProps) => {
+  const {
+    displayName,
+    folderName,
+    handleClickDelete,
+    manuallyCreated,
+    ...tableRowProps
+  } = props;
 
   return (
-    <TableRow
-      className={manuallyCreated ? classes.manuallyCreated : ''}
-      key={folderName}
-      ariaLabel={`Folder ${displayName}`}
-    >
+    <TableRow key={folderName} {...tableRowProps}>
       <TableCell parentColumn="Object">
-        <Grid container wrap="nowrap" alignItems="center">
-          <Grid item className={classes.iconWrapper}>
-            <EntityIcon variant="folder" size={22} />
-          </Grid>
-          <Grid item>
-            <Link to={`?prefix=${folderName}`} className="secondaryLink">
+        <Grid alignItems="center" container spacing={2} wrap="nowrap">
+          <StyledIconWrapper>
+            <EntityIcon size={22} variant="folder" />
+          </StyledIconWrapper>
+          <Grid>
+            <Link
+              className="secondaryLink"
+              to={`?prefix=${encodeURIComponent(folderName)}`}
+            >
               {displayName}
             </Link>
           </Grid>
@@ -49,12 +45,21 @@ const FolderTableRow: React.FC<Props> = (props) => {
       </TableCell>
       {/* Three empty TableCells corresponding to the Size, Last Modified, and Action Menu (for ObjectTableRow) columns for formatting purposes. */}
       <TableCell />
-      <Hidden smDown>
+      <Hidden mdDown>
         <TableCell />
       </Hidden>
-      <TableCell />
+      <TableCell actionCell>
+        <FolderActionMenu
+          handleClickDelete={handleClickDelete}
+          objectName={folderName}
+        />
+      </TableCell>
     </TableRow>
   );
 };
 
-export default React.memo(FolderTableRow);
+const StyledIconWrapper = styled(Grid, {
+  label: 'StyledIconWrapper',
+})(() => ({
+  margin: '2px 0',
+}));

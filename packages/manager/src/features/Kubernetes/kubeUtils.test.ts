@@ -1,95 +1,64 @@
-import { HIGH_AVAILABILITY_PRICE } from 'src/constants';
-import { extendedTypes } from 'src/__data__/ExtendedType';
-import { nodePoolRequests } from 'src/__data__/nodePools';
+import { renderHook, waitFor } from '@testing-library/react';
 
 import {
-  getMonthlyPrice,
+  accountBetaFactory,
+  kubeLinodeFactory,
+  linodeTypeFactory,
+  nodePoolFactory,
+} from 'src/factories';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { extendType } from 'src/utilities/extendType';
+import { wrapWithTheme } from 'src/utilities/testHelpers';
+
+import {
+  getLatestVersion,
   getTotalClusterMemoryCPUAndStorage,
-  getTotalClusterPrice,
+  useAPLAvailability,
 } from './kubeUtils';
 
-const mockNodePool = {
-  id: 6,
-  clusterID: 1,
-  linodes: [],
-  type: extendedTypes[0].id,
-  count: 4,
-  totalMonthlyPrice: 10,
-  autoscaler: {
-    enabled: false,
-    min: 1,
-    max: 1,
-  },
-};
-
-const badNodePool = {
-  id: 7,
-  clusterID: 2,
-  linodes: [],
-  type: 'not-a-real-type',
-  count: 1,
-  totalMonthlyPrice: 0,
-  autoscaler: {
-    enabled: false,
-    min: 1,
-    max: 1,
-  },
-};
-
 describe('helper functions', () => {
-  describe('getMonthlyPrice', () => {
-    it('should multiply node price by node count', () => {
-      const expectedPrice =
-        (extendedTypes[0].price.monthly ?? 0) * mockNodePool.count;
-      expect(
-        getMonthlyPrice(mockNodePool.type, mockNodePool.count, extendedTypes)
-      ).toBe(expectedPrice);
-    });
-
-    it('should return zero for bad input', () => {
-      expect(
-        getMonthlyPrice(badNodePool.type, badNodePool.count, extendedTypes)
-      ).toBe(0);
-    });
-  });
-
-  describe('getTotalClusterPrice', () => {
-    it('should calculate the total cluster price', () => {
-      expect(getTotalClusterPrice([mockNodePool, mockNodePool], false)).toBe(
-        20
-      );
-    });
-
-    it('should calculate the total cluster price with HA enabled', () => {
-      expect(getTotalClusterPrice([mockNodePool, mockNodePool], true)).toBe(
-        20 + (HIGH_AVAILABILITY_PRICE || 0)
-      );
-    });
+  const badPool = nodePoolFactory.build({
+    type: 'not-a-real-type',
   });
 
   describe('Get total cluster memory/CPUs', () => {
+    const pools = nodePoolFactory.buildList(3, {
+      nodes: kubeLinodeFactory.buildList(3),
+      type: 'g6-fake-1',
+    });
+
+    const types = linodeTypeFactory
+      .buildList(1, {
+        disk: 1048576,
+        id: 'g6-fake-1',
+        memory: 1024,
+        vcpus: 2,
+      })
+      .map(extendType);
+
     it('should sum up the total CPU cores of all nodes', () => {
-      expect(
-        getTotalClusterMemoryCPUAndStorage(nodePoolRequests, extendedTypes)
-      ).toHaveProperty('CPU', 13);
+      expect(getTotalClusterMemoryCPUAndStorage(pools, types)).toHaveProperty(
+        'CPU',
+        2 * 9
+      );
     });
 
     it('should sum up the total RAM of all pools', () => {
-      expect(
-        getTotalClusterMemoryCPUAndStorage(nodePoolRequests, extendedTypes)
-      ).toHaveProperty('RAM', 26624);
+      expect(getTotalClusterMemoryCPUAndStorage(pools, types)).toHaveProperty(
+        'RAM',
+        1024 * 9
+      );
     });
 
     it('should sum up the total storage of all nodes', () => {
-      expect(
-        getTotalClusterMemoryCPUAndStorage(nodePoolRequests, extendedTypes)
-      ).toHaveProperty('Storage', 563200);
+      expect(getTotalClusterMemoryCPUAndStorage(pools, types)).toHaveProperty(
+        'Storage',
+        1048576 * 9
+      );
     });
 
     it("should return 0 if it can't match the data", () => {
-      expect(
-        getTotalClusterMemoryCPUAndStorage([badNodePool], extendedTypes)
-      ).toEqual({
+      expect(getTotalClusterMemoryCPUAndStorage([badPool], types)).toEqual({
         CPU: 0,
         RAM: 0,
         Storage: 0,
@@ -97,11 +66,65 @@ describe('helper functions', () => {
     });
 
     it('should return 0 if no pools are given', () => {
-      expect(getTotalClusterMemoryCPUAndStorage([], extendedTypes)).toEqual({
+      expect(getTotalClusterMemoryCPUAndStorage([], types)).toEqual({
         CPU: 0,
         RAM: 0,
         Storage: 0,
       });
+    });
+  });
+  describe('APL availability', () => {
+    it('should return true if the apl flag is true and beta is active', async () => {
+      const accountBeta = accountBetaFactory.build({
+        enrolled: '2023-01-15T00:00:00Z',
+        id: 'apl',
+      });
+      server.use(
+        http.get('*/account/betas/apl', () => {
+          return HttpResponse.json(accountBeta);
+        })
+      );
+      const { result } = renderHook(() => useAPLAvailability(), {
+        wrapper: (ui) => wrapWithTheme(ui, { flags: { apl: true } }),
+      });
+      await waitFor(() => {
+        expect(result.current.showAPL).toBe(true);
+      });
+    });
+  });
+  describe('getLatestVersion', () => {
+    it('should return the correct latest version from a list of versions', () => {
+      const versions = [
+        { label: '1.00', value: '1.00' },
+        { label: '1.10', value: '1.10' },
+        { label: '2.00', value: '2.00' },
+      ];
+      const result = getLatestVersion(versions);
+      expect(result).toEqual({ label: '2.00', value: '2.00' });
+    });
+
+    it('should handle latest version minor version correctly', () => {
+      const versions = [
+        { label: '1.22', value: '1.22' },
+        { label: '1.23', value: '1.23' },
+        { label: '1.30', value: '1.30' },
+      ];
+      const result = getLatestVersion(versions);
+      expect(result).toEqual({ label: '1.30', value: '1.30' });
+    });
+    it('should handle latest patch version correctly', () => {
+      const versions = [
+        { label: '1.22', value: '1.30' },
+        { label: '1.23', value: '1.15' },
+        { label: '1.30', value: '1.50.1' },
+        { label: '1.30', value: '1.50' },
+      ];
+      const result = getLatestVersion(versions);
+      expect(result).toEqual({ label: '1.50.1', value: '1.50.1' });
+    });
+    it('should return default fallback value when called with empty versions', () => {
+      const result = getLatestVersion([]);
+      expect(result).toEqual({ label: '', value: '' });
     });
   });
 });

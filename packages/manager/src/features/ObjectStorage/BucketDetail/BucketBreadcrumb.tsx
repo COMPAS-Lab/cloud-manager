@@ -1,100 +1,26 @@
-import FileCopy from '@material-ui/icons/FileCopy';
-import copy from 'copy-to-clipboard';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import { useWindowDimensions } from 'src/hooks/useWindowDimensions';
-import { prefixArrayToString } from '../utilities';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  '@keyframes popUp': {
-    from: {
-      opacity: 0,
-      top: -10,
-      transform: 'scale(.1)',
-    },
-    to: {
-      opacity: 1,
-      top: -45,
-      transform: 'scale(1)',
-    },
-  },
-  root: {
-    display: 'flex',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  icon: {
-    cursor: 'pointer',
-    transition: theme.transitions.create(['color', 'background-color']),
-    color: theme.color.grey1,
-    margin: 0,
-    position: 'relative',
-    width: 24,
-    height: 24,
-    padding: 4,
-    borderRadius: theme.shape.borderRadius,
-    '&:hover': {
-      backgroundColor: theme.color.grey1,
-      color: theme.color.white,
-    },
-  },
-  prefixWrapper: {
-    marginLeft: theme.spacing(1.5),
-    display: 'flex',
-    overflow: 'auto',
-    whiteSpace: 'nowrap',
-  },
-  slash: {
-    marginRight: 4,
-    marginLeft: 4,
-  },
-  link: {
-    color: theme.textColors.linkActiveLight,
-    cursor: 'pointer',
-    '&:hover': {
-      textDecoration: 'underline',
-    },
-  },
-  copied: {
-    fontSize: '.85rem',
-    left: -24,
-    color: theme.palette.text.primary,
-    padding: '6px 8px',
-    backgroundColor: theme.color.white,
-    position: 'absolute',
-    boxShadow: `0 0 5px ${theme.color.boxShadow}`,
-    transition: 'opacity .5s ease-in-out',
-    animation: '$popUp 200ms ease-in-out forwards',
-  },
-}));
+import { useWindowDimensions } from 'src/hooks/useWindowDimensions';
+
+import { prefixArrayToString } from '../utilities';
+import {
+  StyledCopyTooltip,
+  StyledLink,
+  StyledPrefixWrapper,
+  StyledRootContainer,
+  StyledSlash,
+} from './BucketBreadcrumb.styles';
 
 interface Props {
-  prefix: string;
-  history: any;
   bucketName: string;
+  history: any;
+  prefix: string;
 }
 
-type CombinedProps = Props;
-
-const BucketBreadcrumb: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
-  const [copied, setCopied] = React.useState<boolean>(false);
-
-  let timeout: ReturnType<typeof setTimeout>;
-  const iconOnClick = (value: string) => {
-    setCopied(!copied);
-    timeout = setTimeout(() => setCopied(false), 1500);
-    copy(value);
-  };
-
-  React.useEffect(() => {
-    return () => clearTimeout(timeout);
-  }, []);
-
-  const { prefix, bucketName, history } = props;
+export const BucketBreadcrumb = (props: Props) => {
+  const { bucketName, history, prefix } = props;
   const { width } = useWindowDimensions();
+  const bucketPath = bucketName + '/' + prefix;
 
   // Split the prefix into discrete sections for displaying in the component.
   // 'my/path/to/objects/` > ['my', 'path', 'to', 'objects]
@@ -107,33 +33,20 @@ const BucketBreadcrumb: React.FC<CombinedProps> = (props) => {
     (width <= 600 && prefixArray.length >= 3) || prefixArray.length > 5;
 
   return (
-    <div className={classes.root}>
-      {copied && (
-        <span className={classes.copied} data-qa-copied>
-          Copied!
-        </span>
-      )}
-      <FileCopy
-        className={classes.icon}
-        onClick={() => iconOnClick(bucketName + '/' + prefix)}
-      />
-      <div className={classes.prefixWrapper}>
+    <StyledRootContainer>
+      <StyledPrefixWrapper>
         {/* Bucket name */}
-        <Typography
-          variant="body1"
-          className={classes.link}
+        <StyledLink
           onClick={() => {
             history.push({ search: '?prefix=' });
           }}
+          variant="body1"
         >
           {bucketName}
-        </Typography>
-
+        </StyledLink>
         {/* Ellipsis (if prefix is truncated) */}
         {shouldTruncatePrefix && (
-          <Typography variant="body1" className={classes.slash}>
-            / ...
-          </Typography>
+          <StyledSlash variant="body1">/ ...</StyledSlash>
         )}
 
         {/* Mapped prefix */}
@@ -143,12 +56,8 @@ const BucketBreadcrumb: React.FC<CombinedProps> = (props) => {
           }
           return (
             <React.Fragment key={idx}>
-              <Typography variant="body1" className={classes.slash}>
-                /
-              </Typography>
-              <Typography
-                variant="body1"
-                className={classes.link}
+              <StyledSlash variant="body1">/</StyledSlash>
+              <StyledLink
                 onClick={() => {
                   // If clicking the last crumb, don't do anything (we're
                   // already on the correct level).
@@ -159,15 +68,15 @@ const BucketBreadcrumb: React.FC<CombinedProps> = (props) => {
                   const prefixString = prefixArrayToString(prefixArray, idx);
                   history.push({ search: '?prefix=' + prefixString });
                 }}
+                variant="body1"
               >
                 {prefixSection}
-              </Typography>
+              </StyledLink>
             </React.Fragment>
           );
         })}
-      </div>
-    </div>
+      </StyledPrefixWrapper>
+      <StyledCopyTooltip text={bucketPath} placement="bottom" />
+    </StyledRootContainer>
   );
 };
-
-export default React.memo(BucketBreadcrumb);

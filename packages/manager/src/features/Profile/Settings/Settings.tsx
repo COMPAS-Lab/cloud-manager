@@ -1,41 +1,44 @@
+import { Paper } from '@linode/ui';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme, withTheme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
+import { useHistory, useLocation } from 'react-router-dom';
+
+import { Code } from 'src/components/Code/Code';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Grid from 'src/components/Grid';
-import PreferenceToggle, { ToggleProps } from 'src/components/PreferenceToggle';
-import Toggle from 'src/components/Toggle';
-import { useMutateProfile, useProfile } from 'src/queries/profile';
-import { getQueryParam } from 'src/utilities/queryParams';
-import PreferenceEditor from './PreferenceEditor';
-import ThemeToggle from './ThemeToggle';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { Radio } from 'src/components/Radio/Radio';
+import { RadioGroup } from 'src/components/RadioGroup';
+import { Stack } from 'src/components/Stack';
+import { Toggle } from 'src/components/Toggle/Toggle';
+import { Typography } from 'src/components/Typography';
+import {
+  useMutatePreferences,
+  usePreferences,
+} from 'src/queries/profile/preferences';
+import { useMutateProfile, useProfile } from 'src/queries/profile/profile';
+import { getQueryParamFromQueryString } from 'src/utilities/queryParams';
+import { isOSMac } from 'src/utilities/userAgent';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginTop: theme.spacing(2),
-  },
-  title: {
-    marginBottom: theme.spacing(2),
-  },
-}));
+import { PreferenceEditor } from './PreferenceEditor';
 
-interface Props {
-  toggleTheme: () => void;
-}
+import type { ThemeChoice } from 'src/utilities/theme';
 
-const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
-  const classes = useStyles();
-  const { toggleTheme, theme } = props;
-  const [submitting, setSubmitting] = React.useState<boolean>(false);
-  const [
-    preferenceEditorOpen,
-    setPreferenceEditorOpen,
-  ] = React.useState<boolean>(false);
+export const ProfileSettings = () => {
+  const location = useLocation();
+  const history = useHistory();
+
+  const preferenceEditorOpen = Boolean(
+    getQueryParamFromQueryString(location.search, 'preferenceEditor')
+  );
+
+  const handleClosePreferenceEditor = () => {
+    const queryParams = new URLSearchParams(location.search);
+    queryParams.delete('preferenceEditor');
+    history.replace({ search: queryParams.toString() });
+  };
 
   const { data: profile } = useProfile();
-  const { mutateAsync: updateProfile } = useMutateProfile();
+  const { isPending, mutateAsync: updateProfile } = useMutateProfile();
 
   React.useEffect(() => {
     if (getQueryParam(window.location.search, 'preferenceEditor') === 'true') {
@@ -62,7 +65,7 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
   /* -- Clanode Change End -- */
 
   return (
-    <>
+    <Stack spacing={2}>
       <DocumentTitleSegment segment="My Settings" />
       {
         /* -- Clanode Change -- */
@@ -105,57 +108,77 @@ const ProfileSettings: React.FC<Props & { theme: Theme }> = (props) => {
         <Typography variant="h2" className={classes.title}>
           Dark Mode
         </Typography>
-        <Grid container alignItems="center">
-          <Grid item xs={12}>
-            <FormControlLabel
-              control={<ThemeToggle toggleTheme={toggleTheme} />}
-              label={` Dark mode is ${
-                theme.name === 'darkTheme' ? 'enabled' : 'disabled'
-              }`}
-              disabled={submitting}
-            />
-          </Grid>
-        </Grid>
+        <RadioGroup
+          onChange={(e) =>
+            updatePreferences({ theme: e.target.value as ThemeChoice })
+          }
+          row
+          style={{ marginBottom: 0 }}
+          value={preferences?.theme ?? 'system'}
+        >
+          <FormControlLabel control={<Radio />} label="Light" value="light" />
+          <FormControlLabel control={<Radio />} label="Dark" value="dark" />
+          <FormControlLabel control={<Radio />} label="System" value="system" />
+        </RadioGroup>
       </Paper>
-      <Paper className={classes.root}>
-        <Typography variant="h2" className={classes.title}>
+      <Paper>
+        <Typography marginBottom={1} variant="h2">
           Type-to-Confirm
         </Typography>
-        <Typography variant="body1">
+        <Typography marginBottom={1} variant="body1">
           For some products and services, the type-to-confirm setting requires
           entering the label before deletion.
         </Typography>
-        <PreferenceToggle<boolean>
-          preferenceKey="type_to_confirm"
-          preferenceOptions={[true, false]}
-          localStorageKey="typeToConfirm"
-        >
-          {({
-            preference: istypeToConfirm,
-            togglePreference: toggleTypeToConfirm,
-          }: ToggleProps<boolean>) => {
-            return (
-              <Grid container alignItems="center">
-                <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Toggle
-                        onChange={toggleTypeToConfirm}
-                        checked={istypeToConfirm}
-                      />
-                    }
-                    label={`Type-to-confirm is${
-                      istypeToConfirm ? ' enabled' : ' disabled'
-                    }`}
-                  />
-                </Grid>
-              </Grid>
-            );
-          }}
-        </PreferenceToggle>
+        <FormControlLabel
+          control={
+            <Toggle
+              onChange={(_, checked) =>
+                updatePreferences({ type_to_confirm: checked })
+              }
+              checked={isTypeToConfirmEnabled}
+            />
+          }
+          label={`Type-to-confirm is ${
+            isTypeToConfirmEnabled ? 'enabled' : 'disabled'
+          }`}
+        />
       </Paper>
-    </>
+      <Paper>
+        <Typography marginBottom={1} variant="h2">
+          Mask Sensitive Data
+        </Typography>
+        <Typography marginBottom={1} variant="body1">
+          Mask IP addresses and user contact information for data privacy.
+        </Typography>
+        <FormControlLabel
+          control={
+            <Toggle
+              onChange={(_, checked) =>
+                updatePreferences({ maskSensitiveData: checked })
+              }
+              checked={isSensitiveDataMasked}
+            />
+          }
+          label={`Sensitive data is ${
+            isSensitiveDataMasked ? 'masked' : 'visible'
+          }`}
+        />
+      </Paper>
+      <PreferenceEditor
+        onClose={handleClosePreferenceEditor}
+        open={preferenceEditorOpen}
+      />
+    </Stack>
   );
 };
 
-export default withTheme(ProfileSettings);
+const ThemeKeyboardShortcut = (
+  <>
+    <Code>{isOSMac ? 'Ctrl' : 'Alt'}</Code> + <Code>Shift</Code> +{' '}
+    <Code>D</Code>
+  </>
+);
+
+export const SettingsLazyRoute = createLazyRoute('/profile/settings')({
+  component: ProfileSettings,
+});

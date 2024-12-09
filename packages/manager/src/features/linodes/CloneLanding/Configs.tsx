@@ -1,64 +1,63 @@
 import { Config } from '@linode/api-v4/lib/linodes';
 import * as React from 'react';
-import CheckBox from 'src/components/CheckBox';
-import { makeStyles } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableCell from 'src/components/core/TableCell';
+
+import { Checkbox } from 'src/components/Checkbox';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+
 import { ConfigSelection } from './utilities';
 
-const useStyles = makeStyles(() => ({
-  root: {
-    '& td': {
-      borderBottom: 'none',
-      paddingTop: 0,
-      paddingBottom: 0,
-    },
-  },
-}));
-export interface Props {
-  configs: Config[];
+export interface ConfigsProps {
   configSelection: ConfigSelection;
+  configs: Config[];
   handleSelect: (id: number) => void;
 }
 
-export const Configs: React.FC<Props> = (props) => {
-  const { configs, handleSelect, configSelection } = props;
-
-  const classes = useStyles();
+export const Configs = (props: ConfigsProps) => {
+  const { configSelection, configs, handleSelect } = props;
 
   return (
     <Paginate data={configs}>
       {({
+        count,
         data: paginatedData,
         handlePageChange,
         handlePageSizeChange,
         page,
         pageSize,
-        count,
       }) => {
         return (
           <div>
-            <Table aria-label="List of Configurations" className={classes.root}>
+            <Table
+              aria-label="List of Configurations"
+              sx={{
+                '& td': {
+                  borderBottom: 'none',
+                  paddingBottom: 0,
+                  paddingTop: 0,
+                },
+              }}
+            >
               <TableBody>
                 {paginatedData.length === 0 ? (
-                  <TableRowEmptyState colSpan={1} />
+                  <TableRowEmpty colSpan={1} />
                 ) : (
                   paginatedData.map((config: Config) => (
-                    <TableRow key={config.id} data-qa-config={config.label}>
+                    <TableRow data-qa-config={config.label} key={config.id}>
                       <TableCell>
-                        <CheckBox
+                        <Checkbox
                           checked={
                             configSelection[config.id] &&
                             configSelection[config.id].isSelected
                           }
+                          data-testid={`checkbox-${config.id}`}
                           onChange={() => handleSelect(config.id)}
                           text={config.label}
-                          data-testid={`checkbox-${config.id}`}
                         />
                       </TableCell>
                     </TableRow>
@@ -68,11 +67,11 @@ export const Configs: React.FC<Props> = (props) => {
             </Table>
             <PaginationFooter
               count={count}
-              page={page}
-              pageSize={pageSize}
+              eventCategory="linode configs"
               handlePageChange={handlePageChange}
               handleSizeChange={handlePageSizeChange}
-              eventCategory="linode configs"
+              page={page}
+              pageSize={pageSize}
             />
           </div>
         );

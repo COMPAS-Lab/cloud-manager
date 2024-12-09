@@ -1,4 +1,5 @@
-import MenuIcon from '@material-ui/icons/Menu';
+import { Box, IconButton } from '@linode/ui';
+import MenuIcon from '@mui/icons-material/Menu';
 import * as React from 'react';
 import AppBar from 'src/components/core/AppBar';
 import Hidden from 'src/components/core/Hidden';
@@ -42,23 +43,17 @@ const useStyles = makeStyles((theme: Theme) => ({
 interface Props {
   isSideMenuOpen: boolean;
   openSideMenu: () => void;
-  desktopMenuToggle: () => void;
-  isLoggedInAsCustomer: boolean;
   username: string;
 }
 
-type PropsWithStyles = Props;
+/**
+ * - Items presented in the top navigation are considered universally important and should be available regardless of any particular task.
+ * - The number of items should be limited. In the future, **Help & Support** could become a drop down with links to **Community**, **Guides**, and etc.
+ */
+export const TopMenu = React.memo((props: TopMenuProps) => {
+  const { desktopMenuToggle, isSideMenuOpen, openSideMenu, username } = props;
 
-const TopMenu: React.FC<PropsWithStyles> = (props) => {
-  const {
-    isSideMenuOpen,
-    openSideMenu,
-    username,
-    isLoggedInAsCustomer,
-    desktopMenuToggle,
-  } = props;
-
-  const classes = useStyles();
+  const { loggedInAsCustomer } = useAuthentication();
 
   const navHoverText = isSideMenuOpen
     ? 'Collapse side menu'
@@ -66,42 +61,51 @@ const TopMenu: React.FC<PropsWithStyles> = (props) => {
 
   return (
     <React.Fragment>
-      {isLoggedInAsCustomer && (
-        <div
-          style={{
-            backgroundColor: 'pink',
-            padding: '1em',
-            textAlign: 'center',
-          }}
-        >
-          <Typography style={{ fontSize: '1.2em', color: 'black' }}>
+      {loggedInAsCustomer && (
+        <Box bgcolor="pink" padding="1em" textAlign="center">
+          <Typography
+            color={(theme) => theme.tokens.color.Neutrals.Black}
+            fontSize="1.2em"
+          >
             You are logged in as customer: <strong>{username}</strong>
           </Typography>
-        </div>
+        </Box>
       )}
-      <AppBar className={classes.appBar}>
-        <Toolbar className={classes.toolbar} variant="dense">
-          <Hidden smDown>
-            <IconButton
-              color="inherit"
-              aria-label="open menu"
-              onClick={desktopMenuToggle}
-            >
-              <TopMenuIcon title={navHoverText} key={navHoverText}>
-                <MenuIcon style={{ marginTop: 6 }} />
-              </TopMenuIcon>
-            </IconButton>
+      <AppBar data-qa-appbar>
+        <Toolbar
+          sx={(theme) => ({
+            '&.MuiToolbar-root': {
+              height: `50px`,
+              padding: theme.spacing(0),
+              width: '100%',
+            },
+          })}
+          variant="dense"
+        >
+          <Hidden mdDown>
+            <TopMenuTooltip title={navHoverText}>
+              <IconButton
+                aria-label="open menu"
+                color="inherit"
+                data-testid="open-nav-menu"
+                onClick={desktopMenuToggle}
+                size="large"
+              >
+                <MenuIcon />
+              </IconButton>
+            </TopMenuTooltip>
           </Hidden>
           <Hidden mdUp>
-            <IconButton
-              color="inherit"
-              aria-label="open menu"
-              onClick={openSideMenu}
-            >
-              <TopMenuIcon title={navHoverText} key={navHoverText}>
-                <MenuIcon style={{ marginTop: 6 }} />
-              </TopMenuIcon>
-            </IconButton>
+            <TopMenuTooltip title={navHoverText}>
+              <IconButton
+                aria-label="open menu"
+                color="inherit"
+                onClick={openSideMenu}
+                size="large"
+              >
+                <MenuIcon />
+              </IconButton>
+            </TopMenuTooltip>
           </Hidden>
           <AddNewMenu />
           <SearchBar />
@@ -118,6 +122,4 @@ const TopMenu: React.FC<PropsWithStyles> = (props) => {
       </AppBar>
     </React.Fragment>
   );
-};
-
-export default React.memo(TopMenu);
+});

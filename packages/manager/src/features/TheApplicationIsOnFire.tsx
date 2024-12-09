@@ -1,31 +1,28 @@
+import { Theme } from '@mui/material/styles';
+import { makeStyles } from 'tss-react/mui';
 import * as React from 'react';
-import Dialog from 'src/components/core/Dialog';
-import DialogContent from 'src/components/core/DialogContent';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import DialogTitle from 'src/components/DialogTitle';
 
-const useStyles = makeStyles((theme: Theme) => ({
+import { Dialog } from 'src/components/Dialog/Dialog';
+import { Typography } from 'src/components/Typography';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   restartButton: {
     ...theme.applyLinkStyles,
   },
 }));
 
-const TheApplicationIsOnFire: React.FC<{}> = (props) => {
+const TheApplicationIsOnFire = () => {
   return (
-    <Dialog open PaperProps={{ role: undefined }} role="dialog">
-      <DialogTitle title="Oh snap!" />
-      <DialogContent>
-        <Typography variant="subtitle1" style={{ marginBottom: 16 }}>
-          Something went terribly wrong. Please {<ReloadLink />} and try again.
-        </Typography>
-      </DialogContent>
+    <Dialog open title="Oh snap!">
+      <Typography style={{ marginBottom: 16 }} variant="subtitle1">
+        Something went terribly wrong. Please {<ReloadLink />} and try again.
+      </Typography>
     </Dialog>
   );
 };
 
 const ReloadLink = () => {
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   return (
     <button

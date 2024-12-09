@@ -1,24 +1,21 @@
-import { FormikProps } from 'formik';
 import { AccountSettings } from '@linode/api-v4/lib/account';
 import {
-  ObjectStorageClusterID,
-  ObjectStorageObject,
   ACLType,
+  ObjectStorageObject,
 } from '@linode/api-v4/lib/object-storage';
-import { OBJECT_STORAGE_DELIMITER, OBJECT_STORAGE_ROOT } from 'src/constants';
-import { Item } from 'src/components/EnhancedSelect/Select';
+import { FormikProps } from 'formik';
 
-export const generateObjectUrl = (
-  clusterId: ObjectStorageClusterID,
-  bucketName: string,
-  objectName: string
-) => {
-  const path = `${bucketName}.${clusterId}.${OBJECT_STORAGE_ROOT}/${objectName}`;
-  return {
-    path,
-    absolute: 'https://' + path,
-  };
+import { Item } from 'src/components/EnhancedSelect/Select';
+import { OBJECT_STORAGE_DELIMITER } from 'src/constants';
+
+export const generateObjectUrl = (hostname: string, objectName: string) => {
+  return `https://${hostname}/${objectName}`;
 };
+
+// Objects ending with a / and having a size of 0 are often used to represent
+// "folders".
+export const isEmptyObjectForFolder = (object: ObjectStorageObject) =>
+  object.name.endsWith('/') && object.size === 0;
 
 // If an Object does not have an etag, last_modified, owner, or size, it can
 // be considered a "folder".
@@ -46,10 +43,10 @@ export const basename = (
 };
 
 export interface ExtendedObject extends ObjectStorageObject {
-  _isFolder: boolean;
   _displayName: string;
-  _shouldDisplayObject: boolean;
+  _isFolder: boolean;
   _manuallyCreated: boolean;
+  _shouldDisplayObject: boolean;
 }
 
 export const extendObject = (
@@ -68,13 +65,13 @@ export const extendObject = (
 
   return {
     ...object,
-    _isFolder,
     _displayName,
+    _isFolder,
     // If we're in a folder called "my-folder", we don't want to show the object
     // called "my-folder/". We can look at the prefix to make this decision,
+    _manuallyCreated: manuallyCreated,
     // since it will also be "my-folder/".
     _shouldDisplayObject: object.name !== prefix,
-    _manuallyCreated: manuallyCreated,
   };
 };
 
@@ -88,8 +85,7 @@ export const prefixArrayToString = (prefixArray: string[], cutoff: number) => {
   }
 
   const prefixSlice = prefixArray.slice(0, cutoff + 1).join('/');
-  const prefixString = prefixSlice + '/';
-  return prefixString;
+  return prefixSlice + '/';
 };
 
 export const displayName = (objectName: string) => {
@@ -103,7 +99,7 @@ export const displayName = (objectName: string) => {
 export const tableUpdateAction = (
   currentPrefix: string,
   objectName: string
-): null | { type: 'FILE' | 'FOLDER'; name: string } => {
+): { name: string; type: 'FILE' | 'FOLDER' } | null => {
   if (objectName.startsWith(currentPrefix) || currentPrefix === '') {
     // If the prefix matches the beginning of the objectName, we "subtract" it
     // from the objectName, and make decisions based on that.
@@ -113,9 +109,9 @@ export const tableUpdateAction = (
     const delta = objectName.slice(currentPrefix.length);
 
     if (isFile(delta)) {
-      return { type: 'FILE', name: delta };
+      return { name: delta, type: 'FILE' };
     } else {
-      return { type: 'FOLDER', name: firstSubfolder(delta) };
+      return { name: firstSubfolder(delta), type: 'FOLDER' };
     }
   }
   return null;
@@ -125,31 +121,34 @@ export const isFile = (path: string) => path.split('/').length < 2;
 
 export const firstSubfolder = (path: string) => path.split('/')[0];
 
-export const confirmObjectStorage = <T extends {}>(
+export const confirmObjectStorage = async <T extends {}>(
   object_storage: AccountSettings['object_storage'],
   formikProps: FormikProps<T>,
   openConfirmationDialog: () => void
-) => {
-  // If the user doesn't already have Object Storage enabled, we show
-  // a confirmation modal before letting them create their first bucket.
-  if (object_storage === 'disabled') {
-    // But first, manually validate the form.
-    formikProps.validateForm().then((validationErrors) => {
-      if (Object.keys(validationErrors).length > 0) {
-        // Set `touched` and `error` for each field with an error.
-        // Setting `touched` is necessary because we only display errors
-        // on fields that have been touched (handleSubmit() does this
-        // implicitly).
-        Object.keys(validationErrors).forEach((key) => {
-          formikProps.setFieldTouched(key, validationErrors[key]);
-          formikProps.setFieldError(key, validationErrors[key]);
-        });
-      } else {
-        openConfirmationDialog();
-      }
+): Promise<void> => {
+  if (object_storage !== 'disabled') {
+    formikProps.handleSubmit();
+    return;
+  }
+  // But first, manually validate the form.
+  const validationErrors = await formikProps.validateForm();
+  if (Object.keys(validationErrors).length > 0) {
+    // Set `touched` and `error` for each field with an error.
+    // Setting `touched` is necessary because we only display errors
+    // on fields that have been touched (handleSubmit() does this
+    // implicitly).
+    Object.keys(validationErrors).forEach((key) => {
+      formikProps.setFieldTouched(
+        key,
+        Boolean(validationErrors[key as keyof T])
+      );
+      formikProps.setFieldError(
+        key,
+        validationErrors[key as keyof T] as string
+      );
     });
   } else {
-    formikProps.handleSubmit();
+    openConfirmationDialog();
   }
 };
 
@@ -165,9 +164,9 @@ export const bucketACLOptions: Item<ACLType>[] = [
 ];
 
 export const objectACLHelperText: Record<ACLType, string> = {
+  'authenticated-read': 'Authenticated Read ACL',
+  custom: 'Custom ACL',
   private: 'Private ACL',
   'public-read': 'Public Read ACL',
-  'authenticated-read': 'Authenticated Read ACL',
   'public-read-write': 'Public Read/Write ACL',
-  custom: 'Custom ACL',
 };

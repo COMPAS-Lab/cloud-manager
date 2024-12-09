@@ -1,46 +1,49 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import * as React from 'react';
-import { imageFactory, normalizeEntities } from 'src/factories';
+
 import { reactRouterProps } from 'src/__data__/reactRouterProps';
-import { wrapWithTheme } from 'src/utilities/testHelpers';
-import {
-  CombinedProps,
-  RebuildFromStackScript,
-} from './RebuildFromStackScript';
-import { preferencesFactory } from 'src/factories/preferences';
+import { renderWithTheme, wrapWithTheme } from 'src/utilities/testHelpers';
 
-const request = jest.requireMock('@linode/api-v4/lib/account');
+import { RebuildFromStackScript } from './RebuildFromStackScript';
 
-jest.mock('@linode/api-v4/lib/account', () => ({
-  getUsers: jest.fn(),
-}));
-
-const images = normalizeEntities(imageFactory.buildList(10));
-
-request.getUsers = jest.fn().mockResolvedValue([]);
-
-const props: CombinedProps = {
-  type: 'community',
-  linodeId: 1234,
-  imagesData: images,
-  requestKeys: jest.fn(),
-  imagesLoading: false,
-  imagesError: {},
-  imagesLastUpdated: 0,
-  userSSHKeys: [],
-  getUserPreferences: jest.fn(),
-  updateUserPreferences: jest.fn(),
-  preferences: preferencesFactory.build(),
+const props = {
   disabled: false,
-  closeSnackbar: jest.fn(),
-  enqueueSnackbar: jest.fn(),
+  diskEncryptionEnabled: true,
+  handleRebuildError: vi.fn(),
+  isLKELinode: false,
+  linodeId: 1234,
+  linodeIsInDistributedRegion: false,
+  onClose: vi.fn(),
   passwordHelperText: '',
-  handleRebuildError: jest.fn(),
-  onClose: jest.fn(),
+  toggleDiskEncryptionEnabled: vi.fn(),
+  type: 'community' as const,
   ...reactRouterProps,
 };
 
+const diskEncryptionEnabledMock = vi.hoisted(() => {
+  return {
+    useIsDiskEncryptionFeatureEnabled: vi.fn(),
+  };
+});
+
 describe('RebuildFromStackScript', () => {
+  vi.mock('src/components/Encryption/utils.ts', async () => {
+    const actual = await vi.importActual<any>(
+      'src/components/Encryption/utils.ts'
+    );
+    return {
+      ...actual,
+      __esModule: true,
+      useIsDiskEncryptionFeatureEnabled: diskEncryptionEnabledMock.useIsDiskEncryptionFeatureEnabled.mockImplementation(
+        () => {
+          return {
+            isDiskEncryptionFeatureEnabled: false, // indicates the feature flag is off or account capability is absent
+          };
+        }
+      ),
+    };
+  });
+
   it('renders a SelectImage panel', () => {
     const { queryByText } = render(
       wrapWithTheme(<RebuildFromStackScript {...props} />)
@@ -68,5 +71,30 @@ describe('RebuildFromStackScript', () => {
       ],
       {}
     );
+  });
+
+  // @TODO LDE: Remove feature flagging/conditionality once LDE is fully rolled out
+  it('does not render a "Disk Encryption" section when the Disk Encryption feature is disabled', () => {
+    const { queryByText } = renderWithTheme(
+      <RebuildFromStackScript {...props} />
+    );
+
+    expect(queryByText('Encrypt Disk')).not.toBeInTheDocument();
+  });
+
+  it('renders a "Disk Encryption" section when the Disk Encryption feature is enabled', () => {
+    diskEncryptionEnabledMock.useIsDiskEncryptionFeatureEnabled.mockImplementationOnce(
+      () => {
+        return {
+          isDiskEncryptionFeatureEnabled: true,
+        };
+      }
+    );
+
+    const { queryByText } = renderWithTheme(
+      <RebuildFromStackScript {...props} />
+    );
+
+    expect(queryByText('Encrypt Disk')).toBeInTheDocument();
   });
 });

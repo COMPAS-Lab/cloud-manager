@@ -1,86 +1,38 @@
-import { deletePaymentMethod, PaymentMethod } from '@linode/api-v4/lib/account';
+import { PaymentMethod, deletePaymentMethod } from '@linode/api-v4/lib/account';
 import { APIError } from '@linode/api-v4/lib/types';
+import Grid from '@mui/material/Unstable_Grid2';
+import { useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 import { useHistory, useRouteMatch } from 'react-router-dom';
-import PayPalIcon from 'src/assets/icons/payment/payPal.svg';
-import Button from 'src/components/Button';
-import Box from 'src/components/core/Box';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import DismissibleBanner from 'src/components/DismissibleBanner';
-import Grid from 'src/components/Grid';
-import Link from 'src/components/Link';
-import DeletePaymentMethodDialog from 'src/components/PaymentMethodRow/DeletePaymentMethodDialog';
-import styled from 'src/containers/SummaryPanels.styles';
-import PaymentMethods from 'src/features/Billing/BillingPanels/PaymentInfoPanel/PaymentMethods';
-import { queryKey } from 'src/queries/accountPayment';
-import { queryClient } from 'src/queries/base';
+
+import { DeletePaymentMethodDialog } from 'src/components/PaymentMethodRow/DeletePaymentMethodDialog';
+import { Typography } from 'src/components/Typography';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { PaymentMethods } from 'src/features/Billing/BillingPanels/PaymentInfoPanel/PaymentMethods';
+import { ADD_PAYMENT_METHOD } from 'src/features/Billing/constants';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { accountQueries } from 'src/queries/account/queries';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+
+import {
+  BillingActionButton,
+  BillingBox,
+  BillingPaper,
+} from '../../BillingDetail';
 import AddPaymentMethodDrawer from './AddPaymentMethodDrawer';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  ...styled(theme),
-  summarySectionHeight: {
-    flex: '0 1 auto',
-    width: '100%',
-  },
-  container: {
-    flex: 1,
-    maxWidth: '100%',
-    position: 'relative',
-    '&.mlMain': {
-      [theme.breakpoints.up('lg')]: {
-        maxWidth: '78.8%',
-      },
-    },
-  },
-  billingGroup: {
-    marginBottom: theme.spacing(3),
-  },
-  paymentMethodNoticeContainer: {
-    fontSize: '0.875rem',
-    marginTop: theme.spacing(2),
-    padding: `8px 0px`,
-    '& button': {
-      marginLeft: theme.spacing(),
-    },
-    '& p': {
-      // Overwrites the default styling from the banner
-      fontSize: '0.875rem',
-      marginLeft: 0,
-    },
-  },
-  payPalIcon: {
-    flexShrink: 0,
-    height: 20,
-    marginRight: '6px',
-  },
-  edit: {
-    color: theme.textColors.linkActiveLight,
-    fontFamily: theme.font.normal,
-    fontSize: '.875rem',
-    fontWeight: 700,
-    minHeight: 'unset',
-    minWidth: 'auto',
-    padding: 0,
-    '&:hover, &:focus': {
-      backgroundColor: 'transparent',
-      color: theme.palette.primary.main,
-      textDecoration: 'underline',
-    },
-  },
-}));
+import type { Profile } from '@linode/api-v4';
 
 interface Props {
-  loading: boolean;
   error?: APIError[] | null;
-  paymentMethods: PaymentMethod[] | undefined;
   isAkamaiCustomer: boolean;
+  loading: boolean;
+  paymentMethods: PaymentMethod[] | undefined;
+  profile: Profile | undefined;
 }
 
-const PaymentInformation: React.FC<Props> = (props) => {
-  const { loading, error, paymentMethods, isAkamaiCustomer } = props;
+const PaymentInformation = (props: Props) => {
+  const { error, isAkamaiCustomer, loading, paymentMethods, profile } = props;
   const [addDrawerOpen, setAddDrawerOpen] = React.useState<boolean>(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState<boolean>(
@@ -92,19 +44,18 @@ const PaymentInformation: React.FC<Props> = (props) => {
     deletePaymentMethodSelection,
     setDeletePaymentMethodSelection,
   ] = React.useState<PaymentMethod | undefined>();
-
-  const classes = useStyles();
   const { replace } = useHistory();
-
+  const queryClient = useQueryClient();
   const drawerLink = '/account/billing/add-payment-method';
   const addPaymentMethodRouteMatch = Boolean(useRouteMatch(drawerLink));
 
-  const showPayPalAvailableNotice =
-    !isAkamaiCustomer &&
-    !loading &&
-    !paymentMethods?.some(
-      (paymetMethod: PaymentMethod) => paymetMethod.type === 'paypal'
-    );
+  const isChildUser = profile?.user_type === 'child';
+
+  const isReadOnly =
+    useRestrictedGlobalGrantCheck({
+      globalGrantType: 'account_access',
+      permittedGrantLevel: 'read_write',
+    }) || isChildUser;
 
   const doDelete = () => {
     setDeleteLoading(true);
@@ -112,7 +63,9 @@ const PaymentInformation: React.FC<Props> = (props) => {
       .then(() => {
         setDeleteLoading(false);
         closeDeleteDialog();
-        queryClient.invalidateQueries(`${queryKey}-all`);
+        queryClient.invalidateQueries({
+          queryKey: accountQueries.paymentMethods.queryKey,
+        });
       })
       .catch((e: APIError[]) => {
         setDeleteLoading(false);
@@ -146,32 +99,36 @@ const PaymentInformation: React.FC<Props> = (props) => {
   }, [addPaymentMethodRouteMatch, openAddDrawer]);
 
   return (
-    <Grid item xs={12} md={6}>
-      <Paper className={classes.summarySection} data-qa-billing-summary>
-        <Grid container spacing={2}>
-          <Grid item className={classes.container}>
-            <Typography variant="h3" className={classes.title}>
-              Payment Methods
-            </Typography>
-          </Grid>
-          <Grid item>
-            {!isAkamaiCustomer ? (
-              <Button
-                data-testid="payment-info-add-payment-method"
-                className={classes.edit}
-                onClick={() => replace(drawerLink)}
-              >
-                Add Payment Method
-              </Button>
-            ) : null}
-          </Grid>
-        </Grid>
+    <Grid md={6} xs={12}>
+      <BillingPaper data-qa-billing-summary variant="outlined">
+        <BillingBox>
+          <Typography variant="h3">Payment Methods</Typography>
+          {!isAkamaiCustomer ? (
+            <BillingActionButton
+              tooltipText={getRestrictedResourceText({
+                includeContactInfo: false,
+                isChildUser,
+                resourceType: 'Account',
+              })}
+              data-testid="payment-info-add-payment-method"
+              disableFocusRipple
+              disableRipple
+              disableTouchRipple
+              disabled={isReadOnly}
+              onClick={() => replace(drawerLink)}
+            >
+              {ADD_PAYMENT_METHOD}
+            </BillingActionButton>
+          ) : null}
+        </BillingBox>
         {!isAkamaiCustomer ? (
           <PaymentMethods
-            loading={loading}
             error={error}
-            paymentMethods={paymentMethods}
+            isChildUser={isChildUser}
+            isRestrictedUser={isReadOnly}
+            loading={loading}
             openDeleteDialog={openDeleteDialog}
+            paymentMethods={paymentMethods}
           />
         ) : (
           <Typography data-testid="akamai-customer-text">
@@ -181,36 +138,20 @@ const PaymentInformation: React.FC<Props> = (props) => {
             Contact your representative with questions.
           </Typography>
         )}
-        {showPayPalAvailableNotice ? (
-          <DismissibleBanner
-            className={classes.paymentMethodNoticeContainer}
-            preferenceKey="paypal-available-notification"
-          >
-            <Box display="flex" alignItems="center">
-              <PayPalIcon className={classes.payPalIcon} />
-              <Typography>
-                PayPal is now available for recurring payments.{' '}
-                <Link to="#" onClick={() => replace(drawerLink)}>
-                  Add PayPal.
-                </Link>
-              </Typography>
-            </Box>
-          </DismissibleBanner>
-        ) : null}
         <AddPaymentMethodDrawer
-          open={addDrawerOpen}
           onClose={closeAddDrawer}
+          open={addDrawerOpen}
           paymentMethods={paymentMethods}
         />
         <DeletePaymentMethodDialog
-          open={deleteDialogOpen}
+          error={deleteError}
+          loading={deleteLoading}
           onClose={closeDeleteDialog}
           onDelete={doDelete}
+          open={deleteDialogOpen}
           paymentMethod={deletePaymentMethodSelection}
-          loading={deleteLoading}
-          error={deleteError}
         />
-      </Paper>
+      </BillingPaper>
     </Grid>
   );
 };

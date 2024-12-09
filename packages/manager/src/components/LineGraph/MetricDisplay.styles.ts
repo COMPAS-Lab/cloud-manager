@@ -1,140 +1,48 @@
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-  WithTheme,
-} from 'src/components/core/styles';
+import { omittedProps } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 
-export type ClassNames =
-  | 'root'
-  | 'legend'
-  | 'red'
-  | 'yellow'
-  | 'blue'
-  | 'green'
-  | 'lightGreen'
-  | 'darkGreen'
-  | 'text'
-  | 'tableHeadInner'
-  | 'simpleLegend'
-  | 'simpleLegendRoot';
+import { Button } from 'src/components/Button/Button';
+import { Table } from 'src/components/Table';
+import { TableCell } from 'src/components/TableCell';
 
-export type StyleProps = WithStyles<ClassNames> & WithTheme;
+export const StyledTable = styled(Table, {
+  label: 'StyledTable',
+})(({ theme }) => ({
+  border: `1px solid ${theme.borderColors.borderTable}`,
+}));
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      maxWidth: 600,
-      '& *': {
-        height: 'auto',
-        border: 'none',
-        backgroundColor: 'transparent',
-      },
-      '& td:first-child': {
-        backgroundColor: 'transparent !important',
-      },
-      '& .data': {
-        minWidth: 100,
-      },
-      [theme.breakpoints.down('lg')]: {
-        '& th, & td': {
-          padding: '4px !important',
-        },
-      },
-      [theme.breakpoints.down('sm')]: {
-        maxWidth: '100%',
-        '& td': {
-          justifyContent: 'normal',
-          minHeight: 'auto',
-        },
-      },
-      [theme.breakpoints.only('xs')]: {
-        '& tr:not(:first-child) td': {
-          '&:first-child': {
-            marginTop: theme.spacing(2),
-          },
-        },
-      },
-      [theme.breakpoints.only('sm')]: {
-        '& tr:not(:nth-last-child(n+3)) td:first-child': {
-          marginTop: theme.spacing(2),
-        },
-        '& tbody': {
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-        },
-        '& tr': {
-          flexBasis: '45%',
-        },
-      },
+export const StyledTableCell = styled(TableCell, {
+  label: 'StyledTableCell',
+})(({ theme }) => ({
+  '& > button': {
+    '&:before': {
+      content: '""',
+      display: 'inline-block',
+      height: 20,
+      marginRight: theme.spacing(1),
+      width: 20,
     },
-    tableHeadInner: {
-      paddingBottom: 4,
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'flex-start',
+    textAlign: 'left',
+    [theme.breakpoints.down('sm')]: {
+      padding: 0,
     },
-    red: {
-      '&:before': {
-        backgroundColor: theme.graphs.red,
-      },
-    },
-    purple: {
-      '&:before': {
-        backgroundColor: theme.graphs.purple,
-      },
-    },
-    yellow: {
-      '&:before': {
-        backgroundColor: theme.graphs.yellow,
-      },
-    },
-    blue: {
-      '&:before': {
-        backgroundColor: theme.graphs.blue,
-      },
-    },
-    green: {
-      '&:before': {
-        backgroundColor: theme.graphs.green,
-      },
-    },
-    lightGreen: {
-      '&:before': {
-        backgroundColor: theme.graphs.network.outbound,
-      },
-    },
-    darkGreen: {
-      '&:before': {
-        backgroundColor: theme.graphs.network.inbound,
-      },
-    },
-    legend: {
-      [theme.breakpoints.up('md')]: {
-        width: '38%',
-      },
-      '& > div': {
-        display: 'flex',
-        alignItems: 'center',
-        '&:before': {
-          content: '""',
-          display: 'inline-block',
-          width: 20,
-          height: 20,
-          marginRight: theme.spacing(1),
-        },
-      },
-    },
-    text: {
-      color: theme.color.black,
-    },
-    simpleLegendRoot: {
-      maxWidth: 'initial',
-      display: 'flex',
-    },
-    simpleLegend: {
-      width: 'auto',
-      marginTop: theme.spacing(2),
-    },
-  });
+    whiteSpace: 'nowrap',
+  },
+}));
 
-export default withStyles(styles, { withTheme: true });
+export const StyledButton = styled(Button, {
+  label: 'StyledButton',
+  shouldForwardProp: omittedProps(['legendColor', 'hidden']),
+})<{ legendColor?: string }>(({ hidden, legendColor, theme }) => ({
+  ...(legendColor && {
+    '&:before': {
+      backgroundColor: hidden
+        ? theme.color.disabledText
+        : theme.graphs[legendColor],
+      flexShrink: 0,
+    },
+  }),
+}));

@@ -1,83 +1,77 @@
-import { LongviewClient } from '@linode/api-v4/lib/longview';
+import { createLazyRoute } from '@tanstack/react-router';
 import { pathOr } from 'ramda';
 import * as React from 'react';
-import { matchPath, RouteComponentProps } from 'react-router-dom';
+import { matchPath } from 'react-router-dom';
 import { compose } from 'recompose';
-import Breadcrumb from 'src/components/Breadcrumb';
-import CircleProgress from 'src/components/CircleProgress';
-import Paper from 'src/components/core/Paper';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import Tabs from 'src/components/core/ReachTabs';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import DocsLink from 'src/components/DocsLink';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import NotFound from 'src/components/NotFound';
-import Notice from 'src/components/Notice';
-import SafeTabPanel from 'src/components/SafeTabPanel';
-import SuspenseLoader from 'src/components/SuspenseLoader';
-import TabLinkList from 'src/components/TabLinkList';
-import withLongviewClients, {
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { NotFound } from 'src/components/NotFound';
+import { Notice } from 'src/components/Notice/Notice';
+import { Paper } from '@linode/ui';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
+import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
+import { TabLinkList } from 'src/components/Tabs/TabLinkList';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import withLongviewClients from 'src/containers/longview.container';
+import withClientStats from 'src/containers/longview.stats.container';
+import { get } from 'src/features/Longview/request';
+import { useAPIRequest } from 'src/hooks/useAPIRequest';
+import { useProfile } from 'src/queries/profile/profile';
+
+import { useClientLastUpdated } from '../shared/useClientLastUpdated';
+import { Apache } from './DetailTabs/Apache/Apache';
+import { MySQLLanding } from './DetailTabs/MySQL/MySQLLanding';
+import { NetworkLanding } from './DetailTabs/Network/NetworkLanding';
+import { NGINX } from './DetailTabs/NGINX/NGINX';
+import { ProcessesLanding } from './DetailTabs/Processes/ProcessesLanding';
+import { StyledTabs } from './LongviewDetail.styles';
+
+import type { LongviewClient } from '@linode/api-v4/lib/longview';
+import type { RouteComponentProps } from 'react-router-dom';
+import type {
   DispatchProps,
   Props as LVProps,
 } from 'src/containers/longview.container';
-import withClientStats, {
-  Props as LVDataProps,
-} from 'src/containers/longview.stats.container';
-import { get } from 'src/features/Longview/request';
-import {
+import type { Props as LVDataProps } from 'src/containers/longview.stats.container';
+import type {
   LongviewPortsResponse,
   LongviewTopProcesses,
 } from 'src/features/Longview/request.types';
-import { useAPIRequest } from 'src/hooks/useAPIRequest';
-import { useProfile } from 'src/queries/profile';
-import { useClientLastUpdated } from '../shared/useClientLastUpdated';
-import Apache from './DetailTabs/Apache';
-import MySQLLanding from './DetailTabs/MySQL';
-import NetworkLanding from './DetailTabs/Network';
-import NGINX from './DetailTabs/NGINX';
-import ProcessesLanding from './DetailTabs/Processes/ProcessesLanding';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  tabList: {
-    marginBottom: theme.spacing(3) + 6,
-  },
-}));
 
 const topProcessesEmptyDataSet: LongviewTopProcesses = { Processes: {} };
 
 interface Props {
   client?: LongviewClient;
+  longviewClientsError: LVProps['longviewClientsError'];
   longviewClientsLastUpdated: number;
   longviewClientsLoading: LVProps['longviewClientsLoading'];
-  longviewClientsError: LVProps['longviewClientsError'];
 }
 
 const Overview = React.lazy(
   () => import('./DetailTabs/LongviewDetailOverview')
 );
 const Installation = React.lazy(() => import('./DetailTabs/Installation'));
-const Disks = React.lazy(() => import('./DetailTabs/Disks'));
+const Disks = React.lazy(() => import('./DetailTabs/Disks/Disks'));
 
 export type CombinedProps = RouteComponentProps<{ id: string }> &
   Props &
   LVDataProps &
   DispatchProps;
 
-export const LongviewDetail: React.FC<CombinedProps> = (props) => {
+export const LongviewDetail = (props: CombinedProps) => {
   const {
     client,
+    longviewClientData,
+    longviewClientsError,
     longviewClientsLastUpdated,
     longviewClientsLoading,
-    longviewClientsError,
-    longviewClientData,
   } = props;
 
   const { data: profile } = useProfile();
 
   const timezone = profile?.timezone || 'US/Eastern';
-
-  const classes = useStyles();
 
   React.useEffect(() => {
     /** request clients if they haven't already been requested */
@@ -115,50 +109,50 @@ export const LongviewDetail: React.FC<CombinedProps> = (props) => {
             fields: ['listeningServices', 'activeConnections'],
           }).then((response) => response.DATA)
       : null,
-    { Ports: { listening: [], active: [] } },
+    { Ports: { active: [], listening: [] } },
     [clientAPIKey, lastUpdated]
   );
 
   const tabOptions = [
     {
-      title: 'Overview',
       display: true,
       routeName: `${props.match.url}/overview`,
+      title: 'Overview',
     },
     {
-      title: 'Processes',
       display: true,
       routeName: `${props.match.url}/processes`,
+      title: 'Processes',
     },
     {
-      title: 'Network',
       display: true,
       routeName: `${props.match.url}/network`,
+      title: 'Network',
     },
     {
-      title: 'Disks',
       display: true,
       routeName: `${props.match.url}/disks`,
+      title: 'Disks',
     },
     {
-      title: 'Apache',
       display: client && client.apps.apache,
       routeName: `${props.match.url}/apache`,
+      title: 'Apache',
     },
     {
-      title: 'Nginx',
       display: client && client.apps.nginx,
       routeName: `${props.match.url}/nginx`,
+      title: 'Nginx',
     },
     {
-      title: 'MySQL',
       display: client && client.apps.mysql,
       routeName: `${props.match.url}/mysql`,
+      title: 'MySQL',
     },
     {
-      title: 'Installation',
       display: true,
       routeName: `${props.match.url}/installation`,
+      title: 'Installation',
     },
   ];
 
@@ -207,42 +201,31 @@ export const LongviewDetail: React.FC<CombinedProps> = (props) => {
 
   return (
     <React.Fragment>
-      <Grid
-        container
-        className="m0"
-        alignItems="center"
-        justifyContent="space-between"
-      >
-        <Grid item className="p0">
-          <Breadcrumb
-            pathname={props.location.pathname}
-            firstAndLastOnly
-            labelTitle={client.label}
-            labelOptions={{ noCap: true }}
-          />
-        </Grid>
-        <Grid item className="p0">
-          <DocsLink
-            href={'https://www.linode.com/docs/platform/longview/longview/'}
-          />
-        </Grid>
-      </Grid>
+      <LandingHeader
+        breadcrumbProps={{
+          firstAndLastOnly: true,
+          labelOptions: { noCap: true },
+          pathname: props.location.pathname,
+        }}
+        docsLabel="Docs"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-longview"
+        title={client.label}
+      />
       {notifications.map((thisNotification, idx) => (
         <Notice
           key={`lv-warning-${idx}`}
-          warning
-          spacingTop={8}
           spacingBottom={0}
+          spacingTop={8}
           text={thisNotification.TEXT}
+          variant="warning"
         />
       ))}
-      <Tabs
+      <StyledTabs
         index={Math.max(
           tabs.findIndex((tab) => matches(tab.routeName)),
           0
         )}
         onChange={navToURL}
-        className={classes.tabList}
       >
         <TabLinkList tabs={tabs} />
 
@@ -251,24 +234,24 @@ export const LongviewDetail: React.FC<CombinedProps> = (props) => {
             <SafeTabPanel index={0}>
               <Overview
                 client={client.label}
-                clientID={client.id}
                 clientAPIKey={client.api_key}
-                longviewClientData={longviewClientData}
-                timezone={timezone}
-                topProcessesData={topProcesses.data}
-                topProcessesLoading={topProcesses.loading}
-                topProcessesError={topProcesses.error}
+                clientID={client.id}
+                lastUpdated={lastUpdated}
+                lastUpdatedError={lastUpdatedError}
                 listeningPortsData={listeningPorts.data}
                 listeningPortsError={listeningPorts.error}
                 listeningPortsLoading={listeningPorts.loading}
-                lastUpdatedError={lastUpdatedError}
-                lastUpdated={lastUpdated}
+                longviewClientData={longviewClientData}
+                timezone={timezone}
+                topProcessesData={topProcesses.data}
+                topProcessesError={topProcesses.error}
+                topProcessesLoading={topProcesses.loading}
               />
             </SafeTabPanel>
             <SafeTabPanel index={1}>
               <ProcessesLanding
-                clientID={client.id}
                 clientAPIKey={client.api_key}
+                clientID={client.id}
                 lastUpdated={lastUpdated}
                 lastUpdatedError={lastUpdatedError}
                 timezone={timezone}
@@ -284,10 +267,10 @@ export const LongviewDetail: React.FC<CombinedProps> = (props) => {
             </SafeTabPanel>
             <SafeTabPanel index={3}>
               <Disks
-                clientID={client.id}
                 clientAPIKey={client.api_key}
-                lastUpdated={lastUpdated}
+                clientID={client.id}
                 clientLastUpdated={lastUpdated}
+                lastUpdated={lastUpdated}
                 lastUpdatedError={lastUpdatedError}
                 timezone={timezone}
               />
@@ -296,10 +279,10 @@ export const LongviewDetail: React.FC<CombinedProps> = (props) => {
             {client && client.apps.apache && (
               <SafeTabPanel index={4}>
                 <Apache
-                  timezone={timezone}
                   clientAPIKey={clientAPIKey}
                   lastUpdated={lastUpdated}
                   lastUpdatedError={lastUpdatedError}
+                  timezone={timezone}
                 />
               </SafeTabPanel>
             )}
@@ -307,10 +290,10 @@ export const LongviewDetail: React.FC<CombinedProps> = (props) => {
             {client && client.apps.nginx && (
               <SafeTabPanel index={client.apps.apache ? 5 : 4}>
                 <NGINX
-                  timezone={timezone}
                   clientAPIKey={clientAPIKey}
                   lastUpdated={lastUpdated}
                   lastUpdatedError={lastUpdatedError}
+                  timezone={timezone}
                 />
               </SafeTabPanel>
             )}
@@ -322,28 +305,28 @@ export const LongviewDetail: React.FC<CombinedProps> = (props) => {
                 }
               >
                 <MySQLLanding
-                  timezone={timezone}
                   clientAPIKey={clientAPIKey}
                   lastUpdated={lastUpdated}
                   lastUpdatedError={lastUpdatedError}
+                  timezone={timezone}
                 />
               </SafeTabPanel>
             )}
 
             <SafeTabPanel index={Number(displayedTabs.length - 1)}>
               <Installation
-                clientInstallationKey={client.install_code}
                 clientAPIKey={client.api_key}
+                clientInstallationKey={client.install_code}
               />
             </SafeTabPanel>
           </TabPanels>
         </React.Suspense>
-      </Tabs>
+      </StyledTabs>
     </React.Fragment>
   );
 };
 
-export default compose<CombinedProps, {}>(
+const EnhancedLongviewDetail = compose<CombinedProps, {}>(
   React.memo,
   withClientStats<RouteComponentProps<{ id: string }>>((ownProps) => {
     return +pathOr<string>('', ['match', 'params', 'id'], ownProps);
@@ -353,9 +336,9 @@ export default compose<CombinedProps, {}>(
       own,
       {
         longviewClientsData,
+        longviewClientsError,
         longviewClientsLastUpdated,
         longviewClientsLoading,
-        longviewClientsError,
       }
     ) => {
       // This is explicitly typed, otherwise `client` would be typed as
@@ -365,10 +348,24 @@ export default compose<CombinedProps, {}>(
 
       return {
         client,
+        longviewClientsError,
         longviewClientsLastUpdated,
         longviewClientsLoading,
-        longviewClientsError,
       };
     }
   )
 )(LongviewDetail);
+
+export const longviewDetailLazyRoute = createLazyRoute('/longview/clients/$id')(
+  {
+    component: React.lazy(() =>
+      import('src/features/Longview/LongviewDetail/LongviewDetail').then(
+        () => ({
+          default: (props: any) => <EnhancedLongviewDetail {...props} />,
+        })
+      )
+    ),
+  }
+);
+
+export default EnhancedLongviewDetail;

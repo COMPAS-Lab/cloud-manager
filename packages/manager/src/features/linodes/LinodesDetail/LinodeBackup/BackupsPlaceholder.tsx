@@ -1,32 +1,28 @@
+import { PriceObject } from '@linode/api-v4';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
+
 import VolumeIcon from 'src/assets/icons/entityIcons/volume.svg';
-import { makeStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Currency from 'src/components/Currency';
-import Placeholder from 'src/components/Placeholder';
-import LinodePermissionsError from '../LinodePermissionsError';
-import EnableBackupsDialog from './EnableBackupsDialog';
+import { Currency } from 'src/components/Currency';
+import { Placeholder } from 'src/components/Placeholder/Placeholder';
+import { Typography } from 'src/components/Typography';
+
+import { EnableBackupsDialog } from './EnableBackupsDialog';
 
 interface Props {
-  backupsMonthlyPrice?: number;
+  backupsMonthlyPrice?: PriceObject['monthly'];
   disabled: boolean;
   linodeId: number;
+  linodeIsInDistributedRegion?: boolean;
 }
 
-export type CombinedProps = Props;
-
-const useStyles = makeStyles(() => ({
-  empty: {
-    '& svg': {
-      transform: 'scale(0.75)',
-    },
-  },
-}));
-
-export const BackupsPlaceholder: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
-  const { backupsMonthlyPrice, linodeId, disabled } = props;
+export const BackupsPlaceholder = React.memo((props: Props) => {
+  const {
+    backupsMonthlyPrice,
+    disabled,
+    linodeId,
+    linodeIsInDistributedRegion,
+  } = props;
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
 
@@ -50,30 +46,36 @@ export const BackupsPlaceholder: React.FC<Props> = (props) => {
 
   return (
     <>
-      {disabled && <LinodePermissionsError />}
-      <Placeholder
-        icon={VolumeIcon}
-        className={classes.empty}
-        isEntity
-        title="Backups"
-        renderAsSecondary
+      <StyledPlaceholder
         buttonProps={[
           {
-            onClick: () => setDialogOpen(true),
             children: 'Enable Backups',
-            disabled,
+            disabled: disabled || linodeIsInDistributedRegion,
+            onClick: () => setDialogOpen(true),
+            tooltipText: linodeIsInDistributedRegion
+              ? 'Backups are currently not available for distributed regions.'
+              : undefined,
           },
         ]}
+        data-testid="backups"
+        icon={VolumeIcon}
+        isEntity
+        renderAsSecondary
+        title="Backups"
       >
         {backupPlaceholderText}
-      </Placeholder>
+      </StyledPlaceholder>
       <EnableBackupsDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
         linodeId={linodeId}
+        onClose={() => setDialogOpen(false)}
+        open={dialogOpen}
       />
     </>
   );
-};
+});
 
-export default React.memo(BackupsPlaceholder);
+const StyledPlaceholder = styled(Placeholder, { label: 'StyledPlaceholder' })({
+  '& svg': {
+    transform: 'scale(0.75)',
+  },
+});

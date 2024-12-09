@@ -1,16 +1,21 @@
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { compose } from 'recompose';
-import UserIcon from 'src/assets/icons/user.svg';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
-import Grid from 'src/components/Grid';
-import { Hively, shouldRenderHively } from './Hively';
-import TicketDetailBody from './TicketDetailText';
-import { OFFICIAL_USERNAMES } from './ticketUtils';
-import { ExtendedReply, ExtendedTicket } from './types';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
+import { Avatar } from 'src/components/Avatar/Avatar';
+import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
+import { Typography } from 'src/components/Typography';
+import { useProfile } from 'src/queries/profile/profile';
+
+import { Hively, shouldRenderHively } from './Hively';
+import { TicketDetailText } from './TicketDetailText';
+import { OFFICIAL_USERNAMES } from './ticketUtils';
+
+import type { SupportReply, SupportTicket } from '@linode/api-v4';
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   '@keyframes fadeIn': {
     from: {
       opacity: 0,
@@ -19,106 +24,92 @@ const useStyles = makeStyles((theme: Theme) => ({
       opacity: 1,
     },
   },
-  root: {
-    width: '100%',
-    padding: 0,
-    marginBottom: theme.spacing(2),
-    position: 'relative',
-  },
-  userWrapper: {
-    marginTop: theme.spacing(1) / 2,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '50%',
-    width: 32,
-    height: 32,
-    position: 'relative',
-    top: -2,
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-    },
-    [theme.breakpoints.up('sm')]: {
-      marginRight: theme.spacing(1),
-      width: 40,
-      height: 40,
-    },
-  },
-  leftIcon: {
-    width: '100%',
-    height: '100%',
-    borderRadius: '50%',
-    color: theme.palette.text.primary,
-  },
   content: {
-    width: '100%',
-    marginTop: theme.spacing(1),
-    marginRight: theme.spacing(1),
-    padding: theme.spacing(2),
-    backgroundColor: theme.color.white,
+    backgroundColor: theme.palette.background.paper,
     border: `1px solid ${theme.color.grey2}`,
     borderRadius: theme.shape.borderRadius,
-  },
-  header: {
-    padding: `0 ${theme.spacing(1)}px`,
-    minHeight: 40,
-    backgroundColor: theme.color.grey2,
-    borderTopLeftRadius: theme.shape.borderRadius,
-    borderTopRightRadius: theme.shape.borderRadius,
-  },
-  headerInner: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-  userName: {
-    whiteSpace: 'nowrap',
-    fontFamily: 'LatoWebBold', // we keep this bold at all times
-    color: theme.color.headline,
-    marginRight: 4,
+    marginTop: theme.spacing(1),
+    width: '100%',
   },
   expert: {
     marginRight: 4,
     whiteSpace: 'nowrap',
   },
+  header: {
+    backgroundColor:
+      theme.name === 'light' ? theme.color.grey2 : theme.color.grey7,
+    borderTopLeftRadius: theme.shape.borderRadius,
+    borderTopRightRadius: theme.shape.borderRadius,
+    minHeight: 40,
+    padding: `0 ${theme.spacing(1)}`,
+  },
+  headerInner: {
+    alignItems: 'center',
+    display: 'flex',
+    flexWrap: 'wrap',
+  },
+  leftIcon: {
+    borderRadius: '50%',
+    color: theme.palette.text.primary,
+    height: '100%',
+    width: '100%',
+  },
+  userName: {
+    color: theme.color.headline,
+    fontFamily: 'LatoWebBold', // we keep this bold at all times
+    marginRight: 4,
+    whiteSpace: 'nowrap',
+  },
+  userWrapper: {
+    alignItems: 'center',
+    borderRadius: '50%',
+    display: 'flex',
+    height: 32,
+    justifyContent: 'center',
+    marginRight: theme.spacing(1),
+    marginTop: theme.spacing(1.5),
+    position: 'relative',
+    [theme.breakpoints.up('sm')]: {
+      height: 40,
+      marginTop: theme.spacing(1),
+      width: 40,
+    },
+    top: -2,
+    width: 32,
+  },
 }));
 
-export interface Props {
-  reply?: ExtendedReply;
-  ticket?: ExtendedTicket;
-  open?: boolean;
+interface Props {
   isCurrentUser: boolean;
+  open?: boolean;
   parentTicket?: number;
+  reply?: SupportReply;
+  ticket?: SupportTicket;
   ticketUpdated?: string;
 }
 
-type CombinedProps = Props;
-
 interface Data {
-  gravatar_id: string;
-  gravatarUrl: string;
   date: string;
   description: string;
-  username: string;
+  friendly_name: string;
   from_linode: boolean;
-  ticket_id: string;
+  gravatar_id: string;
   reply_id: string;
+  ticket_id: string;
   updated: string;
+  username: string;
 }
 
-export const ExpandableTicketPanel: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const ExpandableTicketPanel = React.memo((props: Props) => {
+  const { classes } = useStyles();
 
-  const {
-    // isCurrentUser,
-    parentTicket,
-    ticket,
-    open,
-    reply,
-    ticketUpdated,
-  } = props;
+  const theme = useTheme();
+
+  const { open, parentTicket, reply, ticket, ticketUpdated } = props;
 
   const [data, setData] = React.useState<Data | undefined>(undefined);
+
+  const { data: profile } = useProfile();
 
   React.useEffect(() => {
     if (!ticket && !reply) {
@@ -126,39 +117,43 @@ export const ExpandableTicketPanel: React.FC<CombinedProps> = (props) => {
     }
     if (ticket) {
       return setData({
-        ticket_id: String(ticket.id),
-        reply_id: '',
-        gravatar_id: ticket.gravatar_id,
-        gravatarUrl: ticket.gravatarUrl ?? 'not found',
         date: ticket.opened,
         description: ticket.description,
-        username: ticket.opened_by,
+        friendly_name: ticket.opened_by,
         from_linode: false,
+        gravatar_id: ticket.gravatar_id,
+        reply_id: '',
+        ticket_id: String(ticket.id),
         updated: ticket.updated,
+        username: ticket.opened_by,
       });
     } else if (reply) {
       return setData({
-        ticket_id: parentTicket ? String(parentTicket) : '',
-        reply_id: String(reply.id),
-        gravatar_id: reply.gravatar_id,
-        gravatarUrl: reply.gravatarUrl ?? 'not found',
         date: reply.created,
         description: reply.description,
-        username: reply.created_by,
+        friendly_name: reply.friendly_name,
         from_linode: reply.from_linode,
+        gravatar_id: reply.gravatar_id,
+        reply_id: String(reply.id),
+        ticket_id: parentTicket ? String(parentTicket) : '',
         updated: ticketUpdated!,
+        username: reply.created_by,
       });
     }
   }, [parentTicket, reply, ticket, ticketUpdated]);
 
-  const renderAvatar = (url: string) => {
-    return url !== 'not found' ? (
+  const renderAvatar = () => {
+    return (
       <div className={classes.userWrapper}>
-        <img src={url} className={classes.leftIcon} alt="Gravatar" />
-      </div>
-    ) : (
-      <div className={classes.userWrapper}>
-        <UserIcon className={classes.leftIcon} />
+        <Avatar
+          color={
+            data?.username !== profile?.username
+              ? theme.palette.primary.dark
+              : undefined
+          }
+          sx={{ marginTop: 1 }}
+          username={data?.username === 'Linode' ? 'Akamai' : data?.username}
+        />
       </div>
     );
   };
@@ -172,55 +167,37 @@ export const ExpandableTicketPanel: React.FC<CombinedProps> = (props) => {
   }
 
   return (
-    <Grid item className={classes.root}>
-      <Grid
-        container
-        direction="row"
-        justifyContent="space-between"
-        alignItems="flex-start"
-      >
-        <Grid item xs={12}>
-          <Grid container wrap="nowrap">
-            <Grid item>{renderAvatar(data.gravatarUrl)}</Grid>
-            <Grid item className={`${classes.content}`}>
-              <Grid container className={classes.header}>
-                <Grid item className={classes.headerInner}>
-                  <Typography className={classes.userName} component="span">
-                    {data.username}
-                  </Typography>
-                  {data.from_linode &&
-                  !OFFICIAL_USERNAMES.includes(data.username) ? (
-                    <Typography
-                      component="span"
-                      variant="body1"
-                      className={classes.expert}
-                    >
-                      <em>Linode Expert</em>
-                    </Typography>
-                  ) : null}
-                  <Typography variant="body1" component="span">
-                    commented <DateTimeDisplay value={data.date} />
-                  </Typography>
-                </Grid>
-              </Grid>
-              <TicketDetailBody open={open} text={data.description} />
-              {shouldRenderHively(
-                data.from_linode,
-                data.updated,
-                data.username
-              ) && (
-                <Hively
-                  linodeUsername={data.username}
-                  ticketId={data.ticket_id}
-                  replyId={data.reply_id}
-                />
-              )}
-            </Grid>
+    <Grid container wrap="nowrap">
+      <Grid>{renderAvatar()}</Grid>
+      <Grid className={classes.content}>
+        <Grid className={classes.header} container>
+          <Grid className={classes.headerInner}>
+            <Typography className={classes.userName} component="span">
+              {data.friendly_name === 'Linode' ? 'Akamai' : data.friendly_name}
+            </Typography>
+            {data.from_linode && !OFFICIAL_USERNAMES.includes(data.username) ? (
+              <Typography
+                className={classes.expert}
+                component="span"
+                variant="body1"
+              >
+                <em>Customer Support</em>
+              </Typography>
+            ) : null}
+            <Typography component="span" variant="body1">
+              commented <DateTimeDisplay value={data.date} />
+            </Typography>
           </Grid>
         </Grid>
+        <TicketDetailText open={open} text={data.description} />
+        {shouldRenderHively(data.from_linode, data.updated, data.username) && (
+          <Hively
+            linodeUsername={data.username}
+            replyId={data.reply_id}
+            ticketId={data.ticket_id}
+          />
+        )}
       </Grid>
     </Grid>
   );
-};
-
-export default compose<CombinedProps, Props>(React.memo)(ExpandableTicketPanel);
+});

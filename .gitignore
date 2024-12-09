@@ -11,9 +11,13 @@ lib
 # editor configuration
 .vscode
 .idea
+**/*.iml
 
 # misc
 .DS_Store
+
+# swc data
+.swc
 
 # local restart script with keys
 restart.sh
@@ -69,6 +73,7 @@ jspm_packages/
 
 # Typescript v1 declaration files
 typings/
+tsconfig.tsbuildinfo
 
 # Optional npm cache directory
 .npm
@@ -106,6 +111,7 @@ localStorage.json
 
 # storybook static files
 .out
+packages/manager/storybook-static/
 
 # Vim users
 *.swp
@@ -119,12 +125,9 @@ packages/manager/test-report.xml
 **/manager/config/development.json
 **/manager/config/staging.json
 **/manager/cypress/videos/
-
-# ignore all screenshots except records
-# we ignore the png files, not the whole folder recursively
-# or the record files are ignored too
-**/manager/cypress/screenshots/**/*.png
-!**/manager/cypress/screenshots/**/record*.png
+**/manager/cypress/downloads/
+**/manager/cypress/results/
+**/manager/cypress/screenshots/
 
 packages/manager/cypress/fixtures/example.json
 
@@ -132,3 +135,6 @@ nohup.out
 packages/manager/bundle_analyzer_report.html
 
 **/manager/src/dev-tools/*.local.*
+
+# vitepress
+docs/.vitepress/cache

@@ -1,24 +1,22 @@
-import { withSnackbar, WithSnackbarProps } from 'notistack';
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import { compose } from 'recompose';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
 
-interface Props {
+import { Action, ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+
+interface CredentialActionMenuProps {
   credentialID: number;
   label: string;
   openDialog: (id: number, label: string) => void;
   openForEdit: (id: number) => void;
 }
 
-export type CombinedProps = Props & WithSnackbarProps;
-
-const CredentialActionMenu: React.FC<CombinedProps> = (props) => {
+const CredentialActionMenu = (props: CredentialActionMenuProps) => {
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { label, credentialID, openDialog, openForEdit } = props;
+  const { credentialID, label, openDialog, openForEdit } = props;
 
   const onClickForEdit = () => {
     openForEdit(credentialID);
@@ -30,12 +28,12 @@ const CredentialActionMenu: React.FC<CombinedProps> = (props) => {
 
   const actions: Action[] = [
     {
-      title: 'Edit',
       onClick: onClickForEdit,
+      title: 'Edit',
     },
     {
-      title: 'Delete',
       onClick: onClickForDelete,
+      title: 'Delete',
     },
   ];
 
@@ -51,8 +49,8 @@ const CredentialActionMenu: React.FC<CombinedProps> = (props) => {
         actions.map((action) => {
           return (
             <InlineMenuAction
-              key={action.title}
               actionText={action.title}
+              key={action.title}
               onClick={action.onClick}
             />
           );
@@ -62,6 +60,4 @@ const CredentialActionMenu: React.FC<CombinedProps> = (props) => {
   );
 };
 
-const enhanced = compose<CombinedProps, Props>(withSnackbar);
-
-export default enhanced(CredentialActionMenu);
+export default CredentialActionMenu;

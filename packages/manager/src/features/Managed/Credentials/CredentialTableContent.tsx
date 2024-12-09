@@ -1,29 +1,29 @@
 import { ManagedCredential } from '@linode/api-v4/lib/managed';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import TableRowEmpty from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
+
 import CredentialRow from './CredentialRow';
 
-interface Props {
+interface CredentialTableContentProps {
   credentials: ManagedCredential[];
+  error?: APIError[] | null;
   loading: boolean;
   openDialog: (id: number, label: string) => void;
   openForEdit: (id: number) => void;
-  error?: APIError[];
 }
 
-export type CombinedProps = Props;
-
-export const CredentialTableContent: React.FC<CombinedProps> = (props) => {
-  const { error, loading, credentials, openDialog, openForEdit } = props;
+export const CredentialTableContent = (props: CredentialTableContentProps) => {
+  const { credentials, error, loading, openDialog, openForEdit } = props;
   if (loading) {
-    return <TableRowLoading columns={2} />;
+    return <TableRowLoading columns={3} />;
   }
 
   if (error) {
-    return <TableRowError colSpan={2} message={error[0].reason} />;
+    return <TableRowError colSpan={3} message={error[0].reason} />;
   }
 
   if (credentials.length === 0) {
@@ -39,8 +39,8 @@ export const CredentialTableContent: React.FC<CombinedProps> = (props) => {
     <>
       {credentials.map((credential: ManagedCredential, idx: number) => (
         <CredentialRow
-          key={`managed-credential-row-${idx}`}
           credential={credential}
+          key={`managed-credential-row-${idx}`}
           openDialog={openDialog}
           openForEdit={openForEdit}
         />

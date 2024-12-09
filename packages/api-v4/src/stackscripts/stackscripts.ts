@@ -10,14 +10,14 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
+import { Filter, Params, ResourcePage as Page } from '../types';
 import { StackScript, StackScriptPayload } from './types';
 
 /**
  * Returns a paginated list of StackScripts.
  *
  */
-export const getStackScripts = (params?: any, filter?: any) =>
+export const getStackScripts = (params?: Params, filter?: Filter) =>
   Request<Page<StackScript>>(
     setURL(`${API_ROOT}/linode/stackscripts`),
     setMethod('GET'),
@@ -32,7 +32,9 @@ export const getStackScripts = (params?: any, filter?: any) =>
  */
 export const getStackScript = (stackscriptId: number) =>
   Request<StackScript>(
-    setURL(`${API_ROOT}/linode/stackscripts/${stackscriptId}`),
+    setURL(
+      `${API_ROOT}/linode/stackscripts/${encodeURIComponent(stackscriptId)}`
+    ),
     setMethod('GET')
   );
 
@@ -77,7 +79,9 @@ export const updateStackScript = (
   payload: Partial<StackScriptPayload>
 ) =>
   Request<StackScript>(
-    setURL(`${API_ROOT}/linode/stackscripts/${stackscriptId}`),
+    setURL(
+      `${API_ROOT}/linode/stackscripts/${encodeURIComponent(stackscriptId)}`
+    ),
     setMethod('PUT'),
     setData(payload, updateStackScriptSchema)
   );
@@ -89,6 +93,8 @@ export const updateStackScript = (
  */
 export const deleteStackScript = (stackscriptId: number) =>
   Request<{}>(
-    setURL(`${API_ROOT}/linode/stackscripts/${stackscriptId}`),
+    setURL(
+      `${API_ROOT}/linode/stackscripts/${encodeURIComponent(stackscriptId)}`
+    ),
     setMethod('DELETE')
   );

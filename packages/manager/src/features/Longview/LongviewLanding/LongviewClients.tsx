@@ -1,73 +1,41 @@
-import {
-  ActiveLongviewPlan,
-  LongviewClient,
-  LongviewSubscription,
-} from '@linode/api-v4/lib/longview/types';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
 import { isEmpty, pathOr } from 'ramda';
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { Link, RouteComponentProps } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { compose } from 'recompose';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Search from 'src/components/DebouncedSearchTextField';
+
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { DebouncedSearchTextField } from 'src/components/DebouncedSearchTextField';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import Grid from 'src/components/Grid';
-import withLongviewClients, {
-  Props as LongviewProps,
-} from 'src/containers/longview.container';
-import { useGrants, useProfile } from 'src/queries/profile';
-import { isManaged } from 'src/queries/accountSettings';
-import { State as StatsState } from 'src/store/longviewStats/longviewStats.reducer';
-import { MapState } from 'src/store/types';
-import LongviewPackageDrawer from '../LongviewPackageDrawer';
+import { Typography } from 'src/components/Typography';
+import withLongviewClients from 'src/containers/longview.container';
+import { useAccountSettings } from 'src/queries/account/settings';
+import { useGrants, useProfile } from 'src/queries/profile/profile';
+
+import { LongviewPackageDrawer } from '../LongviewPackageDrawer';
 import { sumUsedMemory } from '../shared/utilities';
 import { getFinalUsedCPU } from './Gauges/CPU';
 import { generateUsedNetworkAsBytes } from './Gauges/Network';
 import { getUsedStorage } from './Gauges/Storage';
-import DeleteDialog from './LongviewDeleteDialog';
-import LongviewList from './LongviewList';
-import SubscriptionDialog from './SubscriptionDialog';
+import {
+  StyledCTAGrid,
+  StyledHeadingGrid,
+  StyledSearchbarGrid,
+  StyledSortSelectGrid,
+} from './LongviewClients.styles';
+import { LongviewDeleteDialog } from './LongviewDeleteDialog';
+import { LongviewList } from './LongviewList';
+import { SubscriptionDialog } from './SubscriptionDialog';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  headingWrapper: {
-    marginBottom: theme.spacing(),
-    [theme.breakpoints.down('md')]: {
-      marginLeft: 0,
-      marginRight: 0,
-    },
-  },
-  searchbar: {
-    '& > div': {
-      width: '300px',
-    },
-    [theme.breakpoints.only('md')]: {
-      '&.MuiGrid-item': {
-        paddingLeft: 0,
-      },
-    },
-    [theme.breakpoints.down('xs')]: {
-      width: '100%',
-    },
-  },
-  cta: {
-    marginTop: theme.spacing(2),
-  },
-  sortSelect: {
-    display: 'flex',
-    alignItems: 'center',
-    flexFlow: 'row nowrap',
-    width: 210,
-    [theme.breakpoints.up('xs')]: {
-      width: 221,
-    },
-  },
-  selectLabel: {
-    minWidth: '65px',
-  },
-}));
+import type {
+  ActiveLongviewPlan,
+  LongviewClient,
+  LongviewSubscription,
+} from '@linode/api-v4/lib/longview/types';
+import type { RouteComponentProps } from 'react-router-dom';
+import type { Props as LongviewProps } from 'src/containers/longview.container';
+import type { State as StatsState } from 'src/store/longviewStats/longviewStats.reducer';
+import type { MapState } from 'src/store/types';
 
 interface Props {
   activeSubscription: ActiveLongviewPlan;
@@ -75,22 +43,28 @@ interface Props {
   newClientLoading: boolean;
 }
 
-export type CombinedProps = Props &
+interface SortOption {
+  label: string;
+  value: SortKey;
+}
+
+export type LongviewClientsCombinedProps = Props &
   RouteComponentProps &
   LongviewProps &
-  WithSnackbarProps &
   StateProps;
 
-type SortKey = 'name' | 'cpu' | 'ram' | 'swap' | 'load' | 'network' | 'storage';
+type SortKey = 'cpu' | 'load' | 'name' | 'network' | 'ram' | 'storage' | 'swap';
 
-export const LongviewClients: React.FC<CombinedProps> = (props) => {
+export const LongviewClients = (props: LongviewClientsCombinedProps) => {
   const { getLongviewClients } = props;
 
   const { data: profile } = useProfile();
   const { data: grants } = useGrants();
+  const { data: accountSettings } = useAccountSettings();
 
   const isRestrictedUser = Boolean(profile?.restricted);
   const hasAddLongviewGrant = Boolean(grants?.global?.add_longview);
+  const isManaged = Boolean(accountSettings?.managed);
 
   const userCanCreateClient =
     !isRestrictedUser || (hasAddLongviewGrant && isRestrictedUser);
@@ -102,8 +76,7 @@ export const LongviewClients: React.FC<CombinedProps> = (props) => {
   const [selectedClientLabel, setClientLabel] = React.useState<string>('');
 
   /** Handlers/tracking variables for sorting by different client attributes */
-
-  const sortOptions: Item<string>[] = [
+  const sortOptions: SortOption[] = [
     {
       label: 'Client Name',
       value: 'name',
@@ -147,8 +120,6 @@ export const LongviewClients: React.FC<CombinedProps> = (props) => {
     setSubscriptionDialogOpen,
   ] = React.useState<boolean>(false);
 
-  const classes = useStyles();
-
   React.useEffect(() => {
     getLongviewClients();
   }, [getLongviewClients]);
@@ -164,7 +135,7 @@ export const LongviewClients: React.FC<CombinedProps> = (props) => {
       history: { push },
     } = props;
 
-    if (isManaged()) {
+    if (isManaged) {
       push({
         pathname: '/support/tickets',
         state: {
@@ -190,15 +161,15 @@ export const LongviewClients: React.FC<CombinedProps> = (props) => {
   }, []);
 
   const {
+    activeSubscription,
+    deleteLongviewClient,
+    handleAddClient,
     longviewClientsData,
     longviewClientsError,
     longviewClientsLastUpdated,
     longviewClientsLoading,
     longviewClientsResults,
     lvClientData,
-    activeSubscription,
-    deleteLongviewClient,
-    handleAddClient,
     newClientLoading,
   } = props;
 
@@ -206,8 +177,8 @@ export const LongviewClients: React.FC<CombinedProps> = (props) => {
     setQuery(newQuery);
   };
 
-  const handleSortKeyChange = (selected: Item<string>) => {
-    setSortKey(selected.value as SortKey);
+  const handleSortKeyChange = (selected: SortOption) => {
+    setSortKey(selected.value);
   };
 
   // If this value is defined they're not on the free plan
@@ -230,79 +201,80 @@ export const LongviewClients: React.FC<CombinedProps> = (props) => {
   return (
     <React.Fragment>
       <DocumentTitleSegment segment="Clients" />
-      <Grid container className={classes.headingWrapper} alignItems="center">
-        <Grid item className={classes.searchbar}>
-          <Search
-            placeholder="Filter by client label or hostname"
-            label="Filter by client label or hostname"
-            hideLabel
-            onSearch={handleSearch}
+      <StyledHeadingGrid container spacing={2}>
+        <StyledSearchbarGrid>
+          <DebouncedSearchTextField
+            clearable
             debounceTime={250}
+            hideLabel
+            label="Filter by client label or hostname"
+            onSearch={handleSearch}
+            placeholder="Filter by client label or hostname"
+            value={query}
           />
-        </Grid>
-        <Grid item className={`py0 ${classes.sortSelect}`}>
-          <Typography className={classes.selectLabel}>Sort by: </Typography>
-          <Select
-            small
-            isClearable={false}
-            options={sortOptions}
+        </StyledSearchbarGrid>
+        <StyledSortSelectGrid>
+          <Typography sx={{ minWidth: '65px' }}>Sort by: </Typography>
+          <Autocomplete
+            onChange={(_, value) => {
+              handleSortKeyChange(value);
+            }}
+            textFieldProps={{
+              hideLabel: true,
+            }}
             value={sortOptions.find(
               (thisOption) => thisOption.value === sortKey
             )}
-            onChange={handleSortKeyChange}
+            disableClearable
+            fullWidth
             label="Sort by"
-            hideLabel
+            options={sortOptions}
+            size="small"
           />
-        </Grid>
-      </Grid>
+        </StyledSortSelectGrid>
+      </StyledHeadingGrid>
       <LongviewList
+        createLongviewClient={handleAddClient}
         filteredData={sortedList}
+        loading={newClientLoading}
         longviewClientsError={longviewClientsError}
         longviewClientsLastUpdated={longviewClientsLastUpdated}
         longviewClientsLoading={longviewClientsLoading}
         longviewClientsResults={longviewClientsResults}
-        triggerDeleteLongviewClient={openDeleteDialog}
         openPackageDrawer={handleDrawerOpen}
-        createLongviewClient={handleAddClient}
-        loading={newClientLoading}
+        triggerDeleteLongviewClient={openDeleteDialog}
         userCanCreateLongviewClient={userCanCreateClient}
       />
       {!isLongviewPro && (
-        <Grid
-          className={classes.cta}
-          container
-          direction="column"
-          alignItems="center"
-          justifyContent="center"
-        >
+        <StyledCTAGrid container spacing={2}>
           <Typography data-testid="longview-upgrade">
             <Link to={'/longview/plan-details'}>Upgrade to Longview Pro</Link>
             {` `}for more clients, longer data retention, and more frequent data
             updates.
           </Typography>
-        </Grid>
+        </StyledCTAGrid>
       )}
-      <DeleteDialog
-        selectedLongviewClientID={selectedClientID}
-        selectedLongviewClientLabel={selectedClientLabel}
+      <LongviewDeleteDialog
+        closeDialog={() => toggleDeleteDialog(false)}
         deleteClient={deleteLongviewClient}
         open={deleteDialogOpen}
-        closeDialog={() => toggleDeleteDialog(false)}
+        selectedLongviewClientID={selectedClientID}
+        selectedLongviewClientLabel={selectedClientLabel}
       />
       <SubscriptionDialog
-        isOpen={subscriptionDialogOpen}
-        isManaged={isManaged()}
-        onClose={() => setSubscriptionDialogOpen(false)}
-        onSubmit={handleSubmit}
         clientLimit={
           isEmpty(activeSubscription)
             ? 10
             : (activeSubscription as LongviewSubscription).clients_included
         }
+        isManaged={isManaged}
+        isOpen={subscriptionDialogOpen}
+        onClose={() => setSubscriptionDialogOpen(false)}
+        onSubmit={handleSubmit}
       />
       <LongviewPackageDrawer
-        clientLabel={selectedClientLabel}
         clientID={selectedClientID || 0}
+        clientLabel={selectedClientLabel}
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />
@@ -328,11 +300,12 @@ const mapStateToProps: MapState<StateProps, Props> = (state, _ownProps) => {
 
 const connected = connect(mapStateToProps);
 
-export default compose<CombinedProps, Props & RouteComponentProps>(
+interface ComposeProps extends Props, RouteComponentProps {}
+
+export default compose<LongviewClientsCombinedProps, ComposeProps>(
   React.memo,
   connected,
-  withLongviewClients(),
-  withSnackbar
+  withLongviewClients()
 )(LongviewClients);
 
 /**
@@ -340,8 +313,8 @@ export default compose<CombinedProps, Props & RouteComponentProps>(
  * to reduce (a>b) {return -1 } boilerplate
  */
 export const sortFunc = (
-  a: string | number,
-  b: string | number,
+  a: number | string,
+  b: number | string,
   order: 'asc' | 'desc' = 'desc'
 ) => {
   let result: number;

@@ -1,92 +1,64 @@
-import classNames from 'classnames';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    width: '100% !important',
-  },
-  container: {
-    marginTop: theme.spacing(3),
-  },
-  header: {
-    padding: theme.spacing(3),
-    paddingBottom: 0,
-  },
-  headerAction: {
-    position: 'relative',
-    top: 6,
-    left: -theme.spacing(2),
-    marginLeft: theme.spacing(1) / 2,
-  },
-}));
+import { Typography } from 'src/components/Typography';
 
-interface Props {
-  title?: string;
-  className?: string;
+import {
+  StyledHeaderGrid,
+  StyledRootGrid,
+  StyledTypography,
+} from './DashboardCard.styles';
+
+interface DashboardCardProps {
   alignHeader?: 'flex-start' | 'space-between';
   alignItems?: 'center' | 'flex-start';
+  children?: React.ReactNode;
+  className?: string;
   headerAction?: () => JSX.Element | JSX.Element[] | null;
   noHeaderActionStyles?: boolean;
+  title?: string;
 }
 
-type CombinedProps = Props;
-
-const DashboardCard: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+const DashboardCard = (props: DashboardCardProps) => {
   const {
     alignHeader,
-    title,
+    alignItems,
     headerAction,
     noHeaderActionStyles,
-    className,
-    alignItems,
+    title,
   } = props;
 
+  const ConditionalTypography = !noHeaderActionStyles
+    ? StyledTypography
+    : Typography;
+
   return (
-    <Grid
-      container
-      className={classNames(className, {
-        [classes.root]: true,
-        [classes.container]: true,
-      })}
-      data-qa-card={title}
-    >
+    <StyledRootGrid container data-qa-card={title} spacing={2}>
       {(title || headerAction) && (
-        <Grid item xs={12}>
-          <Grid
-            container
-            className={classes.header}
+        <Grid xs={12}>
+          <StyledHeaderGrid
             alignItems={alignItems || 'flex-start'}
+            container
             justifyContent={alignHeader || 'space-between'}
+            spacing={2}
           >
             {title && (
-              <Grid item className={'p0'}>
+              <Grid className={'p0'}>
                 <Typography variant="h2">{title}</Typography>
               </Grid>
             )}
             {headerAction && (
-              <Grid item className={'p0'}>
-                <Typography
-                  variant="body1"
-                  className={
-                    !noHeaderActionStyles ? classes.headerAction : undefined
-                  }
-                >
+              <Grid className={'p0'}>
+                <ConditionalTypography variant="body1">
                   {headerAction()}
-                </Typography>
+                </ConditionalTypography>
               </Grid>
             )}
-          </Grid>
+          </StyledHeaderGrid>
         </Grid>
       )}
-      <Grid item xs={12}>
-        {props.children}
-      </Grid>
-    </Grid>
+      <Grid xs={12}>{props.children}</Grid>
+    </StyledRootGrid>
   );
 };
 

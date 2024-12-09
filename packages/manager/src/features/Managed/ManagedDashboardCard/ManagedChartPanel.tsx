@@ -1,103 +1,47 @@
-import { DataSeries, ManagedStatsData } from '@linode/api-v4/lib/managed';
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import CircleProgress from 'src/components/CircleProgress';
-import {
-  makeStyles,
-  Theme,
-  WithTheme,
-  withTheme,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ErrorState from 'src/components/ErrorState';
-import LineGraph from 'src/components/LineGraph';
-import TabbedPanel from 'src/components/TabbedPanel';
+
+import { AreaChart } from 'src/components/AreaChart/AreaChart';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { TabbedPanel } from 'src/components/TabbedPanel/TabbedPanel';
+import { Typography } from 'src/components/Typography';
 import {
   convertNetworkToUnit,
-  formatNetworkTooltip,
   generateNetworkUnits,
 } from 'src/features/Longview/shared/utilities';
-import { useProfile } from 'src/queries/profile';
-import getUserTimezone from 'src/utilities/getUserTimezone';
+import { useManagedStatsQuery } from 'src/queries/managed/managed';
+import { useProfile } from 'src/queries/profile/profile';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+import { getUserTimezone } from 'src/utilities/getUserTimezone';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    position: 'relative',
-  },
-  inner: {
-    paddingTop: 0,
-  },
-  graphControls: {
-    position: 'relative',
-    '&:before': {
-      content: '""',
-      position: 'absolute',
-      left: 0,
-      top: 52,
-      height: 'calc(100% - 102px);',
-      width: 1,
-      backgroundColor: theme.palette.divider,
-      [theme.breakpoints.down('xs')]: {
-        display: 'none',
-      },
-    },
-    /**
-     * hacky solution to solve for a bug where
-     * the canvas element under the chart kept ending up with a 0px height
-     * so that it was not appearing
-     */
-    '& canvas': {
-      height: `300px !important`,
-    },
-  },
-  canvasContainer: {
-    marginTop: theme.spacing(3),
-  },
-  chartSelect: {
-    maxWidth: 150,
-    [theme.breakpoints.up('lg')]: {
-      position: 'absolute !important' as 'absolute',
-      right: 24,
-      top: 0,
-      zIndex: 2,
-    },
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(3),
-      marginBottom: theme.spacing(3),
-    },
-  },
-  chartSelectCompact: {
-    [theme.breakpoints.up('lg')]: {
-      right: 12,
-      top: -6,
-    },
-  },
-  caption: {},
-}));
+import {
+  StyledGraphControlsDiv,
+  StyledRootDiv,
+} from './ManagedChartPanel.styles';
 
-interface Props {
-  data: ManagedStatsData | null;
-  loading: boolean;
-  error?: string;
-}
-
-type CombinedProps = Props & WithTheme;
+import type { DataSeries, ManagedStatsData } from '@linode/api-v4/lib/managed';
+import type { Theme } from '@mui/material/styles';
 
 const chartHeight = 300;
 
-const formatData = (value: DataSeries[]): [number, number][] =>
-  value.map((thisPoint) => [thisPoint.x, thisPoint.y]);
+interface NetworkTransferProps {
+  'Network Traffic In': number;
+  'Network Traffic Out': number;
+  timestamp: number;
+}
 
-const _formatTooltip = (valueInBytes: number) =>
-  formatNetworkTooltip(valueInBytes / 8);
+const formatData2 = (value: DataSeries[], label: string) =>
+  value.map((thisPoint) => ({ [label]: thisPoint.y, timestamp: thisPoint.x }));
 
 const createTabs = (
-  data: ManagedStatsData | null,
+  data: ManagedStatsData | undefined,
   timezone: string,
-  classes: Record<string, string>,
   theme: Theme
 ) => {
   const summaryCopy = (
-    <Typography variant="body1" className={classes.caption}>
+    <Typography variant="body1">
       This graph represents combined usage for all Linodes on this account.
     </Typography>
   );
@@ -119,28 +63,42 @@ const createTabs = (
     return convertNetworkToUnit(value, unit as any);
   };
 
+  const networkTransferData: NetworkTransferProps[] = [];
+
+  for (let i = 0; i < data.net_in.length; i++) {
+    networkTransferData.push({
+      'Network Traffic In': convertNetworkData(data.net_in[i].y),
+      'Network Traffic Out': convertNetworkData(data.net_out[i].y),
+      timestamp: data.net_in[i].x,
+    });
+  }
+
   return [
     {
       render: () => {
         return (
-          <div className={classes.root}>
+          <StyledRootDiv>
             <div>{summaryCopy}</div>
-            <div className={classes.canvasContainer}>
-              <LineGraph
-                timezone={timezone}
-                chartHeight={chartHeight}
-                showToday={true}
-                data={[
+            <Box marginTop={2}>
+              <AreaChart
+                areas={[
                   {
-                    borderColor: 'transparent',
-                    backgroundColor: theme.graphs.cpu.percent,
-                    data: formatData(data.cpu),
-                    label: 'CPU %',
+                    color: theme.graphs.cpu.percent,
+                    dataKey: 'CPU %',
                   },
                 ]}
+                xAxis={{
+                  tickFormat: 'hh a',
+                  tickGap: 60,
+                }}
+                ariaLabel="CPU Usage Graph"
+                data={formatData2(data.cpu, 'CPU %')}
+                height={chartHeight}
+                timezone={timezone}
+                unit={'%'}
               />
-            </div>
-          </div>
+            </Box>
+          </StyledRootDiv>
         );
       },
       title: 'CPU Usage (%)',
@@ -148,34 +106,33 @@ const createTabs = (
     {
       render: () => {
         return (
-          <div className={classes.root}>
+          <StyledRootDiv>
             <div>{summaryCopy}</div>
-            <div className={classes.canvasContainer}>
-              <LineGraph
-                timezone={timezone}
-                chartHeight={chartHeight}
-                showToday={true}
-                nativeLegend
-                unit="/s"
-                formatData={convertNetworkData}
-                formatTooltip={_formatTooltip}
-                data={[
+            <Box marginTop={2}>
+              <AreaChart
+                areas={[
                   {
-                    borderColor: 'transparent',
-                    backgroundColor: theme.graphs.network.inbound,
-                    data: formatData(data.net_in),
-                    label: 'Network Traffic In',
+                    color: theme.graphs.darkGreen,
+                    dataKey: 'Network Traffic In',
                   },
                   {
-                    borderColor: 'transparent',
-                    backgroundColor: theme.graphs.network.outbound,
-                    data: formatData(data.net_out),
-                    label: 'Network Traffic Out',
+                    color: theme.graphs.lightGreen,
+                    dataKey: 'Network Traffic Out',
                   },
                 ]}
+                xAxis={{
+                  tickFormat: 'hh a',
+                  tickGap: 60,
+                }}
+                ariaLabel="Network Transfer Graph"
+                data={networkTransferData}
+                height={chartHeight}
+                showLegend
+                timezone={timezone}
+                unit={' Kb/s'}
               />
-            </div>
-          </div>
+            </Box>
+          </StyledRootDiv>
         );
       },
       title: `Network Transfer (${unit}/s)`,
@@ -183,24 +140,28 @@ const createTabs = (
     {
       render: () => {
         return (
-          <div className={classes.root}>
+          <StyledRootDiv>
             <div>{summaryCopy}</div>
-            <div className={classes.canvasContainer}>
-              <LineGraph
-                timezone={timezone}
-                chartHeight={chartHeight}
-                showToday={true}
-                data={[
+            <Box marginTop={3}>
+              <AreaChart
+                areas={[
                   {
-                    borderColor: 'transparent',
-                    backgroundColor: theme.graphs.yellow,
-                    data: formatData(data.disk),
-                    label: 'Disk I/O',
+                    color: theme.graphs.yellow,
+                    dataKey: 'Disk I/O',
                   },
                 ]}
+                xAxis={{
+                  tickFormat: 'hh a',
+                  tickGap: 60,
+                }}
+                ariaLabel="Disk I/O Graph"
+                data={formatData2(data.disk, 'Disk I/O')}
+                height={chartHeight}
+                timezone={timezone}
+                unit={' op/s'}
               />
-            </div>
-          </div>
+            </Box>
+          </StyledRootDiv>
         );
       },
       title: 'Disk I/O (op/s)',
@@ -208,41 +169,53 @@ const createTabs = (
   ];
 };
 
-export const ManagedChartPanel: React.FC<CombinedProps> = (props) => {
-  const { data, error, loading, theme } = props;
-  const classes = useStyles();
+export const ManagedChartPanel = () => {
+  const theme = useTheme();
   const { data: profile } = useProfile();
-  const timezone = getUserTimezone(profile);
+  const timezone = getUserTimezone(profile?.timezone);
+  const { data, error, isLoading } = useManagedStatsQuery();
 
   if (error) {
-    return <ErrorState errorText={error} />;
+    return (
+      <ErrorState
+        errorText={
+          getAPIErrorOrDefault(
+            error,
+            'Unable to load your usage statistics.'
+          )[0].reason
+        }
+      />
+    );
   }
 
-  if (loading) {
-    return <CircleProgress />;
+  if (isLoading) {
+    return (
+      <StyledGraphControlsDiv>
+        <CircleProgress />
+      </StyledGraphControlsDiv>
+    );
   }
 
-  if (data === null) {
+  if (!data) {
     return null;
   }
 
-  const tabs = createTabs(data, timezone, classes, theme);
+  const tabs = createTabs(data.data, timezone, theme);
 
   const initialTab = 0;
 
   return (
-    <div className={classes.graphControls}>
+    <StyledGraphControlsDiv>
       <TabbedPanel
-        rootClass={`tabbedPanel`}
-        innerClass={classes.inner}
+        copy={''}
         error={undefined} // Use custom error handling (above)
         header={''}
-        copy={''}
-        tabs={tabs}
         initTab={initialTab}
+        rootClass={`tabbedPanel`}
+        tabs={tabs}
       />
-    </div>
+    </StyledGraphControlsDiv>
   );
 };
 
-export default React.memo(withTheme(ManagedChartPanel));
+export default ManagedChartPanel;

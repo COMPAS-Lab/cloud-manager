@@ -1,226 +1,40 @@
-import KeyboardArrowDown from '@material-ui/icons/KeyboardArrowDown';
-import {
-  Menu as ReachMenu,
-  MenuButton,
-  MenuItems,
-  MenuLink,
-  MenuPopover,
-} from '@reach/menu-button';
-import { positionRight } from '@reach/popover';
+import { Box, Tooltip } from '@linode/ui';
+import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUp from '@mui/icons-material/KeyboardArrowUp';
+import { styled, useMediaQuery } from '@mui/material';
+import Popover from '@mui/material/Popover';
+import Grid from '@mui/material/Unstable_Grid2';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import Grid from 'src/components/core/Grid';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Tooltip from 'src/components/core/Tooltip';
-import Typography from 'src/components/core/Typography';
-import GravatarIcon from 'src/features/Profile/DisplaySettings/GravatarIcon';
-import useAccountManagement from 'src/hooks/useAccountManagement';
-import { useGrants } from 'src/queries/profile';
+
+import { Avatar } from 'src/components/Avatar/Avatar';
+import { AvatarForProxy } from 'src/components/AvatarForProxy';
+import { Button } from 'src/components/Button/Button';
+import { Divider } from 'src/components/Divider';
+import { Hidden } from 'src/components/Hidden';
+import { Link } from 'src/components/Link';
+import { Stack } from 'src/components/Stack';
+import { Typography } from 'src/components/Typography';
+import { switchAccountSessionContext } from 'src/context/switchAccountSessionContext';
+import { SwitchAccountButton } from 'src/features/Account/SwitchAccountButton';
+import { SwitchAccountDrawer } from 'src/features/Account/SwitchAccountDrawer';
+import { useIsParentTokenExpired } from 'src/features/Account/SwitchAccounts/useIsParentTokenExpired';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { useAccount } from 'src/queries/account/account';
+import { useGrants, useProfile } from 'src/queries/profile/profile';
+import { sendSwitchAccountEvent } from 'src/utilities/analytics/customEventAnalytics';
+import { getStorage, setStorage } from 'src/utilities/storage';
+
+import { getCompanyNameOrEmail } from './utils';
+
+import type { GlobalGrantTypes } from '@linode/api-v4/lib/account';
+import type { Theme } from '@mui/material';
 
 interface MenuLink {
   display: string;
-  href: string;
   hide?: boolean;
+  href: string;
 }
-
-export const menuLinkStyle = (linkColor: string) => ({
-  lineHeight: 1,
-  '&[data-reach-menu-item]': {
-    display: 'flex',
-    alignItems: 'center',
-    color: linkColor,
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    padding: '8px 24px',
-    '&:focus, &:hover': {
-      backgroundColor: 'transparent',
-      color: linkColor,
-    },
-    '&[data-reach-menu-item][data-selected]:not(:hover)': {
-      backgroundColor: 'transparent',
-      color: linkColor,
-      outline: 'dotted 1px #c1c1c0',
-    },
-  },
-});
-
-const useStyles = makeStyles((theme: Theme) => ({
-  menu: {
-    transform: `translateY(${theme.spacing(1)}px)`,
-  },
-  button: {
-    borderRadius: 30,
-    order: 4,
-    padding: theme.spacing(1),
-    '&:hover, &.active': {
-      '& $username': {
-        color: theme.palette.primary.main,
-      },
-      '& $userWrapper': {
-        boxShadow: '0 0 10px #bbb',
-      },
-    },
-    '&:focus': {
-      '& $username': {
-        color: theme.palette.primary.main,
-      },
-    },
-  },
-  userWrapper: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '50%',
-    transition: theme.transitions.create(['box-shadow']),
-    height: 30,
-    width: 30,
-    '& svg': {
-      color: '#c9c7c7',
-      width: 30,
-      height: 30,
-    },
-    [theme.breakpoints.down('md')]: {
-      width: '28px',
-      height: '28px',
-    },
-  },
-  leftIcon: {
-    borderRadius: '50%',
-    height: 30,
-    width: 30,
-  },
-  username: {
-    maxWidth: '135px',
-    overflow: 'hidden',
-    paddingRight: 15,
-    textOverflow: 'ellipsis',
-    transition: theme.transitions.create(['color']),
-    whiteSpace: 'nowrap',
-    // Hides username as soon as things start to scroll
-    [theme.breakpoints.down(1345)]: {
-      ...theme.visually.hidden,
-    },
-  },
-  menuItem: {
-    fontFamily: 'LatoWeb',
-    fontSize: '.9rem',
-    '&:hover, &:focus': {
-      backgroundColor: theme.name === 'lightTheme' ? '#3a3f46' : '#23262a',
-      color: 'white',
-    },
-  },
-  hidden: {
-    ...theme.visually.hidden,
-  },
-  menuButton: {
-    display: 'flex',
-    alignItems: 'center',
-    lineHeight: 1,
-    paddingRight: 10,
-    [theme.breakpoints.up('sm')]: {
-      paddingLeft: 12,
-    },
-    [theme.breakpoints.down(360)]: {
-      paddingLeft: 3,
-    },
-    '&[data-reach-menu-button]': {
-      backgroundColor: 'transparent',
-      border: 'none',
-      borderRadius: 0,
-      color: '#c9c7c7',
-      cursor: 'pointer',
-      fontSize: '1rem',
-      height: 50,
-      textTransform: 'inherit',
-      '&[aria-expanded="true"]': {
-        background: theme.bg.app,
-        '& $caret': {
-          color: '#0683E3',
-          marginTop: 4,
-          transform: 'rotate(180deg)',
-        },
-      },
-      [theme.breakpoints.down('sm')]: {
-        paddingRight: 12,
-        paddingLeft: 12,
-      },
-      [theme.breakpoints.down(360)]: {
-        paddingRight: theme.spacing(),
-        paddingLeft: theme.spacing(),
-      },
-    },
-  },
-  gravatar: {
-    height: 30,
-    width: 30,
-    borderRadius: '50%',
-  },
-  menuPopover: {
-    '&[data-reach-menu], &[data-reach-menu-popover]': {
-      position: 'absolute',
-      top: 50,
-      zIndex: 3000,
-      [theme.breakpoints.down('md')]: {
-        left: 0,
-      },
-    },
-  },
-  caret: {
-    color: '#9ea4ae',
-    fontSize: 26,
-    marginTop: 2,
-    marginLeft: 2,
-    [theme.breakpoints.down('sm')]: {
-      display: 'none',
-    },
-  },
-  menuItemList: {
-    boxShadow: '0 2px 3px 3px rgba(0, 0, 0, 0.1)',
-    '&[data-reach-menu-items]': {
-      backgroundColor: theme.bg.bgPaper,
-      border: 'none',
-      padding: 0,
-      paddingBottom: theme.spacing(1.5),
-      width: 300,
-    },
-  },
-  inlineUserName: {
-    paddingLeft: theme.spacing(),
-    fontSize: '0.875rem',
-  },
-  menuHeader: {
-    borderBottom: '1px solid #9ea4ae',
-    color: theme.textColors.headlineStatic,
-    fontSize: '.75rem',
-    letterSpacing: 1.875,
-    marginBottom: theme.spacing(),
-    marginLeft: theme.spacing(3),
-    marginRight: theme.spacing(3),
-    padding: '16px 0 8px',
-    textTransform: 'uppercase',
-  },
-  profileWrapper: {
-    marginBottom: theme.spacing(2),
-    width: '100%',
-    '& > div': {
-      whiteSpace: 'normal',
-    },
-  },
-  accountColumn: {
-    whiteSpace: 'normal',
-    width: '100%',
-  },
-  menuItemLink: menuLinkStyle(theme.textColors.linkActiveLight),
-  userName: {
-    color: theme.textColors.headlineStatic,
-    fontSize: '1.1rem',
-    marginTop: -1,
-    marginLeft: theme.spacing(3),
-    marginRight: theme.spacing(3),
-    paddingTop: theme.spacing(2),
-  },
-}));
 
 const profileLinks: MenuLink[] = [
   {
@@ -245,19 +59,74 @@ const profileLinks: MenuLink[] = [
   /* -- Clanode Change End -- */
 ];
 
-export const UserMenu: React.FC<{}> = () => {
-  const classes = useStyles();
+export const UserMenu = React.memo(() => {
+  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(
+    null
+  );
+  const [isDrawerOpen, setIsDrawerOpen] = React.useState<boolean>(false);
 
-  const {
-    profile,
-    _hasAccountAccess,
-    _isRestrictedUser,
-  } = useAccountManagement();
-
+  const { data: account } = useAccount();
+  const { data: profile } = useProfile();
   const { data: grants } = useGrants();
+  const { enqueueSnackbar } = useSnackbar();
+  const sessionContext = React.useContext(switchAccountSessionContext);
 
-  const hasFullAccountAccess =
-    grants?.global?.account_access === 'read_write' || !_isRestrictedUser;
+  const hasGrant = (grant: GlobalGrantTypes) =>
+    grants?.global?.[grant] ?? false;
+  const isRestrictedUser = profile?.restricted ?? false;
+  const hasAccountAccess = !isRestrictedUser || hasGrant('account_access');
+  const hasReadWriteAccountAccess = hasGrant('account_access') === 'read_write';
+  const isParentUser = profile?.user_type === 'parent';
+  const isProxyUser = profile?.user_type === 'proxy';
+  const isChildAccountAccessRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'child_account_access',
+  });
+  const canSwitchBetweenParentOrProxyAccount =
+    (!isChildAccountAccessRestricted && isParentUser) || isProxyUser;
+  const open = Boolean(anchorEl);
+  const id = open ? 'user-menu-popover' : undefined;
+
+  const companyNameOrEmail = getCompanyNameOrEmail({
+    company: account?.company,
+    profile,
+  });
+
+  const { isParentTokenExpired } = useIsParentTokenExpired({ isProxyUser });
+
+  // Used for fetching parent profile and account data by making a request with the parent's token.
+  const proxyHeaders = isProxyUser
+    ? {
+        Authorization: getStorage(`authentication/parent_token/token`),
+      }
+    : undefined;
+
+  const { data: parentProfile } = useProfile({ headers: proxyHeaders });
+
+  const userName = (isProxyUser ? parentProfile : profile)?.username ?? '';
+
+  const matchesSmDown = useMediaQuery((theme: Theme) =>
+    theme.breakpoints.down('sm')
+  );
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  React.useEffect(() => {
+    // Run after we've switched to a proxy user.
+    if (isProxyUser && !getStorage('is_proxy_user')) {
+      // Flag for proxy user to display success toast once.
+      setStorage('is_proxy_user', 'true');
+
+      enqueueSnackbar(`Account switched to ${companyNameOrEmail}.`, {
+        variant: 'success',
+      });
+    }
+  }, [isProxyUser, companyNameOrEmail, enqueueSnackbar]);
 
   const accountLinks: MenuLink[] = React.useMemo(
     () => [
@@ -270,14 +139,14 @@ export const UserMenu: React.FC<{}> = () => {
       // Restricted users can't view the Users tab regardless of their grants
       {
         display: 'Users & Grants',
+        hide: isRestrictedUser,
         href: '/account/users',
-        hide: _isRestrictedUser,
       },
       // Restricted users can't view the Transfers tab regardless of their grants
       {
         display: 'Service Transfers',
+        hide: isRestrictedUser,
         href: '/account/service-transfers',
-        hide: _isRestrictedUser,
       },
       {
         display: 'Maintenance',
@@ -286,107 +155,194 @@ export const UserMenu: React.FC<{}> = () => {
       // Restricted users with read_write account access can view Settings.
       {
         display: 'Account Settings',
+        hide: !hasReadWriteAccountAccess,
         href: '/account/settings',
-        hide: !hasFullAccountAccess,
       },
       */
     ],
-    [hasFullAccountAccess, _isRestrictedUser]
+    [hasReadWriteAccountAccess, isRestrictedUser]
   );
 
-  const userName = profile?.username ?? '';
+  const renderLink = (link: MenuLink) => {
+    if (link.hide) {
+      return null;
+    }
 
-  const renderLink = (menuLink: MenuLink) =>
-    menuLink.hide ? null : (
-      <Grid item xs={12} key={menuLink.display}>
-        <MenuLink
-          as={Link}
-          to={menuLink.href}
-          className={classes.menuItemLink}
-          data-testid={`menu-item-${menuLink.display}`}
+    return (
+      <Grid key={link.display} xs={12}>
+        <Link
+          data-testid={`menu-item-${link.display}`}
+          onClick={handleClose}
+          style={{ fontSize: '0.875rem' }}
+          to={link.href}
         >
-          {menuLink.display}
-        </MenuLink>
+          {link.display}
+        </Link>
       </Grid>
     );
+  };
+
+  const getEndIcon = () => {
+    const sx = {
+      height: 26,
+      width: 26,
+    };
+
+    return matchesSmDown ? undefined : open ? (
+      <KeyboardArrowUp sx={sx} />
+    ) : (
+      <KeyboardArrowDown sx={{ color: '#9ea4ae', ...sx }} />
+    );
+  };
+
+  const handleAccountSwitch = () => {
+    if (isParentTokenExpired) {
+      return sessionContext.updateState({
+        isOpen: true,
+      });
+    }
+
+    setIsDrawerOpen(true);
+  };
 
   return (
-    <div>
-      <ReachMenu>
-        <Tooltip
-          title={'Profile & Account'}
-          disableTouchListener
-          enterDelay={500}
-          leaveDelay={0}
+    <>
+      <Tooltip
+        disableTouchListener
+        enterDelay={500}
+        leaveDelay={0}
+        title="Profile & Account"
+      >
+        <Button
+          sx={(theme) => ({
+            backgroundColor: open ? theme.bg.app : undefined,
+            height: '50px',
+            minWidth: 'unset',
+            textTransform: 'none',
+          })}
+          aria-describedby={id}
+          data-testid="nav-group-profile"
+          disableRipple
+          endIcon={getEndIcon()}
+          onClick={handleClick}
+          startIcon={isProxyUser ? <AvatarForProxy /> : <Avatar />}
         >
-          <MenuButton
-            className={classes.menuButton}
-            data-testid="nav-group-profile"
-          >
-            <GravatarIcon username={userName} className={classes.userWrapper} />
-            <Hidden smDown>
-              <Typography className={classes.inlineUserName}>
+          <Hidden mdDown>
+            <Stack alignItems={'flex-start'}>
+              <Typography
+                sx={{
+                  fontSize: companyNameOrEmail ? '0.775rem' : '0.875rem',
+                }}
+              >
                 {userName}
               </Typography>
-            </Hidden>
-            <KeyboardArrowDown className={classes.caret} />
-          </MenuButton>
-        </Tooltip>
-        <MenuPopover className={classes.menuPopover} position={positionRight}>
-          <MenuItems className={classes.menuItemList}>
-            <div className={classes.userName}>
-              <strong>{userName}</strong>
-            </div>
-            <div className={classes.menuHeader}>My Profile</div>
-            <Grid container>
-              <Grid
-                container
-                item
-                xs={6}
-                wrap="nowrap"
-                direction="column"
-                className={classes.profileWrapper}
-              >
+              {companyNameOrEmail && (
+                <Typography
+                  sx={(theme) => ({
+                    fontFamily: theme.font.bold,
+                    fontSize: '0.875rem',
+                  })}
+                >
+                  {companyNameOrEmail}
+                </Typography>
+              )}
+            </Stack>
+          </Hidden>
+        </Button>
+      </Tooltip>
+      <Popover
+        anchorOrigin={{
+          horizontal: 'right',
+          vertical: 'bottom',
+        }}
+        slotProps={{
+          paper: {
+            sx: {
+              paddingX: 2.5,
+              paddingY: 2,
+            },
+          },
+        }}
+        anchorEl={anchorEl}
+        data-testid={id}
+        id={id}
+        marginThreshold={0}
+        onClose={handleClose}
+        open={open}
+        // When the Switch Account drawer is open, hide the user menu popover so it's not covering the drawer.
+        sx={{ zIndex: isDrawerOpen ? 0 : 1 }}
+      >
+        <Stack data-qa-user-menu minWidth={250} spacing={2}>
+          {canSwitchBetweenParentOrProxyAccount && (
+            <Typography>Current account:</Typography>
+          )}
+          <Typography
+            color={(theme) => theme.textColors.headlineStatic}
+            fontSize="1.1rem"
+          >
+            <strong>
+              {canSwitchBetweenParentOrProxyAccount && companyNameOrEmail
+                ? companyNameOrEmail
+                : userName}
+            </strong>
+          </Typography>
+          {canSwitchBetweenParentOrProxyAccount && (
+            <SwitchAccountButton
+              onClick={() => {
+                sendSwitchAccountEvent('User Menu');
+                handleAccountSwitch();
+              }}
+              buttonType="outlined"
+              data-testid="switch-account-button"
+            />
+          )}
+          <Box>
+            <Heading>My Profile</Heading>
+            <Divider color="#9ea4ae" />
+            <Grid columnSpacing={2} container rowSpacing={1}>
+              <Grid container direction="column" wrap="nowrap" xs={6}>
                 {profileLinks.slice(0, 4).map(renderLink)}
               </Grid>
-              <Grid
-                container
-                item
-                xs={6}
-                wrap="nowrap"
-                direction="column"
-                className={classes.profileWrapper}
-              >
+              <Grid container direction="column" wrap="nowrap" xs={6}>
                 {profileLinks.slice(4).map(renderLink)}
               </Grid>
             </Grid>
-            {_hasAccountAccess ? (
-              <>
-                <div className={classes.menuHeader}>Account</div>
-                <Grid container>
-                  <Grid item className={classes.accountColumn}>
-                    {accountLinks.map((menuLink) =>
-                      menuLink.hide ? null : (
-                        <MenuLink
-                          key={menuLink.display}
-                          as={Link}
-                          to={menuLink.href}
-                          className={classes.menuItemLink}
-                          data-testid={`menu-item-${menuLink.display}`}
-                        >
-                          {menuLink.display}
-                        </MenuLink>
-                      )
-                    )}
-                  </Grid>
-                </Grid>
-              </>
-            ) : null}
-          </MenuItems>
-        </MenuPopover>
-      </ReachMenu>
-    </div>
+          </Box>
+          {hasAccountAccess && (
+            <Box>
+              <Heading>Account</Heading>
+              <Divider color="#9ea4ae" />
+              <Stack mt={1} spacing={1.5}>
+                {accountLinks.map((menuLink) =>
+                  menuLink.hide ? null : (
+                    <Link
+                      data-testid={`menu-item-${menuLink.display}`}
+                      key={menuLink.display}
+                      onClick={handleClose}
+                      style={{ fontSize: '0.875rem' }}
+                      to={menuLink.href}
+                    >
+                      {menuLink.display}
+                    </Link>
+                  )
+                )}
+              </Stack>
+            </Box>
+          )}
+        </Stack>
+      </Popover>
+      <SwitchAccountDrawer
+        onClose={() => setIsDrawerOpen(false)}
+        open={isDrawerOpen}
+        userType={profile?.user_type}
+      />
+    </>
   );
-};
+});
 
-export default React.memo(UserMenu);
+const Heading = styled(Typography)(({ theme }) => ({
+  color: theme.textColors.headlineStatic,
+  fontSize: '.75rem',
+  letterSpacing: 1.875,
+  textTransform: 'uppercase',
+}));

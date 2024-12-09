@@ -1,36 +1,43 @@
+import { Theme, styled, useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import EntityHeader, {
-  HeaderProps,
-} from 'src/components/EntityHeader/EntityHeader';
-import { BreadcrumbProps } from '../Breadcrumb';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  button: {
-    marginLeft: theme.spacing(),
-    padding: 0,
-  },
-}));
+import BetaFeedbackIcon from 'src/assets/icons/icon-feedback.svg';
+import {
+  Breadcrumb,
+  BreadcrumbProps,
+} from 'src/components/Breadcrumb/Breadcrumb';
+import { Button } from 'src/components/Button/Button';
+import { DocsLink } from 'src/components/DocsLink/DocsLink';
 
-export interface Props extends Omit<HeaderProps, 'actions'> {
-  extraActions?: JSX.Element;
-  body?: JSX.Element;
+export interface LandingHeaderProps {
+  analyticsLabel?: string;
+  betaFeedbackLink?: string;
+  breadcrumbDataAttrs?: { [key: string]: boolean };
+  breadcrumbProps?: BreadcrumbProps;
+  buttonDataAttrs?: { [key: string]: boolean | string };
+  createButtonText?: string;
+  disabledBreadcrumbEditButton?: boolean;
+  disabledCreateButton?: boolean;
+  docsLabel?: string;
   docsLink?: string;
   onAddNew?: () => void;
   createRules?: (type: string) => void;
   entity?: string;
-  createButtonWidth?: number;
-  createButtonText?: string;
+  extraActions?: JSX.Element;
   loading?: boolean;
-  breadcrumbProps?: BreadcrumbProps;
-  disabledCreateButton?: boolean;
+  onButtonClick?: () => void;
+  onButtonKeyPress?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
+  onDocsClick?: () => void;
+  removeCrumbX?: number | number[];
+  shouldHideDocsAndCreateButtons?: boolean;
+  title?: JSX.Element | string;
 }
 
 /**
- * This component is essentially a variant of the more abstract EntityHeader
- * component, included as its own component because it will be used in
- * essentially this form across all entity landing pages.
+ * @note Passing a title prop will override the final `breadcrumbProps` label.
+ * If you don't want this behavior, omit a title prop.
  */
 
 export const LandingHeader: React.FC<Props> = (props) => {

@@ -1,106 +1,41 @@
-import { shallow } from 'enzyme';
+import { waitForElementToBeRemoved } from '@testing-library/react';
 import * as React from 'react';
-import { pageyProps } from 'src/__data__/pageyProps';
+
+import { sshKeyFactory } from 'src/factories';
+import { makeResourcePage } from 'src/mocks/serverHandlers';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
+import { mockMatchMedia, renderWithTheme } from 'src/utilities/testHelpers';
+
 import { SSHKeys } from './SSHKeys';
 
-/**
- * Displays a table
- * Table has 4 columns
- * Row contains label, key, fingerprint, relative date, and action menu.
- */
+// We have to do this because if we don't, the <Hidden /> columns don't render
+beforeAll(() => mockMatchMedia());
 
 describe('SSHKeys', () => {
-  describe('layout', () => {
-    const wrapper = shallow(
-      <SSHKeys
-        {...pageyProps}
-        classes={{
-          sshKeysHeader: '',
-          addNewWrapper: '',
-          createdCell: '',
-        }}
-        data={[
-          { id: 1, label: '', ssh_key: '', created: '', fingerprint: '' },
-          { id: 2, label: '', ssh_key: '', created: '', fingerprint: '' },
-          { id: 3, label: '', ssh_key: '', created: '', fingerprint: '' },
-        ]}
-        timezone={'GMT'}
-      />
+  it('should have table header with SSH Keys title', async () => {
+    const sshKeys = sshKeyFactory.buildList(5);
+
+    server.use(
+      http.get('*/profile/sshkeys', () => {
+        return HttpResponse.json(makeResourcePage(sshKeys));
+      })
     );
 
-    it('should have table header with SSH Keys title', () => {
-      expect(
-        wrapper
-          .find('WithStyles(ForwardRef(TableHead))[data-qa-table-head]')
-          .exists()
-      ).toBeTruthy();
-    });
+    const { getByTestId, getByText } = renderWithTheme(<SSHKeys />);
 
-    it('should have a table', () => {
-      expect(wrapper.find(`WrappedTable`).exists()).toBeTruthy();
-    });
+    // Check for table headers
+    getByText('Label');
+    getByText('Key');
+    getByText('Created');
 
-    it('should have pagination controls', () => {
-      expect(
-        wrapper.find(`WithStyles(PaginationFooter)`).exists()
-      ).toBeTruthy();
-    });
+    // Loading state should render
+    expect(getByTestId('table-row-loading')).toBeInTheDocument();
 
-    it('should display table row for each key', () => {
-      expect(wrapper.find('[data-qa-content-row]')).toHaveLength(3);
-    });
-  });
+    await waitForElementToBeRemoved(getByTestId('table-row-loading'));
 
-  it('should display TableRowLoading if props.loading is true.', () => {
-    const wrapper = shallow(
-      <SSHKeys
-        {...pageyProps}
-        classes={{
-          sshKeysHeader: '',
-          addNewWrapper: '',
-          createdCell: '',
-        }}
-        data={undefined}
-        loading={true}
-        timezone={'GMT'}
-      />
-    );
-
-    expect(wrapper.find(`TableRowLoading`).exists()).toBeTruthy();
-  });
-
-  it('should display TableRowError if error if state.error is set.', () => {
-    const wrapper = shallow(
-      <SSHKeys
-        {...pageyProps}
-        classes={{
-          sshKeysHeader: '',
-          addNewWrapper: '',
-          createdCell: '',
-        }}
-        data={undefined}
-        error={[{ reason: 'error here' }]}
-        timezone={'GMT'}
-      />
-    );
-
-    expect(wrapper.find(`TableRowError`).exists()).toBeTruthy();
-  });
-
-  it('should display TableEmptyState if done loading and count is 0', () => {
-    const wrapper = shallow(
-      <SSHKeys
-        {...pageyProps}
-        classes={{
-          sshKeysHeader: '',
-          addNewWrapper: '',
-          createdCell: '',
-        }}
-        data={undefined}
-        timezone={'GMT'}
-      />
-    );
-
-    expect(wrapper.find(`TableRowEmptyState`).exists()).toBeTruthy();
+    // Verify some SSH keys render in the table after loading
+    for (const key of sshKeys) {
+      getByText(key.label);
+    }
   });
 });

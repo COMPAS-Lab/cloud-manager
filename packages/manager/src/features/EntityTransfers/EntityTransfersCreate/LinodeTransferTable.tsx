@@ -1,37 +1,37 @@
-import { Linode } from '@linode/api-v4/lib/linodes';
+import { useTheme } from '@mui/material';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import Hidden from 'src/components/core/Hidden';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import SelectableTableRow from 'src/components/SelectableTableRow';
-import TableCell from 'src/components/TableCell/TableCell';
-import { dcDisplayNames } from 'src/constants';
-import TableContentWrapper from 'src/components/TableContentWrapper';
-import { useTypes } from 'src/hooks/useTypes';
-import { Entity, TransferEntity } from './transferReducer';
-import TransferTable from './TransferTable';
-import { useLinodesByIdQuery } from 'src/queries/linodes';
+
+import { Hidden } from 'src/components/Hidden';
+import { SelectableTableRow } from 'src/components/SelectableTableRow/SelectableTableRow';
+import { TableCell } from 'src/components/TableCell';
+import { TableContentWrapper } from 'src/components/TableContentWrapper/TableContentWrapper';
 import { usePagination } from 'src/hooks/usePagination';
+import { useLinodesQuery } from 'src/queries/linodes/linodes';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { useSpecificTypes } from 'src/queries/types';
+import { extendType } from 'src/utilities/extendType';
+
+import { TransferTable } from './TransferTable';
+
+import type { Entity, TransferEntity } from './transferReducer';
+import type { Linode } from '@linode/api-v4/lib/linodes';
+import type { Theme } from '@mui/material/styles';
 
 interface Props {
-  selectedLinodes: TransferEntity;
-  handleSelect: (linodes: Entity[]) => void;
   handleRemove: (linodesToRemove: string[]) => void;
+  handleSelect: (linodes: Entity[]) => void;
   handleToggle: (linode: Entity) => void;
+  selectedLinodes: TransferEntity;
 }
 
-export const LinodeTransferTable: React.FC<Props> = (props) => {
+export const LinodeTransferTable = React.memo((props: Props) => {
   const { handleRemove, handleSelect, handleToggle, selectedLinodes } = props;
   const [searchText, setSearchText] = React.useState('');
 
   const pagination = usePagination();
 
-  const {
-    data,
-    isError,
-    isLoading,
-    error,
-    dataUpdatedAt,
-  } = useLinodesByIdQuery(
+  const { data, dataUpdatedAt, error, isError, isLoading } = useLinodesQuery(
     {
       page: pagination.page,
       page_size: pagination.pageSize,
@@ -39,7 +39,8 @@ export const LinodeTransferTable: React.FC<Props> = (props) => {
     generateLinodeXFilter(searchText)
   );
 
-  const linodesCurrentPage = Object.values(data?.linodes ?? {});
+  const linodesCurrentPage = data?.data ?? [];
+
   const hasSelectedAll =
     linodesCurrentPage.every((thisLinode) =>
       Boolean(selectedLinodes[thisLinode.id])
@@ -63,60 +64,65 @@ export const LinodeTransferTable: React.FC<Props> = (props) => {
   };
 
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('lg'));
   const columns = matchesSmDown
     ? ['Label', 'Plan']
     : ['Label', 'Plan', 'Region'];
 
   return (
     <TransferTable
-      toggleSelectAll={toggleSelectAll}
+      count={data?.results ?? 0}
+      handleSearch={handleSearch}
       hasSelectedAll={hasSelectedAll}
       headers={columns}
-      requestPage={pagination.handlePageChange}
       page={pagination.page}
-      handleSearch={handleSearch}
       pageSize={pagination.pageSize}
-      count={data?.results ?? 0}
+      requestPage={pagination.handlePageChange}
+      searchText={searchText}
+      toggleSelectAll={toggleSelectAll}
     >
       <TableContentWrapper
-        loading={isLoading}
         error={error ?? undefined}
-        length={data?.results ?? 0}
         lastUpdated={dataUpdatedAt}
+        length={data?.results ?? 0}
+        loading={isLoading}
       >
         {linodesCurrentPage.map((thisLinode) => (
           <LinodeRow
+            handleToggleCheck={() => handleToggle(thisLinode)}
+            isChecked={Boolean(selectedLinodes[thisLinode.id])}
             key={thisLinode.id}
             linode={thisLinode}
-            isChecked={Boolean(selectedLinodes[thisLinode.id])}
-            handleToggleCheck={() => handleToggle(thisLinode)}
           />
         ))}
       </TableContentWrapper>
     </TransferTable>
   );
-};
+});
 
 interface RowProps {
-  linode: Linode;
-  isChecked: boolean;
   handleToggleCheck: () => void;
+  isChecked: boolean;
+  linode: Linode;
 }
 
-const LinodeRow: React.FC<RowProps> = (props) => {
-  const { linode, isChecked, handleToggleCheck } = props;
-  const { typesMap } = useTypes();
-  const displayRegion = dcDisplayNames[linode.region] ?? linode.region;
-  const displayType = typesMap[linode.type ?? '']?.label ?? linode.type;
+const LinodeRow = (props: RowProps) => {
+  const { handleToggleCheck, isChecked, linode } = props;
+  const typesQuery = useSpecificTypes(linode.type ? [linode.type] : []);
+  const type = typesQuery[0]?.data ? extendType(typesQuery[0].data) : undefined;
+  const displayType = type?.formattedLabel ?? linode.type;
+
+  const { data: regions } = useRegionsQuery();
+  const region = regions?.find((r) => r.id === linode.region);
+  const displayRegion = region?.label ?? linode.region;
   return (
     <SelectableTableRow
-      isChecked={isChecked}
       handleToggleCheck={handleToggleCheck}
+      isChecked={isChecked}
     >
       <TableCell>{linode.label}</TableCell>
       <TableCell>{displayType}</TableCell>
-      <Hidden mdDown>
+      <Hidden lgDown>
         <TableCell>{displayRegion}</TableCell>
       </Hidden>
     </SelectableTableRow>
@@ -132,5 +138,3 @@ export const generateLinodeXFilter = (searchText: string) => {
     label: { '+contains': searchText },
   };
 };
-
-export default React.memo(LinodeTransferTable);

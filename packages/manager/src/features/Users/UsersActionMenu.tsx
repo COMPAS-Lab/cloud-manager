@@ -1,23 +1,23 @@
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
-import { useProfile } from 'src/queries/profile';
+
+import { Action, ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
+import { useProfile } from 'src/queries/profile/profile';
 
 interface Props {
-  username: string;
+  isProxyUser: boolean;
   onDelete: (username: string) => void;
+  username: string;
 }
 
-type CombinedProps = Props;
-
-const UsersActionMenu: React.FC<CombinedProps> = (props) => {
+export const UsersActionMenu = ({ isProxyUser, onDelete, username }: Props) => {
   const history = useHistory();
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { onDelete, username } = props;
   const { data: profile } = useProfile();
   const profileUsername = profile?.username;
 
@@ -35,19 +35,22 @@ const UsersActionMenu: React.FC<CombinedProps> = (props) => {
       onClick: () => {
         history.push(`/account/users/${username}/permissions`);
       },
+      title: 'User Permissions',
     },
     {
       disabled: username === profileUsername,
-      title: 'Delete',
       onClick: () => {
         onDelete(username);
       },
+      title: 'Delete',
       tooltip:
         username === profileUsername
           ? "You can't delete the currently active user."
           : undefined,
     },
   ];
+
+  const actions = isProxyUser ? proxyUserActions : nonProxyUserActions;
 
   return (
     // eslint-disable-next-line react/jsx-no-useless-fragment
@@ -61,10 +64,10 @@ const UsersActionMenu: React.FC<CombinedProps> = (props) => {
         actions.map((action) => {
           return (
             <InlineMenuAction
-              key={action.title}
               actionText={action.title}
-              onClick={action.onClick}
               disabled={action.disabled}
+              key={action.title}
+              onClick={action.onClick}
             />
           );
         })
@@ -72,5 +75,3 @@ const UsersActionMenu: React.FC<CombinedProps> = (props) => {
     </>
   );
 };
-
-export default UsersActionMenu;

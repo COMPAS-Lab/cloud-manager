@@ -1,47 +1,80 @@
-import { render } from '@testing-library/react';
 import * as React from 'react';
-import { imageFactory, normalizeEntities } from 'src/factories';
+
 import { reactRouterProps } from 'src/__data__/reactRouterProps';
 import { wrapWithTheme } from 'src/utilities/testHelpers';
-import { CombinedProps, RebuildFromImage } from './RebuildFromImage';
-import { preferencesFactory } from 'src/factories/preferences';
+import { renderWithThemeAndHookFormContext } from 'src/utilities/testHelpers';
 
-jest.mock('src/utilities/scrollErrorIntoView');
-jest.mock('src/components/EnhancedSelect/Select');
-jest.mock('src/hooks/useReduxLoad', () => ({
-  useReduxLoad: () => jest.fn().mockReturnValue({ _loading: false }),
-}));
-jest.mock('src/hooks/useImages', () => ({
-  useImages: jest.fn().mockResolvedValue({ error: {} }),
-}));
+import { RebuildFromImage } from './RebuildFromImage';
 
-const images = normalizeEntities(imageFactory.buildList(10));
+vi.mock('src/utilities/scrollErrorIntoView');
+vi.mock('src/components/EnhancedSelect/Select');
 
-const props: CombinedProps = {
-  linodeId: 1234,
-  imagesData: images,
-  imagesError: {},
-  imagesLoading: false,
-  imagesLastUpdated: 0,
-  userSSHKeys: [],
-  closeSnackbar: jest.fn(),
-  enqueueSnackbar: jest.fn(),
-  passwordHelperText: '',
-  requestKeys: jest.fn(),
-  getUserPreferences: jest.fn(),
-  updateUserPreferences: jest.fn(),
-  preferences: preferencesFactory.build(),
+const props = {
   disabled: false,
-  handleRebuildError: jest.fn(),
-  onClose: jest.fn(),
+  diskEncryptionEnabled: true,
+  handleRebuildError: vi.fn(),
+  isLKELinode: false,
+  linodeId: 1234,
+  linodeIsInDistributedRegion: false,
+  onClose: vi.fn(),
+  passwordHelperText: '',
+  toggleDiskEncryptionEnabled: vi.fn(),
   ...reactRouterProps,
 };
 
+const diskEncryptionEnabledMock = vi.hoisted(() => {
+  return {
+    useIsDiskEncryptionFeatureEnabled: vi.fn(),
+  };
+});
+
 describe('RebuildFromImage', () => {
-  it('renders a SelectImage panel', () => {
-    const { queryByText } = render(
-      wrapWithTheme(<RebuildFromImage {...props} />)
+  vi.mock('src/components/Encryption/utils.ts', async () => {
+    const actual = await vi.importActual<any>(
+      'src/components/Encryption/utils.ts'
     );
+    return {
+      ...actual,
+      __esModule: true,
+      useIsDiskEncryptionFeatureEnabled: diskEncryptionEnabledMock.useIsDiskEncryptionFeatureEnabled.mockImplementation(
+        () => {
+          return {
+            isDiskEncryptionFeatureEnabled: false, // indicates the feature flag is off or account capability is absent
+          };
+        }
+      ),
+    };
+  });
+
+  it('renders a SelectImage panel', () => {
+    const { queryByText } = renderWithThemeAndHookFormContext({
+      component: wrapWithTheme(<RebuildFromImage {...props} />),
+    });
     expect(queryByText('Select Image')).toBeInTheDocument();
+  });
+
+  // @TODO LDE: Remove feature flagging/conditionality once LDE is fully rolled out
+  it('does not render a "Disk Encryption" section when the Disk Encryption feature is disabled', () => {
+    const { queryByText } = renderWithThemeAndHookFormContext({
+      component: <RebuildFromImage {...props} />,
+    });
+
+    expect(queryByText('Encrypt Disk')).not.toBeInTheDocument();
+  });
+
+  it('renders a "Disk Encryption" section when the Disk Encryption feature is enabled', () => {
+    diskEncryptionEnabledMock.useIsDiskEncryptionFeatureEnabled.mockImplementationOnce(
+      () => {
+        return {
+          isDiskEncryptionFeatureEnabled: true,
+        };
+      }
+    );
+
+    const { queryByText } = renderWithThemeAndHookFormContext({
+      component: <RebuildFromImage {...props} />,
+    });
+
+    expect(queryByText('Encrypt Disk')).toBeInTheDocument();
   });
 });

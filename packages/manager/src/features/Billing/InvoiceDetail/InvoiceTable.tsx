@@ -1,77 +1,32 @@
 import { InvoiceItem } from '@linode/api-v4/lib/account';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Currency from 'src/components/Currency';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
+
+import { Currency } from 'src/components/Currency';
+import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
 import { renderUnitPrice } from 'src/features/Billing/billingUtils';
+import { useRegionsQuery } from 'src/queries/regions/regions';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  table: {
-    border: `1px solid ${theme.borderColors.borderTable}`,
-    '& thead th': {
-      borderBottom: `1px solid ${theme.borderColors.borderTable}`,
-      '&:last-of-type': {
-        paddingRight: 15,
-      },
-    },
-  },
-}));
+import { getInvoiceRegion } from '../PdfGenerator/utils';
 
 interface Props {
-  loading: boolean;
   errors?: APIError[];
   items?: InvoiceItem[];
+  loading: boolean;
+  shouldShowRegion: boolean;
 }
 
-const InvoiceTable: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
-  const { loading, errors, items } = props;
-
-  return (
-    <Table aria-label="Invoice Details" className={classes.table} noBorder>
-      <TableHead>
-        <TableRow>
-          <TableCell data-qa-column="Description">Description</TableCell>
-          <TableCell data-qa-column="From">From</TableCell>
-          <TableCell data-qa-column="To">To</TableCell>
-          <TableCell data-qa-column="Quantity">Quantity</TableCell>
-          <TableCell noWrap data-qa-column="Unit Price">
-            Unit Price
-          </TableCell>
-          <TableCell data-qa-column="Amount">Amount (USD)</TableCell>
-          <TableCell data-qa-column="Taxes">Tax (USD)</TableCell>
-          <TableCell data-qa-column="Total">Total (USD)</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        <MaybeRenderContent loading={loading} errors={errors} items={items} />
-      </TableBody>
-    </Table>
-  );
-};
-
-const renderDate = (v: null | string) =>
-  v ? <DateTimeDisplay value={v} data-qa-invoice-date /> : null;
-
-const renderQuantity = (v: null | number) => (v ? v : null);
-
-const RenderData: React.FC<{
-  items: InvoiceItem[];
-}> = (props) => {
-  const { items } = props;
-
+export const InvoiceTable = (props: Props) => {
   const MIN_PAGE_SIZE = 25;
 
   return (

@@ -1,53 +1,56 @@
+import { Box } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import Box from 'src/components/core/Box';
-import Typography from 'src/components/core/Typography';
-import { useDismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
-import Notice from 'src/components/Notice';
+
+import { Button } from 'src/components/Button/Button';
+import { DismissibleBanner } from 'src/components/DismissibleBanner/DismissibleBanner';
+import { Typography } from 'src/components/Typography';
 import { complianceUpdateContext } from 'src/context/complianceUpdateContext';
-import useNotifications from 'src/hooks/useNotifications';
-import { isEUModelContractNotification } from '../NotificationCenter/NotificationData/useFormattedNotifications';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
 
-const ComplianceBanner: React.FC<{}> = () => {
+import { isEUModelContractNotification } from '../NotificationCenter/utils';
+
+export const ComplianceBanner = () => {
   const context = React.useContext(complianceUpdateContext);
-  const notifications = useNotifications();
+  const { data: notifications } = useNotificationsQuery();
 
-  const hasComplianceNotification = notifications.some((thisNotification) =>
-    isEUModelContractNotification(thisNotification)
+  const hasComplianceNotification = notifications?.some((notification) =>
+    isEUModelContractNotification(notification)
   );
 
-  const { hasDismissedBanner, handleDismiss } = useDismissibleBanner(
-    'gdpr-compliance'
-  );
-
-  if (!hasComplianceNotification || hasDismissedBanner) {
+  if (!hasComplianceNotification) {
     return null;
   }
 
   return (
-    <Notice important warning dismissible onClose={handleDismiss}>
+    <DismissibleBanner
+      actionButton={
+        <StyledActionButton buttonType="primary" onClick={() => context.open()}>
+          Review Update
+        </StyledActionButton>
+      }
+      important
+      preferenceKey="gdpr-compliance"
+      variant="warning"
+    >
       <Box
+        alignItems="center"
         display="flex"
         flexDirection="row"
-        alignItems="center"
         justifyContent="space-between"
       >
         <Typography>
           Please review the compliance update for guidance regarding the EU
           Standard Contractual Clauses and its application to users located in
-          Europe as well as deployments in Linode’s London and Frankfurt data
-          centers
+          Europe as well as deployments in Linode&rsquo;s London and Frankfurt
+          data centers
         </Typography>
-        <Button
-          buttonType="primary"
-          style={{ marginLeft: 12, minWidth: 150 }}
-          onClick={() => context.open()}
-        >
-          Review Update
-        </Button>
       </Box>
-    </Notice>
+    </DismissibleBanner>
   );
 };
 
-export default ComplianceBanner;
+const StyledActionButton = styled(Button)({
+  marginLeft: 12,
+  minWidth: 150,
+});

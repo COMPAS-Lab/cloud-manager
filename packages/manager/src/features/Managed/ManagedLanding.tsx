@@ -1,31 +1,68 @@
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import setDocs from 'src/components/DocsSidebar/setDocs';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import ManagedLandingContent from './ManagedLandingContent';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { NavTabs } from 'src/components/NavTabs/NavTabs';
+import { ProductInformationBanner } from 'src/components/ProductInformationBanner/ProductInformationBanner';
 
-export type CombinedProps = RouteComponentProps<{}>;
+import ManagedDashboardCard from './ManagedDashboardCard';
+import SupportWidget from './SupportWidget';
 
-const docs: Linode.Doc[] = [
+import type { NavTab } from 'src/components/NavTabs/NavTabs';
+
+const Contacts = React.lazy(() => import('./Contacts/Contacts'));
+const Monitors = React.lazy(() => import('./Monitors'));
+const SSHAccess = React.lazy(() => import('./SSHAccess'));
+const CredentialList = React.lazy(() => import('./Credentials/CredentialList'));
+
+const tabs: NavTab[] = [
   {
-    title: 'Linode Managed',
-    src: 'https://linode.com/docs/platform/linode-managed/',
-    body: `How to configure service monitoring with Linode Managed.`,
+    component: ManagedDashboardCard,
+    routeName: `/managed/summary`,
+    title: 'Summary',
+  },
+  {
+    render: <Monitors />,
+    routeName: `/managed/monitors`,
+    title: 'Monitors',
+  },
+  {
+    component: SSHAccess,
+    routeName: `/managed/ssh-access`,
+    title: 'SSH Access',
+  },
+  {
+    render: <CredentialList />,
+    routeName: `/managed/credentials`,
+    title: 'Credentials',
+  },
+  {
+    render: <Contacts />,
+    routeName: `/managed/contacts`,
+    title: 'Contacts',
   },
 ];
 
-export const ManagedLanding: React.FunctionComponent<CombinedProps> = (
-  props
-) => {
+export const ManagedLanding = () => {
   return (
     <React.Fragment>
       <DocumentTitleSegment segment="Managed" />
-      <ManagedLandingContent {...props} />
+      <ProductInformationBanner bannerLocation="Managed" />
+      <LandingHeader
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-the-linode-managed-service"
+        entity="Managed"
+        extraActions={<SupportWidget />}
+        removeCrumbX={1}
+        title="Managed"
+      />
+      <NavTabs tabs={tabs} />
     </React.Fragment>
   );
 };
 
-const enhanced = compose<CombinedProps, {}>(setDocs(docs));
+export const managedLandingLazyRoute = createLazyRoute('/managed')({
+  component: ManagedLanding,
+});
 
-export default enhanced(ManagedLanding);
+export default ManagedLanding;

@@ -1,15 +1,16 @@
 import { fireEvent } from '@testing-library/react';
 import * as React from 'react';
+
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
-import SubscriptionDialog from './SubscriptionDialog';
+import { SubscriptionDialog } from './SubscriptionDialog';
 
 const props = {
-  isOpen: true,
-  isManaged: false,
   clientLimit: 5,
-  onClose: jest.fn(),
-  onSubmit: jest.fn(),
+  isManaged: false,
+  isOpen: true,
+  onClose: vi.fn(),
+  onSubmit: vi.fn(),
 };
 
 describe('Subscription Dialog component', () => {

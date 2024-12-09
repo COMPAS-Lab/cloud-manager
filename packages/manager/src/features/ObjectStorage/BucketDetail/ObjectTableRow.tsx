@@ -1,96 +1,68 @@
+import { Box } from '@linode/ui';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import Box from 'src/components/core/Box';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
-import EntityIcon from 'src/components/EntityIcon';
-import Grid from 'src/components/Grid';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import { readableBytes } from 'src/utilities/unitConversions';
-import ObjectActionMenu from './ObjectActionMenu';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  manuallyCreated: {
-    '&:before': {
-      backgroundColor: theme.bg.lightBlue1,
-    },
-  },
-  manuallyCreatedIcon: {
-    '& g': {
-      fill: theme.bg.lightBlue1,
-    },
-  },
-  objectNameButton: {
-    ...theme.applyLinkStyles,
-    color: theme.textColors.linkActiveLight,
-  },
-}));
+import { StyledLinkButton } from 'src/components/Button/StyledLinkButton';
+import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
+import { EntityIcon } from 'src/components/EntityIcon/EntityIcon';
+import { Hidden } from 'src/components/Hidden';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { Typography } from 'src/components/Typography';
+import { readableBytes } from 'src/utilities/unitConversions';
+
+import ObjectActionMenu from './ObjectActionMenu';
 
 interface Props {
   displayName: string;
   fullName: string;
-  objectSize: number;
-  objectLastModified: string;
-  handleClickDownload: (objectName: string, newTab: boolean) => void;
   handleClickDelete: (objectName: string) => void;
   handleClickDetails: () => void;
+  handleClickDownload: (objectName: string, newTab: boolean) => void;
   manuallyCreated: boolean;
+  objectLastModified: string;
+  objectSize: number;
 }
-
-const ObjectTableRow: React.FC<Props> = (props) => {
+export const ObjectTableRow = (props: Props) => {
   const {
     displayName,
     fullName,
-    objectSize,
-    objectLastModified,
-    handleClickDownload,
     handleClickDelete,
     handleClickDetails,
-    manuallyCreated,
+    handleClickDownload,
+    objectLastModified,
+    objectSize,
   } = props;
 
-  const classes = useStyles();
-
   return (
-    <TableRow
-      ariaLabel={displayName}
-      className={manuallyCreated ? classes.manuallyCreated : ''}
-    >
+    <TableRow>
       <TableCell>
-        <Grid container wrap="nowrap" alignItems="center">
-          <Grid item className="py0">
-            <EntityIcon
-              variant="object"
-              size={20}
-              className={manuallyCreated ? classes.manuallyCreatedIcon : ''}
-            />
+        <Grid alignItems="center" container spacing={2} wrap="nowrap">
+          <Grid className="py0">
+            <StyledEntityIcon size={20} variant="object" {...props} />
           </Grid>
-          <Grid item>
-            <Box display="flex" alignItems="center">
+          <Grid>
+            <Box alignItems="center" display="flex">
               <Typography>
-                <button
-                  className={classes.objectNameButton}
-                  onClick={handleClickDetails}
-                >
+                <StyledLinkButton onClick={handleClickDetails}>
                   {displayName}
-                </button>
+                </StyledLinkButton>
               </Typography>
             </Box>
           </Grid>
         </Grid>
       </TableCell>
       <TableCell noWrap>{readableBytes(objectSize).formatted}</TableCell>
-      <Hidden smDown>
+      <Hidden mdDown>
         <TableCell noWrap>
           <DateTimeDisplay value={objectLastModified} />
         </TableCell>
       </Hidden>
       <TableCell actionCell>
         <ObjectActionMenu
-          handleClickDownload={handleClickDownload}
           handleClickDelete={handleClickDelete}
+          handleClickDownload={handleClickDownload}
           objectName={fullName}
         />
       </TableCell>
@@ -98,4 +70,12 @@ const ObjectTableRow: React.FC<Props> = (props) => {
   );
 };
 
-export default React.memo(ObjectTableRow);
+const StyledEntityIcon = styled(EntityIcon, {
+  label: 'StyledEntityIcon',
+})<Partial<Props>>(({ theme, ...props }) => ({
+  ...(props.manuallyCreated && {
+    '& g': {
+      fill: theme.bg.lightBlue1,
+    },
+  }),
+}));

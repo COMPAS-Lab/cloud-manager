@@ -1,8 +1,10 @@
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { RouteComponentProps, withRouter, useHistory } from 'react-router-dom';
+import { useRouteMatch } from 'react-router-dom';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import NavTabs, { NavTab } from 'src/components/NavTabs/NavTabs';
-import SuspenseLoader from 'src/components/SuspenseLoader';
+import { NavTabs } from 'src/components/NavTabs/NavTabs';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
 
 type CombinedProps = RouteComponentProps<{}>;
 
@@ -44,15 +46,6 @@ export const ImageCreate: React.FC<CombinedProps> = (props) => {
     // },
     {
       title: 'Upload Image',
-      routeName: `${props.match.url}/upload`,
-      render: (
-        <ImageUpload
-          label={label}
-          description={description}
-          changeLabel={handleSetLabel}
-          changeDescription={handleSetDescription}
-        />
-      ),
     },
   ];
 
@@ -66,4 +59,8 @@ export const ImageCreate: React.FC<CombinedProps> = (props) => {
   );
 };
 
-export default withRouter(ImageCreate);
+export const imageCreateLazyRoute = createLazyRoute('/images/create')({
+  component: ImageCreate,
+});
+
+export default ImageCreate;

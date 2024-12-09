@@ -10,20 +10,21 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
-import {
+import type { Filter, Params, ResourcePage as Page, PriceType } from '../types';
+import type {
   CreateNodeBalancerPayload,
   NodeBalancer,
   NodeBalancerStats,
 } from './types';
 import { combineNodeBalancerConfigNodeAddressAndPort } from './utils';
+import type { Firewall } from '../firewalls/types';
 
 /**
  * getNodeBalancers
  *
  * Returns a paginated list of NodeBalancers on your account.
  */
-export const getNodeBalancers = (params?: any, filters?: any) =>
+export const getNodeBalancers = (params?: Params, filters?: Filter) =>
   Request<Page<NodeBalancer>>(
     setURL(`${API_ROOT}/nodebalancers`),
     setMethod('GET'),
@@ -40,7 +41,7 @@ export const getNodeBalancers = (params?: any, filters?: any) =>
  */
 export const getNodeBalancer = (nodeBalancerId: number) =>
   Request<NodeBalancer>(
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}`),
+    setURL(`${API_ROOT}/nodebalancers/${encodeURIComponent(nodeBalancerId)}`),
     setMethod('GET')
   );
 
@@ -58,7 +59,7 @@ export const updateNodeBalancer = (
   data: Partial<NodeBalancer>
 ) =>
   Request<NodeBalancer>(
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}`),
+    setURL(`${API_ROOT}/nodebalancers/${encodeURIComponent(nodeBalancerId)}`),
     setMethod('PUT'),
     setData(data, UpdateNodeBalancerSchema)
   );
@@ -89,7 +90,7 @@ export const createNodeBalancer = (data: CreateNodeBalancerPayload) =>
 export const deleteNodeBalancer = (nodeBalancerId: number) =>
   Request<{}>(
     setMethod('DELETE'),
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}`)
+    setURL(`${API_ROOT}/nodebalancers/${encodeURIComponent(nodeBalancerId)}`)
   );
 
 /**
@@ -101,7 +102,44 @@ export const deleteNodeBalancer = (nodeBalancerId: number) =>
  */
 export const getNodeBalancerStats = (nodeBalancerId: number) => {
   return Request<NodeBalancerStats>(
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}/stats`),
+    setURL(
+      `${API_ROOT}/nodebalancers/${encodeURIComponent(nodeBalancerId)}/stats`
+    ),
     setMethod('GET')
   );
 };
+
+/**
+ * getNodeBalancerFirewalls
+ *
+ * View Firewall information for Firewalls associated with this NodeBalancer
+ */
+
+export const getNodeBalancerFirewalls = (
+  nodeBalancerId: number,
+  params?: Params,
+  filter?: Filter
+) =>
+  Request<Page<Firewall>>(
+    setURL(
+      `${API_ROOT}/nodebalancers/${encodeURIComponent(
+        nodeBalancerId
+      )}/firewalls`
+    ),
+    setMethod('GET'),
+    setXFilter(filter),
+    setParams(params)
+  );
+
+/**
+ * getNodeBalancerTypes
+ *
+ * Return a paginated list of available NodeBalancer types; used for pricing.
+ * This endpoint does not require authentication.
+ */
+export const getNodeBalancerTypes = (params?: Params) =>
+  Request<Page<PriceType>>(
+    setURL(`${API_ROOT}/nodebalancers/types`),
+    setMethod('GET'),
+    setParams(params)
+  );

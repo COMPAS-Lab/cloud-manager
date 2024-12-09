@@ -3,14 +3,14 @@ import {
   makePayment,
 } from '@linode/api-v4/lib/account/payments';
 import { APIWarning } from '@linode/api-v4/lib/types';
+import { QueryClient } from '@tanstack/react-query';
 import braintree, { GooglePayment } from 'braintree-web';
 import { VariantType } from 'notistack';
+
 import { GPAY_CLIENT_ENV, GPAY_MERCHANT_ID } from 'src/constants';
 import { reportException } from 'src/exceptionReporting';
 import { PaymentMessage } from 'src/features/Billing/BillingPanels/PaymentInfoPanel/AddPaymentMethodDrawer/AddPaymentMethodDrawer';
-import { queryKey as accountBillingKey } from 'src/queries/accountBilling';
-import { queryKey as accountPaymentKey } from 'src/queries/accountPayment';
-import { queryClient } from 'src/queries/base';
+import { accountQueries } from 'src/queries/account/queries';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
 const merchantInfo: google.payments.api.MerchantInfo = {
@@ -39,8 +39,8 @@ export const initGooglePaymentInstance = async (
 
     googlePaymentInstance = await braintree.googlePayment.create({
       client: braintreeClientToken,
-      googlePayVersion: 2,
       googleMerchantId: GPAY_MERCHANT_ID,
+      googlePayVersion: 2,
     });
   } catch (error) {
     reportException(error, {
@@ -51,21 +51,22 @@ export const initGooglePaymentInstance = async (
   return { error: false };
 };
 
-const tokenizePaymentDataRequest = async (
-  transactionInfo: Omit<google.payments.api.TransactionInfo, 'totalPrice'> & {
-    totalPrice?: string;
-  }
-) => {
+interface TransactionInfo
+  extends Omit<google.payments.api.TransactionInfo, 'totalPrice'> {
+  totalPrice?: string;
+}
+
+const tokenizePaymentDataRequest = async (transactionInfo: TransactionInfo) => {
   if (!googlePaymentInstance) {
     return Promise.reject(unableToOpenGPayError);
   }
 
   const paymentDataRequest = await googlePaymentInstance.createPaymentDataRequest(
     {
+      callbackIntents: ['PAYMENT_AUTHORIZATION'],
       merchantInfo,
       // @ts-expect-error Braintree types are wrong
       transactionInfo,
-      callbackIntents: ['PAYMENT_AUTHORIZATION'],
     }
   );
 
@@ -78,9 +79,9 @@ const tokenizePaymentDataRequest = async (
   });
 
   const isReadyToPay = await googlePayClient.isReadyToPay({
+    allowedPaymentMethods: paymentDataRequest.allowedPaymentMethods,
     apiVersion: 2,
     apiVersionMinor: 0,
-    allowedPaymentMethods: paymentDataRequest.allowedPaymentMethods,
   });
   if (!isReadyToPay) {
     return Promise.reject('Your device does not support Google Pay.');
@@ -102,19 +103,20 @@ const tokenizePaymentDataRequest = async (
 };
 
 export const gPay = async (
-  action: 'one-time-payment' | 'add-recurring-payment',
-  transactionInfo: Omit<google.payments.api.TransactionInfo, 'totalPrice'> & {
-    totalPrice?: string;
-  },
+  action: 'add-recurring-payment' | 'one-time-payment',
+  transactionInfo: TransactionInfo,
   setMessage: (message: PaymentMessage, warnings?: APIWarning[]) => void,
-  setProcessing: (processing: boolean) => void
+  setProcessing: (processing: boolean) => void,
+  queryClient: QueryClient
 ) => {
   const makeOneTimePayment = async (nonce: string) => {
     const response = await makePayment({
       nonce,
       usd: transactionInfo.totalPrice as string,
     });
-    queryClient.invalidateQueries(`${accountBillingKey}-payments`);
+    queryClient.invalidateQueries({
+      queryKey: accountQueries.payments._def,
+    });
     const message = {
       text: `Payment for $${transactionInfo.totalPrice} successfully submitted with Google Pay`,
       variant: 'success' as VariantType,
@@ -124,11 +126,13 @@ export const gPay = async (
 
   const addRecurringPayment = async (nonce: string) => {
     await addPaymentMethod({
-      type: 'payment_method_nonce',
       data: { nonce },
       is_default: true,
+      type: 'payment_method_nonce',
     });
-    queryClient.invalidateQueries(`${accountPaymentKey}-all`);
+    queryClient.invalidateQueries({
+      queryKey: accountQueries.paymentMethods.queryKey,
+    });
     setMessage({
       text: 'Successfully added Google Pay',
       variant: 'success',

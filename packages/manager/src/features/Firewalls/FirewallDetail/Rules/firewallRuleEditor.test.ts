@@ -1,6 +1,9 @@
 import { last } from 'ramda';
+
 import { firewallRuleFactory } from 'src/factories/firewalls';
-import reducer, {
+
+import {
+  curriedFirewallRuleEditorReducer,
   editorStateToRules,
   initRuleEditorState,
   prepareRules,
@@ -27,9 +30,9 @@ describe('Rule Editor', () => {
 
     describe('reducer', () => {
       it('adds a new rule', () => {
-        const newState = reducer(baseState, {
-          type: 'NEW_RULE',
+        const newState = curriedFirewallRuleEditorReducer(baseState, {
           rule: firewallRuleFactory.build(),
+          type: 'NEW_RULE',
         });
         expect(newState).toHaveLength(INITIAL_RULE_LENGTH + 1);
         const lastRevisionList = last(newState);
@@ -40,9 +43,9 @@ describe('Rule Editor', () => {
       it('deletes a rule', () => {
         const idxToDelete = 1;
 
-        const newState = reducer(baseState, {
-          type: 'DELETE_RULE',
+        const newState = curriedFirewallRuleEditorReducer(baseState, {
           idx: idxToDelete,
+          type: 'DELETE_RULE',
         });
 
         const revisionList = newState[idxToDelete];
@@ -53,12 +56,12 @@ describe('Rule Editor', () => {
       it('modifies a rule', () => {
         const idxToModify = 1;
 
-        const newState = reducer(baseState, {
-          type: 'MODIFY_RULE',
+        const newState = curriedFirewallRuleEditorReducer(baseState, {
           idx: idxToModify,
           modifiedRule: {
             ports: '999',
           },
+          type: 'MODIFY_RULE',
         });
 
         const revisionList = newState[idxToModify];
@@ -71,15 +74,15 @@ describe('Rule Editor', () => {
       it('allows undoing of an operation', () => {
         // First, delete a rule.
         const idx = 1;
-        let newState = reducer(baseState, {
-          type: 'DELETE_RULE',
+        let newState = curriedFirewallRuleEditorReducer(baseState, {
           idx,
+          type: 'DELETE_RULE',
         });
 
         // Next, undo the deletion.
-        newState = reducer(newState, {
-          type: 'UNDO',
+        newState = curriedFirewallRuleEditorReducer(newState, {
           idx,
+          type: 'UNDO',
         });
 
         expect(newState[idx]).toHaveLength(1);
@@ -88,19 +91,19 @@ describe('Rule Editor', () => {
 
       it('discards all changes', () => {
         // First, add and modify rules.
-        let newState = reducer(baseState, {
-          type: 'MODIFY_RULE',
+        let newState = curriedFirewallRuleEditorReducer(baseState, {
           idx: 0,
           modifiedRule: {
             ports: '999',
           },
+          type: 'MODIFY_RULE',
         });
-        newState = reducer(newState, {
-          type: 'NEW_RULE',
+        newState = curriedFirewallRuleEditorReducer(newState, {
           rule: firewallRuleFactory.build(),
+          type: 'NEW_RULE',
         });
 
-        const finalState = reducer(newState, {
+        const finalState = curriedFirewallRuleEditorReducer(newState, {
           type: 'DISCARD_CHANGES',
         });
         expect(finalState).toHaveLength(baseState.length);
@@ -110,21 +113,21 @@ describe('Rule Editor', () => {
 
       it('resets the reducer state', () => {
         // First, add and modify rules.
-        let newState = reducer(baseState, {
-          type: 'MODIFY_RULE',
+        let newState = curriedFirewallRuleEditorReducer(baseState, {
           idx: 0,
           modifiedRule: {
             ports: '999',
           },
+          type: 'MODIFY_RULE',
         });
-        newState = reducer(newState, {
-          type: 'NEW_RULE',
+        newState = curriedFirewallRuleEditorReducer(newState, {
           rule: firewallRuleFactory.build(),
+          type: 'NEW_RULE',
         });
 
-        const finalState = reducer(newState, {
-          type: 'RESET',
+        const finalState = curriedFirewallRuleEditorReducer(newState, {
           rules,
+          type: 'RESET',
         });
         finalState.forEach((revisionList) => {
           expect(revisionList).toHaveLength(1);
@@ -132,10 +135,10 @@ describe('Rule Editor', () => {
       });
 
       it('reorders the revision lists', () => {
-        const newState = reducer(baseState, {
-          type: 'REORDER',
-          startIdx: 1,
+        const newState = curriedFirewallRuleEditorReducer(baseState, {
           endIdx: 0,
+          startIdx: 1,
+          type: 'REORDER',
         });
         expect(newState[0][0]).toHaveProperty('originalIndex', 1);
         expect(newState[1][0]).toHaveProperty('originalIndex', 0);
@@ -146,15 +149,15 @@ describe('Rule Editor', () => {
   describe('editorStateToRules', () => {
     it('does not include rules that have been added and then undone', () => {
       // First. add a rule.
-      let newState = reducer(baseState, {
-        type: 'NEW_RULE',
+      let newState = curriedFirewallRuleEditorReducer(baseState, {
         rule: firewallRuleFactory.build(),
+        type: 'NEW_RULE',
       });
 
       // Next, undo the addition.
-      newState = reducer(newState, {
-        type: 'UNDO',
+      newState = curriedFirewallRuleEditorReducer(newState, {
         idx: newState.length - 1,
+        type: 'UNDO',
       });
 
       const rulesWithoutStatus = editorStateToRules(newState);
@@ -166,17 +169,21 @@ describe('Rule Editor', () => {
   });
 
   describe('prepareRules', () => {
-    it('removes the `ports` field for ICMP rules if `ports` is an empty string', () => {
+    it('removes the `ports` field for ICMP and IPENCAP rules if `ports` is an empty string', () => {
       const rules = [
-        firewallRuleFactory.build({ protocol: 'ICMP', ports: '1234' }),
-        firewallRuleFactory.build({ protocol: 'ICMP', ports: '' }),
-        firewallRuleFactory.build({ protocol: 'TCP', ports: '' }),
+        firewallRuleFactory.build({ ports: '1234', protocol: 'ICMP' }),
+        firewallRuleFactory.build({ ports: '', protocol: 'ICMP' }),
+        firewallRuleFactory.build({ ports: '', protocol: 'TCP' }),
+        firewallRuleFactory.build({ ports: '1234', protocol: 'IPENCAP' }),
+        firewallRuleFactory.build({ ports: '', protocol: 'IPENCAP' }),
       ];
       const editorState = initRuleEditorState(rules);
       const result = prepareRules(editorState);
       expect(result[0]).toHaveProperty('ports', '1234');
       expect(result[1]).not.toHaveProperty('ports');
       expect(result[2]).toHaveProperty('ports', '');
+      expect(result[3]).toHaveProperty('ports', '1234');
+      expect(result[4]).not.toHaveProperty('ports');
     });
   });
 });

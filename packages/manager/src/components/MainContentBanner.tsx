@@ -1,110 +1,92 @@
+import { Box } from '@linode/ui';
+import Close from '@mui/icons-material/Close';
+import { IconButton } from '@mui/material';
 import * as React from 'react';
-import Close from '@material-ui/icons/Close';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/core/Grid';
-import Typography from 'src/components/core/Typography';
+
 import { Link } from 'src/components/Link';
-import withPreferences, {
-  Props as PreferencesProps,
-} from 'src/containers/preferences.container';
-import { compose } from 'recompose';
+import { Typography } from 'src/components/Typography';
+import { useFlags } from 'src/hooks/useFlags';
+import {
+  useMutatePreferences,
+  usePreferences,
+} from 'src/queries/profile/preferences';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  bannerOuter: {
-    backgroundColor: theme.bg.mainContentBanner,
-    padding: theme.spacing(2),
-    position: 'sticky',
-    top: 0,
-    zIndex: 1110,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    width: '65%',
-    [theme.breakpoints.down('sm')]: {
-      width: '90%',
-    },
-    color: '#fff',
-    textAlign: 'center',
-    [theme.breakpoints.only('xs')]: {
-      paddingRight: 30,
-    },
-  },
-  link: {
-    color: '#fff',
-    textDecoration: 'underline',
-  },
-  closeIcon: {
-    position: 'absolute',
-    right: 4,
-    cursor: 'pointer',
-    border: 'none',
-    color: theme.palette.text.primary,
-    backgroundColor: 'transparent',
-  },
-}));
+export const MainContentBanner = React.memo(() => {
+  // Uncomment this to test this banner:
+  //
+  // const flags = {
+  //   mainContentBanner: {
+  //     key: 'banner-test-1',
+  //     link: {
+  //       text: 'Learn more.',
+  //       url: 'https://akamai.com',
+  //     },
+  //     text:
+  //       'Linode is now Akamai. This is longer test for testing the pull request. Hopefully it looks nice on all viewports.',
+  //   },
+  // };
 
-interface Props {
-  bannerText: string;
-  url: string;
-  linkText: string;
-  bannerKey: string;
-  onClose: () => void;
-}
+  const flags = useFlags();
 
-type CombinedProps = Props & PreferencesProps;
+  const { data: preferences } = usePreferences();
+  const { mutateAsync: updatePreferences } = useMutatePreferences();
 
-const MainContentBanner: React.FC<CombinedProps> = (props) => {
-  const {
-    bannerText,
-    url,
-    linkText,
-    bannerKey,
-    getUserPreferences,
-    updateUserPreferences,
-    onClose,
-  } = props;
+  const handleDismiss = (key: string) => {
+    const existingMainContentBannerDismissal =
+      preferences?.main_content_banner_dismissal ?? {};
 
-  const classes = useStyles();
-
-  const dismiss = () => {
-    onClose();
-    getUserPreferences()
-      .then((preferences) => {
-        updateUserPreferences({
-          ...preferences,
-          main_content_banner_dismissal: {
-            ...preferences.main_content_banner_dismissal,
-            [bannerKey]: true,
-          },
-        });
-      })
-      // It's OK if this fails (the banner is still dismissed in the UI due to local state).
-      .catch((_) => null);
+    updatePreferences({
+      main_content_banner_dismissal: {
+        ...existingMainContentBannerDismissal,
+        [key]: true,
+      },
+    });
   };
 
+  const hasDismissedBanner =
+    flags.mainContentBanner?.key !== undefined &&
+    preferences?.main_content_banner_dismissal?.[flags.mainContentBanner.key];
+
+  if (
+    !flags.mainContentBanner ||
+    Object.keys(flags.mainContentBanner).length === 0 ||
+    hasDismissedBanner
+  ) {
+    return null;
+  }
+
+  const url = flags.mainContentBanner.link.url;
+  const linkText = flags.mainContentBanner.link.text;
+  const text = flags.mainContentBanner.text;
+  const key = flags.mainContentBanner.key;
+
   return (
-    <Grid className={classes.bannerOuter} item xs={12}>
-      <Typography variant="h2" className={classes.header}>
-        {bannerText}&nbsp;
-        {linkText && url && (
-          <Link to={url} className={classes.link}>
-            {linkText}
-          </Link>
-        )}
-      </Typography>
-      <button
-        className={classes.closeIcon}
-        onClick={dismiss}
+    <Box
+      sx={(theme) => ({
+        alignItems: 'center',
+        backgroundColor: theme.bg.mainContentBanner,
+        color: theme.tokens.color.Neutrals.White,
+        display: 'flex',
+        justifyContent: 'space-between',
+        position: 'sticky',
+        px: 1,
+        py: { lg: 0.25, xs: 1.5 },
+        top: 0,
+        zIndex: 20,
+      })}
+    >
+      <Box display="flex" flexGrow={1} justifyContent="center">
+        <Typography color="inherit" variant="h2">
+          {text} {url && linkText && <Link to={url}>{linkText}</Link>}
+        </Typography>
+      </Box>
+      <IconButton
         aria-label="Close"
+        color="inherit"
+        onClick={() => handleDismiss(key)}
       >
         <Close />
-      </button>
-    </Grid>
+      </IconButton>
+    </Box>
   );
-};
-
-const enhanced = compose<CombinedProps, Props>(React.memo, withPreferences());
-
-export default enhanced(MainContentBanner);
+});

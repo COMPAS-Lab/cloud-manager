@@ -1,7 +1,8 @@
 import {
   authentication,
   stackScriptInProgress,
-  supportText,
+  supportTicket,
+  supportTicketStorageDefaults,
   ticketReply,
 } from 'src/utilities/storage';
 
@@ -13,18 +14,15 @@ export const clearLocalStorage = () => {
 };
 
 export const clearUserInput = () => {
-  // Add more things here as needed, right now we only cache
-  // Support ticket title/description.
-
-  supportText.set({ title: '', description: '' });
-  ticketReply.set({ ticketId: -1, text: '' });
+  supportTicket.set(supportTicketStorageDefaults);
+  ticketReply.set({ text: '', ticketId: -1 });
   stackScriptInProgress.set({
-    id: '',
-    label: '',
-    script: '',
-    rev_note: '',
     description: '',
+    id: '',
     images: [],
+    label: '',
+    rev_note: '',
+    script: '',
     updated: '',
   });
 };

@@ -1,49 +1,39 @@
-import { screen } from '@testing-library/react';
+import { fireEvent } from '@testing-library/react';
 import * as React from 'react';
-import PaginationControls, { Props } from './PaginationControls';
+
 import { renderWithTheme } from 'src/utilities/testHelpers';
 
-const props: Props = {
+import { PaginationControls } from './PaginationControls';
+
+const props = {
   count: 100,
+  onClickHandler: vi.fn(),
   page: 1,
   pageSize: 25,
-  eventCategory: 'a-category',
-  onClickHandler: jest.fn(),
-  classes: {},
 };
 
 describe('PaginationControls', () => {
-  it('should have a previous page button.', () => {
-    renderWithTheme(<PaginationControls {...props} />);
-    expect(screen.getByTestId('previous-page')).toBeInTheDocument();
-  });
+  it('should render a button for each page and call the button handler when clicked', () => {
+    const { getByText } = renderWithTheme(<PaginationControls {...props} />);
 
-  it('should have a next page button.', () => {
-    renderWithTheme(<PaginationControls {...props} />);
-    expect(screen.getByTestId('next-page')).toBeInTheDocument();
-  });
+    const p1 = getByText('1');
+    expect(p1).toBeInTheDocument();
+    fireEvent.click(p1);
+    expect(props.onClickHandler).toHaveBeenCalledTimes(1);
 
-  it('previous page button should be disabled when on first page', () => {
-    renderWithTheme(<PaginationControls {...props} />);
-    expect(screen.getByTestId('previous-page')).toBeDisabled();
-  });
+    const p2 = getByText('2');
+    expect(p2).toBeInTheDocument();
+    fireEvent.click(p2);
+    expect(props.onClickHandler).toHaveBeenCalledTimes(2);
 
-  it('next page button should be disabled when on last page', () => {
-    renderWithTheme(<PaginationControls {...props} page={4} />);
-    expect(screen.getByTestId('next-page')).toBeDisabled();
-  });
+    const p3 = getByText('3');
+    expect(p3).toBeInTheDocument();
+    fireEvent.click(p3);
+    expect(props.onClickHandler).toHaveBeenCalledTimes(3);
 
-  it('should render a button for each page', () => {
-    renderWithTheme(<PaginationControls {...props} />);
-
-    expect(screen.getByTestId('1')).toBeInTheDocument();
-    expect(screen.getByTestId('2')).toBeInTheDocument();
-    expect(screen.getByTestId('3')).toBeInTheDocument();
-    expect(screen.getByTestId('4')).toBeInTheDocument();
-  });
-
-  it('should render a disabled button for the current page', () => {
-    renderWithTheme(<PaginationControls {...props} page={2} />);
-    expect(screen.getByTestId('2')).toBeDisabled();
+    const p4 = getByText('4');
+    expect(p4).toBeInTheDocument();
+    fireEvent.click(p4);
+    expect(props.onClickHandler).toHaveBeenCalledTimes(4);
   });
 });

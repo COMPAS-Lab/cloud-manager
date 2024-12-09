@@ -1,18 +1,20 @@
 import * as React from 'react';
+
 import { renderWithTheme } from 'src/utilities/testHelpers';
+
 import { StatsPanel } from './StatsPanel';
 
 const title = 'Stats About My Linode';
 
 describe('StatsPanel component', () => {
   it('should render a loading spinner on loading state', () => {
-    const renderBody = jest.fn();
+    const renderBody = vi.fn();
     const { getByTestId } = renderWithTheme(
       <StatsPanel
-        title={title}
         height={300}
         loading={true}
         renderBody={renderBody}
+        title={title}
       />
     );
 
@@ -21,14 +23,14 @@ describe('StatsPanel component', () => {
   });
 
   it('should call its renderContent function if neither error or loading', () => {
-    const renderBody = jest.fn();
+    const renderBody = vi.fn();
 
     renderWithTheme(
       <StatsPanel
-        title={title}
         height={300}
         loading={false}
         renderBody={renderBody}
+        title={title}
       />
     );
 

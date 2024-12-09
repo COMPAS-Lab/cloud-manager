@@ -1,42 +1,27 @@
+import { Paper } from '@linode/ui';
 import * as React from 'react';
-import { compose } from 'recompose';
-import Paper from 'src/components/core/Paper';
-import {
-  createStyles,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import HighlightedMarkdown from 'src/components/HighlightedMarkdown';
 
-type ClassNames = 'root';
-
-const styles = () =>
-  createStyles({
-    root: {
-      border: '1px solid #ccc',
-      height: 320,
-      padding: `9px 12px 9px 12px`,
-      overflowY: 'auto',
-    },
-  });
+import { HighlightedMarkdown } from 'src/components/HighlightedMarkdown/HighlightedMarkdown';
 
 interface Props {
-  value: string;
   error?: string;
+  value: string;
 }
 
-type CombinedProps = WithStyles<ClassNames> & Props;
-
-const PreviewReply: React.FC<CombinedProps> = (props) => {
-  const { classes, value, error } = props;
+export const PreviewReply = (props: Props) => {
+  const { error, value } = props;
 
   return (
-    <Paper className={classes.root} error={error}>
+    <Paper
+      sx={{
+        height: '243px',
+        overflowY: 'auto',
+        padding: 1.75,
+      }}
+      error={error}
+      variant="outlined"
+    >
       <HighlightedMarkdown textOrMarkdown={value} />
     </Paper>
   );
 };
-
-const styled = withStyles(styles);
-
-export default compose<CombinedProps, Props>(React.memo, styled)(PreviewReply);

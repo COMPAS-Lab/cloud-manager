@@ -1,12 +1,21 @@
-import {
+import { capitalize } from 'src/utilities/capitalize';
+import { truncateAndJoinList } from 'src/utilities/stringUtils';
+
+import { PORT_PRESETS } from './FirewallDetail/Rules/shared';
+
+import type { Grants, Profile } from '@linode/api-v4';
+import type {
+  Firewall,
   FirewallRuleProtocol,
   FirewallRuleType,
 } from '@linode/api-v4/lib/firewalls/types';
-import { Item } from 'src/components/EnhancedSelect/Select';
-import { truncateAndJoinList } from 'src/utilities/stringUtils';
 
-export type FirewallPreset = 'ssh' | 'http' | 'https' | 'mysql' | 'dns';
+export type FirewallPreset = 'dns' | 'http' | 'https' | 'mysql' | 'ssh';
 
+export interface FirewallOptionItem<T = number | string, L = string> {
+  label: L;
+  value: T;
+}
 // Predefined Firewall options for Select components (long-form).
 export const firewallOptionItemsLong = [
   {
@@ -53,12 +62,13 @@ export const firewallOptionItemsShort = [
     label: 'DNS',
     value: 'dns',
   },
-];
+] as const;
 
-export const protocolOptions: Item<FirewallRuleProtocol>[] = [
+export const protocolOptions: FirewallOptionItem<FirewallRuleProtocol>[] = [
   { label: 'TCP', value: 'TCP' },
-  { label: 'ICMP', value: 'ICMP' },
   { label: 'UDP', value: 'UDP' },
+  { label: 'ICMP', value: 'ICMP' },
+  { label: 'IPENCAP', value: 'IPENCAP' },
 ];
 
 export const addressOptions = [
@@ -68,12 +78,12 @@ export const addressOptions = [
   { label: 'IP / Netmask', value: 'ip/netmask' },
 ];
 
-export const portPresets: Record<FirewallPreset, string> = {
-  ssh: '22',
+export const portPresets: Record<FirewallPreset, keyof typeof PORT_PRESETS> = {
+  dns: '53',
   http: '80',
   https: '443',
   mysql: '3306',
-  dns: '53',
+  ssh: '22',
 };
 
 export const allIPv4 = '0.0.0.0/0';
@@ -90,72 +100,72 @@ export interface PredefinedFirewall {
 }
 
 export const predefinedFirewalls: Record<FirewallPreset, PredefinedFirewall> = {
-  ssh: {
-    label: 'SSH',
-    inbound: [
-      {
-        label: `accept-inbound-SSH`,
-        ports: portPresets.ssh,
-        protocol: 'TCP',
-        addresses: allIPs,
-        action: 'ACCEPT',
-      },
-    ],
-  },
-  http: {
-    label: 'HTTP',
-    inbound: [
-      {
-        label: `accept-inbound-HTTP`,
-        ports: portPresets.http,
-        protocol: 'TCP',
-        addresses: allIPs,
-        action: 'ACCEPT',
-      },
-    ],
-  },
-  https: {
-    label: 'HTTPS',
-    inbound: [
-      {
-        label: `accept-inbound-HTTPS`,
-        ports: portPresets.https,
-        protocol: 'TCP',
-        addresses: allIPs,
-        action: 'ACCEPT',
-      },
-    ],
-  },
-  mysql: {
-    label: 'MySQL',
-    inbound: [
-      {
-        label: `accept-inbound-MYSQL`,
-        ports: portPresets.mysql,
-        protocol: 'TCP',
-        addresses: allIPs,
-        action: 'ACCEPT',
-      },
-    ],
-  },
   dns: {
-    label: 'DNS',
     inbound: [
       {
+        action: 'ACCEPT',
+        addresses: allIPs,
         label: `accept-inbound-DNS`,
         ports: portPresets.dns,
         protocol: 'TCP',
-        addresses: allIPs,
-        action: 'ACCEPT',
       },
     ],
+    label: 'DNS',
+  },
+  http: {
+    inbound: [
+      {
+        action: 'ACCEPT',
+        addresses: allIPs,
+        label: `accept-inbound-HTTP`,
+        ports: portPresets.http,
+        protocol: 'TCP',
+      },
+    ],
+    label: 'HTTP',
+  },
+  https: {
+    inbound: [
+      {
+        action: 'ACCEPT',
+        addresses: allIPs,
+        label: `accept-inbound-HTTPS`,
+        ports: portPresets.https,
+        protocol: 'TCP',
+      },
+    ],
+    label: 'HTTPS',
+  },
+  mysql: {
+    inbound: [
+      {
+        action: 'ACCEPT',
+        addresses: allIPs,
+        label: `accept-inbound-MYSQL`,
+        ports: portPresets.mysql,
+        protocol: 'TCP',
+      },
+    ],
+    label: 'MySQL',
+  },
+  ssh: {
+    inbound: [
+      {
+        action: 'ACCEPT',
+        addresses: allIPs,
+        label: `accept-inbound-SSH`,
+        ports: portPresets.ssh,
+        protocol: 'TCP',
+      },
+    ],
+    label: 'SSH',
   },
 };
 
 export const predefinedFirewallFromRule = (
   rule: FirewallRuleType
 ): FirewallPreset | undefined => {
-  const { protocol, addresses, ports } = rule;
+  const { addresses, ports, protocol } = rule;
 
   // All predefined Firewalls have a protocol of TCP.
   if (protocol !== 'TCP') {
@@ -191,6 +201,12 @@ export const allowAllIPv4 = (addresses: FirewallRuleType['addresses']) =>
 
 export const allowAllIPv6 = (addresses: FirewallRuleType['addresses']) =>
   addresses?.ipv6?.includes(allIPv6);
+
+export const allowNoneIPv4 = (addresses: FirewallRuleType['addresses']) =>
+  !addresses?.ipv4?.length;
+
+export const allowNoneIPv6 = (addresses: FirewallRuleType['addresses']) =>
+  !addresses?.ipv6?.length;
 
 export const generateRuleLabel = (ruleType?: FirewallPreset) =>
   ruleType ? predefinedFirewalls[ruleType].label : 'Custom';
@@ -232,4 +248,24 @@ export const generateAddressesLabel = (
 
   // If no IPs are allowed.
   return 'None';
+};
+
+export const checkIfUserCanModifyFirewall = (
+  firewallId: number,
+  profile?: Profile,
+  grants?: Grants
+) => {
+  return (
+    !profile?.restricted ||
+    grants?.firewall?.find((firewall) => firewall.id === firewallId)
+      ?.permissions === 'read_write'
+  );
+};
+
+export const getFirewallDescription = (firewall: Firewall) => {
+  const description = [
+    `Status: ${capitalize(firewall.status)}`,
+    `Services Assigned: ${firewall.entities.length}`,
+  ];
+  return description.join(', ');
 };

@@ -1,63 +1,65 @@
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
+import { makeStyles } from 'tss-react/mui';
+
+import { Button } from 'src/components/Button/Button';
+import { Typography } from 'src/components/Typography';
 
 interface Props {
   buttonText: string;
   descriptiveText: string;
-  sectionTitle: string;
-  onClick: () => void;
   disabled?: boolean;
+  onClick: () => void;
+  sectionTitle: string;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  topSection: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    [theme.breakpoints.down('sm')]: {
-      flexDirection: 'column',
+const useStyles = makeStyles()((theme: Theme) => ({
+  sectionButton: {
+    minWidth: 214,
+    [theme.breakpoints.down('md')]: {
+      alignSelf: 'flex-start',
     },
   },
-  sectionTitleAndText: {
-    width: '100%',
+  sectionText: {
+    [theme.breakpoints.down('md')]: {
+      marginBottom: '1rem',
+    },
+    [theme.breakpoints.down('sm')]: {
+      width: '100%',
+    },
+    width: '65%',
   },
   sectionTitle: {
     marginBottom: '0.25rem',
   },
-  sectionText: {
-    width: '65%',
-    [theme.breakpoints.down('sm')]: {
-      marginBottom: '1rem',
-    },
-    [theme.breakpoints.down('xs')]: {
-      width: '100%',
-    },
+  sectionTitleAndText: {
+    width: '100%',
   },
-  sectionButton: {
-    minWidth: 214,
-    [theme.breakpoints.down('sm')]: {
-      alignSelf: 'flex-start',
+  topSection: {
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'space-between',
+    [theme.breakpoints.down('md')]: {
+      flexDirection: 'column',
     },
   },
 }));
 
-export const DatabaseSettingsMenuItem: React.FC<Props> = (props) => {
+export const DatabaseSettingsMenuItem = (props: Props) => {
   const {
     buttonText,
     descriptiveText,
-    sectionTitle,
-    onClick,
     disabled = false,
+    onClick,
+    sectionTitle,
   } = props;
 
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   return (
     <div className={classes.topSection} data-qa-settings-section={sectionTitle}>
       <div className={classes.sectionTitleAndText}>
-        <Typography variant="h3" className={classes.sectionTitle}>
+        <Typography className={classes.sectionTitle} variant="h3">
           {sectionTitle}
         </Typography>
         <Typography className={classes.sectionText}>
@@ -65,12 +67,12 @@ export const DatabaseSettingsMenuItem: React.FC<Props> = (props) => {
         </Typography>
       </div>
       <Button
-        data-qa-settings-button={buttonText}
-        className={classes.sectionButton}
-        disabled={disabled}
         buttonType="primary"
+        className={classes.sectionButton}
+        data-qa-settings-button={buttonText}
+        disabled={disabled}
         onClick={onClick}
-        compact
+        title={buttonText}
       >
         {buttonText}
       </Button>

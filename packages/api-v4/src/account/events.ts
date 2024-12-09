@@ -1,6 +1,6 @@
 import { API_ROOT } from '../constants';
 import Request, { setMethod, setParams, setURL, setXFilter } from '../request';
-import { ResourcePage } from '../types';
+import { Filter, Params, ResourcePage } from '../types';
 import { Event, Notification } from './types';
 
 /**
@@ -9,7 +9,7 @@ import { Event, Notification } from './types';
  * Retrieve a list of events on your account.
  *
  */
-export const getEvents = (params: any = {}, filter: any = {}) =>
+export const getEvents = (params: Params = {}, filter: Filter = {}) =>
   Request<ResourcePage<Event>>(
     setURL(`${API_ROOT}/account/events`),
     setMethod('GET'),
@@ -25,7 +25,7 @@ export const getEvents = (params: any = {}, filter: any = {}) =>
  */
 export const getEvent = (eventId: number) =>
   Request<Event>(
-    setURL(`${API_ROOT}/account/events/${eventId}`),
+    setURL(`${API_ROOT}/account/events/${encodeURIComponent(eventId)}`),
     setMethod('GET')
   );
 
@@ -38,7 +38,7 @@ export const getEvent = (eventId: number) =>
  */
 export const markEventSeen = (eventId: number) =>
   Request<{}>(
-    setURL(`${API_ROOT}/account/events/${eventId}/seen`),
+    setURL(`${API_ROOT}/account/events/${encodeURIComponent(eventId)}/seen`),
     setMethod('POST')
   );
 
@@ -52,7 +52,7 @@ export const markEventSeen = (eventId: number) =>
  */
 export const markEventRead = (eventId: number) =>
   Request<{}>(
-    setURL(`${API_ROOT}/account/events/${eventId}/read`),
+    setURL(`${API_ROOT}/account/events/${encodeURIComponent(eventId)}/read`),
     setMethod('POST')
   );
 
@@ -62,7 +62,7 @@ export const markEventRead = (eventId: number) =>
  * Retrieve a list of active notifications on your account.
  *
  */
-export const getNotifications = (params?: any, filter?: any) =>
+export const getNotifications = (params?: Params, filter?: Filter) =>
   Request<ResourcePage<Notification>>(
     setURL(`${API_ROOT}/account/notifications`),
     setMethod('GET'),

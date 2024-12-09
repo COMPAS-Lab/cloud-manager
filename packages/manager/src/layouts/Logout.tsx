@@ -1,15 +1,18 @@
 import { pathOr } from 'ramda';
 import { Component } from 'react';
-import { connect, MapDispatchToProps, MapStateToProps } from 'react-redux';
+import { MapDispatchToProps, MapStateToProps, connect } from 'react-redux';
 import { AnyAction } from 'redux';
 import { ThunkDispatch } from 'redux-thunk';
+
 import { CLIENT_ID } from 'src/constants';
 import { ApplicationState } from 'src/store';
 import { clearUserInput } from 'src/store/authentication/authentication.helpers';
 import { handleLogout } from 'src/store/authentication/authentication.requests';
 import { getEnvLocalStorageOverrides } from 'src/utilities/storage';
 
-export class Logout extends Component<DispatchProps & StateProps> {
+interface LogoutProps extends DispatchProps, StateProps {}
+
+export class Logout extends Component<LogoutProps> {
   componentDidMount() {
     // Clear any user input (in the Support Drawer) since the user is manually logging out.
     clearUserInput();

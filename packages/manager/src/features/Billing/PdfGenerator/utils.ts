@@ -1,6 +1,14 @@
-import JSPDF from 'jspdf';
-import autoTable, { CellHookData } from 'jspdf-autotable';
-import {
+import autoTable from 'jspdf-autotable';
+import { pathOr } from 'ramda';
+
+import { ADDRESSES } from 'src/constants';
+import { formatDate } from 'src/utilities/formatDate';
+import { MAGIC_DATE_THAT_DC_SPECIFIC_PRICING_WAS_IMPLEMENTED } from 'src/utilities/pricing/constants';
+
+import { getShouldUseAkamaiBilling } from '../billingUtils';
+
+import type { Region } from '@linode/api-v4';
+import type {
   Invoice,
   InvoiceItem,
   Payment,
@@ -26,7 +34,7 @@ const formatDateForTable = (date: string): [string, string] => {
     return ['', ''];
   }
   /** gives us a datetime separated by a space. e.g. 2019-09-30 08:25:00 */
-  const res = formatDate(date);
+  const res = formatDate(date, { timezone });
 
   /** basically, if we have an invalid date, return empty strings */
   return !!res.match(/invalid/gim)
@@ -37,16 +45,13 @@ const formatDateForTable = (date: string): [string, string] => {
 /**
  * Creates the table header and rows for a payment PDF
  */
-export const createPaymentsTable = (doc: JSPDF, payment: Payment) => {
+export const createPaymentsTable = (
+  doc: JSPDF,
+  payment: Payment,
+  startY: number,
+  timezone?: string
+) => {
   autoTable(doc, {
-    startY: 150,
-    styles: {
-      lineWidth: 1,
-    },
-    headStyles: {
-      fillColor: '#444444',
-    },
-    head: [['Description', 'Date', 'Amount']],
     body: [
       [
         { content: payment.id },
@@ -54,6 +59,14 @@ export const createPaymentsTable = (doc: JSPDF, payment: Payment) => {
         { content: `${formatter.format(Math.abs(Number(payment.usd)))}` },
       ],
     ],
+    head: [['Description', 'Date', 'Amount']],
+    headStyles: {
+      fillColor: '#444444',
+    },
+    startY,
+    styles: {
+      lineWidth: 1,
+    },
   });
 };
 
@@ -77,10 +90,29 @@ export const createPaymentsTotalsTable = (doc: JSPDF, payment: Payment) => {
   });
 };
 
+interface CreateInvoiceItemsTableOptions {
+  doc: JSPDF;
+  items: InvoiceItem[];
+  /**
+   * Used to add Region labels to the `Region` column
+   */
+  regions: Region[];
+  shouldShowRegions: boolean;
+  /**
+   * The start position of the table on the Y axis
+   */
+  startY: number;
+  timezone?: string;
+}
+
 /**
  * Creates the table header and rows for an Invoice PDF
  */
-export const createInvoiceItemsTable = (doc: JSPDF, items: InvoiceItem[]) => {
+export const createInvoiceItemsTable = (
+  options: CreateInvoiceItemsTableOptions
+) => {
+  const { doc, items, regions, shouldShowRegions, startY, timezone } = options;
+
   autoTable(doc, {
     startY: 155,
     styles: {
@@ -91,12 +123,16 @@ export const createInvoiceItemsTable = (doc: JSPDF, items: InvoiceItem[]) => {
     },
     head: [['Description', 'From', 'To', 'Hours', 'Price', 'Total']],
     body: items.map((item) => {
-      const [toDate, toTime] = formatDateForTable(item.to || '');
-      const [fromDate, fromTime] = formatDateForTable(item.from || '');
+      const [toDate, toTime] = formatDateForTable(item.to || '', timezone);
+      const [fromDate, fromTime] = formatDateForTable(
+        item.from || '',
+        timezone
+      );
       return [
         {
           styles: { fontSize: 8, cellWidth: 150, overflow: 'linebreak' },
           content: formatDescription(item.label),
+          styles: { cellWidth: 85, fontSize: 8, overflow: 'linebreak' },
         },
         {
           styles: { fontSize: 8, cellWidth: 65, overflow: 'linebreak' },
@@ -144,6 +180,26 @@ export const createInvoiceItemsTable = (doc: JSPDF, items: InvoiceItem[]) => {
         },
       ];
     }),
+    head: [
+      [
+        'Description',
+        'From',
+        'To',
+        'Quantity',
+        ...(shouldShowRegions ? ['Region'] : []),
+        'Unit Price',
+        'Amount',
+        'Tax',
+        'Total',
+      ],
+    ],
+    headStyles: {
+      fillColor: '#444444',
+    },
+    startY,
+    styles: {
+      lineWidth: 1,
+    },
   });
 };
 
@@ -170,27 +226,54 @@ export const createInvoiceTotalsTable = (
   NRbalance: Number
 ) => {
   autoTable(doc, {
-    styles: {
-      halign: 'right',
-    },
-    headStyles: {
-      fillColor: '#444444',
-    },
+    body: [
+      ['Subtotal (USD)', `$${Number(invoice.subtotal).toFixed(2)}`],
+      ...getTaxSummaryBody(invoice.tax_summary),
+      ['Tax Subtotal (USD)', `$${Number(invoice.tax).toFixed(2)}`],
+      [`Total (USD)`, `$${Number(invoice.total).toFixed(2)}`],
+    ],
     columnStyles: {
       0: {
         cellPadding: {
+          bottom: 5,
           right: 12,
           top: 5,
-          bottom: 5,
         },
       },
       1: {
         cellPadding: {
+          bottom: 5,
           right: 6,
           top: 5,
-          bottom: 5,
         },
       },
+    },
+    didDrawPage: (data) => {
+      let finalY = 0; // Initialize a variable to hold the final Y position after the table is drawn
+
+      if (data?.cursor?.y) {
+        finalY = data.cursor.y;
+      }
+
+      const footerText =
+        'This invoice may include Linode Compute Instances that have been powered off as the data is maintained and resources are still reserved. If you no longer need powered-down Linodes, you can remove the service (https://techdocs.akamai.com/cloud-computing/docs/stop-further-billing) from your account.';
+      const textHeight = doc.getTextDimensions(footerText).h;
+      const bottomMargin = pageMargin;
+      const pageHeight = doc.internal.pageSize.height;
+
+      // Check if adding footerText would exceed page height
+      if (finalY + 20 + textHeight + bottomMargin > pageHeight) {
+        doc.addPage();
+        finalY = pageMargin; // Reset finalY for the new page
+      }
+
+      doc.text(footerText, pageMargin, finalY + 20, {
+        align: 'justify',
+        maxWidth: doc.internal.pageSize.width - pageMargin * 2,
+      });
+    },
+    headStyles: {
+      fillColor: '#444444',
     },
     pageBreak: 'avoid',
     rowPageBreak: 'avoid',
@@ -233,7 +316,12 @@ export const createInvoiceTotalsTable = (
   });
 };
 
-export const createFooter = (doc: JSPDF, font: string) => {
+export const createFooter = (
+  doc: JSPDF,
+  font: string,
+  country: string,
+  date: string
+) => {
   const fontSize = 10;
   const left = 215;
   const top = 600;
@@ -247,8 +335,8 @@ export const createFooter = (doc: JSPDF, font: string) => {
     'https://clanode.compas.cs.stonybrook.edu/\r\n';
 
   doc.text(footerText, left, top, {
-    charSpace: 0.75,
     align: 'center',
+    charSpace: 0.75,
   });
 };
 

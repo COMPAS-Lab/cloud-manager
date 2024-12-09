@@ -8,14 +8,38 @@ import {
 } from 'react-query';
 import { queryPresets } from './base';
 
-export const queryKey = 'vlans';
+import type { APIError, Filter, ResourcePage, VLAN } from '@linode/api-v4';
 
-export const _getVlans = (): Promise<VLAN[]> =>
-  getVlans().then(({ data }) => data);
+const getAllVLANs = (): Promise<VLAN[]> =>
+  getAll<VLAN>((params) => getVlans(params))().then(({ data }) => data);
+
+export const vlanQueries = createQueryKeys('vlans', {
+  all: {
+    queryFn: getAllVLANs,
+    queryKey: null,
+  },
+  infinite: (filter: Filter = {}) => ({
+    queryFn: ({ pageParam = 1 }) =>
+      getVlans({ page: pageParam as number, page_size: 25 }, filter),
+    queryKey: [filter],
+  }),
+});
 
 export const useVlansQuery = () => {
-  return useQuery<VLAN[], APIError[]>(queryKey, _getVlans, {
-    ...queryPresets.longLived,
+  return useQuery<VLAN[], APIError[]>(vlanQueries.all);
+};
+
+export const useVLANsInfiniteQuery = (filter: Filter = {}, enabled = true) => {
+  return useInfiniteQuery<ResourcePage<VLAN>, APIError[]>({
+    getNextPageParam: ({ page, pages }) => {
+      if (page === pages) {
+        return undefined;
+      }
+      return page + 1;
+    },
+    initialPageParam: 1,
+    ...vlanQueries.infinite(filter),
+    enabled,
   });
 };
 

@@ -1,95 +1,94 @@
-import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Dialog from 'src/components/ConfirmationDialog';
-import Paper from 'src/components/core/Paper';
-import Typography from 'src/components/core/Typography';
-import { useDispatch } from 'react-redux';
 import { useSnackbar } from 'notistack';
-import { makeStyles, Theme } from 'src/components/core/styles';
+import * as React from 'react';
+
+import { Button } from 'src/components/Button/Button';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Notice } from 'src/components/Notice/Notice';
+import { Stack } from 'src/components/Stack';
+import { Typography } from 'src/components/Typography';
 import { VolumeUpgradeCopy } from 'src/features/Volumes/UpgradeVolumeDialog';
-import { Dispatch } from 'src/hooks/types';
-import { useVolumesMigrateMutation } from 'src/queries/volumesMigrations';
-import { requestNotifications } from 'src/store/notification/notification.requests';
+import { getUpgradeableVolumeIds } from 'src/features/Volumes/utils';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
+import {
+  useLinodeVolumesQuery,
+  useVolumesMigrateMutation,
+} from 'src/queries/volumes/volumes';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { ExtendedLinode } from '../types';
+
+import type { Linode } from '@linode/api-v4';
 
 interface Props {
-  open: boolean;
+  linode: Linode;
   onClose: () => void;
-  linode: ExtendedLinode;
-  upgradeableVolumeIds: number[];
+  open: boolean;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  notice: {
-    borderLeft: `solid 6px ${theme.color.yellow}`,
-    marginTop: theme.spacing(2),
-    padding: theme.spacing(),
-  },
-}));
-
-export const UpgradeVolumesDialog: React.FC<Props> = (props) => {
-  const { open, onClose, linode, upgradeableVolumeIds } = props;
+export const UpgradeVolumesDialog = (props: Props) => {
+  const { linode, onClose, open } = props;
   const { enqueueSnackbar } = useSnackbar();
-  const classes = useStyles();
-
-  const dispatch: Dispatch = useDispatch();
 
   const {
-    mutateAsync: migrateVolumes,
-    isLoading,
     error,
+    isPending,
+    mutateAsync: migrateVolumes,
   } = useVolumesMigrateMutation();
 
-  const numUpgradeableVolumes = upgradeableVolumeIds.length;
+  const { data: volumesData } = useLinodeVolumesQuery(linode.id);
+  const { data: notifications } = useNotificationsQuery();
+
+  const volumeIdsEligibleForUpgrade = getUpgradeableVolumeIds(
+    volumesData?.data ?? [],
+    notifications ?? []
+  );
+
+  const numUpgradeableVolumes = volumeIdsEligibleForUpgrade.length;
 
   const onSubmit = () => {
-    migrateVolumes(upgradeableVolumeIds).then(() => {
+    migrateVolumes(volumeIdsEligibleForUpgrade).then(() => {
       enqueueSnackbar(
         `Successfully added ${linode.label}\u{2019}s volumes to the migration queue.`,
         { variant: 'success' }
       );
-      // Re-request notifications so the Upgrade Volume banner on the Linode Detail page disappears.
-      dispatch(requestNotifications());
       onClose();
     });
   };
 
   const actions = (
-    <ActionsPanel>
+    <Stack direction="row" justifyContent="flex-end" spacing={2}>
       <Button buttonType="secondary" onClick={onClose}>
         Cancel
       </Button>
-      <Button buttonType="primary" onClick={onSubmit} loading={isLoading}>
+      <Button buttonType="primary" loading={isPending} onClick={onSubmit}>
         Enter Upgrade Queue
       </Button>
-    </ActionsPanel>
+    </Stack>
   );
 
   return (
-    <Dialog
-      title={`Upgrade Volume${numUpgradeableVolumes === 1 ? '' : 's'}`}
-      open={open}
-      onClose={onClose}
-      actions={actions}
+    <ConfirmationDialog
       error={
         error
           ? getAPIErrorOrDefault(error, 'Unable to migrate volumes.')[0].reason
           : undefined
       }
+      actions={actions}
+      onClose={onClose}
+      open={open}
+      title={`Upgrade Volume${numUpgradeableVolumes === 1 ? '' : 's'}`}
     >
-      <Typography>
+      <Stack spacing={2}>
         <VolumeUpgradeCopy
-          type="linode"
-          label={linode.label}
           isManyVolumes={numUpgradeableVolumes > 1}
+          label={linode.label}
+          type="linode"
         />
-        <Paper className={classes.notice}>
-          As part of the upgrade process, this Linode may be rebooted and will
-          be returned to its last known state prior to the upgrade.
-        </Paper>
-      </Typography>
-    </Dialog>
+        <Notice variant="warning">
+          <Typography>
+            As part of the upgrade process, this Linode may be rebooted and will
+            be returned to its last known state prior to the upgrade.
+          </Typography>
+        </Notice>
+      </Stack>
+    </ConfirmationDialog>
   );
 };

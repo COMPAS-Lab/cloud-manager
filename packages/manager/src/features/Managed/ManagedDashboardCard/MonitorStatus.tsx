@@ -1,89 +1,44 @@
 import { ManagedServiceMonitor } from '@linode/api-v4/lib/managed';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { compose } from 'recompose';
+
 import MonitorFailed from 'src/assets/icons/monitor-failed.svg';
 import MonitorOK from 'src/assets/icons/monitor-ok.svg';
+import { Typography } from 'src/components/Typography';
 import {
-  makeStyles,
-  Theme,
-  withTheme,
-  WithTheme,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
+  StyledTypography,
+  StyledIconGrid,
+  StyledRootGrid,
+} from './MonitorStatus.styles';
 
-export const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: `0`,
-    textAlign: 'center',
-    [theme.breakpoints.down('md')]: {
-      padding: `${theme.spacing(2)}px 0 0`,
-    },
-  },
-  icon: {
-    '& svg': {
-      display: 'flex',
-      width: 56,
-      height: 56,
-    },
-  },
-  error: {
-    position: 'relative',
-    color: theme.color.headline,
-    marginBottom: theme.spacing(2) - 3,
-    textAlign: 'left',
-    '&:before': {
-      content: '""',
-      position: 'absolute',
-      top: 7,
-      left: -30,
-      backgroundColor: theme.color.red,
-      height: 3,
-      width: 16,
-    },
-    '&:last-of-type': {
-      marginBottom: 0,
-    },
-  },
-  text: {
-    maxWidth: 250,
-  },
-}));
-
-export interface Props {
+export interface MonitorStatusProps {
   monitors: ManagedServiceMonitor[];
 }
 
-type CombinedProps = Props & WithTheme;
-
-export const MonitorStatus: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const MonitorStatus = (props: MonitorStatusProps) => {
   const { monitors } = props;
 
   const failedMonitors = getFailedMonitors(monitors);
   const iconSize = 50;
 
   return (
-    <Grid
+    <StyledRootGrid
+      alignItems="center"
       container
       direction="column"
-      alignItems="center"
       justifyContent="center"
-      className={classes.root}
-      item
     >
-      <Grid item>
-        <Grid item className={classes.icon}>
+      <Grid>
+        <StyledIconGrid>
           {failedMonitors.length === 0 ? (
-            <MonitorOK width={iconSize} height={iconSize} />
+            <MonitorOK height={iconSize} width={iconSize} />
           ) : (
-            <MonitorFailed width={iconSize} height={iconSize} />
+            <MonitorFailed height={iconSize} width={iconSize} />
           )}
-        </Grid>
+        </StyledIconGrid>
       </Grid>
-      <Grid item>
+      <Grid>
         <Typography variant="h2">
           {failedMonitors.length === 0
             ? 'All monitored services are up'
@@ -93,20 +48,19 @@ export const MonitorStatus: React.FC<CombinedProps> = (props) => {
         </Typography>
       </Grid>
       {failedMonitors.length > 0 && (
-        <Grid item>
+        <Grid>
           {failedMonitors.map((thisMonitor, idx) => (
-            <Typography
+            <StyledTypography
               key={`failed-monitor-list-${idx}`}
-              className={classes.error}
               variant="body1"
             >
               {thisMonitor}
-            </Typography>
+            </StyledTypography>
           ))}
         </Grid>
       )}
-      <Grid item>
-        <Typography className={classes.text}>
+      <Grid>
+        <Typography sx={{ maxWidth: 250 }}>
           <Link to="/managed/monitors">View your list of service monitors</Link>
           {` `}
           {failedMonitors.length === 0
@@ -114,7 +68,7 @@ export const MonitorStatus: React.FC<CombinedProps> = (props) => {
             : 'for details.'}
         </Typography>
       </Grid>
-    </Grid>
+    </StyledRootGrid>
   );
 };
 
@@ -135,6 +89,4 @@ const getFailedMonitors = (monitors: ManagedServiceMonitor[]): string[] => {
   }, []);
 };
 
-const enhanced = compose<CombinedProps, Props>(withTheme);
-
-export default enhanced(MonitorStatus);
+export default MonitorStatus;

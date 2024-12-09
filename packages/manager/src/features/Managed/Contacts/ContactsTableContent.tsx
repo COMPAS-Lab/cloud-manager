@@ -2,35 +2,32 @@ import { ManagedContact } from '@linode/api-v4/lib/managed';
 import { APIError } from '@linode/api-v4/lib/types';
 import { equals } from 'ramda';
 import * as React from 'react';
-import { compose } from 'recompose';
-import TableRowEmpty from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
 import { arePropsEqual } from 'src/utilities/arePropsEqual';
 import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
+
 import ContactsRow from './ContactsRow';
 
-interface Props {
+interface ContactsTableContentProps {
   contacts: ManagedContact[];
-  loading: boolean;
+  error?: APIError[] | null;
   lastUpdated: number;
-  updateOrAdd: (contact: ManagedContact) => void;
-  openDrawer: (linodeId: number) => void;
+  loading: boolean;
   openDialog: (contactId: number) => void;
-  error?: APIError[];
+  openDrawer: (linodeId: number) => void;
 }
 
-export type CombinedProps = Props;
-
-export const ContactsTableContent: React.FC<CombinedProps> = (props) => {
+export const ContactsTableContent = (props: ContactsTableContentProps) => {
   const {
     contacts,
-    loading,
-    lastUpdated,
-    updateOrAdd,
-    openDrawer,
-    openDialog,
     error,
+    lastUpdated,
+    loading,
+    openDialog,
+    openDrawer,
   } = props;
 
   if (loading && lastUpdated === 0) {
@@ -56,18 +53,17 @@ export const ContactsTableContent: React.FC<CombinedProps> = (props) => {
     <>
       {contacts.map((contact: ManagedContact, idx: number) => (
         <ContactsRow
-          key={`managed-contact-row-${idx}`}
-          updateOrAdd={updateOrAdd}
           contact={contact}
-          openDrawer={openDrawer}
+          key={`managed-contact-row-${idx}`}
           openDialog={openDialog}
+          openDrawer={openDrawer}
         />
       ))}
     </>
   );
 };
 
-const memoized = (component: React.FC<CombinedProps>) =>
+const memoized = (component: React.FC<ContactsTableContentProps>) =>
   React.memo(
     component,
     (prevProps, nextProps) =>
@@ -75,13 +71,11 @@ const memoized = (component: React.FC<CombinedProps>) =>
       // when opening the GroupDrawer or ContactsDrawer
       // when there are a large number of contacts.
       equals(prevProps.contacts, nextProps.contacts) &&
-      arePropsEqual<CombinedProps>(
+      arePropsEqual<ContactsTableContentProps>(
         ['lastUpdated', 'loading', 'error'],
         prevProps,
         nextProps
       )
   );
 
-const enhanced = compose<CombinedProps, Props>(memoized);
-
-export default enhanced(ContactsTableContent);
+export default memoized(ContactsTableContent);

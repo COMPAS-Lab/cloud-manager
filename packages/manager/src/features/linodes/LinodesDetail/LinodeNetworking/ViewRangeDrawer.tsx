@@ -1,80 +1,64 @@
 import { IPRange } from '@linode/api-v4/lib/networking';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
-import { formatRegion } from 'src/utilities';
 
-type ClassNames = 'root' | 'section';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {},
-    section: {
-      marginBottom: theme.spacing(2),
-      paddingBottom: theme.spacing(2),
-      borderBottom: `1px solid ${theme.palette.divider}`,
-    },
-  });
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Drawer } from 'src/components/Drawer';
+import { Typography } from 'src/components/Typography';
+import { useRegionsQuery } from 'src/queries/regions/regions';
 
 interface Props {
+  onClose: () => void;
   open: boolean;
   range?: IPRange;
-  onClose: () => void;
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
-
-const ViewRangeDrawer: React.FC<CombinedProps> = (props) => {
-  const { classes, range } = props;
+export const ViewRangeDrawer = (props: Props) => {
+  const { range } = props;
   const region = (range && range.region) || '';
+
+  const { data: regions } = useRegionsQuery();
+
+  const actualRegion = regions?.find((r) => r.id === region);
 
   return (
     <Drawer
-      open={props.open}
       onClose={props.onClose}
+      open={props.open}
       title={`Details for IP Range`}
     >
       {props.range && (
         <React.Fragment>
-          <div className={classes.section}>
+          <StyledDiv>
             <Typography variant="h3">IP Range</Typography>
             <Typography variant="body1">
               {props.range.range} / {props.range.prefix} routed to{' '}
               {props.range.route_target}
             </Typography>
-          </div>
+          </StyledDiv>
 
-          <div
-            className={classes.section}
-            style={{ border: 0, paddingBottom: 0 }}
-          >
+          <StyledDiv style={{ border: 0, paddingBottom: 0 }}>
             <Typography variant="h3">Region</Typography>
-            <Typography variant="body1">{formatRegion(region)}</Typography>
-          </div>
+            <Typography variant="body1">
+              {actualRegion?.label ?? region}
+            </Typography>
+          </StyledDiv>
 
-          <ActionsPanel>
-            <Button
-              buttonType="secondary"
-              onClick={props.onClose}
-              data-qa-cancel
-            >
-              Close
-            </Button>
-          </ActionsPanel>
+          <ActionsPanel
+            secondaryButtonProps={{
+              'data-testid': 'cancel',
+              label: 'Close',
+              onClick: props.onClose,
+            }}
+          />
         </React.Fragment>
       )}
     </Drawer>
   );
 };
 
-const styled = withStyles(styles);
-
-export default styled(ViewRangeDrawer);
+const StyledDiv = styled('div', { label: 'StyledDiv' })(({ theme }) => ({
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  marginBottom: theme.spacing(2),
+  paddingBottom: theme.spacing(2),
+}));

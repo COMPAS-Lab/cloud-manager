@@ -2,13 +2,18 @@ import { Image } from '@linode/api-v4/lib/images';
 import { StackScript, UserDefinedField } from '@linode/api-v4/lib/stackscripts';
 import * as React from 'react';
 import { compose } from 'recompose';
+
 import StackScriptBase, {
   StateProps,
 } from '../StackScriptBase/StackScriptBase';
 import { StackScriptsRequest } from '../types';
-import SelectStackScriptsSection from './SelectStackScriptsSection';
+import { SelectStackScriptsSection } from './SelectStackScriptsSection';
 
 interface Props {
+  category: string;
+  currentUser: string;
+  disabled?: boolean;
+  isOnCreate?: boolean;
   onSelect: (
     id: number,
     label: string,
@@ -16,28 +21,39 @@ interface Props {
     images: string[],
     userDefinedFields: UserDefinedField[]
   ) => void;
-  resetStackScriptSelection: () => void;
+  openStackScriptDetailsDialog: (stackscriptId: number) => void;
   publicImages: Record<string, Image>;
-  currentUser: string;
   request: StackScriptsRequest;
-  category: string;
-  disabled?: boolean;
-  isOnCreate?: boolean;
+  resetStackScriptSelection: () => void;
 }
 
-type CombinedProps = StateProps & Props;
+interface SelectStackScriptPanelContentProps extends StateProps, Props {}
 
 interface State {
   selected?: number;
 }
 
 class SelectStackScriptPanelContent extends React.Component<
-  CombinedProps,
+  SelectStackScriptPanelContentProps,
   State
 > {
-  state: State = {
-    selected: undefined,
-  };
+  render() {
+    const { selected } = this.state;
+    const { listOfStackScripts } = this.props;
+
+    return (
+      <SelectStackScriptsSection
+        currentUser={this.props.currentUser}
+        data={listOfStackScripts}
+        disabled={this.props.disabled}
+        isSorting={this.props.isSorting}
+        onSelect={this.handleSelectStackScript}
+        openStackScriptDetailsDialog={this.props.openStackScriptDetailsDialog}
+        publicImages={this.props.publicImages}
+        selectedId={selected}
+      />
+    );
+  }
 
   handleSelectStackScript = (stackscript: StackScript) => {
     if (this.props.disabled) {
@@ -53,24 +69,11 @@ class SelectStackScriptPanelContent extends React.Component<
     this.setState({ selected: stackscript.id });
   };
 
-  render() {
-    const { selected } = this.state;
-    const { listOfStackScripts } = this.props;
-
-    return (
-      <SelectStackScriptsSection
-        selectedId={selected}
-        onSelect={this.handleSelectStackScript}
-        isSorting={this.props.isSorting}
-        data={listOfStackScripts}
-        publicImages={this.props.publicImages}
-        currentUser={this.props.currentUser}
-        disabled={this.props.disabled}
-      />
-    );
-  }
+  state: State = {
+    selected: undefined,
+  };
 }
 
-export default compose<CombinedProps, Props>(
+export default compose<SelectStackScriptPanelContentProps, Props>(
   StackScriptBase({ isSelecting: true })
 )(SelectStackScriptPanelContent);

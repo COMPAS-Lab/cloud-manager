@@ -1,103 +1,121 @@
-import classNames from 'classnames';
-import { isNil } from 'ramda';
+import Grid from '@mui/material/Unstable_Grid2';
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
+import { makeStyles } from 'tss-react/mui';
+
+import { Typography } from 'src/components/Typography';
+
+type StrengthValues = 0 | 1 | 2 | 3 | 4 | null;
 
 interface Props {
-  strength: null | 0 | 1 | 2 | 3;
   hideStrengthLabel?: boolean;
+  strength: StrengthValues;
 }
-type ClassNames =
-  | 'root'
-  | 'block'
-  | 'strengthText'
-  | 'strengthLabel'
-  | 'blockOuter';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      maxWidth: `calc(415px + ${theme.spacing(1)}px)`,
-      [theme.breakpoints.down('xs')]: {
-        maxWidth: `calc(100% + ${theme.spacing(1)}px)`,
-      },
+const useStyles = makeStyles()((theme: Theme) => ({
+  block: {
+    '&[class*="strength-"]': {
+      backgroundColor: theme.palette.primary.main,
     },
-    block: {
-      backgroundColor: '#C9CACB',
-      height: '4px',
-      transition: 'background-color .5s ease-in-out',
-      '&[class*="strength-"]': {
-        backgroundColor: theme.palette.primary.main,
-      },
+    backgroundColor: '#C9CACB',
+    height: '4px',
+    transition: 'background-color .5s ease-in-out',
+  },
+  blockOuter: {
+    padding: '4px !important' as '4px',
+  },
+  root: {
+    maxWidth: `calc(415px + ${theme.spacing(1)})`,
+    [theme.breakpoints.down('sm')]: {
+      maxWidth: `calc(100% + ${theme.spacing(1)})`,
     },
-    strengthText: {
-      position: 'relative',
-      fontSize: '.85rem',
-      textAlign: 'right',
-      [theme.breakpoints.down('xs')]: {
-        textAlign: 'center',
-      },
+  },
+  strengthLabel: {
+    [theme.breakpoints.down('sm')]: {
+      display: 'none',
     },
-    strengthLabel: {
-      [theme.breakpoints.down('xs')]: {
-        display: 'none',
-      },
+  },
+  strengthText: {
+    fontSize: '.85rem',
+    position: 'relative',
+    textAlign: 'right',
+    [theme.breakpoints.down('sm')]: {
+      textAlign: 'center',
     },
-    blockOuter: {
-      padding: '4px !important' as '4px',
-    },
-  });
+  },
+}));
 
-const styled = withStyles(styles);
+export const StrengthIndicator = (props: Props) => {
+  const { classes, cx } = useStyles();
 
-type CombinedProps = Props & WithStyles<ClassNames>;
-
-const StrengthIndicator: React.FC<CombinedProps> = (props) => {
-  const { classes, strength, hideStrengthLabel } = props;
+  const { hideStrengthLabel, strength } = props;
 
   return (
     <Grid
-      container
       alignItems="flex-end"
-      spacing={1}
       className={classes.root}
+      container
       data-qa-strength={strength}
+      spacing={1}
+      sx={{ paddingLeft: 0, paddingRight: 0 }}
     >
       {Array.from(Array(3), (v, idx) => idx + 1).map((idx) => (
-        <Grid item key={idx} xs={3} className={classes.blockOuter}>
+        <Grid className={classes.blockOuter} key={idx} xs={3}>
           <div
-            className={classNames({
+            className={cx({
+              [`strength-${strength}`]:
+                strength !== undefined &&
+                strength !== null &&
+                idx <= scaledStrength(strength),
               [classes.block]: true,
-              [`strength-${strength}`]: !isNil(strength) && idx <= strength,
             })}
           />
         </Grid>
       ))}
-      <Grid item xs={3} className="py0">
+      <Grid className="py0" xs={3}>
         <Typography
-          variant="caption"
           className={classes.strengthText}
           data-qa-password-strength
+          variant="caption"
         >
           {!hideStrengthLabel && (
             <span className={classes.strengthLabel}>Strength:</span>
           )}
-          {strength
-            ? (strength === 1 && ' Weak') ||
-              (strength === 2 && ' Fair') ||
-              (strength === 3 && ' Good')
-            : ' Weak'}
+          {convertStrengthScore(strength)}
         </Typography>
       </Grid>
     </Grid>
   );
 };
 
-export default styled(StrengthIndicator);
+const scaledStrength = (strength: number) => {
+  if ([0, 1].includes(strength)) {
+    return 1;
+  }
+
+  if ([2, 3].includes(strength)) {
+    return 2;
+  }
+
+  if (strength === 4) {
+    return 3;
+  }
+
+  return 0;
+};
+
+export const convertStrengthScore = (strength: StrengthValues) => {
+  switch (strength) {
+    case null:
+    case 0:
+    case 1:
+      return ' Weak';
+    case 2:
+    case 3:
+      return ' Fair';
+    case 4:
+      return ' Good';
+    default:
+      return ' Weak';
+  }
+};

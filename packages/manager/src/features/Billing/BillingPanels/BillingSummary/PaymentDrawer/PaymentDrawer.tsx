@@ -1,72 +1,73 @@
-import { PaymentMethod } from '@linode/api-v4';
 import { makePayment } from '@linode/api-v4/lib/account';
-import { APIWarning } from '@linode/api-v4/lib/types';
-import classNames from 'classnames';
+import { InputAdornment } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import Divider from 'src/components/core/Divider';
-import InputAdornment from 'src/components/core/InputAdornment';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Currency from 'src/components/Currency';
-import Drawer from 'src/components/Drawer';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import HelpIcon from 'src/components/HelpIcon';
-import LinearProgress from 'src/components/LinearProgress';
-import Notice from 'src/components/Notice';
-import SupportLink from 'src/components/SupportLink';
-import TextField from 'src/components/TextField';
-import PayPalErrorBoundary from 'src/features/Billing/BillingPanels/PaymentInfoPanel/PayPalErrorBoundary';
-import { useAccount } from 'src/queries/account';
-import { queryKey } from 'src/queries/accountBilling';
-import { queryClient } from 'src/queries/base';
-import isCreditCardExpired from 'src/utilities/creditCard';
+import { makeStyles } from 'tss-react/mui';
+
+import { Button } from 'src/components/Button/Button';
+import { Currency } from 'src/components/Currency';
+import { Divider } from 'src/components/Divider';
+import { Drawer } from 'src/components/Drawer';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { LinearProgress } from 'src/components/LinearProgress';
+import { Notice } from 'src/components/Notice/Notice';
+import { Stack } from 'src/components/Stack';
+import { SupportLink } from 'src/components/SupportLink';
+import { TextField } from 'src/components/TextField';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { Typography } from 'src/components/Typography';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { useAccount } from 'src/queries/account/account';
+import { accountQueries } from 'src/queries/account/queries';
+import { useProfile } from 'src/queries/profile/profile';
+import { isCreditCardExpired } from 'src/utilities/creditCard';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+
+import { PayPalErrorBoundary } from '../../PaymentInfoPanel/PayPalErrorBoundary';
 import GooglePayButton from './GooglePayButton';
-import CreditCardDialog from './PaymentBits/CreditCardDialog';
+import { CreditCardDialog } from './PaymentBits/CreditCardDialog';
 import { PaymentMethodCard } from './PaymentMethodCard';
 import PayPalButton from './PayPalButton';
-import { SetSuccess } from './types';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  currentBalance: {
-    fontSize: '1.1rem',
-    marginBottom: theme.spacing(4),
-  },
-  credit: {
-    color: '#02b159',
-  },
-  header: {
-    fontSize: '1.1rem',
-    marginBottom: theme.spacing(4),
-  },
-  progress: {
-    marginBottom: 18,
-    width: '100%',
-    height: 5,
-  },
-  input: {
-    display: 'flex',
-  },
+import type { SetSuccess } from './types';
+import type { PaymentMethod } from '@linode/api-v4';
+import type { APIWarning } from '@linode/api-v4/lib/types';
+
+const useStyles = makeStyles()(() => ({
   button: {
     alignSelf: 'flex-end',
     marginLeft: 'auto',
   },
-  helpIcon: {
-    padding: `0px 8px`,
+  credit: {
+    color: '#02b159',
+  },
+  currentBalance: {
+    fontSize: '1.1rem',
+  },
+  header: {
+    fontSize: '1.1rem',
+  },
+  input: {
+    display: 'flex',
+  },
+  progress: {
+    height: 5,
+    marginBottom: 18,
+    width: '100%',
   },
 }));
 
 interface Props {
+  onClose: () => void;
   open: boolean;
   paymentMethods: PaymentMethod[] | undefined;
   selectedPaymentMethod?: PaymentMethod;
-  onClose: () => void;
 }
 
-export const getMinimumPayment = (balance: number | false) => {
+export const getMinimumPayment = (balance: false | number) => {
   if (!balance || balance <= 0) {
     return '5.00';
   }
@@ -80,17 +81,19 @@ export const getMinimumPayment = (balance: number | false) => {
   return Math.min(5, balance).toFixed(2);
 };
 
-export const PaymentDrawer: React.FC<Props> = (props) => {
-  const { paymentMethods, selectedPaymentMethod, open, onClose } = props;
+export const PaymentDrawer = (props: Props) => {
+  const { onClose, open, paymentMethods, selectedPaymentMethod } = props;
 
   const {
     data: account,
     isLoading: accountLoading,
     refetch: accountRefetch,
   } = useAccount();
-
-  const classes = useStyles();
+  const { data: profile } = useProfile();
+  const { classes, cx } = useStyles();
   const { enqueueSnackbar } = useSnackbar();
+
+  const queryClient = useQueryClient();
 
   const hasPaymentMethods = paymentMethods && paymentMethods.length > 0;
 
@@ -105,12 +108,19 @@ export const PaymentDrawer: React.FC<Props> = (props) => {
   const [submitting, setSubmitting] = React.useState<boolean>(false);
 
   const [warning, setWarning] = React.useState<APIWarning | null>(null);
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = React.useState<null | string>(null);
 
   const [isProcessing, setIsProcessing] = React.useState<boolean>(false);
 
   const minimumPayment = getMinimumPayment(account?.balance || 0);
   const paymentTooLow = +usd < +minimumPayment;
+
+  const isChildUser = profile?.user_type === 'child';
+  const isReadOnly =
+    useRestrictedGlobalGrantCheck({
+      globalGrantType: 'account_access',
+      permittedGrantLevel: 'read_write',
+    }) || isChildUser;
 
   React.useEffect(() => {
     setUSD(getMinimumPayment(account?.balance || 0));
@@ -167,8 +177,8 @@ export const PaymentDrawer: React.FC<Props> = (props) => {
     setErrorMessage(null);
 
     const makePaymentData = {
-      usd: (+usd).toFixed(2),
       payment_method_id: paymentMethodId,
+      usd: (+usd).toFixed(2),
     };
 
     makePayment(makePaymentData)
@@ -180,7 +190,9 @@ export const PaymentDrawer: React.FC<Props> = (props) => {
           true,
           response.warnings
         );
-        queryClient.invalidateQueries(`${queryKey}-payments`);
+        queryClient.invalidateQueries({
+          queryKey: accountQueries.payments._def,
+        });
       })
       .catch((errorResponse) => {
         setSubmitting(false);
@@ -213,7 +225,7 @@ export const PaymentDrawer: React.FC<Props> = (props) => {
   };
 
   const renderError = (errorMsg: string) => {
-    return <Notice error text={errorMsg} />;
+    return <Notice text={errorMsg} variant="error" />;
   };
 
   if (!accountLoading && account?.balance === undefined) {
@@ -225,150 +237,149 @@ export const PaymentDrawer: React.FC<Props> = (props) => {
   }
 
   return (
-    <Drawer title="Make a Payment" open={open} onClose={onClose}>
-      <Grid container>
-        <Grid item xs={12}>
-          {errorMessage && <Notice error text={errorMessage ?? ''} />}
-          {warning ? <Warning warning={warning} /> : null}
-          {isProcessing ? (
-            <LinearProgress className={classes.progress} />
-          ) : null}
-          {accountLoading ? (
-            <Typography data-testid="loading-account">Loading</Typography>
-          ) : account ? (
-            <Grid item>
-              <Typography variant="h3" className={classes.currentBalance}>
-                <strong>
-                  Current balance:{' '}
-                  <span
-                    className={classNames({
-                      [classes.credit]: account?.balance < 0,
-                    })}
-                  >
-                    <Currency quantity={Math.abs(account?.balance || 0)} />
-                    {account?.balance < 0 ? ' Credit' : ''}
-                  </span>
-                </strong>
-              </Typography>
-            </Grid>
-          ) : null}
-          <Grid item xs={6}>
-            <TextField
-              label="Payment Amount"
-              onChange={handleUSDChange}
-              onBlur={handleOnBlur}
-              value={usd}
-              type="number"
-              placeholder={`${minimumPayment} minimum`}
-              disabled={isProcessing}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="end">$</InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Divider spacingTop={32} spacingBottom={16} />
-          <Grid container direction="column">
-            <Grid item>
-              <Typography
-                variant="h3"
-                className={classes.header}
-                style={{ marginBottom: 8 }}
-              >
-                <strong>Payment Methods:</strong>
-              </Typography>
-            </Grid>
-            <Grid item>
-              {hasPaymentMethods ? (
-                paymentMethods?.map((paymentMethod: PaymentMethod) => (
-                  <PaymentMethodCard
-                    key={paymentMethod.id}
-                    paymentMethod={paymentMethod}
-                    paymentMethodId={paymentMethodId}
-                    handlePaymentMethodChange={handlePaymentMethodChange}
-                  />
-                ))
-              ) : (
-                <Grid item>
-                  <Typography>No payment methods on file.</Typography>
-                </Grid>
-              )}
-            </Grid>
-            {hasPaymentMethods ? (
-              <Grid item className={classes.input}>
-                <Grid className={classes.button}>
-                  {paymentTooLow || selectedCardExpired ? (
-                    <HelpIcon
-                      className={classes.helpIcon}
-                      text={
-                        paymentTooLow
-                          ? `Payment amount must be at least ${minimumPayment}.`
-                          : selectedCardExpired
-                          ? 'The selected card has expired.'
-                          : ''
-                      }
-                    />
-                  ) : null}
-                  <Button
-                    buttonType="primary"
-                    onClick={handleOpenDialog}
-                    disabled={
-                      paymentTooLow || selectedCardExpired || isProcessing
-                    }
-                  >
-                    Pay Now
-                  </Button>
-                </Grid>
-              </Grid>
-            ) : null}
-          </Grid>
-          <CreditCardDialog
-            error={errorMessage}
-            isMakingPayment={submitting}
-            cancel={handleClose}
-            executePayment={confirmCardPayment}
-            open={dialogOpen}
-            usd={usd}
+    <Drawer onClose={onClose} open={open} title="Make a Payment">
+      <Stack spacing={2}>
+        {isReadOnly && (
+          <Notice
+            text={getRestrictedResourceText({
+              isChildUser,
+              resourceType: 'Account',
+            })}
+            variant="error"
           />
-          <Divider spacingTop={28} spacingBottom={16} />
-          <Grid item>
-            <Typography variant="h3" className={classes.header}>
-              <strong>Or pay via:</strong>
-            </Typography>
+        )}
+        {errorMessage && <Notice text={errorMessage ?? ''} variant="error" />}
+        {warning ? <Warning warning={warning} /> : null}
+        {isProcessing ? <LinearProgress className={classes.progress} /> : null}
+        {accountLoading ? (
+          <Typography data-testid="loading-account">Loading</Typography>
+        ) : account ? (
+          <Typography className={classes.currentBalance} variant="h3">
+            <strong>
+              Current balance:{' '}
+              <span
+                className={cx({
+                  [classes.credit]: account?.balance < 0,
+                })}
+              >
+                <Currency quantity={Math.abs(account?.balance || 0)} />
+                {account?.balance < 0 ? ' Credit' : ''}
+              </span>
+            </strong>
+          </Typography>
+        ) : null}
+        <TextField
+          InputProps={{
+            startAdornment: <InputAdornment position="end">$</InputAdornment>,
+          }}
+          disabled={isProcessing || isReadOnly}
+          label="Payment Amount"
+          noMarginTop
+          onBlur={handleOnBlur}
+          onChange={handleUSDChange}
+          placeholder={`${minimumPayment} minimum`}
+          sx={{ maxWidth: 175 }}
+          type="number"
+          value={usd}
+        />
+        <Divider spacingBottom={16} spacingTop={32} />
+        <Typography className={classes.header} variant="h3">
+          <strong>Payment Methods:</strong>
+        </Typography>
+        <Stack spacing={1}>
+          {hasPaymentMethods ? (
+            paymentMethods?.map((paymentMethod: PaymentMethod) => (
+              <PaymentMethodCard
+                disabled={isReadOnly}
+                handlePaymentMethodChange={handlePaymentMethodChange}
+                key={paymentMethod.id}
+                paymentMethod={paymentMethod}
+                paymentMethodId={paymentMethodId}
+              />
+            ))
+          ) : (
+            <Typography>No payment methods on file.</Typography>
+          )}
+        </Stack>
+        {hasPaymentMethods ? (
+          <Grid className={classes.input}>
+            <Grid className={classes.button}>
+              {paymentTooLow || selectedCardExpired ? (
+                <TooltipIcon
+                  text={
+                    paymentTooLow
+                      ? `Payment amount must be at least ${minimumPayment}.`
+                      : selectedCardExpired
+                      ? 'The selected card has expired.'
+                      : ''
+                  }
+                  status="help"
+                  sxTooltipIcon={{ padding: `0px 8px` }}
+                />
+              ) : null}
+              <Button
+                disabled={
+                  paymentTooLow ||
+                  selectedCardExpired ||
+                  isProcessing ||
+                  isReadOnly
+                }
+                buttonType="primary"
+                onClick={handleOpenDialog}
+              >
+                Pay Now
+              </Button>
+            </Grid>
           </Grid>
-          <Grid container>
-            <Grid item xs={9} sm={6}>
-              <PayPalErrorBoundary renderError={renderError}>
-                <PayPalButton
-                  usd={usd}
+        ) : null}
+        {!isReadOnly && (
+          <>
+            <Divider spacingBottom={16} spacingTop={28} />
+            <Grid>
+              <Typography className={classes.header} variant="h3">
+                <strong>Or pay via:</strong>
+              </Typography>
+            </Grid>
+            <Grid container spacing={2}>
+              <Grid sm={6} xs={9}>
+                <PayPalErrorBoundary renderError={renderError}>
+                  <PayPalButton
+                    disabled={isProcessing}
+                    renderError={renderError}
+                    setError={setErrorMessage}
+                    setProcessing={setIsProcessing}
+                    setSuccess={setSuccess}
+                    usd={usd}
+                  />
+                </PayPalErrorBoundary>
+              </Grid>
+              <Grid sm={6} xs={9}>
+                <GooglePayButton
+                  transactionInfo={{
+                    countryCode: 'US',
+                    currencyCode: 'USD',
+                    totalPrice: usd,
+                    totalPriceStatus: 'FINAL',
+                  }}
                   disabled={isProcessing}
-                  setSuccess={setSuccess}
+                  renderError={renderError}
                   setError={setErrorMessage}
                   setProcessing={setIsProcessing}
-                  renderError={renderError}
+                  setSuccess={setSuccess}
                 />
-              </PayPalErrorBoundary>
+              </Grid>
             </Grid>
-            <Grid item xs={9} sm={6}>
-              <GooglePayButton
-                transactionInfo={{
-                  totalPriceStatus: 'FINAL',
-                  currencyCode: 'USD',
-                  countryCode: 'US',
-                  totalPrice: usd,
-                }}
-                balance={account?.balance ?? false}
-                disabled={isProcessing}
-                setSuccess={setSuccess}
-                setError={setErrorMessage}
-                setProcessing={setIsProcessing}
-                renderError={renderError}
-              />
-            </Grid>
-          </Grid>
-        </Grid>
-      </Grid>
+          </>
+        )}
+      </Stack>
+      <CreditCardDialog
+        cancel={handleClose}
+        error={errorMessage}
+        executePayment={confirmCardPayment}
+        isMakingPayment={submitting}
+        open={dialogOpen}
+        usd={usd}
+      />
     </Drawer>
   );
 };
@@ -377,7 +388,7 @@ interface WarningProps {
   warning: APIWarning;
 }
 
-const Warning: React.FC<WarningProps> = (props) => {
+const Warning = (props: WarningProps) => {
   const { warning } = props;
   /** The most common API warning includes "please open a Support ticket",
    * which we'd like to be a link.
@@ -399,7 +410,7 @@ const Warning: React.FC<WarningProps> = (props) => {
       {warning.title} {ticketLink}
     </>
   );
-  return <Notice warning>{message}</Notice>;
+  return <Notice variant="warning">{message}</Notice>;
 };
 
 export default PaymentDrawer;

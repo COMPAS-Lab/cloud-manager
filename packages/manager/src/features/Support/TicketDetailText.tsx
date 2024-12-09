@@ -1,45 +1,47 @@
-import KeyboardArrowDown from '@material-ui/icons/KeyboardArrowDown';
+import { IconButton } from '@linode/ui';
+import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import HighlightedMarkdown from 'src/components/HighlightedMarkdown';
-import IconButton from 'src/components/IconButton';
+import { makeStyles } from 'tss-react/mui';
+
+import { HighlightedMarkdown } from 'src/components/HighlightedMarkdown/HighlightedMarkdown';
 import { truncate } from 'src/utilities/truncate';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginTop: theme.spacing(1),
-    padding: `${theme.spacing(2)}px ${theme.spacing(1)}px`,
-    position: 'relative',
-    '& pre': {
-      backgroundColor: theme.bg.tableHeader,
-    },
-  },
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   expButton: {
-    position: 'absolute',
-    top: -43,
-    right: 0,
-    left: 'auto',
     '& svg': {
       stroke: theme.textColors.tableHeader,
     },
+    left: 'auto',
+    position: 'absolute',
+    right: 4,
+    top: -35,
+  },
+  expand: {
+    transform: 'rotate(180deg)',
+  },
+  root: {
+    '& pre': {
+      backgroundColor: theme.bg.tableHeader,
+    },
+    padding: `${theme.spacing(2)} ${theme.spacing(2)}`,
+    position: 'relative',
   },
   toggle: {
     height: 22,
     width: 22,
   },
-  expand: {
-    transform: 'rotate(180deg)',
-  },
 }));
 
 interface Props {
-  text: string;
   open?: boolean;
+  text: string;
 }
 
-const TicketDetailText: React.FC<Props> = (props) => {
-  const classes = useStyles();
+export const TicketDetailText = (props: Props) => {
+  const { classes } = useStyles();
 
   const [panelOpen, togglePanel] = React.useState<boolean>(props.open || true);
   const { text } = props;
@@ -48,15 +50,16 @@ const TicketDetailText: React.FC<Props> = (props) => {
   const ticketReplyBody = panelOpen ? text : truncatedText;
 
   return (
-    <Grid container className={classes.root}>
-      <Grid item style={{ width: '100%' }}>
+    <Grid className={classes.root} container spacing={2}>
+      <Grid style={{ width: '100%' }}>
         <HighlightedMarkdown textOrMarkdown={ticketReplyBody} />
       </Grid>
       {truncatedText !== text && (
         <IconButton
-          className={classes.expButton}
           aria-label="Expand full answer"
+          className={classes.expButton}
           onClick={() => togglePanel(!panelOpen)}
+          size="large"
         >
           {panelOpen ? (
             <KeyboardArrowDown className={classes.toggle} />
@@ -70,5 +73,3 @@ const TicketDetailText: React.FC<Props> = (props) => {
     </Grid>
   );
 };
-
-export default React.memo(TicketDetailText);

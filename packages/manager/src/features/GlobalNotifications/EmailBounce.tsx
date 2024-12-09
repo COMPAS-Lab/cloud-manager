@@ -1,29 +1,28 @@
+import Grid from '@mui/material/Unstable_Grid2';
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
-import Button from 'src/components/Button';
-import {
-  makeStyles,
-  useMediaQuery,
-  useTheme,
-} from 'src/components/core/styles';
-import { Theme } from 'src/components/core/styles/createMuiTheme';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import useNotifications from 'src/hooks/useNotifications';
-import { useAccount, useMutateAccount } from 'src/queries/account';
-import { useMutateProfile, useProfile } from 'src/queries/profile';
+
+import { Button } from 'src/components/Button/Button';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { useAccount, useMutateAccount } from 'src/queries/account/account';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
+import { useMutateProfile, useProfile } from 'src/queries/profile/profile';
+
+import { StyledGrid } from './EmailBounce.styles';
 
 // =============================================================================
 // <EmailBounceNotificationSection />
 // =============================================================================
-export const EmailBounceNotificationSection: React.FC<{}> = React.memo(() => {
+export const EmailBounceNotificationSection = React.memo(() => {
   const { data: account } = useAccount();
   const { mutateAsync: updateAccount } = useMutateAccount();
   const { data: profile } = useProfile();
   const { mutateAsync: updateProfile } = useMutateProfile();
-  const notifications = useNotifications();
+  const { data: notifications } = useNotificationsQuery();
   const history = useHistory();
 
   // Have to use refs here, because these values should be static. I.e. if we
@@ -32,11 +31,11 @@ export const EmailBounceNotificationSection: React.FC<{}> = React.memo(() => {
   const accountEmailRef = React.useRef(account?.email);
   const profileEmailRef = React.useRef(profile?.email);
 
-  const billingEmailBounceNotification = notifications.find(
+  const billingEmailBounceNotification = notifications?.find(
     (thisNotification) => thisNotification.type === 'billing_email_bounce'
   );
 
-  const userEmailBounceNotification = notifications.find(
+  const userEmailBounceNotification = notifications?.find(
     (thisNotification) => thisNotification.type === 'user_email_bounce'
   );
 
@@ -49,6 +48,12 @@ export const EmailBounceNotificationSection: React.FC<{}> = React.memo(() => {
     <>
       {billingEmailBounceNotification && accountEmailRef && (
         <EmailBounceNotification
+          changeEmail={() =>
+            history.push('/account', {
+              contactDrawerOpen: true,
+              focusEmail: true,
+            })
+          }
           text={
             <Typography data-testid="billing_email_bounce">
               An email to your account&rsquo;s email address couldn&rsquo;t be
@@ -57,16 +62,13 @@ export const EmailBounceNotificationSection: React.FC<{}> = React.memo(() => {
             </Typography>
           }
           confirmEmail={confirmAccountEmail}
-          changeEmail={() =>
-            history.push('/account', {
-              contactDrawerOpen: true,
-              focusEmail: true,
-            })
-          }
         />
       )}
       {userEmailBounceNotification && profileEmailRef && (
         <EmailBounceNotification
+          changeEmail={() =>
+            history.push('/profile/display', { focusEmail: true })
+          }
           text={
             <Typography data-testid="user_email_bounce">
               An email to your user profile&rsquo;s email address couldn&rsquo;t
@@ -75,9 +77,6 @@ export const EmailBounceNotificationSection: React.FC<{}> = React.memo(() => {
             </Typography>
           }
           confirmEmail={confirmProfileEmail}
-          changeEmail={() =>
-            history.push('/profile/display', { focusEmail: true })
-          }
         />
       )}
     </>
@@ -87,33 +86,15 @@ export const EmailBounceNotificationSection: React.FC<{}> = React.memo(() => {
 // =============================================================================
 // <EmailBounceNotification />
 // =============================================================================
-const useEmailBounceNotificationStyles = makeStyles((theme: Theme) => ({
-  updateButton: {
-    marginLeft: 16,
-  },
-  buttonContainer: {
-    justifyContent: 'flex-end',
-    [theme.breakpoints.down('sm')]: {
-      marginTop: 8,
-      marginBottom: 4,
-      marginLeft: 2,
-      justifyContent: 'flex-start',
-    },
-  },
-}));
 
 interface Props {
-  text: React.ReactNode;
-  confirmEmail: () => Promise<any>;
   changeEmail: () => void;
+  confirmEmail: () => Promise<any>;
+  text: React.ReactNode;
 }
 
-type CombinedProps = Props;
-
-const EmailBounceNotification: React.FC<CombinedProps> = React.memo((props) => {
-  const { text, confirmEmail, changeEmail } = props;
-
-  const classes = useEmailBounceNotificationStyles();
+const EmailBounceNotification = React.memo((props: Props) => {
+  const { changeEmail, confirmEmail, text } = props;
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -135,7 +116,7 @@ const EmailBounceNotification: React.FC<CombinedProps> = React.memo((props) => {
   };
 
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
   const confirmationText = matchesSmDown
     ? 'Confirm'
@@ -147,36 +128,31 @@ const EmailBounceNotification: React.FC<CombinedProps> = React.memo((props) => {
   }
 
   return (
-    <Notice important warning spacing={2}>
-      <Grid container alignItems="center">
-        <Grid item xs={12} md={6} lg={8}>
+    <Notice important spacing={2} variant="warning">
+      <Grid alignItems="center" container>
+        <Grid lg={8} md={6} xs={12}>
           {text}
         </Grid>
-        <Grid
-          container
-          item
-          xs={12}
-          md={6}
-          lg={4}
-          className={classes.buttonContainer}
-        >
+        <StyledGrid container lg={4} md={6} xs={12}>
           <Button
             buttonType="primary"
-            onClick={handleConfirm}
-            loading={loading}
             data-testid="confirmButton"
+            loading={loading}
+            onClick={handleConfirm}
           >
             {confirmationText}
           </Button>
           <Button
-            className={classes.updateButton}
+            sx={(theme) => ({
+              marginLeft: theme.spacing(2),
+            })}
             buttonType="secondary"
-            onClick={changeEmail}
             data-testid="updateButton"
+            onClick={changeEmail}
           >
             {updateText}
           </Button>
-        </Grid>
+        </StyledGrid>
       </Grid>
     </Notice>
   );

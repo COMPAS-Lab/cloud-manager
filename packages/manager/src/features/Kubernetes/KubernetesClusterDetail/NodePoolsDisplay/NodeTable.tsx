@@ -1,116 +1,111 @@
-import { PoolNodeResponse } from '@linode/api-v4/lib/kubernetes';
-import { APIError } from '@linode/api-v4/lib/types';
+import { Box } from '@linode/ui';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableFooter from 'src/components/core/TableFooter';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
+
+import Lock from 'src/assets/icons/lock.svg';
+import Unlock from 'src/assets/icons/unlock.svg';
+import { DISK_ENCRYPTION_NODE_POOL_GUIDANCE_COPY } from 'src/components/Encryption/constants';
+import { useIsDiskEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
 import OrderBy from 'src/components/OrderBy';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import StatusIcon from 'src/components/StatusIcon';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableContentWrapper from 'src/components/TableContentWrapper';
-import TableRow from 'src/components/TableRow';
-import TableSortCell from 'src/components/TableSortCell';
-import { transitionText } from 'src/features/linodes/transitions';
-import useLinodes from 'src/hooks/useLinodes';
-import { useReduxLoad } from 'src/hooks/useReduxLoad';
-import { LinodeWithMaintenanceAndDisplayStatus } from 'src/store/linodes/types';
-import { useRecentEventForLinode } from 'src/store/selectors/recentEventForLinode';
-import NodeActionMenu from './NodeActionMenu';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableContentWrapper } from 'src/components/TableContentWrapper/TableContentWrapper';
+import { TableFooter } from 'src/components/TableFooter';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableSortCell } from 'src/components/TableSortCell';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { Typography } from 'src/components/Typography';
+import { useAllLinodesQuery } from 'src/queries/linodes/linodes';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  table: {
-    borderLeft: `1px solid ${theme.borderColors.borderTable}`,
-    borderRight: `1px solid ${theme.borderColors.borderTable}`,
-  },
-  labelCell: {
-    ...theme.applyTableHeaderStyles,
-    width: '35%',
-  },
-  statusCell: {
-    ...theme.applyTableHeaderStyles,
-    width: '15%',
-  },
-  ipCell: {
-    ...theme.applyTableHeaderStyles,
-    width: '25%',
-  },
-  error: {
-    color: theme.color.red,
-  },
-}));
+import { NodeRow as _NodeRow } from './NodeRow';
+import {
+  StyledTable,
+  StyledTypography,
+  StyledVerticalDivider,
+} from './NodeTable.styles';
 
-// =============================================================================
-// NodeTable
-// =============================================================================
+import type { NodeRow } from './NodeRow';
+import type { PoolNodeResponse } from '@linode/api-v4/lib/kubernetes';
+import type { EncryptionStatus } from '@linode/api-v4/lib/linodes/types';
+import type { LinodeWithMaintenance } from 'src/utilities/linodes';
+
 export interface Props {
-  poolId: number;
+  encryptionStatus: EncryptionStatus | undefined;
   nodes: PoolNodeResponse[];
-  typeLabel: string;
   openRecycleNodeDialog: (nodeID: string, linodeLabel: string) => void;
+  poolId: number;
+  typeLabel: string;
 }
 
-export const NodeTable: React.FC<Props> = (props) => {
-  const { nodes, poolId, typeLabel, openRecycleNodeDialog } = props;
+export const encryptionStatusTestId = 'encryption-status-fragment';
 
-  const classes = useStyles();
+export const NodeTable = React.memo((props: Props) => {
+  const {
+    encryptionStatus,
+    nodes,
+    openRecycleNodeDialog,
+    poolId,
+    typeLabel,
+  } = props;
 
-  const { _loading } = useReduxLoad(['linodes']);
-  const { linodes } = useLinodes();
+  const { data: linodes, error, isLoading } = useAllLinodesQuery();
+  const {
+    isDiskEncryptionFeatureEnabled,
+  } = useIsDiskEncryptionFeatureEnabled();
 
-  const rowData = nodes.map((thisNode) =>
-    nodeToRow(thisNode, Object.values(linodes.itemsById))
-  );
+  const rowData = nodes.map((thisNode) => nodeToRow(thisNode, linodes ?? []));
 
   return (
-    <OrderBy data={rowData} orderBy={'label'} order={'asc'}>
+    <OrderBy data={rowData} order={'asc'} orderBy={'label'}>
       {({ data: orderedData, handleOrderChange, order, orderBy }) => (
         <Paginate data={orderedData}>
           {({
-            data: paginatedAndOrderedData,
             count,
+            data: paginatedAndOrderedData,
             handlePageChange,
             handlePageSizeChange,
             page,
             pageSize,
           }) => (
             <>
-              <Table
-                aria-label="List of Your Cluster Nodes"
-                className={classes.table}
-              >
+              <StyledTable aria-label="List of Your Cluster Nodes">
                 <TableHead>
                   <TableRow>
                     <TableSortCell
+                      sx={(theme) => ({
+                        ...theme.applyTableHeaderStyles,
+                        width: '35%',
+                      })}
                       active={orderBy === 'label'}
-                      label={'label'}
                       direction={order}
                       handleClick={handleOrderChange}
-                      className={classes.labelCell}
+                      label={'label'}
                     >
                       Linode
                     </TableSortCell>
                     <TableSortCell
+                      sx={(theme) => ({
+                        ...theme.applyTableHeaderStyles,
+                        width: '25%',
+                      })}
                       active={orderBy === 'instanceStatus'}
-                      label={'instanceStatus'}
                       direction={order}
                       handleClick={handleOrderChange}
-                      className={classes.statusCell}
+                      label={'instanceStatus'}
                     >
                       Status
                     </TableSortCell>
                     <TableSortCell
+                      sx={(theme) => ({
+                        ...theme.applyTableHeaderStyles,
+                        width: '35%',
+                      })}
                       active={orderBy === 'ip'}
-                      label={'ip'}
                       direction={order}
                       handleClick={handleOrderChange}
-                      className={classes.ipCell}
+                      label={'ip'}
                     >
                       IP Address
                     </TableSortCell>
@@ -119,24 +114,23 @@ export const NodeTable: React.FC<Props> = (props) => {
                 </TableHead>
                 <TableBody>
                   <TableContentWrapper
-                    loadingProps={{ columns: 4 }}
-                    loading={linodes.loading || _loading}
-                    lastUpdated={linodes.lastUpdated}
                     length={paginatedAndOrderedData.length}
+                    loading={isLoading}
+                    loadingProps={{ columns: 4 }}
                   >
                     {paginatedAndOrderedData.map((eachRow) => {
                       return (
-                        <NodeRow
-                          key={`node-row-${eachRow.nodeId}`}
-                          nodeId={eachRow.nodeId}
+                        <_NodeRow
                           instanceId={eachRow.instanceId}
-                          label={eachRow.label}
                           instanceStatus={eachRow.instanceStatus}
                           ip={eachRow.ip}
+                          key={`node-row-${eachRow.nodeId}`}
+                          label={eachRow.label}
+                          linodeError={error ?? undefined}
+                          nodeId={eachRow.nodeId}
                           nodeStatus={eachRow.nodeStatus}
-                          typeLabel={typeLabel}
-                          linodeError={linodes.error?.read}
                           openRecycleNodeDialog={openRecycleNodeDialog}
+                          typeLabel={typeLabel}
                         />
                       );
                     })}
@@ -145,18 +139,37 @@ export const NodeTable: React.FC<Props> = (props) => {
                 <TableFooter>
                   <TableRow>
                     <TableCell colSpan={4}>
-                      <Typography>Pool ID {poolId}</Typography>
+                      {isDiskEncryptionFeatureEnabled &&
+                      encryptionStatus !== undefined ? (
+                        <Box
+                          alignItems="center"
+                          data-testid={encryptionStatusTestId}
+                          display="flex"
+                          flexDirection="row"
+                        >
+                          <Typography>Pool ID {poolId}</Typography>
+                          <StyledVerticalDivider />
+                          <EncryptedStatus
+                            tooltipText={
+                              DISK_ENCRYPTION_NODE_POOL_GUIDANCE_COPY
+                            }
+                            encryptionStatus={encryptionStatus}
+                          />
+                        </Box>
+                      ) : (
+                        <Typography>Pool ID {poolId}</Typography>
+                      )}
                     </TableCell>
                   </TableRow>
                 </TableFooter>
-              </Table>
+              </StyledTable>
               <PaginationFooter
                 count={count}
+                eventCategory="Node Table"
                 handlePageChange={handlePageChange}
                 handleSizeChange={handlePageSizeChange}
                 page={page}
                 pageSize={pageSize}
-                eventCategory="Node Table"
               />
             </>
           )}
@@ -164,125 +177,48 @@ export const NodeTable: React.FC<Props> = (props) => {
       )}
     </OrderBy>
   );
-};
-
-export default React.memo(NodeTable);
-
-// =============================================================================
-// NodeRow
-// =============================================================================
-interface NodeRow {
-  nodeId: string;
-  instanceId?: number;
-  label?: string;
-  instanceStatus?: string;
-  ip?: string;
-  nodeStatus: string;
-}
-
-interface NodeRowProps extends NodeRow {
-  typeLabel: string;
-  linodeError?: APIError[];
-  openRecycleNodeDialog: (nodeID: string, linodeLabel: string) => void;
-}
-
-export const NodeRow: React.FC<NodeRowProps> = React.memo((props) => {
-  const {
-    nodeId,
-    instanceId,
-    label,
-    instanceStatus,
-    ip,
-    typeLabel,
-    nodeStatus,
-    linodeError,
-    openRecycleNodeDialog,
-  } = props;
-
-  const classes = useStyles();
-
-  const recentEvent = useRecentEventForLinode(instanceId ?? -1);
-
-  const linodeLink = instanceId ? `/linodes/${instanceId}` : undefined;
-
-  const nodeReadyAndInstanceRunning =
-    nodeStatus === 'ready' && instanceStatus === 'running';
-  const iconStatus = nodeReadyAndInstanceRunning ? 'active' : 'inactive';
-
-  const displayLabel = label ?? typeLabel;
-  const displayStatus =
-    nodeStatus === 'not_ready'
-      ? 'Provisioning'
-      : transitionText(instanceStatus ?? '', instanceId ?? -1, recentEvent);
-
-  const displayIP = ip ?? '';
-
-  return (
-    <TableRow ariaLabel={label}>
-      <TableCell>
-        <Grid container wrap="nowrap" alignItems="center">
-          <Grid item>
-            <Typography>
-              {linodeLink ? (
-                <Link to={linodeLink}>{displayLabel}</Link>
-              ) : (
-                displayLabel
-              )}
-            </Typography>
-          </Grid>
-        </Grid>
-      </TableCell>
-      <TableCell statusCell={!linodeError}>
-        {linodeError ? (
-          <Typography className={classes.error}>
-            Error retrieving status
-          </Typography>
-        ) : (
-          <>
-            <StatusIcon status={iconStatus} />
-            {displayStatus}
-          </>
-        )}
-      </TableCell>
-      <TableCell>
-        {linodeError ? (
-          <Typography className={classes.error}>Error retrieving IP</Typography>
-        ) : (
-          displayIP
-        )}
-      </TableCell>
-      <TableCell>
-        <NodeActionMenu
-          nodeId={nodeId}
-          instanceLabel={label}
-          openRecycleNodeDialog={openRecycleNodeDialog}
-        />
-      </TableCell>
-    </TableRow>
-  );
 });
-
-// =============================================================================
-// Utilities
-// =============================================================================
 
 /**
  * Transforms an LKE Pool Node to a NodeRow.
  */
 export const nodeToRow = (
   node: PoolNodeResponse,
-  linodes: LinodeWithMaintenanceAndDisplayStatus[]
+  linodes: LinodeWithMaintenance[]
 ): NodeRow => {
   const foundLinode = linodes.find(
     (thisLinode) => thisLinode.id === node.instance_id
   );
 
   return {
-    nodeId: node.id,
     instanceId: node.instance_id || undefined,
-    label: foundLinode?.label,
     instanceStatus: foundLinode?.status,
     ip: foundLinode?.ipv4[0],
+    label: foundLinode?.label,
+    nodeId: node.id,
     nodeStatus: node.status,
   };
+};
+
+export const EncryptedStatus = ({
+  encryptionStatus,
+  tooltipText,
+}: {
+  encryptionStatus: EncryptionStatus;
+  tooltipText: string | undefined;
+}) => {
+  return encryptionStatus === 'enabled' ? (
+    <>
+      <Lock />
+      <StyledTypography>Encrypted</StyledTypography>
+    </>
+  ) : encryptionStatus === 'disabled' ? (
+    <>
+      <Unlock style={{ minWidth: 16 }} />
+      <StyledTypography sx={{ whiteSpace: 'nowrap' }}>
+        Not Encrypted
+      </StyledTypography>
+      {tooltipText ? <TooltipIcon status="help" text={tooltipText} /> : null}
+    </>
+  ) : null;
 };

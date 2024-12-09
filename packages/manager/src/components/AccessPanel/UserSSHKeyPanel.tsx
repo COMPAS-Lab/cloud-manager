@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 import Button from 'src/components/Button';
 /* -- Clanode Change -- */
@@ -23,12 +24,8 @@ import Radio from 'src/components/core/Radio';
 
 export const MAX_SSH_KEYS_DISPLAY = 100;
 
-const useStyles = makeStyles((theme: Theme) => ({
-  title: {
-    marginBottom: theme.spacing(2),
-  },
+const useStyles = makeStyles()((theme: Theme) => ({
   cellCheckbox: {
-    width: 50,
     paddingLeft: theme.spacing(1),
     paddingRight: theme.spacing(1),
   },
@@ -41,51 +38,78 @@ const useStyles = makeStyles((theme: Theme) => ({
   cellUser: {
     width: '30%',
   },
-  userWrapper: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    marginTop: theme.spacing(1) / 2,
+  title: {
+    marginBottom: theme.spacing(2),
   },
-  gravatar: {
-    borderRadius: '50%',
-    marginRight: theme.spacing(1),
+  userWrapper: {
+    alignItems: 'center',
+    display: 'inline-flex',
+    marginTop: theme.spacing(0.5),
   },
 }));
 
-export interface UserSSHKeyObject {
-  gravatarUrl: string;
-  username: string;
-  selected: boolean;
-  keys: string[];
-  onSSHKeyChange: (
-    e: React.ChangeEvent<HTMLInputElement>,
-    result: boolean
-  ) => void;
-}
-
 interface Props {
-  users?: UserSSHKeyObject[];
-  error?: string;
+  authorizedUsers: string[];
   disabled?: boolean;
-  onKeyAddSuccess: () => void;
+  setAuthorizedUsers: (usernames: string[]) => void;
 }
 
-type CombinedProps = Props;
+const UserSSHKeyPanel = (props: Props) => {
+  const { classes } = useStyles();
+  const theme = useTheme();
+  const { authorizedUsers, disabled, setAuthorizedUsers } = props;
 
-const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = React.useState<boolean>(
+    false
+  );
 
-  const [drawerOpen, setDrawerOpen] = React.useState<boolean>(false);
-  /**
-   * Success state can be handled here, which makes it hard to clear on e.g. form errors,
-   * or it can be handled several levels up, which makes it complex and hard to maintain.
-   * Went with here for now since this kind of thing is what Hooks are there for. Can
-   * discuss post-POC.
-   *
-   * In addition, there's never been any error handling for SSH keys, which maybe we should add.
-   */
-  const [success, setSuccess] = React.useState<boolean>(false);
-  const { disabled, error, onKeyAddSuccess, users } = props;
+  const pagination = usePagination(1);
+
+  const { data: profile } = useProfile();
+
+  const isRestricted = profile?.restricted ?? false;
+
+  // For non-restricted users, this query data will be used to render options
+  const {
+    data: users,
+    error: accountUsersError,
+    isLoading: isAccountUsersLoading,
+  } = useAccountUsers(
+    {
+      params: {
+        page: pagination.page,
+        page_size: pagination.pageSize,
+      },
+    }
+    // { ssh_keys: { '+neq': null } }
+  );
+
+  // Restricted users can't hit /account/users.
+  // For restricted users, we assume that they can only choose their own SSH keys,
+  // so we use this query to get them so we can display their labels.
+  // Notice how the query is only enabled when the user is restricted.
+  // Also notice this query usually requires us to handle pagination, BUT,
+  // because we truncate the results, we don't need all items.
+  const {
+    data: sshKeys,
+    error: sshKeysError,
+    isLoading: isSSHKeysLoading,
+  } = useSSHKeysQuery({}, {}, isRestricted);
+
+  const sshKeyLabels = sshKeys?.data.map((key) => key.label) ?? [];
+  const sshKeyTotal = sshKeys?.results ?? 0;
+
+  const onToggle = (username: string) => {
+    if (authorizedUsers.includes(username)) {
+      // Remove username
+      setAuthorizedUsers(authorizedUsers.filter((u) => u !== username));
+    } else {
+      setAuthorizedUsers([...authorizedUsers, username]);
+    }
+  };
+
+  const isLoading = isRestricted ? isSSHKeysLoading : isAccountUsersLoading;
+  const error = isRestricted ? sshKeysError : accountUsersError;
 
   /* -- Clanode Change -- */
   const [selectedSSHKey, setSelectedSSHKey] = React.useState<string>();
@@ -125,22 +149,15 @@ const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
 
   return (
     <React.Fragment>
-      <Typography variant="h2" className={classes.title}>
+      <Typography className={classes.title} variant="h2">
         SSH Keys
       </Typography>
-      {success && (
-        <Notice success data-testid="ssh-success-message">
-          <Typography>SSH key added successfully.</Typography>
-        </Notice>
-      )}
       <Table spacingBottom={16}>
         <TableHead>
           <TableRow>
             <TableCell className={classes.cellCheckbox} />
-            <TableCell className={classes.cellUser} data-qa-table-header="User">
-              User
-            </TableCell>
-            <TableCell data-qa-table-header="SSH Keys">SSH Keys</TableCell>
+            <TableCell className={classes.cellUser}>User</TableCell>
+            <TableCell>SSH Keys</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -233,18 +250,26 @@ const UserSSHKeyPanel: React.FC<CombinedProps> = (props) => {
           )}
         </TableBody>
       </Table>
+      {!isRestricted && (
+        <PaginationFooter
+          count={users?.results ?? 0}
+          eventCategory="SSH Key Users Table"
+          handlePageChange={pagination.handlePageChange}
+          handleSizeChange={pagination.handlePageSizeChange}
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+        />
+      )}
       <Button
         buttonType="outlined"
-        onClick={handleOpenDrawer}
-        compact
         disabled={disabled}
+        onClick={() => setIsCreateDrawerOpen(true)}
       >
         Add an SSH Key
       </Button>
-      <SSHKeyCreationDrawer
-        open={drawerOpen}
-        onSuccess={handleKeyAddSuccess}
-        onCancel={() => setDrawerOpen(false)}
+      <CreateSSHKeyDrawer
+        onClose={() => setIsCreateDrawerOpen(false)}
+        open={isCreateDrawerOpen}
       />
     </React.Fragment>
   );

@@ -1,23 +1,43 @@
 import * as React from 'react';
 
+import { isNumber } from 'src/utilities/isNumber';
+
 interface CurrencyFormatterProps {
-  quantity: number;
-  decimalPlaces?: number;
-  wrapInParentheses?: boolean;
+  /**
+   * Additional data attributes to pass in. For example, a data-testid
+   */
   dataAttrs?: Record<string, any>;
+  /**
+   * The number of decimal places to display.
+   */
+  decimalPlaces?: number;
+  /**
+   * The amount (of money) to display in a currency format.
+   */
+  quantity: '--.--' | number;
+  /**
+   * A boolean used to wrap the currency in parenthesis. This is normally done to indicate a negative amount or balance.
+   */
+  wrapInParentheses?: boolean;
 }
 
-export const Currency: React.FC<CurrencyFormatterProps> = (props) => {
-  const { quantity, wrapInParentheses, dataAttrs } = props;
+export const Currency = (props: CurrencyFormatterProps) => {
+  const { dataAttrs, decimalPlaces, quantity, wrapInParentheses } = props;
+
+  // Use the default value (2) when decimalPlaces is negative or undefined.
+  const minimumFractionDigits =
+    decimalPlaces !== undefined && decimalPlaces >= 0 ? decimalPlaces : 2;
 
   const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: props.decimalPlaces ?? 2,
+    minimumFractionDigits,
+    style: 'currency',
   });
 
-  const formattedQuantity = formatter.format(Math.abs(quantity));
-  const isNegative = quantity < 0;
+  const formattedQuantity = isNumber(quantity)
+    ? formatter.format(Math.abs(quantity))
+    : `$${quantity}`;
+  const isNegative = isNumber(quantity) ? quantity < 0 : false;
 
   let output;
 
@@ -27,12 +47,9 @@ export const Currency: React.FC<CurrencyFormatterProps> = (props) => {
     output = isNegative ? `-${formattedQuantity}` : formattedQuantity;
   }
 
-  // eslint-disable-next-line
   return (
     <span className="notranslate" {...dataAttrs}>
       {output}
     </span>
   );
 };
-
-export default React.memo(Currency);

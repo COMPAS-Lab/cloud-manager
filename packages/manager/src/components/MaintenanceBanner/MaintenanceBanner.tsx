@@ -1,55 +1,36 @@
 import { AccountMaintenance } from '@linode/api-v4/lib/account';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { compose } from 'recompose';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import { useProfile } from 'src/queries/profile';
+
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { useAllAccountMaintenanceQuery } from 'src/queries/account/maintenance';
+import { useProfile } from 'src/queries/profile/profile';
 import { formatDate } from 'src/utilities/formatDate';
-import isPast from 'src/utilities/isPast';
-
-type ClassNames = 'root' | 'dateTime';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      '& p': {
-        lineHeight: `20px`,
-      },
-      '& p:last-child': {
-        marginBottom: 0,
-      },
-    },
-    dateTime: {
-      fontSize: theme.spacing(2),
-      lineHeight: `${theme.spacing(2.5)}px`,
-    },
-  });
+import { isPast } from 'src/utilities/isPast';
 
 interface Props {
+  maintenanceEnd?: null | string;
   /** please keep in mind here that it's possible the start time can be in the past */
-  maintenanceStart?: string | null;
-  maintenanceEnd?: string | null;
+  maintenanceStart?: null | string;
   type?: AccountMaintenance['type'];
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+export const MaintenanceBanner = React.memo((props: Props) => {
+  const { maintenanceEnd, maintenanceStart, type } = props;
 
-const MaintenanceBanner: React.FC<CombinedProps> = (props) => {
-  const { type, maintenanceEnd, maintenanceStart } = props;
+  const { data: accountMaintenanceData } = useAllAccountMaintenanceQuery(
+    {},
+    { status: { '+or': ['pending, started'] } }
+  );
+
   const {
     data: profile,
-    isLoading: profileLoading,
     error: profileError,
+    isLoading: profileLoading,
   } = useProfile();
 
-  const timezoneMsg = () => {
+  const getTimezoneMessage = () => {
     if (profileLoading) {
       return 'Fetching timezone...';
     }
@@ -82,38 +63,36 @@ const MaintenanceBanner: React.FC<CombinedProps> = (props) => {
     return null;
   }
 
+  if (!accountMaintenanceData || accountMaintenanceData?.length === 0) {
+    return null;
+  }
+
   return (
-    <Notice warning important className={props.classes.root}>
-      <Typography>
+    <Notice important variant="warning">
+      <Typography lineHeight="20px">
         {generateIntroText(type, maintenanceStart, maintenanceEnd)}
       </Typography>
       {
         /** only display timezone on the Linode detail */
         maintenanceStart && (
-          <Typography>
-            Timezone: <Link to="/profile/display">{timezoneMsg()} </Link>
+          <Typography lineHeight="20px">
+            Timezone: <Link to="/profile/display">{getTimezoneMessage()} </Link>
           </Typography>
         )
       }
-      <Typography>
+      <Typography lineHeight="20px">
         For more information, please see your{' '}
         <Link to="/support/tickets?type=open">open support tickets.</Link>
       </Typography>
     </Notice>
   );
-};
-
-const styled = withStyles(styles);
-
-export default compose<CombinedProps, Props>(
-  styled,
-  React.memo
-)(MaintenanceBanner);
+});
 
 const generateIntroText = (
   type?: AccountMaintenance['type'],
-  start?: string | null,
-  end?: string | null
+  start?: null | string,
+  end?: null | string,
+  timezone?: string
 ) => {
   const maintenanceInProgress = !!start
     ? isPast(start)(new Date().toISOString())
@@ -138,7 +117,9 @@ const generateIntroText = (
        * we're going to display both the raw and humanized versions of the date
        * to the user here.
        */
-      const rawDate = formatDate(start);
+      const rawDate = formatDate(start, {
+        timezone,
+      });
 
       return (
         <React.Fragment>

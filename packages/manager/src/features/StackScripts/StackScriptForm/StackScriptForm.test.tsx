@@ -1,42 +1,42 @@
 import * as React from 'react';
 
+import { renderWithThemeAndHookFormContext } from 'src/utilities/testHelpers';
+
 import { StackScriptForm } from './StackScriptForm';
-import { renderWithTheme } from 'src/utilities/testHelpers';
 
 const props = {
-  images: {
-    available: [],
-    selected: [],
-  },
   currentUser: 'mmckenna',
-  label: {
-    value: '',
-    handler: jest.fn(),
-  },
   description: {
+    handler: vi.fn(),
     value: '',
-    handler: jest.fn(),
   },
-  revision: {
+  disableSubmit: false,
+  errors: [],
+  isSubmitting: false,
+  label: {
+    handler: vi.fn(),
     value: '',
-    handler: jest.fn(),
+  },
+  mode: 'create' as any,
+  onCancel: vi.fn(),
+  onSelectChange: vi.fn(),
+  onSubmit: vi.fn(),
+  revision: {
+    handler: vi.fn(),
+    value: '',
   },
   script: {
+    handler: vi.fn(),
     value: '',
-    handler: jest.fn(),
   },
-  onSelectChange: jest.fn(),
-  errors: [],
-  onSubmit: jest.fn(),
-  onCancel: jest.fn(),
-  isSubmitting: false,
-  mode: 'create' as any,
-  disableSubmit: false,
+  selectedImages: [],
 };
 
 describe('StackScriptCreate', () => {
   it('should render', () => {
-    const { getByText } = renderWithTheme(<StackScriptForm {...props} />);
+    const { getByText } = renderWithThemeAndHookFormContext({
+      component: <StackScriptForm {...props} />,
+    });
     getByText(/stackscript label/i);
   });
 });

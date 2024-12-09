@@ -1,428 +1,254 @@
-import {
-  PoolNodeRequest,
-  PoolNodeResponse,
-  autoscaleNodePool,
-  AutoscaleNodePool as AutoscaleNodePoolValues,
-} from '@linode/api-v4/lib/kubernetes';
-import { useSnackbar } from 'notistack';
-import * as React from 'react';
-import { useSelector } from 'react-redux';
+import Grid from '@mui/material/Unstable_Grid2';
+import React, { useState } from 'react';
 import { Waypoint } from 'react-waypoint';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import { ExtendedType } from 'src/store/linodeType/linodeType.reducer';
-import { useDialog } from 'src/hooks/useDialog';
-import { ApplicationState } from 'src/store';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { PoolNodeWithPrice } from '../../types';
-import RecycleNodesDialog from '../RecycleNodesDialog';
-import AddNodePoolDrawer from '../AddNodePoolDrawer';
-import ResizeNodePoolDrawer from '../ResizeNodePoolDrawer';
-import NodeDialog from './NodeDialog';
-import NodePool from './NodePool';
-import NodePoolDialog from './NodePoolDialog';
-import AutoscalePoolDialog from './AutoscalePoolDialog';
-import Button from 'src/components/Button';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: theme.spacing(3),
-    paddingTop: '4px',
-  },
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { Stack } from 'src/components/Stack';
+import { Typography } from 'src/components/Typography';
+import { useAllKubernetesNodePoolQuery } from 'src/queries/kubernetes';
+import { useSpecificTypes } from 'src/queries/types';
+import { extendTypesQueryResult } from 'src/utilities/extendType';
+
+import { RecycleClusterDialog } from '../RecycleClusterDialog';
+import { RecycleNodePoolDialog } from '../RecycleNodePoolDialog';
+import { AddNodePoolDrawer } from './AddNodePoolDrawer';
+import { AutoscalePoolDialog } from './AutoscalePoolDialog';
+import { DeleteNodePoolDialog } from './DeleteNodePoolDialog';
+import { NodePool } from './NodePool';
+import { RecycleNodeDialog } from './RecycleNodeDialog';
+import { ResizeNodePoolDrawer } from './ResizeNodePoolDrawer';
+
+import type { Region } from '@linode/api-v4';
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   button: {
     marginBottom: theme.spacing(),
     marginLeft: theme.spacing(),
   },
   displayTable: {
-    width: '100%',
     '& > div': {
-      marginTop: theme.spacing(),
-      marginBottom: theme.spacing(4),
+      marginBottom: theme.spacing(3),
     },
     '& > div:last-child': {
       marginBottom: 0,
     },
+    padding: '8px 8px 0px',
+    width: '100%',
   },
   nodePoolHeader: {
     marginBottom: theme.spacing(),
+    [theme.breakpoints.only('sm')]: {
+      marginLeft: theme.spacing(),
+    },
+    [theme.breakpoints.only('xs')]: {
+      marginLeft: theme.spacing(),
+    },
   },
   nodePoolHeaderOuter: {
-    display: 'flex',
     alignItems: 'center',
-  },
-  nodePool: {
-    marginTop: theme.spacing(),
-    marginBottom: theme.spacing(4),
-  },
-  mobileSpacing: {
-    [theme.breakpoints.down('sm')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
+    display: 'flex',
   },
 }));
 
 export interface Props {
   clusterID: number;
   clusterLabel: string;
-  pools: PoolNodeWithPrice[];
-  types: ExtendedType[];
-  updatePool: (
-    poolID: number,
-    updatedPool: PoolNodeWithPrice
-  ) => Promise<PoolNodeWithPrice>;
-  deletePool: (poolID: number) => Promise<any>;
-  addNodePool: (newPool: PoolNodeRequest) => Promise<PoolNodeResponse>;
-  recycleAllClusterNodes: () => Promise<{}>;
-  recycleAllPoolNodes: (poolID: number) => Promise<{}>;
-  recycleNode: (nodeID: string) => Promise<{}>;
-  getNodePools: () => Promise<any>;
+  clusterRegionId: string;
+  regionsData: Region[];
 }
 
-export const NodePoolsDisplay: React.FC<Props> = (props) => {
+export const NodePoolsDisplay = (props: Props) => {
+  const { clusterID, clusterLabel, clusterRegionId, regionsData } = props;
+  const { classes, cx } = useStyles();
+
   const {
-    clusterID,
-    clusterLabel,
-    pools,
-    types,
-    addNodePool,
-    updatePool,
-    deletePool,
-    recycleAllClusterNodes,
-    recycleAllPoolNodes,
-    recycleNode,
-    getNodePools,
-  } = props;
+    data: pools,
+    error: poolsError,
+    isLoading,
+  } = useAllKubernetesNodePoolQuery(clusterID, { refetchInterval: 15000 });
 
-  const classes = useStyles();
-  const { enqueueSnackbar } = useSnackbar();
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('');
 
-  const deletePoolDialog = useDialog<number>(deletePool);
-  const recycleAllPoolNodesDialog = useDialog<number>(recycleAllPoolNodes);
-  const recycleAllClusterNodesDialog = useDialog(recycleAllClusterNodes);
-  const recycleNodeDialog = useDialog<string>(recycleNode);
-  const autoscalePoolDialog = useDialog<any>(autoscaleNodePool);
+  const [selectedPoolId, setSelectedPoolId] = useState(-1);
+  const selectedPool = pools?.find((pool) => pool.id === selectedPoolId);
 
-  const [numPoolsToDisplay, setNumPoolsToDisplay] = React.useState(25);
+  const [isDeleteNodePoolOpen, setIsDeleteNodePoolOpen] = useState(false);
+  const [isResizeDrawerOpen, setIsResizeDrawerOpen] = useState(false);
+  const [isRecycleAllPoolNodesOpen, setIsRecycleAllPoolNodesOpen] = useState(
+    false
+  );
+  const [isRecycleNodeOpen, setIsRecycleNodeOpen] = useState(false);
+  const [isRecycleClusterOpen, setIsRecycleClusterOpen] = useState(false);
+
+  const [isAutoscaleDialogOpen, setIsAutoscaleDialogOpen] = useState(false);
+
+  const [numPoolsToDisplay, setNumPoolsToDisplay] = React.useState(5);
+  const _pools = pools?.slice(0, numPoolsToDisplay);
+
+  const typesQuery = useSpecificTypes(_pools?.map((pool) => pool.type) ?? []);
+  const types = extendTypesQueryResult(typesQuery);
+
   const handleShowMore = () => {
-    if (numPoolsToDisplay < pools.length) {
-      setNumPoolsToDisplay(Math.min(numPoolsToDisplay + 25, pools.length));
+    if (numPoolsToDisplay < (pools?.length ?? 0)) {
+      setNumPoolsToDisplay(
+        Math.min(numPoolsToDisplay + 25, pools?.length ?? 0)
+      );
     }
   };
 
   const [addDrawerOpen, setAddDrawerOpen] = React.useState<boolean>(false);
-  const [resizeDrawerOpen, setResizeDrawerOpen] = React.useState<boolean>(
-    false
-  );
-  const [drawerSubmitting, setDrawerSubmitting] = React.useState<boolean>(
-    false
-  );
-  const [drawerError, setDrawerError] = React.useState<string | undefined>();
-  const [poolForEdit, setPoolForEdit] = React.useState<
-    PoolNodeWithPrice | undefined
-  >();
 
   const handleOpenAddDrawer = () => {
     setAddDrawerOpen(true);
-    setDrawerError(undefined);
   };
 
-  const handleOpenResizeDrawer = (poolID: number) => {
-    setPoolForEdit(pools.find((thisPool) => thisPool.id === poolID));
-    setResizeDrawerOpen(true);
-    setDrawerError(undefined);
+  const handleOpenResizeDrawer = (poolId: number) => {
+    setSelectedPoolId(poolId);
+    setIsResizeDrawerOpen(true);
   };
 
-  const handleAdd = (type: string, count: number) => {
-    setDrawerSubmitting(true);
-    setDrawerError(undefined);
-    return addNodePool({ type, count })
-      .then((_) => {
-        setDrawerSubmitting(false);
-        setAddDrawerOpen(false);
-      })
-      .catch((error) => {
-        setDrawerSubmitting(false);
-        setDrawerError(
-          getAPIErrorOrDefault(error, 'Error adding Node Pool')[0].reason
-        );
-      });
-  };
-
-  const handleResize = (updatedCount: number) => {
-    // Should never happen, just a safety check
-    if (!poolForEdit) {
-      return;
-    }
-    setDrawerSubmitting(true);
-    setDrawerError(undefined);
-    updatePool(poolForEdit.id, { ...poolForEdit, count: updatedCount })
-      .then((_) => {
-        setDrawerSubmitting(false);
-        setResizeDrawerOpen(false);
-      })
-      .catch((error) => {
-        setDrawerSubmitting(false);
-        setDrawerError(
-          getAPIErrorOrDefault(error, 'Error resizing Node Pool')[0].reason
-        );
-      });
-  };
-
-  const handleDeletePool = () => {
-    const { dialog, submitDialog, handleError } = deletePoolDialog;
-    if (!dialog.entityID) {
-      return;
-    }
-    submitDialog(dialog.entityID).catch((err) => {
-      handleError(
-        getAPIErrorOrDefault(err, 'Error deleting this Node Pool.')[0].reason
-      );
-    });
-  };
-
-  const handleRecycleNode = () => {
-    const { dialog, submitDialog, handleError } = recycleNodeDialog;
-    if (!dialog.entityID) {
-      return;
-    }
-    submitDialog(dialog.entityID)
-      .then((_) => {
-        enqueueSnackbar('Node queued for recycling.', { variant: 'success' });
-      })
-      .catch((err) => {
-        handleError(
-          getAPIErrorOrDefault(err, 'Error recycling this node.')[0].reason
-        );
-      });
-  };
-
-  const handleAutoscalePool = (
-    values: AutoscaleNodePoolValues,
-    setSubmitting: (isSubmitting: boolean) => void,
-    setWarningMessage: (warning: string) => void
-  ) => {
-    const { dialog, submitDialog, handleError } = autoscalePoolDialog;
-    if (!dialog.entityID) {
-      return;
-    }
-
-    submitDialog({ clusterID, nodePoolID: dialog.entityID, autoscaler: values })
-      .then(() => {
-        enqueueSnackbar(
-          `Autoscaling updated for Node Pool ${dialog.entityID}.`,
-          { variant: 'success' }
-        );
-        getNodePools();
-      })
-      .catch((err) => {
-        handleError(
-          getAPIErrorOrDefault(
-            err,
-            `Error updating autoscaling for Node Pool ${dialog.entityID}.`
-          )[0].reason
-        );
-      })
-      .finally(() => {
-        setSubmitting(false);
-        setWarningMessage('');
-      });
-  };
-
-  const handleRecycleAllPoolNodes = () => {
-    const { dialog, submitDialog, handleError } = recycleAllPoolNodesDialog;
-    if (!dialog.entityID) {
-      return;
-    }
-    return submitDialog(dialog.entityID).catch((err) => {
-      handleError(getAPIErrorOrDefault(err, 'Error recycling nodes')[0].reason);
-    });
-  };
-
-  const handleRecycleAllClusterNodes = () => {
-    recycleAllClusterNodesDialog
-      .submitDialog(undefined)
-      .then((_) =>
-        enqueueSnackbar('Nodes queued for recycling', { variant: 'success' })
-      );
-  };
-
-  const _pools = pools.slice(0, numPoolsToDisplay);
-
-  const getAutoscaler = () =>
-    pools.find((pool) => pool.id === autoscalePoolDialog.dialog.entityID)
-      ?.autoscaler;
-
-  /**
-   * If the API returns an error when fetching node pools,
-   * we want to display this error to the user from the
-   * NodePoolDisplayTable.
-   *
-   * Only do this if we haven't yet successfully retrieved this
-   * data, so a random error in our subsequent polling doesn't
-   * break the view.
-   */
-  const poolsError = useSelector((state: ApplicationState) => {
-    const error = state.__resources.nodePools?.error?.read;
-    const lastUpdated = state.__resources.nodePools.lastUpdated;
-    if (error && lastUpdated === 0) {
-      return getAPIErrorOrDefault(error, 'Unable to load Node Pools.')[0]
-        .reason;
-    }
-    return undefined;
-  });
+  if (isLoading || pools === undefined) {
+    return <CircleProgress />;
+  }
 
   return (
     <>
       <Grid
-        container
         alignItems="center"
+        container
         justifyContent="space-between"
-        updateFor={[classes]}
+        spacing={2}
       >
-        <Grid item>
-          <Typography
-            variant="h2"
-            className={`${classes.nodePoolHeader} ${classes.mobileSpacing}`}
-          >
+        <Grid>
+          <Typography className={cx(classes.nodePoolHeader)} variant="h2">
             Node Pools
           </Typography>
         </Grid>
-        <Grid item>
+        <Grid>
           <Button
             buttonType="secondary"
-            className={`${classes.button} ${classes.mobileSpacing}`}
-            onClick={() => recycleAllClusterNodesDialog.openDialog(undefined)}
+            className={cx(classes.button)}
+            onClick={() => setIsRecycleClusterOpen(true)}
           >
             Recycle All Nodes
           </Button>
           <Button
             buttonType="primary"
-            className={`${classes.button} ${classes.mobileSpacing}`}
+            className={cx(classes.button)}
             onClick={handleOpenAddDrawer}
           >
             Add a Node Pool
           </Button>
         </Grid>
       </Grid>
-      <Paper className={classes.root}>
+      <Stack>
         {poolsError ? (
-          <ErrorState errorText={poolsError} />
+          <ErrorState errorText={poolsError?.[0].reason} />
         ) : (
           <Grid container direction="column">
-            <Grid item xs={12} className={classes.displayTable}>
-              {_pools.map((thisPool) => {
-                const { id, nodes } = thisPool;
+            <Grid xs={12}>
+              {_pools?.map((thisPool) => {
+                const { disk_encryption, id, nodes } = thisPool;
 
-                const thisPoolType = types.find(
+                const thisPoolType = types?.find(
                   (thisType) => thisType.id === thisPool.type
                 );
 
-                const typeLabel = thisPoolType?.label ?? 'Unknown type';
+                const typeLabel =
+                  thisPoolType?.formattedLabel ?? 'Unknown type';
 
                 return (
-                  <div key={id} className={classes.nodePool}>
+                  <Stack
+                    key={id}
+                    sx={(theme) => ({ paddingBottom: theme.spacing(2) })}
+                  >
                     <NodePool
+                      openAutoscalePoolDialog={(poolId) => {
+                        setSelectedPoolId(poolId);
+                        setIsAutoscaleDialogOpen(true);
+                      }}
+                      openDeletePoolDialog={(id) => {
+                        setSelectedPoolId(id);
+                        setIsDeleteNodePoolOpen(true);
+                      }}
+                      openRecycleAllNodesDialog={(id) => {
+                        setSelectedPoolId(id);
+                        setIsRecycleAllPoolNodesOpen(true);
+                      }}
+                      openRecycleNodeDialog={(nodeId, linodeLabel) => {
+                        setSelectedNodeId(nodeId);
+                        setIsRecycleNodeOpen(true);
+                      }}
+                      autoscaler={thisPool.autoscaler}
+                      encryptionStatus={disk_encryption}
+                      handleClickResize={handleOpenResizeDrawer}
+                      isOnlyNodePool={pools?.length === 1}
+                      nodes={nodes ?? []}
                       poolId={thisPool.id}
                       typeLabel={typeLabel}
-                      nodes={nodes ?? []}
-                      autoscaler={thisPool.autoscaler}
-                      handleClickResize={handleOpenResizeDrawer}
-                      openDeletePoolDialog={deletePoolDialog.openDialog}
-                      openRecycleAllNodesDialog={
-                        recycleAllPoolNodesDialog.openDialog
-                      }
-                      openRecycleNodeDialog={recycleNodeDialog.openDialog}
-                      openAutoscalePoolDialog={autoscalePoolDialog.openDialog}
                     />
-                  </div>
+                  </Stack>
                 );
               })}
-              {pools.length > numPoolsToDisplay && (
-                <Waypoint onEnter={handleShowMore} scrollableAncestor="window">
+              {pools?.length > numPoolsToDisplay && (
+                <Waypoint onEnter={handleShowMore}>
                   <div style={{ minHeight: 50 }} />
                 </Waypoint>
               )}
             </Grid>
 
             <AddNodePoolDrawer
+              clusterId={clusterID}
               clusterLabel={clusterLabel}
-              open={addDrawerOpen}
+              clusterRegionId={clusterRegionId}
               onClose={() => setAddDrawerOpen(false)}
-              onSubmit={handleAdd}
-              isSubmitting={drawerSubmitting}
-              error={drawerError}
+              open={addDrawerOpen}
+              regionsData={regionsData}
             />
             <ResizeNodePoolDrawer
-              open={resizeDrawerOpen}
-              onClose={() => setResizeDrawerOpen(false)}
-              onSubmit={(updatedCount: number) => handleResize(updatedCount)}
-              nodePool={poolForEdit}
-              isSubmitting={drawerSubmitting}
-              error={drawerError}
+              kubernetesClusterId={clusterID}
+              kubernetesRegionId={clusterRegionId}
+              nodePool={selectedPool}
+              onClose={() => setIsResizeDrawerOpen(false)}
+              open={isResizeDrawerOpen}
             />
-            <NodePoolDialog
-              nodeCount={
-                pools.find(
-                  (thisPool) => thisPool.id === deletePoolDialog.dialog.entityID
-                )?.count ?? 0
-              }
-              onDelete={handleDeletePool}
-              onClose={deletePoolDialog.closeDialog}
-              open={deletePoolDialog.dialog.isOpen}
-              error={deletePoolDialog.dialog.error}
-              loading={deletePoolDialog.dialog.isLoading}
-            />
-            <NodeDialog
-              onDelete={handleRecycleNode}
-              onClose={recycleNodeDialog.closeDialog}
-              open={recycleNodeDialog.dialog.isOpen}
-              error={recycleNodeDialog.dialog.error}
-              loading={recycleNodeDialog.dialog.isLoading}
-              label={recycleNodeDialog.dialog.entityLabel}
+            <DeleteNodePoolDialog
+              kubernetesClusterId={clusterID}
+              nodePool={selectedPool}
+              onClose={() => setIsDeleteNodePoolOpen(false)}
+              open={isDeleteNodePoolOpen}
             />
             <AutoscalePoolDialog
-              getAutoscaler={getAutoscaler}
+              clusterId={clusterID}
               handleOpenResizeDrawer={handleOpenResizeDrawer}
-              onSubmit={(
-                values: AutoscaleNodePoolValues,
-                setSubmitting: (isSubmitting: boolean) => void,
-                setWarningMessage: (warning: string) => void
-              ) =>
-                handleAutoscalePool(values, setSubmitting, setWarningMessage)
-              }
-              onClose={autoscalePoolDialog.closeDialog}
-              open={autoscalePoolDialog.dialog.isOpen}
-              error={autoscalePoolDialog.dialog.error}
-              loading={autoscalePoolDialog.dialog.isLoading}
-              poolID={autoscalePoolDialog.dialog.entityID}
+              nodePool={selectedPool}
+              onClose={() => setIsAutoscaleDialogOpen(false)}
+              open={isAutoscaleDialogOpen}
             />
-            <RecycleNodesDialog
-              title="Recycle node pool?"
-              submitBtnText="Recycle Pool Nodes"
-              open={recycleAllPoolNodesDialog.dialog.isOpen}
-              loading={recycleAllPoolNodesDialog.dialog.isLoading}
-              error={recycleAllPoolNodesDialog.dialog.error}
-              onClose={recycleAllPoolNodesDialog.closeDialog}
-              onSubmit={handleRecycleAllPoolNodes}
+            <RecycleNodeDialog
+              clusterId={clusterID}
+              nodeId={selectedNodeId}
+              onClose={() => setIsRecycleNodeOpen(false)}
+              open={isRecycleNodeOpen}
             />
-            <RecycleNodesDialog
-              title="Recycle all nodes in cluster?"
-              submitBtnText="Recycle All Nodes"
-              open={recycleAllClusterNodesDialog.dialog.isOpen}
-              loading={recycleAllClusterNodesDialog.dialog.isLoading}
-              error={recycleAllClusterNodesDialog.dialog.error}
-              onClose={recycleAllClusterNodesDialog.closeDialog}
-              onSubmit={handleRecycleAllClusterNodes}
+            <RecycleNodePoolDialog
+              clusterId={clusterID}
+              nodePoolId={selectedPoolId}
+              onClose={() => setIsRecycleAllPoolNodesOpen(false)}
+              open={isRecycleAllPoolNodesOpen}
+            />
+            <RecycleClusterDialog
+              clusterId={clusterID}
+              onClose={() => setIsRecycleClusterOpen(false)}
+              open={isRecycleClusterOpen}
             />
           </Grid>
         )}
-      </Paper>
+      </Stack>
     </>
   );
 };
-
-export default React.memo(NodePoolsDisplay);

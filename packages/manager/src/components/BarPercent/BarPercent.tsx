@@ -1,66 +1,47 @@
-import classNames from 'classnames';
+import { omittedProps } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import LinearProgress from 'src/components/core/LinearProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  base: {
-    display: 'flex',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  root: {
-    backgroundColor: theme.color.grey2,
-    padding: 12,
-    width: '100%',
-    '&.narrow': {
-      padding: 8,
-    },
-  },
-  primaryColor: {
-    backgroundColor: '#5ad865',
-  },
-  secondaryColor: {
-    backgroundColor: '#99ec79',
-  },
-  rounded: {
-    borderRadius: theme.shape.borderRadius,
-  },
-  dashed: {
-    display: 'none',
-  },
-}));
+import { LinearProgress } from 'src/components/LinearProgress';
 
-interface Props {
-  max: number;
-  value: number;
+import type { SxProps, Theme } from '@mui/material/styles';
+
+export interface BarPercentProps {
+  /** Additional css class to pass to the component */
   className?: string;
-  valueBuffer?: number;
+  /** Applies styles to show that the value is being retrieved. */
   isFetchingValue?: boolean;
-  rounded?: boolean;
+  /** The maximum allowed value and should not be equal to min. */
+  max: number;
+  /** Decreases the height of the bar. */
   narrow?: boolean;
+  /** Applies a `border-radius` to the bar. */
+  rounded?: boolean;
+  sx?: SxProps<Theme>;
+  /** The value of the progress indicator for the determinate and buffer variants. */
+  value: number;
+  /** The value for the buffer variant. */
+  valueBuffer?: number;
 }
 
-type CombinedProps = Props;
-
-export const BarPercent: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+/**
+ * Determinate indicator that displays how long a process will take.
+ */
+export const BarPercent = React.memo((props: BarPercentProps) => {
   const {
-    max,
-    value,
     className,
-    valueBuffer,
     isFetchingValue,
-    rounded,
+    max,
     narrow,
+    rounded,
+    sx,
+    value,
+    valueBuffer,
   } = props;
 
   return (
-    <div className={`${className} ${classes.base}`}>
-      <LinearProgress
-        value={getPercentage(value, max)}
-        valueBuffer={valueBuffer}
+    <StyledDiv className={className}>
+      <StyledLinearProgress
         variant={
           isFetchingValue
             ? 'indeterminate'
@@ -68,22 +49,41 @@ export const BarPercent: React.FC<CombinedProps> = (props) => {
             ? 'buffer'
             : 'determinate'
         }
-        classes={{
-          root: classes.root,
-          barColorPrimary: classes.primaryColor,
-          bar2Buffer: classes.secondaryColor,
-          dashed: classes.dashed,
-        }}
-        className={classNames({
-          [classes.rounded]: rounded,
-          narrow,
-        })}
+        narrow={narrow}
+        rounded={rounded}
+        sx={sx}
+        value={getPercentage(value, max)}
+        valueBuffer={valueBuffer}
       />
-    </div>
+    </StyledDiv>
   );
-};
+});
 
 export const getPercentage = (value: number, max: number) =>
   (value / max) * 100;
 
-export default React.memo(BarPercent);
+const StyledDiv = styled('div')({
+  alignItems: 'center',
+  display: 'flex',
+  position: 'relative',
+});
+
+const StyledLinearProgress = styled(LinearProgress, {
+  label: 'StyledLinearProgress',
+  shouldForwardProp: omittedProps(['rounded', 'narrow']),
+})<Partial<BarPercentProps>>(({ theme, ...props }) => ({
+  '& .MuiLinearProgress-bar2Buffer': {
+    backgroundColor: '#5ad865',
+  },
+  '& .MuiLinearProgress-barColorPrimary': {
+    // Increase contrast if we have a buffer bar
+    backgroundColor: props.valueBuffer ? '#1CB35C' : '#5ad865',
+  },
+  '& .MuiLinearProgress-dashed': {
+    display: 'none',
+  },
+  backgroundColor: theme.color.grey2,
+  borderRadius: props.rounded ? theme.shape.borderRadius : undefined,
+  padding: props.narrow ? 8 : 12,
+  width: '100%',
+}));

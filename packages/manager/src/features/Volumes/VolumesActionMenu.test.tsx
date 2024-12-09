@@ -1,11 +1,10 @@
+import { userEvent } from '@testing-library/user-event';
 import * as React from 'react';
-import {
-  includesActions,
-  renderWithTheme,
-  wrapWithTheme,
-} from 'src/utilities/testHelpers';
-import { reactRouterProps } from 'src/__data__/reactRouterProps';
-import { CombinedProps, VolumesActionMenu } from './VolumesActionMenu';
+
+import { volumeFactory } from 'src/factories';
+import { renderWithTheme } from 'src/utilities/testHelpers';
+
+import { Props, VolumesActionMenu } from './VolumesActionMenu';
 
 const props: CombinedProps = {
   onAttach: jest.fn(),
@@ -40,43 +39,68 @@ const props: CombinedProps = {
 };
 
 describe('Volume action menu', () => {
-  it('should include basic Volume actions', () => {
-    const { queryByText } = renderWithTheme(<VolumesActionMenu {...props} />);
-    includesActions(['Show Config', 'Edit'], queryByText);
+  it('should include basic Volume actions', async () => {
+    const { getByLabelText, getByText } = renderWithTheme(
+      <VolumesActionMenu {...props} />
+    );
+
+    const actionMenuButton = getByLabelText(
+      `Action menu for Volume ${volume.label}`
+    );
+
+    await userEvent.click(actionMenuButton);
+
+    for (const action of ['Show Config', 'Edit']) {
+      expect(getByText(action)).toBeVisible();
+    }
   });
 
-  it('should include Attach if the Volume is not attached', () => {
-    const { queryByText } = renderWithTheme(
+  it('should include Attach if the Volume is not attached', async () => {
+    const { getByLabelText, getByText, queryByText } = renderWithTheme(
       <VolumesActionMenu {...props} isVolumesLanding={true} />
     );
-    includesActions(['Attach'], queryByText);
+
+    const actionMenuButton = getByLabelText(
+      `Action menu for Volume ${volume.label}`
+    );
+
+    await userEvent.click(actionMenuButton);
+
+    expect(getByText('Attach')).toBeVisible();
     expect(queryByText('Detach')).toBeNull();
   });
 
-  it('should include Detach if the Volume is attached', () => {
-    const { queryByText } = renderWithTheme(
-      <VolumesActionMenu {...props} attached={true} />
+  it('should include Detach if the Volume is attached', async () => {
+    const attachedVolune = volumeFactory.build({
+      linode_id: 2,
+      linode_label: 'linode-2',
+    });
+
+    const { getByLabelText, getByText, queryByText } = renderWithTheme(
+      <VolumesActionMenu {...props} volume={attachedVolune} />
     );
-    includesActions(['Detach'], queryByText);
+
+    const actionMenuButton = getByLabelText(
+      `Action menu for Volume ${attachedVolune.label}`
+    );
+
+    await userEvent.click(actionMenuButton);
+
+    expect(getByText('Detach')).toBeVisible();
     expect(queryByText('Attach')).toBeNull();
   });
 
-  it('should include Delete if the Volume is not attached or the Linode to which it is attached is powered off', () => {
-    const { queryByText, rerender } = renderWithTheme(
-      <VolumesActionMenu {...props} attached={false} poweredOff={true} />
+  it('should include Delete', async () => {
+    const { getByLabelText, getByText } = renderWithTheme(
+      <VolumesActionMenu {...props} />
     );
-    includesActions(['Delete'], queryByText);
-    rerender(
-      wrapWithTheme(
-        <VolumesActionMenu {...props} attached={true} poweredOff={true} />
-      )
+
+    const actionMenuButton = getByLabelText(
+      `Action menu for Volume ${volume.label}`
     );
-    includesActions(['Delete'], queryByText);
-    rerender(
-      wrapWithTheme(
-        <VolumesActionMenu {...props} attached={true} poweredOff={false} />
-      )
-    );
-    expect(queryByText('Delete')).toBeNull();
+
+    await userEvent.click(actionMenuButton);
+
+    expect(getByText('Delete')).toBeVisible();
   });
 });

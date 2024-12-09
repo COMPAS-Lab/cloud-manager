@@ -1,64 +1,42 @@
-import classNames from 'classnames';
+import { default as _Radio, RadioProps } from '@mui/material/Radio';
 import * as React from 'react';
-import { default as _Radio, RadioProps } from 'src/components/core/Radio';
-import { makeStyles, Theme } from 'src/components/core/styles';
+
 import RadioIcon from '../../assets/icons/radio.svg';
 import RadioIconRadioed from '../../assets/icons/radioRadioed.svg';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    color: '#ccc',
-    padding: '10px 10px',
-    transition: theme.transitions.create(['color']),
-    '& .defaultFill': {
-      transition: theme.transitions.create(['fill']),
-    },
-    '&:hover': {
-      color: theme.palette.primary.main,
-      fill: theme.color.white,
-      '& .defaultFill': {
-        fill: theme.color.white,
-      },
-    },
-  },
-  checked: {
-    color: theme.palette.primary.main,
-  },
-  disabled: {
-    color: '#ccc !important',
-    fill: '#f4f4f4 !important',
-    pointerEvents: 'none',
-    '& .defaultFill': {
-      fill: '#f4f4f4',
-    },
-  },
-}));
+/**
+### Use radio buttons to
 
-export const Radio: React.FC<RadioProps> = (props) => {
-  const classes = useStyles();
+- Expose all available options
+- Select a single option from a list
 
-  const classnames = classNames({
-    [classes.root]: true,
-    [classes.disabled]: props.disabled === true,
-    [classes.checked]: props.checked === true,
-  });
+### Guidelines
 
+- If there are 3 or fewer items to select, use radio buttons rather than drop-down menus.
+- If possible, offer a default selection.
+- Because radio buttons allow only one choice, make sure that the options are both comprehensive and distinct.
+- Let users select an option by clicking on either the button itself or its label to provide as big a target area as possible.
+
+### Reasons for a Default Selection
+
+- Expedite tasks
+- Give people control and align with their expectations
+ */
+export const Radio = (props: RadioProps) => {
   return (
     <_Radio
-      color="primary"
-      className={classnames}
-      {...props}
-      icon={<RadioIcon />}
       checkedIcon={<RadioIconRadioed />}
       data-qa-radio={props.checked || false}
+      icon={<RadioIcon />}
+      {...props}
       inputProps={{
-        role: 'radio',
-        'aria-label': props.name,
         'aria-checked': props.checked,
+        'aria-label': props.name,
+        role: 'radio',
         ...props.inputProps,
       }}
     />
   );
 };
 
-export default Radio;
+export type { RadioProps };

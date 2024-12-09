@@ -1,21 +1,34 @@
 import * as React from 'react';
 import { Redirect, Route, RouteComponentProps, Switch } from 'react-router-dom';
-import SuspenseLoader from 'src/components/SuspenseLoader';
+
+import { ProductInformationBanner } from 'src/components/ProductInformationBanner/ProductInformationBanner';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
 
 const AccountLanding = React.lazy(
   () => import('src/features/Account/AccountLanding')
 );
-const InvoiceDetail = React.lazy(
-  () => import('src/features/Billing/InvoiceDetail')
+const InvoiceDetail = React.lazy(() =>
+  import('src/features/Billing/InvoiceDetail/InvoiceDetail').then((module) => ({
+    default: module.InvoiceDetail,
+  }))
 );
-const EntityTransfersCreate = React.lazy(
-  () => import('src/features/EntityTransfers/EntityTransfersCreate')
+const EntityTransfersCreate = React.lazy(() =>
+  import(
+    'src/features/EntityTransfers/EntityTransfersCreate/EntityTransfersCreate'
+  ).then((module) => ({
+    default: module.EntityTransfersCreate,
+  }))
 );
-const UserDetail = React.lazy(() => import('src/features/Users/UserDetail'));
+
+const UserDetail = React.lazy(() =>
+  import('../Users/UserDetail').then((module) => ({
+    default: module.UserDetail,
+  }))
+);
 
 type Props = RouteComponentProps<{}>;
 
-class Account extends React.Component<Props> {
+export class Account extends React.Component<Props> {
   render() {
     const {
       match: { path },
@@ -23,12 +36,13 @@ class Account extends React.Component<Props> {
 
     return (
       <React.Suspense fallback={<SuspenseLoader />}>
+        <ProductInformationBanner bannerLocation="Account" />
         <Switch>
           <Route component={UserDetail} path={`${path}/users/:username`} />
           <Route
-            path={`${path}/billing/edit`}
             component={AccountLanding}
             exact
+            path={`${path}/billing/edit`}
             strict
           />
           <Route
@@ -39,11 +53,10 @@ class Account extends React.Component<Props> {
             component={EntityTransfersCreate}
             path={`${path}/service-transfers/create`}
           />
-          <Redirect from={path} to={`${path}/billing`} exact />
+          <Redirect exact from={path} to={`${path}/billing`} />
           <Route component={AccountLanding} path={path} />
         </Switch>
       </React.Suspense>
     );
   }
 }
-export default Account;

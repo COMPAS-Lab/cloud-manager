@@ -1,48 +1,47 @@
-import { testTag, getAll, deleteById, isTestEntity } from './common';
+import { deleteNodeBalancer, getNodeBalancers } from '@linode/api-v4';
+import { oauthToken, pageSize } from 'support/constants/api';
+import { entityTag } from 'support/constants/cypress';
+import { depaginate } from 'support/util/paginate';
 import { randomLabel } from 'support/util/random';
-export const testNodeBalTag = testTag;
+import { chooseRegion } from 'support/util/regions';
 
-export const makeNodeBalCreateReq = (nodeBal) => {
+import { isTestLabel } from './common';
+import { nodeBalancerFactory } from 'src/factories';
+import type { NodeBalancer } from '@linode/api-v4';
+
+export const makeNodeBalCreateReq = (nodeBal: NodeBalancer) => {
   const nodeBalData = nodeBal
     ? nodeBal
-    : {
+    : nodeBalancerFactory.build({
         client_conn_throttle: 0,
         label: randomLabel(),
-        tags: [testNodeBalTag],
-        region: 'us-east',
-        configs: [],
-      };
+        region: chooseRegion().id,
+        tags: [entityTag],
+      });
 
   return cy.request({
+    auth: {
+      bearer: oauthToken,
+    },
+    body: nodeBalData,
     method: 'POST',
     url: Cypress.env('REACT_APP_API_ROOT') + '/v4/nodebalancers',
-    body: nodeBalData,
-    auth: {
-      bearer: Cypress.env('MANAGER_OAUTH'),
-    },
   });
 };
 
-export const getNodeBalancers = () => getAll('nodebalancers');
+/**
+ * Deletes all NodeBalancers whose labels are prefixed "cy-test-".
+ *
+ * @returns Promise that resolves when NodeBalancers have been deleted.
+ */
+export const deleteAllTestNodeBalancers = async (): Promise<void> => {
+  const nodeBalancers = await depaginate<NodeBalancer>((page: number) =>
+    getNodeBalancers({ page, page_size: pageSize })
+  );
 
-export const deleteNodeBalancerById = (nodeBalId) =>
-  deleteById('nodebalancers', nodeBalId);
+  const deletePromises = nodeBalancers
+    .filter((nodeBalancer) => isTestLabel(nodeBalancer.label))
+    .map((nodeBalancer) => deleteNodeBalancer(nodeBalancer.id));
 
-export const deleteNodeBalancerByLabel = (label: string = '') => {
-  getNodeBalancers().then((resp) => {
-    cy.log('get all nb', resp.body.data);
-    const nodeBalToDelete = resp.body.data.find((nb) => nb.label === label);
-    cy.log('to delete', nodeBalToDelete);
-    deleteNodeBalancerById(nodeBalToDelete.id);
-  });
-};
-
-export const deleteAllTestNodeBalancers = () => {
-  getNodeBalancers().then((resp) => {
-    resp.body.data.forEach((nodeBal) => {
-      if (isTestEntity(nodeBal)) {
-        deleteNodeBalancerById(nodeBal.id);
-      }
-    });
-  });
+  await Promise.all(deletePromises);
 };

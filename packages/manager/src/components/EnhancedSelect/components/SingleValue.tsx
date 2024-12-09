@@ -1,30 +1,32 @@
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
-import { components, SingleValueProps } from 'react-select';
-import { makeStyles, Theme } from 'src/components/core/styles';
+import { SingleValueProps, components } from 'react-select';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    alignItems: 'center',
-    paddingLeft: `45px !important`,
-    height: '100%',
-  },
+const useStyles = makeStyles()((theme: Theme) => ({
   icon: {
     fontSize: '1.8em',
     height: 24,
     marginLeft: 6,
     marginRight: theme.spacing(),
     position: 'absolute',
+    [theme.breakpoints.only('xs')]: {
+      fontSize: '1.52em',
+    },
+  },
+  root: {
+    alignItems: 'center',
+    display: 'flex',
+    flexFlow: 'row nowrap',
+    height: '100%',
+    paddingLeft: `45px !important`,
   },
 }));
 
-interface Props extends SingleValueProps<any> {}
+type Props = SingleValueProps<any>;
 
-type CombinedProps = Props;
-
-const _SingleValue: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const _SingleValue: React.FC<Props> = (props) => {
+  const { classes } = useStyles();
   return (
     <>
       <components.SingleValue
@@ -35,10 +37,8 @@ const _SingleValue: React.FC<CombinedProps> = (props) => {
         {props.children}
       </components.SingleValue>
       <span className={`${props.data.className} ${classes.icon}`}>
-        {props.data.flag && props.data.flag()}
+        {props.data.flag}
       </span>
     </>
   );
 };
-
-export default _SingleValue;

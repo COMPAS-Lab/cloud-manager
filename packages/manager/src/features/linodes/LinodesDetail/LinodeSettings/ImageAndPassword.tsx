@@ -1,84 +1,76 @@
-import { GrantLevel } from '@linode/api-v4/lib/account';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { compose } from 'recompose';
-import AccessPanel, { UserSSHKeyObject } from 'src/components/AccessPanel';
-import { Item } from 'src/components/EnhancedSelect/Select';
-import withImages, { WithImages } from 'src/containers/withImages.container';
-import { ImageSelect } from 'src/features/Images';
-import { withLinodeDetailContext } from '../linodeDetailContext';
-import LinodePermissionsError from '../LinodePermissionsError';
 
-interface ContextProps {
-  permissions: GrantLevel;
-}
+import { AccessPanel } from 'src/components/AccessPanel/AccessPanel';
+import { ImageSelect } from 'src/components/ImageSelect/ImageSelect';
+import { useGrants, useProfile } from 'src/queries/profile/profile';
+
+import { LinodePermissionsError } from '../LinodePermissionsError';
+
+import type { Image } from '@linode/api-v4';
 
 interface Props {
-  onImageChange: (selected: Item<string>) => void;
+  authorizedUsers: string[];
   imageFieldError?: string;
-
+  linodeId: number;
+  onImageChange: (image: Image) => void;
+  onPasswordChange: (password: string) => void;
   password: string;
   passwordError?: string;
-  onPasswordChange: (password: string) => void;
-
-  userSSHKeys: UserSSHKeyObject[];
-  requestKeys: () => void;
-  sshError?: string;
+  selectedImage: Image['id'];
+  setAuthorizedUsers: (usernames: string[]) => void;
 }
 
-type CombinedProps = Props & ContextProps & WithImages;
-
-export const ImageAndPassword: React.FC<CombinedProps> = (props) => {
+export const ImageAndPassword = (props: Props) => {
   const {
-    imagesData,
-    imagesError,
+    authorizedUsers,
     imageFieldError,
+    linodeId,
     onImageChange,
     onPasswordChange,
     password,
     passwordError,
-    requestKeys,
-    userSSHKeys,
-    sshError,
-    permissions,
+    selectedImage,
+    setAuthorizedUsers,
   } = props;
 
-  const disabled = permissions === 'read_only';
+  const { data: grants } = useGrants();
+  const { data: profile } = useProfile();
+
+  const disabled =
+    profile?.restricted &&
+    grants?.linode.find((g) => g.id === linodeId)?.permissions !== 'read_write';
 
   return (
     <React.Fragment>
       {disabled && <LinodePermissionsError />}
       <ImageSelect
-        images={Object.values(imagesData)}
-        imageError={imagesError.read ? imagesError.read[0].reason : undefined}
-        imageFieldError={imageFieldError}
-        onSelect={onImageChange}
         disabled={disabled}
+        errorText={imageFieldError}
+        onChange={onImageChange}
+        value={selectedImage}
+        variant="all"
       />
-      <AccessPanel
-        password={password || ''}
-        handleChange={onPasswordChange}
-        error={passwordError}
-        users={userSSHKeys}
-        requestKeys={requestKeys}
-        sshKeyError={sshError}
-        disabled={disabled}
+      <StyledAccessPanel
         disabledReason={
           disabled
             ? "You don't have permissions to modify this Linode"
             : undefined
         }
+        authorizedUsers={authorizedUsers}
+        disabled={disabled}
+        error={passwordError}
+        handleChange={onPasswordChange}
+        password={password || ''}
+        setAuthorizedUsers={setAuthorizedUsers}
       />
     </React.Fragment>
   );
 };
 
-const linodeContext = withLinodeDetailContext<ContextProps>(({ linode }) => ({
-  permissions: linode._permissions,
-}));
-
-const enhanced = compose<CombinedProps, Props>(
-  linodeContext,
-  withImages()
-)(ImageAndPassword);
-
-export default enhanced;
+const StyledAccessPanel = styled(AccessPanel, { label: 'StyledAccessPanel' })(
+  ({ theme }) => ({
+    margin: `${theme.spacing(3)} 0 ${theme.spacing(3)} 0`,
+    padding: 0,
+  })
+);

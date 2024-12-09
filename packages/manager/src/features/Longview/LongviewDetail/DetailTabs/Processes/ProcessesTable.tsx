@@ -1,75 +1,38 @@
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
+
 import OrderBy from 'src/components/OrderBy';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
-import TableSortCell from 'src/components/TableSortCell';
+import { TableSortCell } from 'src/components/TableSortCell';
 import { formatCPU } from 'src/features/Longview/shared/formatters';
 import { useWindowDimensions } from 'src/hooks/useWindowDimensions';
 import { readableBytes } from 'src/utilities/unitConversions';
+
+import { StyledDiv, StyledTable } from './ProcessesTable.styles';
 import { Process } from './types';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  processName: {
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    wordBreak: 'break-all',
-    alignItems: 'center',
-  },
-  tableModifier: {
-    '& tbody': {
-      transition: theme.transitions.create(['opacity']),
-    },
-    '& tbody.sorting': {
-      opacity: 0.5,
-    },
-    '& thead': {
-      '& th': {
-        borderTop: `2px solid ${theme.color.grey9}`,
-        borderRight: `1px solid ${theme.color.grey9}`,
-        borderBottom: `2px solid ${theme.color.grey9}`,
-        borderLeft: `1px solid ${theme.color.grey9}`,
-        fontFamily: theme.font.bold,
-        fontSize: '0.875em !important',
-        color: theme.palette.text.primary,
-        padding: '10px 15px',
-        '&:first-of-type': {
-          borderLeft: 'none',
-        },
-        '&:last-of-type': {
-          borderRight: 'none',
-        },
-      },
-    },
-  },
-}));
-
-export interface Props {
+export interface ProcessesTableProps {
+  error?: string;
+  lastUpdatedError?: APIError[];
   processesData: ExtendedProcess[];
   processesLoading: boolean;
-  error?: string;
   selectedProcess: Process | null;
   setSelectedProcess: (process: Process) => void;
-  lastUpdatedError?: APIError[];
 }
 
-export type CombinedProps = Props;
-
-export const ProcessesTable: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const ProcessesTable = React.memo((props: ProcessesTableProps) => {
   const { width } = useWindowDimensions();
 
   const {
+    error,
     processesData,
     processesLoading,
-    error,
     selectedProcess,
     setSelectedProcess,
   } = props;
@@ -77,70 +40,69 @@ export const ProcessesTable: React.FC<CombinedProps> = (props) => {
   return (
     <OrderBy
       data={processesData}
-      orderBy={'name'}
       order={'asc'}
+      orderBy={'name'}
       preferenceKey="lv-detail-processes"
     >
       {({ data: orderedData, handleOrderChange, order, orderBy }) => (
-        <Table
-          spacingTop={16}
+        <StyledTable
           // This prop is necessary to show the "ActiveCaret", and we only
           // want it on large viewports.
           noOverflow={width >= 1280}
-          className={classes.tableModifier}
+          spacingTop={16}
         >
           <TableHead>
             <TableRow>
               <TableSortCell
                 active={orderBy === 'name'}
-                label="name"
                 direction={order}
                 handleClick={handleOrderChange}
+                label="name"
                 style={{ width: '20%' }}
               >
                 Process
               </TableSortCell>
               <TableSortCell
                 active={orderBy === 'user'}
-                label="user"
                 direction={order}
                 handleClick={handleOrderChange}
+                label="user"
                 style={{ width: '20%' }}
               >
                 User
               </TableSortCell>
               <TableSortCell
                 active={orderBy === 'maxCount'}
-                label="maxCount"
                 direction={order}
                 handleClick={handleOrderChange}
+                label="maxCount"
                 style={{ width: '15%' }}
               >
                 Max Count
               </TableSortCell>
               <TableSortCell
                 active={orderBy === 'averageIO'}
-                label="averageIO"
                 direction={order}
                 handleClick={handleOrderChange}
+                label="averageIO"
                 style={{ width: '15%' }}
               >
                 Avg IO
               </TableSortCell>
               <TableSortCell
                 active={orderBy === 'averageCPU'}
-                label="averageCPU"
                 direction={order}
                 handleClick={handleOrderChange}
+                label="averageCPU"
                 style={{ width: '15%' }}
               >
                 Avg CPU
               </TableSortCell>
               <TableSortCell
                 active={orderBy === 'averageMem'}
-                label="averageMem"
                 direction={order}
                 handleClick={handleOrderChange}
+                label="averageMem"
                 style={{ width: '15%' }}
               >
                 Avg Mem
@@ -156,11 +118,11 @@ export const ProcessesTable: React.FC<CombinedProps> = (props) => {
               error
             )}
           </TableBody>
-        </Table>
+        </StyledTable>
       )}
     </OrderBy>
   );
-};
+});
 
 const renderLoadingErrorData = (
   loading: boolean,
@@ -176,16 +138,16 @@ const renderLoadingErrorData = (
     return <TableRowLoading columns={6} />;
   }
   if (data.length === 0) {
-    return <TableRowEmptyState colSpan={12} />;
+    return <TableRowEmpty colSpan={12} />;
   }
 
   return data.map((thisProcess, idx) => (
     <ProcessesTableRow
-      key={`process-${idx}`}
       isSelected={
         selectedProcess?.name === thisProcess.name &&
         selectedProcess?.user === thisProcess.user
       }
+      key={`process-${idx}`}
       setSelectedProcess={setSelectedProcess}
       {...thisProcess}
     />
@@ -197,65 +159,58 @@ export interface ProcessTableRowProps extends ExtendedProcess {
   setSelectedProcess: (process: Process) => void;
 }
 
-export const ProcessesTableRow: React.FC<ProcessTableRowProps> = React.memo(
-  (props) => {
-    const {
-      name,
-      user,
-      maxCount,
-      averageIO,
-      averageCPU,
-      averageMem,
-      setSelectedProcess,
-      isSelected,
-    } = props;
+export const ProcessesTableRow = React.memo((props: ProcessTableRowProps) => {
+  const {
+    averageCPU,
+    averageIO,
+    averageMem,
+    isSelected,
+    maxCount,
+    name,
+    setSelectedProcess,
+    user,
+  } = props;
 
-    const classes = useStyles();
-
-    return (
-      <TableRow
-        onClick={() => setSelectedProcess({ name, user })}
-        onKeyUp={(e: any) =>
-          e.keyCode === 13 && setSelectedProcess({ name, user })
+  return (
+    <TableRow
+      onKeyUp={(e: any) =>
+        e.key === 'Enter' && setSelectedProcess({ name, user })
+      }
+      data-testid="longview-service-row"
+      forceIndex
+      onClick={() => setSelectedProcess({ name, user })}
+      selected={isSelected}
+    >
+      <TableCell data-testid={`name-${name}`}>
+        <StyledDiv>{name}</StyledDiv>
+      </TableCell>
+      <TableCell data-testid={`user-${user}`}>{user}</TableCell>
+      <TableCell data-testid={`max-count-${Math.round(maxCount)}`}>
+        {Math.round(maxCount)}
+      </TableCell>
+      <TableCell data-testid={`average-io-${averageIO}`}>
+        {
+          readableBytes(averageIO, { round: 0, unitLabels: { bytes: 'B' } })
+            .formatted
         }
-        selected={isSelected}
-        data-testid="longview-service-row"
-        forceIndex
-        ariaLabel={`${name} for ${user}`}
-      >
-        <TableCell data-testid={`name-${name}`}>
-          <div className={classes.processName}>{name}</div>
-        </TableCell>
-        <TableCell data-testid={`user-${user}`}>{user}</TableCell>
-        <TableCell data-testid={`max-count-${Math.round(maxCount)}`}>
-          {Math.round(maxCount)}
-        </TableCell>
-        <TableCell data-testid={`average-io-${averageIO}`}>
-          {
-            readableBytes(averageIO, { round: 0, unitLabels: { bytes: 'B' } })
-              .formatted
-          }
-          /s
-        </TableCell>
-        <TableCell data-testid={`average-cpu-${averageCPU}`}>
-          {formatCPU(averageCPU)}
-        </TableCell>
-        <TableCell data-testid={`average-mem-${averageMem}`}>
-          {readableBytes(averageMem * 1024, { round: 0 }).formatted}
-        </TableCell>
-      </TableRow>
-    );
-  }
-);
+        /s
+      </TableCell>
+      <TableCell data-testid={`average-cpu-${averageCPU}`}>
+        {formatCPU(averageCPU)}
+      </TableCell>
+      <TableCell data-testid={`average-mem-${averageMem}`}>
+        {readableBytes(averageMem * 1024, { round: 0 }).formatted}
+      </TableCell>
+    </TableRow>
+  );
+});
 
 export interface ExtendedProcess {
+  averageCPU: number;
+  averageIO: number;
+  averageMem: number;
   id: string;
+  maxCount: number;
   name: string;
   user: string;
-  maxCount: number;
-  averageIO: number;
-  averageCPU: number;
-  averageMem: number;
 }
-
-export default React.memo(ProcessesTable);

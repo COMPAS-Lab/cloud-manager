@@ -1,52 +1,49 @@
-import { DomainRecord, getDomainRecords } from '@linode/api-v4/lib/domains';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { useLocation, useParams } from 'react-router-dom';
-import Breadcrumb from 'src/components/Breadcrumb';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import DocsLink from 'src/components/DocsLink';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import summaryPanelStyles from 'src/containers/SummaryPanels.styles';
-import { useDomainQuery, useUpdateDomainMutation } from 'src/queries/domains';
-import { getAllWithArguments } from 'src/utilities/getAll';
-import DomainRecords from '../DomainRecordsWrapper';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  ...summaryPanelStyles(theme),
-  root: {
-    margin: 0,
-    [theme.breakpoints.down('xs')]: {
-      paddingLeft: theme.spacing(),
-    },
-    [theme.breakpoints.down('sm')]: {
-      paddingRight: theme.spacing(),
-    },
-  },
-  error: {
-    marginTop: `${theme.spacing(3)}px !important`,
-    marginBottom: `0 !important`,
-  },
-}));
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { Notice } from 'src/components/Notice/Notice';
+import { Paper } from '@linode/ui';
+import { TagCell } from 'src/components/TagCell/TagCell';
+import { Typography } from 'src/components/Typography';
+import { useIsResourceRestricted } from 'src/hooks/useIsResourceRestricted';
+import {
+  useDomainQuery,
+  useDomainRecordsQuery,
+  useUpdateDomainMutation,
+} from 'src/queries/domains';
 
-const DomainDetail = () => {
-  const classes = useStyles();
+import { DeleteDomain } from '../DeleteDomain';
+import DomainRecords from '../DomainRecords';
+import { DownloadDNSZoneFileButton } from '../DownloadDNSZoneFileButton';
+
+export const DomainDetail = () => {
   const params = useParams<{ domainId: string }>();
   const domainId = Number(params.domainId);
 
-  const location = useLocation<any>();
+  const history = useHistory();
+  const location = useLocation<{ recordError?: string }>();
 
   const { data: domain, error, isLoading } = useDomainQuery(domainId);
   const { mutateAsync: updateDomain } = useUpdateDomainMutation();
+  const {
+    data: records,
+    error: recordsError,
+    isLoading: isRecordsLoading,
+    refetch: refetchRecords,
+  } = useDomainRecordsQuery(domainId);
 
-  const [records, updateRecords] = React.useState<DomainRecord[]>([]);
+  const isDomainReadOnly = useIsResourceRestricted({
+    grantLevel: 'read_only',
+    grantType: 'domain',
+    id: domainId,
+  });
+
   const [updateError, setUpdateError] = React.useState<string | undefined>();
-
-  React.useEffect(() => {
-    refreshDomainRecords();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleLabelChange = (label: string) => {
     setUpdateError(undefined);
@@ -55,7 +52,7 @@ const DomainDetail = () => {
       return Promise.reject('No Domain found.');
     }
 
-    return updateDomain({ id: domain.id, domain: label }).catch((e) => {
+    return updateDomain({ domain: label, id: domain.id }).catch((e) => {
       setUpdateError(e[0].reason);
       return Promise.reject(e);
     });
@@ -67,76 +64,146 @@ const DomainDetail = () => {
   };
 
   const handleUpdateTags = (tagsList: string[]) => {
-    if (!domainId) {
-      return Promise.reject('No Domain ID specified.');
-    }
     return updateDomain({
-      id: +domainId,
+      id: domainId,
       tags: tagsList,
     });
   };
 
-  const refreshDomainRecords = () => {
-    getAllWithArguments<DomainRecord>(getDomainRecords)([+domainId!])
-      .then(({ data }) => {
-        updateRecords(data);
-      })
-      /** silently fail if DNS records couldn't be updated. No harm here */
-      .catch(() => null);
-  };
-
-  if (isLoading) {
+  if (isLoading || isRecordsLoading) {
     return <CircleProgress />;
   }
 
   if (error) {
     return (
-      <ErrorState errorText="There was an error retrieving your Domain. Please reload and try again." />
+      <ErrorState errorText="There was an error retrieving your Domain." />
     );
   }
 
-  if (!domain) {
+  if (recordsError) {
+    return (
+      <ErrorState errorText="There was an error retrieving your Domain's Records." />
+    );
+  }
+
+  if (domain === undefined || records === undefined) {
     return null;
   }
 
   return (
     <>
-      <Grid
-        container
-        className={`${classes.root} m0`}
-        justifyContent="space-between"
-      >
-        <Grid item className="p0">
-          <Breadcrumb
-            pathname={location.pathname}
-            labelOptions={{ noCap: true }}
-            onEditHandlers={{
-              editableTextTitle: domain.domain,
-              onEdit: handleLabelChange,
-              onCancel: resetEditableLabel,
-              errorText: updateError,
-            }}
+      <LandingHeader
+        breadcrumbProps={{
+          labelOptions: { noCap: true },
+          onEditHandlers: {
+            editableTextTitle: domain.domain,
+            errorText: updateError,
+            onCancel: resetEditableLabel,
+            onEdit: handleLabelChange,
+          },
+          pathname: location.pathname,
+        }}
+        extraActions={
+          <DownloadDNSZoneFileButton
+            domainId={domain.id}
+            domainLabel={domain.domain}
           />
-        </Grid>
-        <Grid item className="p0" style={{ marginTop: 14 }}>
-          <DocsLink href="https://www.linode.com/docs/guides/dns-manager/" />
-        </Grid>
-      </Grid>
-      {location.state && location.state.recordError && (
-        <Notice
-          className={classes.error}
-          error
-          text={location.state.recordError}
-        />
-      )}
-      <DomainRecords
-        handleUpdateTags={handleUpdateTags}
-        updateRecords={refreshDomainRecords}
-        records={records}
-        domain={domain}
+        }
+        docsLabel="Docs"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/dns-manager"
+        title="Domain Details"
       />
+      {location.state && location.state.recordError && (
+        <StyledNotice text={location.state.recordError} variant="error" />
+      )}
+      <StyledRootGrid container>
+        <StyledMainGrid xs={12}>
+          <DomainRecords
+            domain={domain}
+            domainRecords={records}
+            updateDomain={updateDomain}
+            updateRecords={refetchRecords}
+          />
+        </StyledMainGrid>
+        <StyledTagSectionGrid xs={12}>
+          <StyledPaper>
+            <StyledTypography data-qa-title variant="h3">
+              Tags
+            </StyledTypography>
+            <TagCell
+              disabled={isDomainReadOnly}
+              tags={domain.tags}
+              updateTags={handleUpdateTags}
+              view="panel"
+            />
+          </StyledPaper>
+          <StyledDiv>
+            <DeleteDomain
+              domainId={domain.id}
+              domainLabel={domain.domain}
+              onSuccess={() => history.push('/domains')}
+            />
+          </StyledDiv>
+        </StyledTagSectionGrid>
+      </StyledRootGrid>
     </>
   );
 };
 
-export default DomainDetail;
+const StyledTypography = styled(Typography, { label: 'StyledTypography' })(
+  ({ theme }) => ({
+    marginBottom: theme.spacing(2),
+  })
+);
+
+const StyledPaper = styled(Paper, { label: 'StyledPaper' })(({ theme }) => ({
+  height: '93%',
+  marginBottom: theme.spacing(2),
+  minHeight: '160px',
+  padding: theme.spacing(2.5),
+}));
+
+const StyledNotice = styled(Notice, { label: 'StyledNotice' })(({ theme }) => ({
+  marginBottom: `0 !important`,
+  marginTop: `${theme.spacing(3)} !important`,
+}));
+
+const StyledRootGrid = styled(Grid, { label: 'StyledRootGrid' })(
+  ({ theme }) => ({
+    marginBottom: theme.spacing(3),
+    marginLeft: 0,
+    marginRight: 0,
+  })
+);
+
+const StyledMainGrid = styled(Grid, { label: 'StyledMainGrid' })(
+  ({ theme }) => ({
+    '&.MuiGrid-item': {
+      padding: 0,
+    },
+    [theme.breakpoints.up('md')]: {
+      order: 1,
+    },
+  })
+);
+
+const StyledTagSectionGrid = styled(Grid, { label: 'StyledTagGrid' })(
+  ({ theme }) => ({
+    '&.MuiGrid-item': {
+      paddingLeft: 0,
+      paddingRight: 0,
+    },
+    [theme.breakpoints.up('md')]: {
+      marginTop: theme.spacing(2),
+      order: 2,
+    },
+  })
+);
+
+const StyledDiv = styled('div', { label: 'StyledDiv' })(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'flex-end',
+  [theme.breakpoints.down('lg')]: {
+    marginLeft: theme.spacing(),
+  },
+}));

@@ -1,19 +1,18 @@
 import * as React from 'react';
-import Hidden from 'src/components/core/Hidden';
-import Typography from 'src/components/core/Typography';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import { SupportTicket } from '@linode/api-v4/lib/support';
 import { Link } from 'react-router-dom';
-import { makeStyles } from 'src/components/core/styles';
-import { getLinkTargets } from 'src/utilities/getEventsActionLink';
 
-const useStyles = makeStyles(() => ({
-  regarding: {
-    lineHeight: 1.1,
-  },
-}));
+import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
+import { Hidden } from 'src/components/Hidden';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { Typography } from 'src/components/Typography';
+import { getLinkTargets } from 'src/utilities/getEventsActionLink';
+import { sanitizeHTML } from 'src/utilities/sanitizeHTML';
+
+import { SEVERITY_LABEL_MAP } from './constants';
+import { useTicketSeverityCapability } from './ticketUtils';
+
+import type { SupportTicket } from '@linode/api-v4/lib/support';
 
 interface Props {
   ticket: SupportTicket;
@@ -23,7 +22,7 @@ const renderEntityLink = (ticket: SupportTicket) => {
   const target = getLinkTargets(ticket.entity);
   return ticket.entity ? (
     target !== null ? (
-      <Link to={target} className="secondaryLink">
+      <Link className="secondaryLink" to={target}>
         {ticket.entity.label}
       </Link>
     ) : (
@@ -37,26 +36,43 @@ const renderEntityLink = (ticket: SupportTicket) => {
   null;
 };
 
-const TicketRow: React.FC<Props> = ({ ticket }) => {
-  const classes = useStyles();
+export const TicketRow = ({ ticket }: Props) => {
+  const hasSeverityCapability = useTicketSeverityCapability();
+
+  const ticketSummary = sanitizeHTML({
+    disallowedTagsMode: 'discard',
+    sanitizingTier: 'none',
+    text: ticket.summary,
+  }).toString();
 
   return (
     <TableRow
       data-qa-support-ticket={ticket.id}
-      key={`ticket-${ticket.id}`}
       data-testid="ticket-row"
-      ariaLabel={`Ticket subject ${ticket.summary}`}
+      key={`ticket-${ticket.id}`}
     >
       <TableCell data-qa-support-subject>
-        <Link to={`/support/tickets/${ticket.id}`}>{ticket.summary}</Link>
+        <Link to={`/support/tickets/${ticket.id}`}>{ticketSummary}</Link>
       </TableCell>
-      <Hidden smDown>
+      <Hidden mdDown>
         <TableCell data-qa-support-id>{ticket.id}</TableCell>
       </Hidden>
-      <TableCell data-qa-support-entity className={classes.regarding}>
-        {renderEntityLink(ticket)}
-      </TableCell>
-      <Hidden xsDown>
+      <Hidden mdDown>
+        <TableCell
+          sx={{
+            lineHeight: 1.1,
+          }}
+          data-qa-support-entity
+        >
+          {renderEntityLink(ticket)}
+        </TableCell>
+      </Hidden>
+      {hasSeverityCapability && (
+        <TableCell data-qa-support-severity>
+          {ticket.severity ? SEVERITY_LABEL_MAP.get(ticket.severity) : ''}
+        </TableCell>
+      )}
+      <Hidden smDown>
         <TableCell data-qa-support-date>
           <DateTimeDisplay value={ticket.opened} />
         </TableCell>
@@ -64,11 +80,9 @@ const TicketRow: React.FC<Props> = ({ ticket }) => {
       <TableCell data-qa-support-updated>
         <DateTimeDisplay value={ticket.updated} />
       </TableCell>
-      <Hidden smDown>
+      <Hidden mdDown>
         <TableCell data-qa-support-updated-by>{ticket.updated_by}</TableCell>
       </Hidden>
     </TableRow>
   );
 };
-
-export default TicketRow;

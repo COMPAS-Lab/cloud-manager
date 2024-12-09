@@ -1,51 +1,77 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-import classNames from 'classnames';
-import * as hljs from 'highlight.js/lib/core';
+import * as hljs from 'highlight.js';
+import apache from 'highlight.js/lib/languages/apache';
+import bash from 'highlight.js/lib/languages/bash';
+import javascript from 'highlight.js/lib/languages/javascript';
+import nginx from 'highlight.js/lib/languages/nginx';
+import yaml from 'highlight.js/lib/languages/yaml';
+import HLJSDarkTheme from 'highlight.js/styles/a11y-dark.css?raw';
+import HLJSLightTheme from 'highlight.js/styles/a11y-light.css?raw';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import 'src/formatted-text.css';
-import { sanitizeHTML } from 'src/utilities/sanitize-html';
-import { unsafe_MarkdownIt } from 'src/utilities/markdown';
-import sanitize from 'sanitize-html';
-// Register all languages we intend to use
-hljs.registerLanguage('apache', require('highlight.js/lib/languages/apache'));
-hljs.registerLanguage('bash', require('highlight.js/lib/languages/bash'));
-hljs.registerLanguage(
-  'javascript',
-  require('highlight.js/lib/languages/javascript')
-);
-hljs.registerLanguage('nginx', require('highlight.js/lib/languages/nginx'));
-hljs.registerLanguage('yaml', require('highlight.js/lib/languages/yaml'));
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    '& .hljs': {
-      color: theme.color.offBlack,
-    },
-  },
-}));
+import { Typography } from 'src/components/Typography';
+import 'src/formatted-text.css';
+import { unsafe_MarkdownIt } from 'src/utilities/markdown';
+import { sanitizeHTML } from 'src/utilities/sanitizeHTML';
+import { useColorMode } from 'src/utilities/theme';
+
+import type { ThemeName } from '@linode/ui';
+import type { SanitizeOptions } from 'src/utilities/sanitizeHTML';
+
+hljs.registerLanguage('apache', apache);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('nginx', nginx);
+hljs.registerLanguage('yaml', yaml);
 
 export type SupportedLanguage =
-  | 'plaintext'
   | 'apache'
   | 'bash'
   | 'javascript'
   | 'nginx'
+  | 'plaintext'
+  | 'shell'
   | 'yaml';
 
 export interface HighlightedMarkdownProps {
-  textOrMarkdown: string;
+  className?: string;
   language?: SupportedLanguage;
-  sanitizeOptions?: sanitize.IOptions;
+  sanitizeOptions?: SanitizeOptions;
+  textOrMarkdown: string;
 }
 
-export const HighlightedMarkdown: React.FC<HighlightedMarkdownProps> = (
-  props
-) => {
-  const classes = useStyles();
-  const { language, textOrMarkdown, sanitizeOptions } = props;
+export const HighlightedMarkdown = (props: HighlightedMarkdownProps) => {
+  const { className, language, sanitizeOptions, textOrMarkdown } = props;
   const rootRef = React.useRef<HTMLDivElement>(null);
+
+  const { colorMode } = useColorMode();
+
+  /**
+   * This function exists because we use Hightlight.js and it does not have a built-in
+   * way to programaticly change the theme.
+   *
+   * We must manually switch our Highlight.js theme's CSS when our theme is changed.
+   */
+  const handleThemeChange = async (theme: ThemeName) => {
+    const THEME_STYLE_ID = 'hljs-theme';
+    const existingStyleTag = document.getElementById(THEME_STYLE_ID);
+
+    if (existingStyleTag) {
+      // If the style tag already exists in the <head>, just update the css content.
+      existingStyleTag.innerHTML =
+        theme === 'light' ? HLJSLightTheme : HLJSDarkTheme;
+    } else {
+      // The page has been loaded and we need to manually append our Hightlight.js
+      // css so we can easily change it later on.
+      const styleTag = document.createElement('style');
+      styleTag.id = THEME_STYLE_ID;
+      styleTag.innerHTML = theme === 'light' ? HLJSLightTheme : HLJSDarkTheme;
+      document.head.appendChild(styleTag);
+    }
+  };
+
+  React.useEffect(() => {
+    handleThemeChange(colorMode);
+  }, [colorMode]);
 
   /**
    * If the language prop is provided, we'll try to override the language
@@ -61,14 +87,19 @@ export const HighlightedMarkdown: React.FC<HighlightedMarkdownProps> = (
 
   const unsafe_parsedMarkdown = unsafe_MarkdownIt.render(textOrMarkdown);
 
-  const sanitizedHtml = sanitizeHTML(unsafe_parsedMarkdown, sanitizeOptions);
+  const sanitizedHtml = sanitizeHTML({
+    sanitizeOptions,
+    sanitizingTier: 'flexible',
+    text: unsafe_parsedMarkdown,
+  });
 
   // Adapted from https://stackblitz.com/edit/react-highlighted-markdown?file=highlighted-markdown.tsx
   // All the safety checking is due to a reported error from certain versions of FireFox.
   React.useEffect(() => {
     try {
       if (rootRef.current) {
-        const blocks = rootRef.current.querySelectorAll('pre code') ?? [];
+        const blocks: NodeListOf<HTMLElement> =
+          rootRef.current.querySelectorAll('pre code') ?? [];
         const len = blocks.length ?? 0;
         let i = 0;
         for (i; i < len; i++) {
@@ -82,16 +113,16 @@ export const HighlightedMarkdown: React.FC<HighlightedMarkdownProps> = (
 
   return (
     <Typography
-      className={classNames({
-        [classes.root]: true,
-        'formatted-text': true,
-      })}
-      ref={rootRef}
       dangerouslySetInnerHTML={{
         __html: sanitizedHtml,
       }}
+      sx={(theme) => ({
+        '& .hljs': {
+          color: theme.color.offBlack,
+        },
+      })}
+      className={`formatted-text ${className}`}
+      ref={rootRef}
     />
   );
 };
-
-export default HighlightedMarkdown;

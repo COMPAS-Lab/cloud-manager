@@ -1,16 +1,12 @@
 import { fireEvent, screen } from '@testing-library/react';
 import * as React from 'react';
-import { QueryClient } from 'react-query';
+
 import { databaseFactory } from 'src/factories';
 import { mockMatchMedia, renderWithTheme } from 'src/utilities/testHelpers';
+
 import AccessControls from './AccessControls';
 
-const queryClient = new QueryClient();
-
 beforeAll(() => mockMatchMedia());
-afterEach(() => {
-  queryClient.clear();
-});
 
 describe('Access Controls', () => {
   it('Should have a Remove button for each IP listed in the table', () => {
@@ -34,4 +30,24 @@ describe('Access Controls', () => {
       screen.getByTestId('ip-removal-confirmation-warning')
     ).toBeInTheDocument();
   });
+
+  it.each([
+    ['disable', true],
+    ['enable', false],
+  ])(
+    'should %s "Manage Access" button when disabled is %s',
+    (_, isDisabled) => {
+      const database = databaseFactory.build();
+      const { getByRole } = renderWithTheme(
+        <AccessControls database={database} disabled={isDisabled} />
+      );
+      const button = getByRole('button', { name: 'Manage Access' });
+
+      if (isDisabled) {
+        expect(button).toBeDisabled();
+      } else {
+        expect(button).toBeEnabled();
+      }
+    }
+  );
 });

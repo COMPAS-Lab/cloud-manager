@@ -1,30 +1,32 @@
 import * as React from 'react';
-import Hidden, { HiddenProps } from '../core/Hidden';
-import Skeleton from '../core/Skeleton';
-import { makeStyles } from '../core/styles';
-import TableCell from '../TableCell/TableCell';
-import TableRow from '../TableRow/TableRow';
 
-const useStyles = makeStyles(() => ({
-  root: {
-    '& :last-child': {
-      paddingRight: 15,
-    },
-  },
-}));
+import { Hidden, HiddenProps } from '../Hidden';
+import { Skeleton } from '../Skeleton';
+import { TableCell } from '../TableCell/TableCell';
+import { TableRow } from '../TableRow/TableRow';
 
-export interface Props {
+export interface TableRowLoadingProps {
+  /**
+   * The number of columns the empty state should span
+   * @default 1
+   */
   columns?: number;
-  rows?: number;
+  /**
+   * Optional responsive props to hide cells at certain breakpoints
+   */
   responsive?: Record<number, HiddenProps>;
+  /**
+   * The number of rows to display to customize the loading table's height)
+   * @default 1
+   */
+  rows?: number;
 }
 
-export const TableRowLoading: React.FC<Props> = ({
-  rows = 1,
+export const TableRowLoading = ({
   columns = 1,
   responsive,
-}) => {
-  const classes = useStyles();
+  rows = 1,
+}: TableRowLoadingProps) => {
   const cols = [];
 
   for (let j = 0; j < columns; j++) {
@@ -50,9 +52,13 @@ export const TableRowLoading: React.FC<Props> = ({
   for (let i = 0; i < rows; i++) {
     tableRows.push(
       <TableRow
-        className={classes.root}
-        data-testid="table-row-loading"
+        sx={{
+          '&& :last-child': {
+            paddingRight: '15px',
+          },
+        }}
         aria-label="Table content is loading"
+        data-testid="table-row-loading"
         key={`table-loading-row-${i}`}
       >
         {cols}

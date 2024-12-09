@@ -1,197 +1,170 @@
-import { restoreBackup } from '@linode/api-v4/lib/linodes';
-import { APIError } from '@linode/api-v4/lib/types';
+import { FormControl } from '@linode/ui';
+import { FormHelperText } from '@linode/ui';
+import { useFormik } from 'formik';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import { compose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import CheckBox from 'src/components/CheckBox';
-import FormControl from 'src/components/core/FormControl';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import FormHelperText from 'src/components/core/FormHelperText';
-import InputLabel from 'src/components/core/InputLabel';
-import Drawer from 'src/components/Drawer';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import Notice from 'src/components/Notice';
-import withLinodes, {
-  Props as LinodeProps,
-} from 'src/containers/withLinodes.container';
-import { useGrants } from 'src/queries/profile';
-import { getPermissionsForLinode } from 'src/store/linodes/permissions/permissions.selector';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import getAPIErrorsFor from 'src/utilities/getAPIErrorFor';
-import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
-import { Grants } from '@linode/api-v4/lib';
 
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { Checkbox } from 'src/components/Checkbox';
+import { Drawer } from 'src/components/Drawer';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { Notice } from 'src/components/Notice/Notice';
+import { useEventsPollingActions } from 'src/queries/events/events';
+import { useLinodeBackupRestoreMutation } from 'src/queries/linodes/backups';
+import {
+  useAllLinodesQuery,
+  useLinodeQuery,
+} from 'src/queries/linodes/linodes';
+import { getErrorMap } from 'src/utilities/errorUtils';
+
+import type { LinodeBackup } from '@linode/api-v4/lib/linodes';
 interface Props {
-  open: boolean;
-  linodeID: number;
-  linodeRegion: string;
-  backupCreated: string;
-  backupID?: number;
+  backup: LinodeBackup | undefined;
+  linodeId: number;
   onClose: () => void;
-  onSubmit: () => void;
+  open: boolean;
 }
 
-export type CombinedProps = Props & LinodeProps;
+export const RestoreToLinodeDrawer = (props: Props) => {
+  const { backup, linodeId, onClose, open } = props;
+  const { enqueueSnackbar } = useSnackbar();
+  const { data: linode } = useLinodeQuery(linodeId, open);
 
-const canEditLinode = (
-  grants: Grants | undefined,
-  linodeId: number
-): boolean => {
-  return getPermissionsForLinode(grants, linodeId) === 'read_only';
-};
+  const { checkForNewEvents } = useEventsPollingActions();
 
-export const RestoreToLinodeDrawer: React.FC<CombinedProps> = (props) => {
   const {
-    onSubmit,
-    linodeID,
-    backupID,
-    open,
-    backupCreated,
-    linodesData,
-    linodeRegion,
-  } = props;
+    data: linodes,
+    error: linodeError,
+    isLoading: linodesLoading,
+  } = useAllLinodesQuery(
+    {},
+    {
+      region: linode?.region,
+    },
+    open && linode !== undefined
+  );
 
-  const { data: grants } = useGrants();
+  const {
+    error,
+    isPending,
+    mutateAsync: restoreBackup,
+    reset: resetMutation,
+  } = useLinodeBackupRestoreMutation();
 
-  const [overwrite, setOverwrite] = React.useState<boolean>(false);
-  const [selectedLinode, setSelectedLinode] = React.useState<string>('none');
-  const [errors, setErrors] = React.useState<APIError[]>([]);
-
-  const reset = () => {
-    setOverwrite(false);
-    setSelectedLinode('none');
-    setErrors([]);
-  };
-
-  const restoreToLinode = () => {
-    if (!selectedLinode || selectedLinode === 'none') {
-      setErrors([
-        ...errors,
-        ...[{ field: 'linode_id', reason: 'You must select a Linode' }],
-      ]);
-      scrollErrorIntoView();
-      return;
-    }
-    restoreBackup(linodeID, Number(backupID), Number(selectedLinode), overwrite)
-      .then(() => {
-        reset();
-        onSubmit();
-      })
-      .catch((errResponse) => {
-        setErrors(getAPIErrorOrDefault(errResponse));
-        scrollErrorIntoView();
+  const formik = useFormik({
+    enableReinitialize: true,
+    initialValues: {
+      linode_id: linodeId,
+      overwrite: false,
+    },
+    async onSubmit(values) {
+      await restoreBackup({
+        backupId: backup?.id ?? -1,
+        linodeId,
+        overwrite: values.overwrite,
+        targetLinodeId: values.linode_id ?? -1,
       });
-  };
+      enqueueSnackbar(
+        `Started restoring Linode ${selectedLinodeOption?.label} from a backup`,
+        { variant: 'info' }
+      );
+      checkForNewEvents();
+      onClose();
+    },
+  });
 
-  const handleSelectLinode = (e: Item<string>) => {
-    setSelectedLinode(e.value);
-  };
+  React.useEffect(() => {
+    if (open) {
+      formik.resetForm();
+      resetMutation();
+    }
+  }, [open]);
 
-  const handleToggleOverwrite = () => {
-    setOverwrite((prevOverwrite) => !prevOverwrite);
-  };
-
-  const handleCloseDrawer = () => {
-    reset();
-    props.onClose();
-  };
-
-  const errorResources = {
-    linode_id: 'Linode',
-    overwrite: 'Overwrite',
-  };
-
-  const hasErrorFor = getAPIErrorsFor(errorResources, errors);
-
-  const linodeError = hasErrorFor('linode_id');
-  const overwriteError = hasErrorFor('overwrite');
-  const generalError = hasErrorFor('none');
-
-  const readOnly = canEditLinode(grants, Number(selectedLinode));
-  const selectError = Boolean(linodeError) || readOnly;
-
-  const linodeOptions = linodesData
-    .filter((linode) => linode.region === linodeRegion)
-    .map(({ label, id }) => {
+  const linodeOptions =
+    linodes?.map(({ id, label }) => {
       return { label, value: id };
-    });
+    }) ?? [];
+
+  const selectedLinodeOption = linodeOptions.find(
+    (option) => option.value === formik.values.linode_id
+  );
+
+  const errorMap = getErrorMap(['linode_id', 'overwrite'], error);
 
   return (
     <Drawer
+      onClose={onClose}
       open={open}
-      onClose={handleCloseDrawer}
-      title={`Restore Backup from ${backupCreated}`}
+      title={`Restore Backup from ${backup?.created}`}
     >
-      <FormControl fullWidth>
-        <InputLabel
-          htmlFor="linode"
-          disableAnimation
-          shrink={true}
-          error={Boolean(linodeError)}
-        >
-          Linode
-        </InputLabel>
-        <Select
+      <form onSubmit={formik.handleSubmit}>
+        {Boolean(errorMap.none) && (
+          <Notice variant="error">{errorMap.none}</Notice>
+        )}
+        <Autocomplete
+          onChange={(_, selected) =>
+            formik.setFieldValue('linode_id', selected?.value)
+          }
           textFieldProps={{
             dataAttrs: {
               'data-qa-select-linode': true,
             },
           }}
-          defaultValue={selectedLinode || ''}
+          autoHighlight
+          disableClearable
+          errorText={linodeError?.[0].reason ?? errorMap.linode_id}
+          label="Linode"
+          loading={linodesLoading}
           options={linodeOptions}
-          onChange={handleSelectLinode}
-          errorText={linodeError}
           placeholder="Select a Linode"
-          isClearable={false}
-          label="Select a Linode"
-          hideLabel
+          value={selectedLinodeOption}
         />
-        {selectError && (
-          <FormHelperText error>
-            {linodeError || "You don't have permission to edit this Linode."}
+        <FormControl sx={{ paddingLeft: 0.4 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formik.values.overwrite}
+                name="overwrite"
+                onChange={formik.handleChange}
+              />
+            }
+            label="Overwrite Linode"
+          />
+          <FormHelperText sx={{ marginLeft: 0 }}>
+            Overwriting will delete all disks and configs on the target Linode
+            before restoring
           </FormHelperText>
+        </FormControl>
+        {Boolean(errorMap.overwrite) && (
+          <Notice variant="error">{errorMap.overwrite}</Notice>
         )}
-      </FormControl>
-      <FormControlLabel
-        control={
-          <CheckBox checked={overwrite} onChange={handleToggleOverwrite} />
-        }
-        label="Overwrite Linode"
-      />
-      {overwrite && (
-        <Notice
-          warning
-          text="This will delete all disks and configs on this Linode"
+        {formik.values.overwrite && (
+          <Notice
+            text={`This will delete all disks and configs on ${
+              selectedLinodeOption
+                ? `Linode ${selectedLinodeOption.label}`
+                : 'the selcted Linode'
+            }`}
+            spacingBottom={0}
+            spacingTop={12}
+            variant="warning"
+          />
+        )}
+        <ActionsPanel
+          primaryButtonProps={{
+            'data-testid': 'restore-submit',
+            label: 'Restore',
+            loading: isPending,
+            type: 'submit',
+          }}
+          secondaryButtonProps={{
+            'data-testid': 'restore-cancel',
+            label: 'Cancel',
+            onClick: onClose,
+          }}
         />
-      )}
-      {Boolean(overwriteError) && (
-        <FormHelperText error>{overwriteError}</FormHelperText>
-      )}
-      {Boolean(generalError) && (
-        <FormHelperText error>{generalError}</FormHelperText>
-      )}
-      <ActionsPanel>
-        <Button
-          buttonType="secondary"
-          onClick={handleCloseDrawer}
-          data-qa-restore-cancel
-        >
-          Cancel
-        </Button>
-        <Button
-          buttonType="primary"
-          onClick={restoreToLinode}
-          data-qa-restore-submit
-          disabled={readOnly}
-        >
-          Restore
-        </Button>
-      </ActionsPanel>
+      </form>
     </Drawer>
   );
 };
-
-const enhanced = compose<CombinedProps, Props>(withLinodes());
-
-export default enhanced(RestoreToLinodeDrawer);

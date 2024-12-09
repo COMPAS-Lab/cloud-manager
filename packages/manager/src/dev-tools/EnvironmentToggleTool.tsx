@@ -1,12 +1,15 @@
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import Grid from 'src/components/core/Grid';
+
 import { storage } from 'src/utilities/storage';
 
+import { DevToolSelect } from './components/DevToolSelect';
+
 interface EnvironmentOption {
-  label: string;
   apiRoot: string;
-  loginRoot: string;
   clientID: string;
+  label: string;
+  loginRoot: string;
 }
 
 // Parse a node env to collect environment options. Set environment variables as follows:
@@ -19,7 +22,7 @@ interface EnvironmentOption {
 // Repeat for each desired environment, incrementing the "1" to "2", e.g.:
 //
 // REACT_APP_DEV_TOOLS_ENV_2_LABEL+"Another environment"
-export const getOptions = (env: typeof process.env) => {
+export const getOptions = (env: Partial<ImportMetaEnv>) => {
   const envVariables = Object.keys(env);
 
   return envVariables.reduce<EnvironmentOption[]>((acc, thisEnvVariable) => {
@@ -34,42 +37,40 @@ export const getOptions = (env: typeof process.env) => {
     return [
       ...acc,
       {
-        label: env[thisEnvVariable] ?? '',
-        apiRoot: env[`${base}_API_ROOT`] ?? '',
-        loginRoot: env[`${base}_LOGIN_ROOT`] ?? '',
-        clientID: env[`${base}_CLIENT_ID`] ?? '',
+        apiRoot: (env as any)[`${base}_API_ROOT`] ?? '',
+        clientID: (env as any)[`${base}_CLIENT_ID`] ?? '',
+        label: (env as any)[thisEnvVariable] ?? '',
+        loginRoot: (env as any)[`${base}_LOGIN_ROOT`] ?? '',
       },
     ];
   }, []);
 };
 
-const options = getOptions(process.env);
+const options = getOptions(import.meta.env);
 
 // This component works by setting local storage values that override the API_ROOT, LOGIN_ROOT,
 // and CLIENT_ID environment variables, giving client-side control over the environment.
-const EnvironmentToggleTool: React.FC<{}> = () => {
+export const EnvironmentToggleTool = () => {
   const [selectedOption, setSelectedOption] = React.useState(0);
 
   const localStorageEnv = storage.devToolsEnv.get();
   const currentEnvLabel = localStorageEnv?.label;
+  const selectedOptionLabel = options[selectedOption]?.label;
 
   return (
     <Grid container>
-      <Grid item xs={12}>
-        <h4 style={{ marginBottom: 8 }}>Environment</h4>
-      </Grid>
-      <Grid item xs={12}>
-        <select
-          onBlur={(e) => {
+      <Grid display="flex" flexWrap="nowrap" xs={12}>
+        <DevToolSelect
+          onChange={(e) => {
             const selectedIndex = options.findIndex(
               (o) => o.label === e.target.value
             );
             setSelectedOption(Math.max(selectedIndex, 0));
           }}
           defaultValue={currentEnvLabel}
-          style={{ marginRight: 8 }}
+          style={{ marginRight: 8, maxWidth: '100%' }}
         >
-          <option value="" disabled>
+          <option disabled value="">
             Select an environment
           </option>
           {options.map((thisOption) => {
@@ -80,7 +81,7 @@ const EnvironmentToggleTool: React.FC<{}> = () => {
               </option>
             );
           })}
-        </select>
+        </DevToolSelect>
         <button
           onClick={() => {
             const selected = options[selectedOption];
@@ -89,6 +90,8 @@ const EnvironmentToggleTool: React.FC<{}> = () => {
               window.location.reload();
             }
           }}
+          className="green"
+          disabled={selectedOptionLabel === currentEnvLabel}
         >
           Refresh
         </button>
@@ -96,5 +99,3 @@ const EnvironmentToggleTool: React.FC<{}> = () => {
     </Grid>
   );
 };
-
-export default React.memo(EnvironmentToggleTool);

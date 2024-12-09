@@ -1,23 +1,30 @@
 import { DateTime } from 'luxon';
 import { equals, pathOr, sort, splitAt } from 'ramda';
 import * as React from 'react';
-import { Order } from 'src/components/Pagey';
-import usePreferences from 'src/hooks/usePreferences';
-import usePrevious from 'src/hooks/usePrevious';
-import { UserPreferences } from 'src/store/preferences/preferences.actions';
+import { useHistory, useLocation } from 'react-router-dom';
+import { debounce } from 'throttle-debounce';
+
+import { usePrevious } from 'src/hooks/usePrevious';
+import {
+  useMutatePreferences,
+  usePreferences,
+} from 'src/queries/profile/preferences';
+import { getQueryParamsFromQueryString } from 'src/utilities/queryParams';
 import {
   sortByArrayLength,
   sortByNumber,
   sortByString,
   sortByUTFDate,
 } from 'src/utilities/sort-by';
-import { debounce } from 'throttle-debounce';
-import { getParamsFromUrl } from 'src/utilities/queryParams';
-import { useHistory, useLocation } from 'react-router-dom';
 
-export interface OrderByProps extends State {
+import type { Order } from 'src/hooks/useOrder';
+import type { ManagerPreferences } from 'src/types/ManagerPreferences';
+
+export interface OrderByProps<T> extends State {
+  data: T[];
   handleOrderChange: (orderBy: string, order: Order) => void;
-  data: any[];
+  order: Order;
+  orderBy: string;
 }
 
 interface State {
@@ -25,15 +32,15 @@ interface State {
   orderBy: string;
 }
 
-interface Props {
-  data: any[];
-  children: (p: OrderByProps) => React.ReactNode;
+interface Props<T> {
+  children: (p: OrderByProps<T>) => React.ReactNode;
+  data: T[];
   order?: Order;
   orderBy?: string;
   preferenceKey?: string; // If provided, will store/read values from user preferences
 }
 
-export type CombinedProps = Props;
+export type CombinedProps<T> = Props<T>;
 
 /**
  * Given a set of UserPreferences (returned from the API),
@@ -51,10 +58,10 @@ export type CombinedProps = Props;
  */
 export const getInitialValuesFromUserPreferences = (
   preferenceKey: string,
-  preferences: UserPreferences,
+  preferences: ManagerPreferences,
   params: Record<string, string>,
-  defaultOrderBy: string,
-  defaultOrder: Order,
+  defaultOrderBy?: string,
+  defaultOrder?: Order,
   prefix?: string
 ) => {
   /**
@@ -85,14 +92,14 @@ export const getInitialValuesFromUserPreferences = (
   }
   return (
     preferences?.sortKeys?.[preferenceKey] ?? {
-      orderBy: defaultOrderBy,
       order: defaultOrder,
+      orderBy: defaultOrderBy,
     }
   );
 };
 
-export const sortData = (orderBy: string, order: Order) => {
-  return sort((a, b) => {
+export const sortData = <T,>(orderBy: string, order: Order) => {
+  return sort<T>((a, b) => {
     /* If the column we're sorting on is an array (e.g. 'tags', which is string[]),
      *  we want to sort by the length of the array. Otherwise, do a simple comparison.
      */
@@ -148,22 +155,27 @@ export const sortData = (orderBy: string, order: Order) => {
   });
 };
 
-export const OrderBy: React.FC<CombinedProps> = (props) => {
-  const { preferences, updatePreferences } = usePreferences();
+export const OrderBy = <T,>(props: CombinedProps<T>) => {
+  const { data: preferences } = usePreferences();
+  const { mutateAsync: updatePreferences } = useMutatePreferences();
   const location = useLocation();
   const history = useHistory();
-  const params = getParamsFromUrl(location.search);
+  const params = getQueryParamsFromQueryString(location.search);
 
   const initialValues = getInitialValuesFromUserPreferences(
     props.preferenceKey ?? '',
     preferences ?? {},
-    params as Record<string, string>,
-    props.orderBy ?? 'label',
-    props.order ?? 'desc'
+    params,
+    props.orderBy,
+    props.order
   );
 
-  const [orderBy, setOrderBy] = React.useState<string>(initialValues.orderBy);
-  const [order, setOrder] = React.useState<Order>(initialValues.order as Order);
+  const [orderBy, setOrderBy] = React.useState<string>(
+    initialValues.orderBy ?? 'label'
+  );
+  const [order, setOrder] = React.useState<Order>(
+    (initialValues.order as Order) ?? 'desc'
+  );
 
   // Stash a copy of the previous data for equality check.
   const prevData = usePrevious(props.data);
@@ -180,7 +192,7 @@ export const OrderBy: React.FC<CombinedProps> = (props) => {
   }
 
   // SORT THE DATA!
-  const sortedData = sortData(orderBy, order)(dataToSort.current);
+  const sortedData = sortData<T>(orderBy, order)(dataToSort.current);
 
   // Save this – this is what will be sorted next time around, if e.g. the order
   // or orderBy keys change. In that case we don't want to start from scratch
@@ -216,20 +228,21 @@ export const OrderBy: React.FC<CombinedProps> = (props) => {
     debouncedUpdateUserPreferences(newOrderBy, newOrder);
   };
 
-  const downstreamProps = {
+  const downstreamProps: OrderByProps<T> = {
     ...props,
+    data: sortedData,
+    handleOrderChange,
     order,
     orderBy,
-    handleOrderChange,
-    data: sortedData,
-    count: props.data.length,
   };
 
   // eslint-disable-next-line
   return <>{props.children(downstreamProps)}</>;
 };
 
-export default React.memo(OrderBy);
+const Memoized = React.memo(OrderBy);
+
+export default <T,>(props: CombinedProps<T>) => <Memoized {...props} />;
 
 const isValidDate = (date: any) => {
   return DateTime.fromISO(date).isValid;

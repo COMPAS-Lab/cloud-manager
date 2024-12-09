@@ -1,165 +1,79 @@
-import { closeSupportTicket } from '@linode/api-v4/lib/support';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
-import scrollTo from 'src/utilities/scrollTo';
+import { makeStyles } from 'tss-react/mui';
 
-type ClassNames = 'closeLink';
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Typography } from 'src/components/Typography';
+import { useSupportTicketCloseMutation } from 'src/queries/support';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    closeLink: {
-      ...theme.applyLinkStyles,
-    },
-  });
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
+  closeLink: {
+    ...theme.applyLinkStyles,
+  },
+}));
 
 interface Props {
   ticketId: number;
-  closeTicketSuccess: () => void;
 }
 
-interface State {
-  dialogOpen: boolean;
-  isClosingTicket: boolean;
-  ticketCloseError?: string;
-}
+export const CloseTicketLink = ({ ticketId }: Props) => {
+  const { classes } = useStyles();
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
-class CloseTicketLink extends React.Component<CombinedProps, State> {
-  mounted: boolean = false;
-  state: State = {
-    dialogOpen: false,
-    isClosingTicket: false,
+  const {
+    error,
+    isPending,
+    mutateAsync: closeSupportTicket,
+  } = useSupportTicketCloseMutation(ticketId);
+
+  const closeTicket = async () => {
+    await closeSupportTicket();
+    setIsDialogOpen(false);
   };
 
-  componentDidMount() {
-    this.mounted = true;
-  }
+  const actions = (
+    <ActionsPanel
+      primaryButtonProps={{
+        'data-testid': 'dialog-submit',
+        label: 'Confirm',
+        loading: isPending,
+        onClick: closeTicket,
+      }}
+      secondaryButtonProps={{
+        'data-testid': 'dialog-cancel',
+        label: 'Cancel',
+        onClick: () => setIsDialogOpen(false),
+      }}
+    />
+  );
 
-  componentWillUnmount() {
-    this.mounted = false;
-  }
-
-  openConfirmationDialog = () => {
-    if (!this.mounted) {
-      return;
-    }
-    this.setState({
-      dialogOpen: true,
-      isClosingTicket: false,
-      ticketCloseError: undefined,
-    });
-  };
-
-  closeConfirmationDialog = () => {
-    if (!this.mounted) {
-      return;
-    }
-    this.setState({ dialogOpen: false });
-  };
-
-  onClose = (e: React.MouseEvent<HTMLElement>) => {
-    e.preventDefault();
-    this.closeTicket();
-  };
-
-  closeTicket = () => {
-    const { closeTicketSuccess, ticketId } = this.props;
-    if (this.mounted) {
-      this.setState({ isClosingTicket: true });
-    }
-    closeSupportTicket(ticketId)
-      .then(() => {
-        if (this.mounted) {
-          this.setState({ isClosingTicket: false, dialogOpen: false });
-          scrollTo();
-        }
-        closeTicketSuccess();
-      })
-      .catch((errorResponse) => {
-        const apiError = getErrorStringOrDefault(
-          errorResponse,
-          'Ticket could not be closed.'
-        );
-        if (!this.mounted) {
-          return;
-        }
-        this.setState({
-          isClosingTicket: false,
-          ticketCloseError: apiError,
-        });
-      });
-  };
-
-  dialogActions = () => {
-    return (
-      <ActionsPanel>
-        <Button
-          buttonType="secondary"
-          onClick={this.closeConfirmationDialog}
-          data-qa-dialog-cancel
+  return (
+    <React.Fragment>
+      <Typography>
+        {`If everything is resolved, you can `}
+        <button
+          className={classes.closeLink}
+          data-qa-close-ticket-link
+          onClick={() => setIsDialogOpen(true)}
+          title="Close this ticket"
+          type="button"
         >
-          Cancel
-        </Button>
-        <Button
-          buttonType="primary"
-          onClick={this.onClose}
-          loading={this.state.isClosingTicket}
-          data-qa-dialog-submit
-        >
-          Confirm
-        </Button>
-      </ActionsPanel>
-    );
-  };
-
-  render() {
-    const { ticketCloseError } = this.state;
-    const { classes } = this.props;
-    return (
-      <React.Fragment>
-        <Typography>
-          {`If everything is resolved, you can `}
-          <button
-            onClick={this.openConfirmationDialog}
-            type="button"
-            title="Close this ticket"
-            className={classes.closeLink}
-            data-qa-close-ticket-link
-          >
-            close this ticket
-          </button>
-          .
-        </Typography>
-        <ConfirmationDialog
-          open={this.state.dialogOpen}
-          title={`Confirm Ticket Close`}
-          onClose={this.closeConfirmationDialog}
-          actions={this.dialogActions}
-        >
-          {ticketCloseError && (
-            <Notice error text={ticketCloseError} data-qa-confirmation-error />
-          )}
-          <Typography>
-            {`Are you sure you want to close this ticket?`}
-          </Typography>
-        </ConfirmationDialog>
-      </React.Fragment>
-    );
-  }
-}
-
-const styled = withStyles(styles);
-
-export default styled(CloseTicketLink);
+          close this ticket
+        </button>
+        .
+      </Typography>
+      <ConfirmationDialog
+        actions={actions}
+        error={error?.[0].reason}
+        onClose={() => setIsDialogOpen(false)}
+        open={isDialogOpen}
+        title={`Confirm Ticket Close`}
+      >
+        <Typography>{`Are you sure you want to close this ticket?`}</Typography>
+      </ConfirmationDialog>
+    </React.Fragment>
+  );
+};

@@ -1,44 +1,27 @@
 import * as React from 'react';
-import CheckBox from 'src/components/CheckBox';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import Link from 'src/components/Link';
-import PreferenceToggle, { ToggleProps } from 'src/components/PreferenceToggle';
-import TextField from 'src/components/TextField';
 
-export interface Props {
+import { Link } from 'src/components/Link';
+import { TextField, TextFieldProps } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
+
+export interface TypeToConfirmProps extends Omit<TextFieldProps, 'onChange'> {
   confirmationText?: JSX.Element | string;
-  onChange: (str: string) => void;
-  label: string;
-  hideDisable?: boolean;
-  hideLabel?: boolean;
+  hideInstructions?: boolean;
+  onChange: (value: string) => void;
   textFieldStyle?: React.CSSProperties;
+  title?: string;
   typographyStyle?: React.CSSProperties;
   visible?: boolean | undefined;
-  title?: string;
-  // This is a string index signature.
-  // This means that all properties in 'Props' are assignable to any
-  [propName: string]: any;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  description: {
-    marginTop: theme.spacing(),
-  },
-}));
-
-const TypeToConfirm: React.FC<Props> = (props) => {
+export const TypeToConfirm = (props: TypeToConfirmProps) => {
   const {
     confirmationText,
+    hideInstructions,
     onChange,
-    label,
-    hideLabel,
     textFieldStyle,
-    typographyStyle,
     title,
-    hideDisable,
+    typographyStyle,
     visible,
     ...rest
   } = props;

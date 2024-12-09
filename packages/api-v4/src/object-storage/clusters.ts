@@ -1,14 +1,14 @@
 import { API_ROOT } from '../constants';
 import Request, { setMethod, setParams, setURL, setXFilter } from '../request';
-import { ResourcePage as Page } from '../types';
+import { Filter, Params, ResourcePage as Page } from '../types';
 import { ObjectStorageCluster } from './types';
 
 /**
- * getClusters
- *
- * Gets a list of available clusters
+ * @deprecated This method returns legacy clusterId values representing regions
+ * used in older API versions. It is maintained for backward compatibility only.
+ * Please use the "getRegions" endpoint instead for up-to-date information.
  */
-export const getClusters = (params?: any, filters?: any) =>
+export const getClusters = (params?: Params, filters?: Filter) =>
   Request<Page<ObjectStorageCluster>>(
     setMethod('GET'),
     setParams(params),

@@ -1,70 +1,31 @@
 import {
-  getStackScript,
   StackScript,
+  getStackScript,
   updateStackScript,
 } from '@linode/api-v4/lib/stackscripts';
 import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import Breadcrumb from 'src/components/Breadcrumb';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import setDocs, { SetDocsProps } from 'src/components/DocsSidebar/setDocs';
-import DocsLink from 'src/components/DocsLink';
-import Grid from 'src/components/Grid';
-import NotFound from 'src/components/NotFound';
-import _StackScript from 'src/components/StackScript';
-import { StackScripts as StackScriptsDocs } from 'src/documentation';
-import useAccountManagement from 'src/hooks/useAccountManagement';
-import { useGrants } from 'src/queries/profile';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { NotFound } from 'src/components/NotFound';
+import { StackScript as _StackScript } from 'src/components/StackScript/StackScript';
+import { useAccountManagement } from 'src/hooks/useAccountManagement';
+import { useGrants } from 'src/queries/profile/profile';
 import { getAPIErrorOrDefault, getErrorMap } from 'src/utilities/errorUtils';
+
 import {
   canUserModifyAccountStackScript,
   getStackScriptUrl,
 } from './stackScriptUtils';
 
-interface MatchProps {
-  stackScriptId: string;
-}
-
-type RouteProps = RouteComponentProps<MatchProps>;
-
-type CombinedProps = RouteProps & SetDocsProps;
-
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    margin: 0,
-    [theme.breakpoints.down('sm')]: {
-      paddingRight: theme.spacing(),
-    },
-    [theme.breakpoints.down('xs')]: {
-      flexDirection: 'column',
-      alignItems: 'flex-start',
-      paddingLeft: theme.spacing(),
-    },
-  },
-  cta: {
-    display: 'flex',
-    flexGrow: 1,
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    justifyContent: 'flex-end',
-    marginTop: 6,
-    marginLeft: theme.spacing(),
-  },
-  button: {
-    marginLeft: theme.spacing(3),
-  },
-}));
-
-export const StackScriptsDetail: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { _isRestrictedUser, _hasGrant, profile } = useAccountManagement();
+export const StackScriptsDetail = () => {
+  const { _hasGrant, _isRestrictedUser, profile } = useAccountManagement();
   const { data: grants } = useGrants();
-  const { history } = props;
-  const { stackScriptId } = props.match.params;
+  const { stackScriptId } = useParams<{ stackScriptId: string }>();
+  const history = useHistory();
+  const location = useLocation();
 
   const [label, setLabel] = React.useState<string | undefined>('');
   const [loading, setLoading] = React.useState<boolean>(true);
@@ -152,46 +113,35 @@ export const StackScriptsDetail: React.FC<CombinedProps> = (props) => {
 
   return (
     <>
-      <Grid container className={classes.root} justifyContent="space-between">
-        <Grid item className="p0">
-          <Breadcrumb
-            pathname={props.location.pathname}
-            labelTitle={stackScript.label}
-            labelOptions={{ noCap: true }}
-            crumbOverrides={[
-              {
-                position: 1,
-                label: 'StackScripts',
-                linkTo: stackScript.mine
-                  ? '/stackscripts/account'
-                  : '/stackscripts/community',
-              },
-            ]}
-            onEditHandlers={
-              userCanModify
-                ? {
-                    editableTextTitle: stackScriptLabel,
-                    onEdit: handleLabelChange,
-                    onCancel: resetEditableLabel,
-                    errorText: labelError,
-                  }
-                : undefined
-            }
-          />
-        </Grid>
-        <Grid item className={`${classes.cta} p0`}>
-          <DocsLink href="https://www.linode.com/docs/platform/stackscripts" />
-          <Button
-            buttonType="primary"
-            className={classes.button}
-            onClick={handleCreateClick}
-            disabled={userCannotAddLinodes}
-            data-qa-stack-deploy
-          >
-            Deploy New Linode
-          </Button>
-        </Grid>
-      </Grid>
+      <LandingHeader
+        breadcrumbProps={{
+          crumbOverrides: [
+            {
+              label: 'StackScripts',
+              linkTo: stackScript.mine
+                ? '/stackscripts/account'
+                : '/stackscripts/community',
+              position: 1,
+            },
+          ],
+          labelOptions: { noCap: true },
+          onEditHandlers: userCanModify
+            ? {
+                editableTextTitle: stackScriptLabel,
+                errorText: labelError,
+                onCancel: resetEditableLabel,
+                onEdit: handleLabelChange,
+              }
+            : undefined,
+          pathname: location.pathname,
+        }}
+        createButtonText="Deploy New Linode"
+        disabledCreateButton={userCannotAddLinodes}
+        docsLabel="Docs"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/stackscripts"
+        onButtonClick={handleCreateClick}
+        title={stackScript.label}
+      />
       <div className="detailsWrapper">
         <_StackScript data={stackScript} userCanModify={userCanModify} />
       </div>
@@ -199,6 +149,4 @@ export const StackScriptsDetail: React.FC<CombinedProps> = (props) => {
   );
 };
 
-const enhanced = compose<CombinedProps, {}>(setDocs([StackScriptsDocs]));
-
-export default enhanced(StackScriptsDetail);
+export default StackScriptsDetail;

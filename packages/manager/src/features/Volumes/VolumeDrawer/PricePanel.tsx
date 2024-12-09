@@ -1,11 +1,8 @@
+import { Box } from '@linode/ui';
 import * as React from 'react';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import DisplayPrice from 'src/components/DisplayPrice';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { DisplayPrice } from 'src/components/DisplayPrice';
 import { MAX_VOLUME_SIZE } from 'src/constants';
 /* -- Clanode Change -- */
 import { VolumeType } from '@linode/api-v4/lib/volumes';
@@ -79,12 +76,8 @@ const PricePanel: React.FC<CombinedProps> = ({
   /* -- Clanode Change End -- */
 
   return (
-    <div className={classes.root}>
-      <DisplayPrice price={price} interval="mo" />
-    </div>
+    <Box marginTop={2}>
+      <DisplayPrice interval="mo" price={price ? Number(price) : '--.--'} />
+    </Box>
   );
 };
-
-const styled = withStyles(styles);
-
-export default styled(PricePanel);

@@ -1,104 +1,128 @@
-import Search from '@material-ui/icons/Search';
+import { IconButton, InputAdornment } from '@linode/ui';
+import Clear from '@mui/icons-material/Clear';
+import Search from '@mui/icons-material/Search';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { compose } from 'recompose';
+import { debounce } from 'throttle-debounce';
 
-import CircleProgress from 'src/components/CircleProgress';
-import InputAdornment from 'src/components/core/InputAdornment';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TextField, { Props as TextFieldProps } from 'src/components/TextField';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { TextField } from 'src/components/TextField';
 
-import usePrevious from 'src/hooks/usePrevious';
+import type { TextFieldProps } from 'src/components/TextField';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  searchIcon: {
-    color: `${theme.color.grey1} !important`,
-  },
-}));
-
-interface Props extends TextFieldProps {
-  onSearch: (query: string) => void;
-  debounceTime?: number;
-  isSearching?: boolean;
+export interface DebouncedSearchProps extends TextFieldProps {
   className?: string;
-  placeholder?: string;
-  label: string;
-  hideLabel?: boolean;
+  /**
+   * Whether to show a clear button at the end of the input.
+   */
+  clearable?: boolean;
+  /**
+   * Interval in milliseconds of time that passes before search queries are accepted.
+   * @default 400
+   */
+  debounceTime?: number;
   defaultValue?: string;
+  hideLabel?: boolean;
+
+  /**
+   * Determines if the textbox is currently searching for inputted query
+   */
+  isSearching?: boolean;
+  /**
+   * Function to perform when searching for query
+   */
+  onSearch: (query: string) => void;
+  placeholder?: string;
+  value: string;
 }
 
-type CombinedProps = Props;
+export const DebouncedSearchTextField = React.memo(
+  (props: DebouncedSearchProps) => {
+    const {
+      InputProps,
+      className,
+      clearable,
+      debounceTime,
+      defaultValue,
+      hideLabel,
+      isSearching,
+      label,
+      onSearch,
+      placeholder,
+      value,
+      ...restOfTextFieldProps
+    } = props;
 
-const DebouncedSearch: React.FC<CombinedProps> = (props) => {
-  const {
-    className,
-    isSearching,
-    InputProps,
-    debounceTime,
-    onSearch,
-    placeholder,
-    label,
-    hideLabel,
-    defaultValue,
-    ...restOfTextFieldProps
-  } = props;
-  const [query, setQuery] = React.useState<string>('');
-  const prevQuery = usePrevious<string>(query);
+    const [textFieldValue, setTextFieldValue] = React.useState<string>('');
 
-  const classes = useStyles();
+    // Memoize the debounced onChange handler to prevent unnecessary re-creations.
+    const debouncedOnChange = React.useMemo(
+      () =>
+        debounce(debounceTime ?? 400, (e) => {
+          onSearch(e.target.value);
+          setTextFieldValue(e.target.value);
+        }),
+      [debounceTime, onSearch]
+    );
 
-  React.useEffect(() => {
-    /*
-      This `didCancel` business is to prevent a warning from React.
-      See: https://github.com/facebook/react/issues/14369#issuecomment-468267798
-    */
-    let didCancel = false;
-    /*
-      don't run the search if the query hasn't changed.
-      This is mostly to prevent this effect from running on first mount
-    */
-    if ((prevQuery || '') !== query) {
-      setTimeout(() => {
-        if (!didCancel) {
-          onSearch(query);
-        }
-      }, debounceTime || 400);
-    }
-    return () => {
-      didCancel = true;
-    };
-  }, [query]);
+    // Synchronize the internal state with the prop value when the value prop changes.
+    React.useEffect(() => {
+      if (value && value !== textFieldValue) {
+        setTextFieldValue(value);
+      }
+    }, [value]);
 
-  const _setQuery = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-  };
+    return (
+      <TextField
+        InputProps={{
+          endAdornment: isSearching ? (
+            <InputAdornment position="end">
+              <CircleProgress size="sm" />
+            </InputAdornment>
+          ) : (
+            clearable &&
+            textFieldValue && (
+              <IconButton
+                onClick={() => {
+                  setTextFieldValue('');
+                  onSearch('');
+                }}
+                aria-label="Clear"
+                size="small"
+              >
+                <Clear
+                  sx={(theme) => ({
+                    '&&': {
+                      color: theme.color.grey1,
+                    },
+                  })}
+                />
+              </IconButton>
+            )
+          ),
+          startAdornment: (
+            <InputAdornment position="end">
+              <StyledSearchIcon />
+            </InputAdornment>
+          ),
+          ...InputProps,
+        }}
+        className={className}
+        data-qa-debounced-search
+        defaultValue={defaultValue}
+        hideLabel={hideLabel}
+        label={label}
+        onChange={debouncedOnChange}
+        placeholder={placeholder || 'Filter by query'}
+        value={textFieldValue}
+        {...restOfTextFieldProps}
+      />
+    );
+  }
+);
 
-  return (
-    <TextField
-      data-qa-debounced-search
-      className={className}
-      placeholder={placeholder || 'Filter by query'}
-      onChange={_setQuery}
-      defaultValue={defaultValue}
-      label={label}
-      hideLabel={hideLabel}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="end">
-            <Search className={classes.searchIcon} />
-          </InputAdornment>
-        ),
-        endAdornment: isSearching ? (
-          <InputAdornment position="end">
-            <CircleProgress mini={true} />
-          </InputAdornment>
-        ) : (
-          <React.Fragment />
-        ),
-        ...InputProps,
-      }}
-      {...restOfTextFieldProps}
-    />
-  );
-};
-
-export default compose<CombinedProps, Props>(React.memo)(DebouncedSearch);
+const StyledSearchIcon = styled(Search)(({ theme }) => ({
+  '&&, &&:hover': {
+    color: theme.color.grey1,
+  },
+}));

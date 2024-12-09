@@ -1,16 +1,15 @@
-import { pathOr } from 'ramda';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { withTheme, WithTheme } from 'src/components/core/styles';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
 import { appendStats } from 'src/features/Longview/shared/utilities';
+
 import { Disk, StatWithDummyPoint } from '../../../request.types';
 import { convertData } from '../../../shared/formatters';
 import { GraphProps } from './types';
 import { useGraphs } from './useGraphs';
 
-export type CombinedProps = GraphProps & WithTheme;
-
-export const DiskGraph: React.FC<CombinedProps> = (props) => {
+export const DiskGraph = (props: GraphProps) => {
   const {
     clientAPIKey,
     end,
@@ -18,11 +17,12 @@ export const DiskGraph: React.FC<CombinedProps> = (props) => {
     lastUpdated,
     lastUpdatedError,
     start,
-    theme,
     timezone,
   } = props;
 
-  const { data, loading, error: requestError, request } = useGraphs(
+  const theme = useTheme();
+
+  const { data, error: requestError, loading, request } = useGraphs(
     ['disk', 'sysinfo'],
     clientAPIKey,
     start,
@@ -35,62 +35,59 @@ export const DiskGraph: React.FC<CombinedProps> = (props) => {
 
   const _convertData = React.useCallback(convertData, [data, start, end]);
 
-  const { swap, read, write, error } = React.useMemo(
-    () =>
-      processDiskData(
-        pathOr({}, ['Disk'], data),
-        pathOr('kvm', ['SysInfo', 'type'], data)
-      ),
+  const { error, read, swap, write } = React.useMemo(
+    () => processDiskData(data.Disk ?? {}, data.SysInfo?.type ?? 'kvm'),
     [data.Disk, data.SysInfo]
   );
 
   return (
     <LongviewLineGraph
-      title="Disk I/O"
+      data={[
+        {
+          backgroundColor: theme.graphs.diskIO.swap,
+          borderColor: 'transparent',
+          data: _convertData(swap, start, end),
+          label: 'Swap',
+        },
+        {
+          backgroundColor: theme.graphs.diskIO.write,
+          borderColor: 'transparent',
+          data: _convertData(write, start, end),
+          label: 'Write',
+        },
+        {
+          backgroundColor: theme.graphs.diskIO.read,
+          borderColor: 'transparent',
+          data: _convertData(read, start, end),
+          label: 'Read',
+        },
+      ]}
       // Only show an error state if we don't have any data,
+      ariaLabel="Disk I/O Graph"
       // or in the case of special errors returned by processDiskData
       error={(!data.Disk && requestError) || error}
       loading={loading}
-      subtitle={'ops/second'}
-      unit={' ops/second'}
-      showToday={isToday}
-      timezone={timezone}
       nativeLegend
-      data={[
-        {
-          label: 'Swap',
-          borderColor: 'transparent',
-          backgroundColor: theme.graphs.diskIO.swap,
-          data: _convertData(swap, start, end),
-        },
-        {
-          label: 'Write',
-          borderColor: 'transparent',
-          backgroundColor: theme.graphs.diskIO.write,
-          data: _convertData(write, start, end),
-        },
-        {
-          label: 'Read',
-          borderColor: 'transparent',
-          backgroundColor: theme.graphs.diskIO.read,
-          data: _convertData(read, start, end),
-        },
-      ]}
+      showToday={isToday}
+      subtitle={'ops/second'}
+      timezone={timezone}
+      title="Disk I/O"
+      unit={' ops/second'}
     />
   );
 };
 
 interface DiskData {
-  read: StatWithDummyPoint[];
-  write: StatWithDummyPoint[];
-  swap: StatWithDummyPoint[];
   error?: string;
+  read: StatWithDummyPoint[];
+  swap: StatWithDummyPoint[];
+  write: StatWithDummyPoint[];
 }
 
 export const emptyState: DiskData = {
   read: [],
-  write: [],
   swap: [],
+  write: [],
 };
 
 /**
@@ -143,19 +140,14 @@ export const processDiskData = (
       if (thisDisk.isswap === 1) {
         // For swap, Classic combines reads and writes into a single metric
         // Note: we are assuming only one disk will have isswap === 1
-        acc.swap = appendStats(
-          pathOr([], ['reads'], thisDisk),
-          pathOr([], ['writes'], thisDisk)
-        );
+        acc.swap = appendStats(thisDisk.reads ?? [], thisDisk.writes ?? []);
       } else {
         // Not a swap, add reads and writes to running total
-        acc.read = appendStats(acc.read, pathOr([], ['reads'], thisDisk));
-        acc.write = appendStats(acc.write, pathOr([], ['writes'], thisDisk));
+        acc.read = appendStats(acc.read, thisDisk.reads ?? []);
+        acc.write = appendStats(acc.write, thisDisk.writes ?? []);
       }
       return acc;
     },
     { ...emptyState }
   );
 };
-
-export default withTheme(DiskGraph);

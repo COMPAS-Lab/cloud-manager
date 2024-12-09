@@ -1,56 +1,53 @@
+import { SxProps, Theme, useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Currency from 'src/components/Currency';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  price: {
-    display: 'inline-block',
-    color: theme.palette.text.primary,
-    fontSize: '1.125rem',
-  },
-}));
+import { Currency } from 'src/components/Currency';
+import { Typography } from 'src/components/Typography';
 
-interface Props {
-  price: number;
+export interface DisplayPriceProps {
+  /**
+   * The number of decimal places to display in the price.
+   */
+  decimalPlaces?: number;
+  /**
+   * The font size of the displayed price.
+   */
+  fontSize?: string;
+  /**
+   * The format interval to use for price formatting.
+   * @example 'mo'
+   * @example 'month'
+   * @example 'year'
+   */
   interval?: string;
-  fontSize?: string; // optional override
+  /**
+   * The price to display.
+   */
+  price: '--.--' | number;
 }
 
-type CombinedProps = Props;
+export const displayPrice = (price: number) => `$${price.toFixed(2)}`;
 
-export const displayPrice = (v: number) => `$${v.toFixed(2)}`;
+export const DisplayPrice = (props: DisplayPriceProps) => {
+  const theme = useTheme<Theme>();
+  const { decimalPlaces, fontSize, interval, price } = props;
 
-export const DisplayPrice: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { interval, price } = props;
-
-  const overrideStyle = {
-    fontSize: props?.fontSize,
+  const sx: SxProps = {
+    color: theme.palette.text.primary,
+    display: 'inline-block',
+    fontSize: fontSize ?? '1.125rem',
   };
 
   return (
     <>
-      <Typography
-        className={classes.price}
-        style={overrideStyle}
-        variant="h3"
-        qa-data-price={displayPrice(price)}
-      >
-        <Currency quantity={price} data-qa-currency-component />
+      <Typography sx={sx} variant="h3">
+        <Currency decimalPlaces={decimalPlaces} quantity={price} />
       </Typography>
       {interval && (
-        <Typography
-          className={classes.price}
-          style={overrideStyle}
-          variant="h3"
-          qa-data-billing-interval={interval}
-        >
+        <Typography sx={sx} variant="h3">
           /{interval}
         </Typography>
       )}
     </>
   );
 };
-
-export default DisplayPrice;

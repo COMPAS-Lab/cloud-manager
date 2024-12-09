@@ -1,45 +1,34 @@
 import * as React from 'react';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
 
-const useStyles = makeStyles(() => ({
-  graphsUnavailable: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    paddingTop: 0,
-    width: '100%',
-  },
-  spinner: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-}));
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Typography } from 'src/components/Typography';
 
 interface Props {
-  renderBody: () => JSX.Element;
-  loading: boolean;
-  title: string;
   height: number;
+  loading: boolean;
+  renderBody: () => JSX.Element;
+  title: string;
 }
 
-export const StatsPanel: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
+export const StatsPanel = (props: Props) => {
   const { height, loading, renderBody, title } = props;
 
   return (
     <>
-      <Typography variant="h2" data-qa-stats-title>
+      <Typography data-qa-stats-title variant="h2">
         {title}
       </Typography>
       {loading ? (
-        <div className={classes.spinner} style={{ minHeight: height }}>
-          <CircleProgress mini />
+        <div
+          style={{
+            alignItems: 'center',
+            display: 'flex',
+            justifyContent: 'center',
+            minHeight: height,
+            width: '100%',
+          }}
+        >
+          <CircleProgress size="sm" />
         </div>
       ) : (
         renderBody()

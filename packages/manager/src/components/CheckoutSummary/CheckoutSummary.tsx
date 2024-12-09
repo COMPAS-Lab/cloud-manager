@@ -1,75 +1,88 @@
+import { Paper } from '@linode/ui';
+import { useTheme } from '@mui/material';
+import { styled } from '@mui/material/styles';
+import Grid2 from '@mui/material/Unstable_Grid2/Grid2';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import Paper from '../core/Paper';
-import { makeStyles, Theme, useMediaQuery, useTheme } from '../core/styles';
-import Typography from '../core/Typography';
-import Grid from '../Grid';
+
+import { Typography } from '../Typography';
 import { SummaryItem } from './SummaryItem';
 
-interface Props {
-  heading: string;
-  children?: JSX.Element | null;
+import type { Theme } from '@mui/material/styles';
+
+export interface CheckoutSummaryProps {
+  /**
+   * JSX element to be displayed as an agreement section.
+   */
   agreement?: JSX.Element;
+  /**
+   * JSX element for additional content to be rendered within the component.
+   */
+  children?: JSX.Element | null;
+  /**
+   * The sections to be displayed in the `CheckoutSumamry`
+   */
   displaySections: SummaryItem[];
+  /**
+   * The heading text to be displayed in the `CheckoutSummary`.
+   */
+  heading: string;
 }
 
 export interface SummaryItem {
+  details?: number | string;
+  hourly?: number;
+  monthly?: number;
   title?: string;
-  details?: string | number;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  paper: {
-    marginTop: theme.spacing(3),
-    marginBottom: theme.spacing(3),
-  },
-  heading: {
-    marginBottom: theme.spacing(3),
-  },
-  summary: {
-    [theme.breakpoints.up('md')]: {
-      '& > div': {
-        borderRight: 'solid 1px #9DA4A6',
-        '&:last-child': {
-          borderRight: 'none',
-        },
-      },
-    },
-  },
-}));
-
-export const CheckoutSummary: React.FC<Props> = (props) => {
-  const classes = useStyles();
+export const CheckoutSummary = (props: CheckoutSummaryProps) => {
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { heading, agreement, displaySections } = props;
+  const { agreement, children, displaySections, heading } = props;
 
   return (
-    <Paper data-qa-summary className={classes.paper}>
-      <Typography
-        variant="h2"
-        data-qa-order-summary
-        className={classes.heading}
-      >
+    <StyledPaper data-qa-summary>
+      <StyledHeading data-qa-order-summary variant="h2">
         {heading}
-      </Typography>
+      </StyledHeading>
       {displaySections.length === 0 ? (
-        <Typography variant="body1" className={classes.heading}>
+        <StyledHeading variant="body1">
           Please configure your Linode.
-        </Typography>
+        </StyledHeading>
       ) : null}
-      <Grid
+      <StyledSummary
         container
-        spacing={3}
         direction={matchesSmDown ? 'column' : 'row'}
-        className={classes.summary}
+        spacing={3}
       >
         {displaySections.map((item) => (
           <SummaryItem key={`${item.title}-${item.details}`} {...item} />
         ))}
-      </Grid>
-      {props.children}
+      </StyledSummary>
+      {children}
       {agreement ? agreement : null}
-    </Paper>
+    </StyledPaper>
   );
 };
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+  marginTop: theme.spacing(3),
+}));
+
+const StyledHeading = styled(Typography)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+}));
+
+const StyledSummary = styled(Grid2)(({ theme }) => ({
+  [theme.breakpoints.up('md')]: {
+    '& > div': {
+      '&:last-child': {
+        borderRight: 'none',
+      },
+      borderRight: 'solid 1px #9DA4A6',
+    },
+  },
+}));

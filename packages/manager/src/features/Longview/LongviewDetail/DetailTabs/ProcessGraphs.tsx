@@ -1,48 +1,34 @@
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { compose } from 'recompose';
-import {
-  makeStyles,
-  Theme,
-  WithTheme,
-  withTheme,
-} from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
 import {
   convertBytesToTarget,
   readableBytes,
 } from 'src/utilities/unitConversions';
+
 import { LongviewProcesses } from '../../request.types';
 import { convertData, formatMemory } from '../../shared/formatters';
 import {
   statMax,
   sumRelatedProcessesAcrossAllUsers,
 } from '../../shared/utilities';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  smallGraph: {
-    [theme.breakpoints.down('sm')]: {
-      marginTop: theme.spacing(3) + 2,
-    },
-    marginTop: theme.spacing(6) + 3,
-  },
-}));
+import { StyledItemGrid, StyledSmallGraphGrid } from './CommonStyles.styles';
 
 interface Props {
   data: LongviewProcesses;
-  loading: boolean;
-  isToday: boolean;
-  timezone: string;
-  error?: string;
-  start: number;
   end: number;
+  error?: string;
+  isToday: boolean;
+  loading: boolean;
+  start: number;
+  timezone: string;
 }
 
-type CombinedProps = Props & WithTheme;
-
-export const ProcessGraphs: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { data, error, loading, isToday, timezone, start, end, theme } = props;
+export const ProcessGraphs = React.memo((props: Props) => {
+  const { data, end, error, isToday, loading, start, timezone } = props;
+  const theme = useTheme();
 
   const _convertData = React.useCallback(convertData, [data, start, end]);
   const _data = React.useMemo(() => sumRelatedProcessesAcrossAllUsers(data), [
@@ -68,105 +54,103 @@ export const ProcessGraphs: React.FC<CombinedProps> = (props) => {
   const memoryUnit = readableBytes(statMax(_data.mem ?? []) * 1024).unit;
 
   const graphProps = {
-    timezone,
-    showToday: isToday,
-    loading,
     error,
+    loading,
     nativeLegend: true,
+    showToday: isToday,
+    timezone,
   };
 
   return (
     <>
-      <Grid item xs={12}>
-        <Grid container direction="row">
-          <Grid item xs={12} sm={6} className={classes.smallGraph}>
+      <StyledItemGrid xs={12}>
+        <Grid container direction="row" spacing={2}>
+          <StyledSmallGraphGrid sm={6} xs={12}>
             <LongviewLineGraph
-              title="CPU"
-              subtitle={'%'}
-              unit="%"
               data={[
                 {
-                  label: 'CPU',
-                  borderColor: 'transparent',
                   backgroundColor: theme.graphs.cpu.percent,
+                  borderColor: 'transparent',
                   data: _convertData(cpu, start, end),
+                  label: 'CPU',
                 },
               ]}
+              ariaLabel="CPU Usage Graph"
+              subtitle={'%'}
+              title="CPU"
+              unit="%"
               {...graphProps}
             />
-          </Grid>
-          <Grid item xs={12} sm={6} className={classes.smallGraph}>
+          </StyledSmallGraphGrid>
+          <StyledSmallGraphGrid sm={6} xs={12}>
             <LongviewLineGraph
-              title="RAM"
-              subtitle={memoryUnit}
+              data={[
+                {
+                  backgroundColor: theme.graphs.ram,
+                  borderColor: 'transparent',
+                  data: _convertData(memory, start, end, formatMemory),
+                  label: 'RAM',
+                },
+              ]}
               formatData={(value: number) =>
                 convertBytesToTarget(memoryUnit, value)
               }
+              ariaLabel="RAM Usage Graph"
               formatTooltip={(value: number) => readableBytes(value).formatted}
-              data={[
-                {
-                  label: 'RAM',
-                  borderColor: 'transparent',
-                  backgroundColor: theme.graphs.ram,
-                  data: _convertData(memory, start, end, formatMemory),
-                },
-              ]}
+              subtitle={memoryUnit}
+              title="RAM"
               {...graphProps}
             />
-          </Grid>
+          </StyledSmallGraphGrid>
         </Grid>
-      </Grid>
-      <Grid item xs={12}>
-        <Grid container direction="row">
-          <Grid item xs={12} sm={6} className={classes.smallGraph}>
+      </StyledItemGrid>
+      <StyledItemGrid xs={12}>
+        <Grid container direction="row" spacing={2}>
+          <StyledSmallGraphGrid sm={6} xs={12}>
             <LongviewLineGraph
-              title="Disk I/O"
-              subtitle={`${diskUnit}/s`}
-              unit={`/s`}
+              data={[
+                {
+                  backgroundColor: theme.graphs.diskIO.read,
+                  borderColor: 'transparent',
+                  data: _convertData(diskRead, start, end),
+                  label: 'Read',
+                },
+                {
+                  backgroundColor: theme.graphs.diskIO.write,
+                  borderColor: 'transparent',
+                  data: _convertData(diskWrite, start, end),
+                  label: 'Write',
+                },
+              ]}
               formatData={(value: number) =>
                 convertBytesToTarget(diskUnit, value)
               }
+              ariaLabel="Disk I/O Graph"
               formatTooltip={(value: number) => readableBytes(value).formatted}
-              data={[
-                {
-                  label: 'Read',
-                  borderColor: 'transparent',
-                  backgroundColor: theme.graphs.diskIO.read,
-                  data: _convertData(diskRead, start, end),
-                },
-                {
-                  label: 'Write',
-                  borderColor: 'transparent',
-                  backgroundColor: theme.graphs.diskIO.write,
-                  data: _convertData(diskWrite, start, end),
-                },
-              ]}
+              subtitle={`${diskUnit}/s`}
+              title="Disk I/O"
+              unit={`/s`}
               {...graphProps}
             />
-          </Grid>
-          <Grid item xs={12} sm={6} className={classes.smallGraph}>
+          </StyledSmallGraphGrid>
+          <StyledSmallGraphGrid sm={6} xs={12}>
             <LongviewLineGraph
-              title="Process Count"
-              suggestedMax={maxProcessCount}
               data={[
                 {
-                  label: 'Count',
-                  borderColor: 'transparent',
                   backgroundColor: theme.graphs.processCount,
+                  borderColor: 'transparent',
                   data: _convertData(processCount, start, end),
+                  label: 'Count',
                 },
               ]}
+              ariaLabel="Process Count Graph"
+              suggestedMax={maxProcessCount}
+              title="Process Count"
               {...graphProps}
             />
-          </Grid>
+          </StyledSmallGraphGrid>
         </Grid>
-      </Grid>
+      </StyledItemGrid>
     </>
   );
-};
-
-const enhanced = compose<CombinedProps, Props>(
-  withTheme,
-  React.memo
-)(ProcessGraphs);
-export default enhanced;
+});

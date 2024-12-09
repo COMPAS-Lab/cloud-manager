@@ -1,98 +1,74 @@
 /* eslint-disable react/jsx-no-useless-fragment */
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import Button from 'src/components/Button/Button';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Tooltip from 'src/components/core/Tooltip';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  btnRoot: {
-    ...theme.applyLinkStyles,
-    padding: '12px 10px',
-    minWidth: 0,
-    color: theme.textColors.linkActiveLight,
-    whiteSpace: 'nowrap',
-    borderRadius: 0,
-    '&:hover, &:focus': {
-      backgroundColor: '#3683dc',
-      color: '#ffffff',
-      textDecoration: 'none',
-    },
-    '&[disabled]': {
-      // Override disabled background color defined for dark mode
-      backgroundColor: 'transparent',
-      color: '#cdd0d5',
-      cursor: 'default',
-      '&:hover': {
-        backgroundColor: 'inherit',
-        textDecoration: 'none',
-      },
-    },
-  },
-  linkRoot: {
-    textAlign: 'center',
-    color: theme.textColors.linkActiveLight,
-    borderRadius: 0,
-    '&:hover, &:focus': {
-      backgroundColor: '#3683dc',
-      color: '#ffffff',
-      textDecoration: 'none',
-    },
-  },
-}));
+import { StyledActionButton } from 'src/components/Button/StyledActionButton';
 
-interface Props {
+interface InlineMenuActionProps {
+  /** Required action text */
   actionText: string;
+  /** Optional aria label */
+  'aria-label'?: string;
+  /** Optional height when displayed as a button */
+  buttonHeight?: number;
+  /** Optional class names */
   className?: string;
-  href?: string;
+  /** Optional test id */
+  'data-testid'?: string;
+  /** Optional disabled */
   disabled?: boolean;
-  tooltip?: string;
+  /** Optional href */
+  href?: string;
+  /** Optional loading state */
   loading?: boolean;
+  /** Optional onClick handler */
   onClick?: (e: React.MouseEvent<HTMLElement, MouseEvent>) => void;
+  /** Optional tooltip text for help icon */
+  tooltip?: string;
+  /** Optional tooltip event handler for sending analytics */
+  tooltipAnalyticsEvent?: () => void;
 }
 
-type CombinedProps = Props;
-
-const InlineMenuAction: React.FC<CombinedProps> = (props) => {
+export const InlineMenuAction = (props: InlineMenuActionProps) => {
   const {
     actionText,
+    buttonHeight,
     className,
-    href,
     disabled,
-    tooltip,
-    onClick,
+    href,
     loading,
+    onClick,
+    tooltip,
+    tooltipAnalyticsEvent,
+    ...rest
   } = props;
-
-  const classes = useStyles();
 
   if (href) {
     return (
-      <Link className={`${className} ${classes.linkRoot}`} to={href}>
+      <StyledLink className={className} to={href}>
         <span>{actionText}</span>
-      </Link>
-    );
-  } else {
-    return (
-      <Tooltip
-        title={tooltip ?? ''}
-        disableTouchListener
-        enterDelay={500}
-        leaveDelay={0}
-      >
-        <>
-          <Button
-            className={`${className} ${classes.btnRoot}`}
-            onClick={onClick}
-            disabled={disabled}
-            loading={loading}
-          >
-            {actionText}
-          </Button>
-        </>
-      </Tooltip>
+      </StyledLink>
     );
   }
+
+  return (
+    <StyledActionButton
+      // TODO: We need to define what buttonType this will be in the future for now 'secondary' works...
+      buttonType="primary"
+      disabled={disabled}
+      loading={loading}
+      onClick={onClick}
+      sx={buttonHeight !== undefined ? { height: buttonHeight } : {}}
+      tooltipAnalyticsEvent={tooltipAnalyticsEvent}
+      tooltipText={tooltip}
+      {...rest}
+    >
+      {actionText}
+    </StyledActionButton>
+  );
 };
 
-export default InlineMenuAction;
+const StyledLink = styled(Link)(() => ({
+  paddingRight: '15px',
+}));

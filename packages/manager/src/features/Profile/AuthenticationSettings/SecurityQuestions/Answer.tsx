@@ -1,16 +1,24 @@
-import * as React from 'react';
-import TextField from 'src/components/TextField';
 import { SecurityQuestion } from '@linode/api-v4/lib/profile';
+import * as React from 'react';
+
+import { TextField } from 'src/components/TextField';
 
 interface Props {
-  questionResponse?: SecurityQuestion;
-  isReadOnly: boolean;
-  index: number;
   handleChange: any;
+  index: number;
+  isReadOnly: boolean;
+  questionResponse?: SecurityQuestion;
+  securityQuestionRef?: React.RefObject<HTMLInputElement>;
 }
 
 export const Answer = (props: Props) => {
-  const { isReadOnly, questionResponse, index, handleChange } = props;
+  const {
+    handleChange,
+    index,
+    isReadOnly,
+    questionResponse,
+    securityQuestionRef,
+  } = props;
   const label = `Answer ${index + 1}`;
   const name = `security_questions[${index}].response`;
 
@@ -20,11 +28,12 @@ export const Answer = (props: Props) => {
 
   return (
     <TextField
-      name={name}
+      inputRef={securityQuestionRef}
       label={label}
+      name={name}
+      onChange={handleChange}
       placeholder="Type your answer"
       value={questionResponse?.response ?? ''}
-      onChange={handleChange}
     />
   );
 };

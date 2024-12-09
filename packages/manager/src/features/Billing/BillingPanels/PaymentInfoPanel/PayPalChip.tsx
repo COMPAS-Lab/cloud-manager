@@ -1,47 +1,48 @@
-import React, { useEffect } from 'react';
-import { useClientToken } from 'src/queries/accountPayment';
-import { makeStyles } from 'src/components/core/styles';
-import CircleProgress from 'src/components/CircleProgress';
-import { queryClient } from 'src/queries/base';
-import { queryKey as accountPaymentKey } from 'src/queries/accountPayment';
 import { addPaymentMethod } from '@linode/api-v4/lib/account/payments';
-import { useSnackbar } from 'notistack';
 import { APIError } from '@linode/api-v4/lib/types';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import classNames from 'classnames';
-import { reportException } from 'src/exceptionReporting';
+import Grid from '@mui/material/Unstable_Grid2';
 import {
-  OnApproveBraintreeData,
   BraintreePayPalButtons,
   CreateBillingAgreementActions,
   FUNDING,
   OnApproveBraintreeActions,
+  OnApproveBraintreeData,
   usePayPalScriptReducer,
 } from '@paypal/react-paypal-js';
+import { QueryClient, useQueryClient } from '@tanstack/react-query';
+import { useSnackbar } from 'notistack';
+import React, { useEffect } from 'react';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles(() => ({
+import { CircleProgress } from 'src/components/CircleProgress';
+import { reportException } from 'src/exceptionReporting';
+import { PaymentMessage } from 'src/features/Billing/BillingPanels/PaymentInfoPanel/AddPaymentMethodDrawer/AddPaymentMethodDrawer';
+import { useClientToken } from 'src/queries/account/payment';
+import { accountQueries } from 'src/queries/account/queries';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+
+const useStyles = makeStyles()(() => ({
   disabled: {
     // Allows us to disable the pointer on the PayPal button because the SDK does not
     pointerEvents: 'none',
   },
-  button: {
-    marginRight: -8,
-  },
 }));
 
 interface Props {
-  setProcessing: (processing: boolean) => void;
+  disabled: boolean;
   onClose: () => void;
   renderError: (errorMsg: string) => JSX.Element;
-  disabled: boolean;
+  setMessage: (message: PaymentMessage) => void;
+  setProcessing: (processing: boolean) => void;
 }
 
-export const PayPalChip: React.FC<Props> = (props) => {
-  const { onClose, disabled, setProcessing, renderError } = props;
-  const { data, isLoading, error: clientTokenError } = useClientToken();
-  const [{ options, isPending }, dispatch] = usePayPalScriptReducer();
-  const classes = useStyles();
+export const PayPalChip = (props: Props) => {
+  const { disabled, onClose, renderError, setMessage, setProcessing } = props;
+  const { data, error: clientTokenError, isLoading } = useClientToken();
+  const [{ isPending, options }, dispatch] = usePayPalScriptReducer();
+  const { classes, cx } = useStyles();
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     /**
@@ -79,9 +80,9 @@ export const PayPalChip: React.FC<Props> = (props) => {
         type: 'resetOptions',
         value: {
           ...options,
-          vault: true,
           commit: false,
           intent: 'tokenize',
+          vault: true,
         },
       });
     }
@@ -104,17 +105,19 @@ export const PayPalChip: React.FC<Props> = (props) => {
 
     return actions.braintree
       .tokenizePayment(data)
-      .then((payload) => onNonce(payload.nonce));
+      .then((payload) => onNonce(payload.nonce, queryClient));
   };
 
-  const onNonce = (nonce: string) => {
+  const onNonce = (nonce: string, queryClient: QueryClient) => {
     addPaymentMethod({
-      type: 'payment_method_nonce',
       data: { nonce },
       is_default: true,
+      type: 'payment_method_nonce',
     })
       .then(() => {
-        queryClient.invalidateQueries(`${accountPaymentKey}-all`);
+        queryClient.invalidateQueries({
+          queryKey: accountQueries.paymentMethods.queryKey,
+        });
 
         onClose();
 
@@ -147,6 +150,10 @@ export const PayPalChip: React.FC<Props> = (props) => {
       'A PayPal error occurred preventing a user from adding PayPal as a payment method.',
       { error }
     );
+    setMessage({
+      text: 'Unable to open PayPal.',
+      variant: 'error',
+    });
   };
 
   if (clientTokenError) {
@@ -154,24 +161,27 @@ export const PayPalChip: React.FC<Props> = (props) => {
   }
 
   if (isLoading || isPending || !options['data-client-token']) {
-    return <CircleProgress mini />;
+    return (
+      <Grid>
+        <CircleProgress size="sm" />
+      </Grid>
+    );
   }
 
   return (
-    <div
-      className={classNames({
-        [classes.button]: true,
+    <Grid
+      className={cx({
         [classes.disabled]: disabled,
       })}
     >
       <BraintreePayPalButtons
-        disabled={disabled}
-        style={{ height: 25 }}
-        fundingSource={FUNDING.PAYPAL}
         createBillingAgreement={createBillingAgreement}
+        disabled={disabled}
+        fundingSource={FUNDING.PAYPAL}
         onApprove={onApprove}
         onError={onError}
+        style={{ height: 25 }}
       />
-    </div>
+    </Grid>
   );
 };

@@ -1,67 +1,30 @@
 import { pathOr } from 'ramda';
 import * as React from 'react';
-import { compose } from 'recompose';
+import Grid from '@mui/material/Unstable_Grid2/Grid2';
+
 import CPUIcon from 'src/assets/icons/longview/cpu-icon.svg';
 import DiskIcon from 'src/assets/icons/longview/disk.svg';
 import PackageIcon from 'src/assets/icons/longview/package-icon.svg';
 import RamIcon from 'src/assets/icons/longview/ram-sticks.svg';
 import ServerIcon from 'src/assets/icons/longview/server-icon.svg';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import IconTextLink from 'src/components/IconTextLink';
+import { Typography } from 'src/components/Typography';
 import { Props as LVDataProps } from 'src/containers/longview.stats.container';
 import { formatUptime } from 'src/utilities/formatUptime';
 import { readableBytes } from 'src/utilities/unitConversions';
+
 import { LongviewPackage } from '../../request.types';
 import {
   getPackageNoticeText,
   getTotalMemoryUsage,
   sumStorage,
 } from '../../shared/utilities';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  wrapHeader: {
-    wordBreak: 'break-all',
-  },
-  headerSection: {
-    marginBottom: theme.spacing(3) - 2,
-  },
-  iconSection: {
-    marginBottom: theme.spacing(2) - 2,
-    '&:last-of-type': {
-      marginBottom: 0,
-    },
-  },
-  packageButton: {
-    fontSize: '0.875rem',
-    padding: 0,
-    '& svg': {
-      marginRight: 15,
-    },
-    '& g': {
-      stroke: theme.palette.primary.main,
-    },
-  },
-  packageStaticOuter: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  packageStaticIcon: {
-    marginRight: theme.spacing(1),
-  },
-  iconItem: {
-    alignSelf: 'center',
-    marginLeft: 0,
-    '& svg': {
-      display: 'block',
-      margin: '0 auto',
-    },
-  },
-  iconItemLast: {
-    alignSelf: 'center',
-  },
-}));
+import {
+  StyledHeaderGrid,
+  StyledIconGrid,
+  StyledIconContainerGrid,
+  StyledIconTextLink,
+  StyledPackageGrid,
+} from './IconSection.styles';
 
 interface Props {
   client: string;
@@ -69,9 +32,7 @@ interface Props {
   openPackageDrawer: () => void;
 }
 
-const IconSection: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
+export const IconSection = React.memo((props: Props) => {
   const hostname = pathOr(
     'Hostname not available',
     ['SysInfo', 'hostname'],
@@ -98,7 +59,7 @@ const IconSection: React.FC<Props> = (props) => {
     props.longviewClientData
   );
 
-  const uptime = pathOr<number | null>(
+  const uptime = pathOr<null | number>(
     null,
     ['Uptime'],
     props.longviewClientData
@@ -151,67 +112,43 @@ const IconSection: React.FC<Props> = (props) => {
   const storageInBytes = sumStorage(props.longviewClientData.Disk);
 
   return (
-    <Grid item xs={12} md={6} lg={3}>
-      <Grid
-        container
-        item
-        wrap="nowrap"
-        alignItems="flex-start"
-        className={classes.headerSection}
-      >
-        <Grid item>
-          <Typography variant="h3" className={classes.wrapHeader}>
+    <Grid lg={3} md={6} xs={12}>
+      <StyledHeaderGrid container spacing={2}>
+        <Grid>
+          <Typography sx={{ wordBreak: 'break-all' }} variant="h3">
             {props.client}
           </Typography>
           <Typography>{hostname}</Typography>
           <Typography>{formattedUptime}</Typography>
         </Grid>
-      </Grid>
-      <Grid
-        container
-        item
-        wrap="nowrap"
-        alignItems="flex-start"
-        className={classes.iconSection}
-      >
-        <Grid item xs={2} sm={1} md={2} className={classes.iconItem}>
+      </StyledHeaderGrid>
+      <StyledIconContainerGrid container spacing={2}>
+        <StyledIconGrid md={2} sm={1} xs={2}>
           <ServerIcon />
-        </Grid>
-        <Grid item xs={10}>
+        </StyledIconGrid>
+        <Grid xs={10}>
           <Typography>
             {osDist} {osDistVersion} {kernel && `(${kernel})`}
           </Typography>
         </Grid>
-      </Grid>
-      <Grid
-        container
-        item
-        wrap="nowrap"
-        alignItems="center"
-        className={classes.iconSection}
-      >
-        <Grid item xs={2} sm={1} md={2} className={classes.iconItem}>
+      </StyledIconContainerGrid>
+      <StyledIconContainerGrid container spacing={2}>
+        <StyledIconGrid md={2} sm={1} xs={2}>
           <CPUIcon />
-        </Grid>
-        <Grid item xs={10}>
+        </StyledIconGrid>
+        <Grid xs={10}>
           <Typography>{cpuType}</Typography>
           {cpuCoreCount && (
             <Typography>{`${cpuCoreCount} ${coreCountDisplay}`}</Typography>
           )}
         </Grid>
-      </Grid>
-      <Grid
-        container
-        item
-        wrap="nowrap"
-        alignItems="center"
-        className={classes.iconSection}
-      >
-        <Grid item xs={2} sm={1} md={2} className={classes.iconItem}>
+      </StyledIconContainerGrid>
+      <StyledIconContainerGrid container spacing={2}>
+        <StyledIconGrid md={2} sm={1} xs={2}>
           <RamIcon />
-        </Grid>
+        </StyledIconGrid>
         {convertedTotalMemory.value !== 0 && convertedTotalSwap.value !== 0 ? (
-          <Grid item xs={10}>
+          <Grid xs={10}>
             <Typography>
               {`${convertedTotalMemory.value} ${convertedTotalMemory.unit} RAM`}
             </Typography>
@@ -220,24 +157,18 @@ const IconSection: React.FC<Props> = (props) => {
             </Typography>
           </Grid>
         ) : (
-          <Grid item xs={10}>
+          <Grid xs={10}>
             <Typography>RAM information not available</Typography>
           </Grid>
         )}
-      </Grid>
-      <Grid
-        container
-        item
-        wrap="nowrap"
-        alignItems="center"
-        className={classes.iconSection}
-      >
-        <Grid item xs={2} sm={1} md={2} className={classes.iconItem}>
+      </StyledIconContainerGrid>
+      <StyledIconContainerGrid container spacing={2}>
+        <StyledIconGrid md={2} sm={1} xs={2}>
           <DiskIcon />
-        </Grid>
+        </StyledIconGrid>
 
         {storageInBytes.total !== 0 ? (
-          <Grid item xs={10}>
+          <Grid xs={10}>
             <Typography>
               {`${
                 readableBytes(storageInBytes.total, { unit: 'GB' }).formatted
@@ -250,49 +181,34 @@ const IconSection: React.FC<Props> = (props) => {
             </Typography>
           </Grid>
         ) : (
-          <Grid item xs={10}>
+          <Grid xs={10}>
             <Typography>Storage information not available</Typography>
           </Grid>
         )}
-      </Grid>
-      <Grid
-        container
-        item
-        wrap="nowrap"
-        alignItems="center"
-        className={classes.iconSection}
-      >
-        {packages && packages.length > 0 ? (
-          <Grid item xs={2} sm={1} md={2} className={classes.iconItemLast}>
-            <IconTextLink
-              className={classes.packageButton}
+      </StyledIconContainerGrid>
+      {packages && packages.length > 0 ? (
+        <StyledIconContainerGrid container spacing={2}>
+          <StyledPackageGrid md={2} sm={1} xs={2}>
+            <StyledIconTextLink
               SideIcon={PackageIcon}
+              onClick={props.openPackageDrawer}
               text={packagesToUpdate}
               title={packagesToUpdate}
-              onClick={props.openPackageDrawer}
             >
               {packagesToUpdate}
-            </IconTextLink>
+            </StyledIconTextLink>
+          </StyledPackageGrid>
+        </StyledIconContainerGrid>
+      ) : (
+        <StyledIconContainerGrid container spacing={2}>
+          <StyledIconGrid md={2} sm={1} xs={2}>
+            <PackageIcon />
+          </StyledIconGrid>
+          <Grid xs={10}>
+            <Typography>{packagesToUpdate}</Typography>
           </Grid>
-        ) : (
-          <Grid
-            container
-            item
-            wrap="nowrap"
-            alignItems="center"
-            className={classes.packageStaticOuter}
-          >
-            <Grid item xs={2} sm={1} md={2} className={classes.iconItem}>
-              <PackageIcon className={classes.packageStaticIcon} />
-            </Grid>
-            <Grid item xs={10}>
-              <Typography>{packagesToUpdate}</Typography>
-            </Grid>
-          </Grid>
-        )}
-      </Grid>
+        </StyledIconContainerGrid>
+      )}
     </Grid>
   );
-};
-
-export default compose<Props, Props>(React.memo)(IconSection);
+});

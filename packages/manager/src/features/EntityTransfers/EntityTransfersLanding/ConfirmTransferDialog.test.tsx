@@ -1,17 +1,21 @@
 import { screen } from '@testing-library/react';
 import { DateTime } from 'luxon';
 import * as React from 'react';
+
 import { entityTransferFactory } from 'src/factories/entityTransfers';
-import { rest, server } from 'src/mocks/testServer';
+import { http, HttpResponse, server } from 'src/mocks/testServer';
 import { renderWithTheme } from 'src/utilities/testHelpers';
-import ConfirmTransferDialog, {
+
+import {
+  ConfirmTransferDialog,
   getTimeRemaining,
-  Props,
 } from './ConfirmTransferDialog';
 
-const props: Props = {
+import type { ConfirmTransferDialogProps } from './ConfirmTransferDialog';
+
+const props: ConfirmTransferDialogProps = {
+  onClose: vi.fn(),
   open: true,
-  onClose: jest.fn(),
   token: 'blahblah',
 };
 
@@ -19,11 +23,11 @@ describe('Accept Entity Transfer confirmation dialog', () => {
   describe('Component', () => {
     it("should show an error if the token being confirmed is from the current user's account", async () => {
       server.use(
-        rest.get('*/account/entity-transfers/:transferId', (req, res, ctx) => {
+        http.get('*/account/entity-transfers/:transferId', () => {
           const transfer = entityTransferFactory.build({
             is_sender: true,
           });
-          return res(ctx.json(transfer));
+          return HttpResponse.json(transfer);
         })
       );
       renderWithTheme(<ConfirmTransferDialog {...props} />);
@@ -32,15 +36,15 @@ describe('Accept Entity Transfer confirmation dialog', () => {
 
     it('should render a list of entity types included in the token', async () => {
       server.use(
-        rest.get('*/account/entity-transfers/:transferId', (req, res, ctx) => {
+        http.get('*/account/entity-transfers/:transferId', () => {
           const transfer = entityTransferFactory.build({
-            is_sender: false,
             entities: {
-              linodes: [0, 1, 2, 3],
               domains: [1, 2, 3, 4, 5],
+              linodes: [0, 1, 2, 3],
             } as any, // Domains aren't allowed yet
+            is_sender: false,
           });
-          return res(ctx.json(transfer));
+          return HttpResponse.json(transfer);
         })
       );
       renderWithTheme(<ConfirmTransferDialog {...props} />);

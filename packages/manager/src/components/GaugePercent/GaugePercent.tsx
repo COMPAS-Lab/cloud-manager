@@ -1,66 +1,60 @@
-import * as React from 'react';
-import { compose } from 'recompose';
-import {
-  makeStyles,
-  Theme,
-  withTheme,
-  WithTheme,
-} from 'src/components/core/styles';
-
+import { useTheme } from '@mui/material/styles';
 import { Chart } from 'chart.js';
+import * as React from 'react';
 
-interface Options {
-  width: number | string;
-  height: number;
-  fontSize?: number;
-}
+import {
+  StyledGaugeWrapperDiv,
+  StyledInnerTextDiv,
+  StyledSubTitleDiv,
+} from './GaugePercent.styles';
 
-const useStyles = (options: Options) =>
-  makeStyles((theme: Theme) => ({
-    gaugeWrapper: {
-      position: 'relative',
-      width: `50%`,
-    },
-    innerText: {
-      position: 'absolute',
-      top: `calc((${options.height + theme.spacing(3.75)}px / 2))`,
-      width: options.width,
-      textAlign: 'center',
-      fontSize: '1rem',
-      color: theme.palette.text.primary,
-    },
-    subTitle: {
-      position: 'absolute',
-      width: options.width,
-      textAlign: 'center',
-      top: `calc(${options.height + theme.spacing(1.25)}px)`,
-      fontSize: options.fontSize || `${theme.spacing(2.5)}px `,
-      color: theme.color.headline,
-    },
-  }));
-
-interface Props {
-  width?: number | string;
-  height?: number;
+export interface GaugePercentProps {
+  /**
+   * The color for the filled in portion of the gauge.
+   */
   filledInColor?: string;
-  nonFilledInColor?: string;
-  value: number;
-  max: number;
+  /**
+   * The height of the gauge.
+   */
+  height?: number;
+  /**
+   * Text that shows up inside (in the middle) of the gauge.
+   */
   innerText?: string;
+  /**
+   * The font size in `px` of the inner text.
+   */
   innerTextFontSize?: number;
-  subTitle?: string | JSX.Element | null;
+  /**
+   * The max value of the gauge.
+   */
+  max: number;
+  /**
+   * The color for the non-filled in portion of the gauge.
+   */
+  nonFilledInColor?: string;
+  /**
+   * A subtitle that appears below the gauge.
+   */
+  subTitle?: JSX.Element | null | string;
+  /**
+   * The value that is displayed by the gauge. This value should be <= `max`.
+   */
+  value: number;
+  /**
+   * The width of the gauge.
+   */
+  width?: number | string;
 }
 
-type CombinedProps = Props & WithTheme;
-
-const GaugePercent: React.FC<CombinedProps> = (props) => {
+/**
+ * - **Chart.js** is the charting tool we use for gauges
+ * - Best used to show percentages
+ */
+export const GaugePercent = React.memo((props: GaugePercentProps) => {
+  const theme = useTheme();
   const width = props.width || 300;
   const height = props.height || 300;
-  const classes = useStyles({
-    width,
-    height,
-    fontSize: props.innerTextFontSize,
-  })();
 
   /**
    * if the value exceeds the maximum (e.g Longview Load), just make the max 0
@@ -75,16 +69,16 @@ const GaugePercent: React.FC<CombinedProps> = (props) => {
 
   const graphDatasets = [
     {
-      borderWidth: 0,
-      hoverBackgroundColor: [
-        props.filledInColor || props.theme.palette.primary.main,
-        props.nonFilledInColor || props.theme.color.grey2,
+      backgroundColor: [
+        props.filledInColor || theme.palette.primary.main,
+        props.nonFilledInColor || theme.color.grey2,
       ],
+      borderWidth: 0,
       /** so basically, index 0 is the filled in, index 1 is the full graph percentage */
       data: [props.value, finalMax],
-      backgroundColor: [
-        props.filledInColor || props.theme.palette.primary.main,
-        props.nonFilledInColor || props.theme.color.grey2,
+      hoverBackgroundColor: [
+        props.filledInColor || theme.palette.primary.main,
+        props.nonFilledInColor || theme.color.grey2,
       ],
     },
   ];
@@ -93,16 +87,16 @@ const GaugePercent: React.FC<CombinedProps> = (props) => {
       animateRotate: false,
       animateScale: false,
     },
-    maintainAspectRatio: false,
-    rotation: -1.25 * Math.PI,
     circumference: 1.5 * Math.PI,
     cutoutPercentage: 70,
-    responsive: true,
     /** get rid of all hover events with events: [] */
     events: [],
     legend: {
       display: false,
     },
+    maintainAspectRatio: false,
+    responsive: true,
+    rotation: -1.25 * Math.PI,
   };
 
   const graphRef: React.RefObject<any> = React.useRef(null);
@@ -113,38 +107,40 @@ const GaugePercent: React.FC<CombinedProps> = (props) => {
     // https://dev.to/vcanales/using-chart-js-in-a-function-component-with-react-hooks-246l
     if (graphRef.current) {
       new Chart(graphRef.current.getContext('2d'), {
-        type: 'doughnut',
         data: {
           datasets: graphDatasets,
         },
         options: graphOptions,
+        type: 'doughnut',
       });
     }
   });
   return (
-    <div
-      className={classes.gaugeWrapper}
-      style={{
-        width,
-        height: height + props.theme.spacing(3.75),
-      }}
+    <StyledGaugeWrapperDiv
+      data-testid="gauge-wrapper"
+      height={height}
+      width={width}
     >
       <canvas height={height} ref={graphRef} />
       {props.innerText && (
-        <div data-testid="gauge-innertext" className={classes.innerText}>
+        <StyledInnerTextDiv
+          data-testid="gauge-innertext"
+          height={height}
+          width={width}
+        >
           {props.innerText}
-        </div>
+        </StyledInnerTextDiv>
       )}
       {props.subTitle && (
-        <div data-testid="gauge-subtext" className={classes.subTitle}>
+        <StyledSubTitleDiv
+          data-testid="gauge-subtext"
+          height={height}
+          innerTextFontSize={props.innerTextFontSize}
+          width={width}
+        >
           {props.subTitle}
-        </div>
+        </StyledSubTitleDiv>
       )}
-    </div>
+    </StyledGaugeWrapperDiv>
   );
-};
-
-export default compose<CombinedProps, Props>(
-  React.memo,
-  withTheme
-)(GaugePercent);
+});

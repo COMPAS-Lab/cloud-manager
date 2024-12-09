@@ -1,197 +1,179 @@
 import {
-  acceptEntityTransfer,
   TransferEntities,
+  acceptEntityTransfer,
 } from '@linode/api-v4/lib/entity-transfers';
 import { APIError } from '@linode/api-v4/lib/types';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import CheckBox from 'src/components/CheckBox';
-import CircleProgress from 'src/components/CircleProgress';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ErrorState from 'src/components/ErrorState';
-import Notice from 'src/components/Notice';
-import { queryClient } from 'src/queries/base';
+import { useQueryClient } from '@tanstack/react-query';
+
+import { Checkbox } from 'src/components/Checkbox';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { Notice } from 'src/components/Notice/Notice';
 import {
-  queryKey,
   TRANSFER_FILTERS,
+  queryKey,
   useTransferQuery,
 } from 'src/queries/entityTransfers';
+import { useProfile } from 'src/queries/profile/profile';
+import { sendEntityTransferReceiveEvent } from 'src/utilities/analytics/customEventAnalytics';
 import { capitalize } from 'src/utilities/capitalize';
 import { parseAPIDate } from 'src/utilities/date';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import { formatDate } from 'src/utilities/formatDate';
-import { sendEntityTransferReceiveEvent } from 'src/utilities/ga';
 import { pluralize } from 'src/utilities/pluralize';
+
 import { countByEntity } from '../utilities';
+import {
+  StyledActionsPanel,
+  StyledDiv,
+  StyledEntityTypography,
+  StyledExpiryTypography,
+  StyledSummaryTypography,
+  StyledUl,
+} from './ConfirmTransferDialog.styles';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  transferSummary: {
-    marginBottom: theme.spacing(),
-  },
-  actions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-  expiry: {
-    marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-  },
-  entityTypeDisplay: {
-    marginBottom: theme.spacing(),
-  },
-  summary: {
-    marginBottom: 4,
-  },
-  list: {
-    listStyleType: 'none',
-    paddingLeft: 0,
-    margin: 0,
-  },
-}));
-
-export interface Props {
+export interface ConfirmTransferDialogProps {
   onClose: () => void;
   open: boolean;
   token?: string;
 }
 
-export const ConfirmTransferDialog: React.FC<Props> = (props) => {
-  const { onClose, open, token } = props;
-  const classes = useStyles();
-  const { enqueueSnackbar } = useSnackbar();
-  const { data, isLoading, isError, error } = useTransferQuery(
-    token ?? '',
-    open
-  );
+export const ConfirmTransferDialog = React.memo(
+  (props: ConfirmTransferDialogProps) => {
+    const { onClose, open, token } = props;
+    const { enqueueSnackbar } = useSnackbar();
+    const { data, error, isError, isLoading } = useTransferQuery(
+      token ?? '',
+      open
+    );
 
-  const [hasConfirmed, setHasConfirmed] = React.useState(false);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [submissionErrors, setSubmissionErrors] = React.useState<
-    APIError[] | null
-  >(null);
+    const [hasConfirmed, setHasConfirmed] = React.useState(false);
+    const [submitting, setSubmitting] = React.useState(false);
+    const [submissionErrors, setSubmissionErrors] = React.useState<
+      APIError[] | null
+    >(null);
 
-  const isOwnAccount = Boolean(data?.is_sender);
+    const queryClient = useQueryClient();
 
-  // If a user is trying to load their own account
-  const errors = isOwnAccount
-    ? [
-        {
-          reason:
-            'You cannot initiate a transfer to another user on your account.',
-        },
-      ]
-    : error;
+    const isOwnAccount = Boolean(data?.is_sender);
 
-  React.useEffect(() => {
-    if (open) {
+    // If a user is trying to load their own account
+    const errors = isOwnAccount
+      ? [
+          {
+            reason:
+              'You cannot initiate a transfer to another user on your account.',
+          },
+        ]
+      : error;
+
+    React.useEffect(() => {
+      if (open) {
+        setSubmissionErrors(null);
+        setSubmitting(false);
+        setHasConfirmed(false);
+      }
+    }, [open]);
+
+    const handleAcceptTransfer = () => {
+      // This should never happen.
+      if (!token) {
+        return;
+      }
       setSubmissionErrors(null);
-      setSubmitting(false);
-      setHasConfirmed(false);
-    }
-  }, [open]);
-
-  const handleAcceptTransfer = () => {
-    // This should never happen.
-    if (!token) {
-      return;
-    }
-    setSubmissionErrors(null);
-    setSubmitting(true);
-    acceptEntityTransfer(token)
-      .then(() => {
-        // @analytics
-        if (data?.entities) {
-          const entityCount = countByEntity(data?.entities);
-          sendEntityTransferReceiveEvent(entityCount);
-        }
-        // Update the received transfer table since we're already on the landing page
-        queryClient.invalidateQueries({
-          predicate: (query) =>
-            query.queryKey[0] === queryKey &&
-            query.queryKey[2] === TRANSFER_FILTERS.received,
+      setSubmitting(true);
+      acceptEntityTransfer(token)
+        .then(() => {
+          // @analytics
+          if (data?.entities) {
+            const entityCount = countByEntity(data?.entities);
+            sendEntityTransferReceiveEvent(entityCount);
+          }
+          // Update the received transfer table since we're already on the landing page
+          queryClient.invalidateQueries({
+            predicate: (query) =>
+              query.queryKey[0] === queryKey &&
+              query.queryKey[2] === TRANSFER_FILTERS.received,
+          });
+          onClose();
+          setSubmitting(false);
+          enqueueSnackbar('Transfer accepted successfully.', {
+            variant: 'success',
+          });
+        })
+        .catch((e) => {
+          setSubmissionErrors(
+            getAPIErrorOrDefault(e, 'An unexpected error occurred.')
+          );
+          setSubmitting(false);
         });
-        onClose();
-        setSubmitting(false);
-        enqueueSnackbar('Transfer accepted successfully.', {
-          variant: 'success',
-        });
-      })
-      .catch((e) => {
-        setSubmissionErrors(
-          getAPIErrorOrDefault(e, 'An unexpected error occurred.')
-        );
-        setSubmitting(false);
-      });
-  };
+    };
 
-  const actions = (
-    <ActionsPanel className={classes.actions}>
-      <Button buttonType="secondary" onClick={onClose}>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={handleAcceptTransfer}
-        disabled={!hasConfirmed || isLoading || isError}
-        loading={submitting}
-      >
-        Accept Transfer
-      </Button>
-    </ActionsPanel>
-  );
-
-  return (
-    <ConfirmationDialog
-      onClose={onClose}
-      title="Receive a Service Transfer"
-      open={open}
-      actions={actions}
-    >
-      <DialogContent
-        isLoading={isLoading}
-        isError={isError || isOwnAccount}
-        errors={errors}
-        entities={data?.entities ?? { linodes: [] }}
-        expiry={data?.expiry}
-        hasConfirmed={hasConfirmed}
-        handleToggleConfirm={() => setHasConfirmed((confirmed) => !confirmed)}
-        submissionErrors={submissionErrors}
-        onClose={onClose}
-        onSubmit={handleAcceptTransfer}
+    const actions = (
+      <StyledActionsPanel
+        primaryButtonProps={{
+          disabled: !hasConfirmed || isLoading || isError,
+          label: 'Accept Transfer',
+          loading: submitting,
+          onClick: handleAcceptTransfer,
+        }}
+        secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
       />
-    </ConfirmationDialog>
-  );
-};
+    );
+
+    return (
+      <ConfirmationDialog
+        actions={actions}
+        onClose={onClose}
+        open={open}
+        title="Receive a Service Transfer"
+      >
+        <DialogContent
+          entities={data?.entities ?? { linodes: [] }}
+          errors={errors}
+          expiry={data?.expiry}
+          handleToggleConfirm={() => setHasConfirmed((confirmed) => !confirmed)}
+          hasConfirmed={hasConfirmed}
+          isError={isError || isOwnAccount}
+          isLoading={isLoading}
+          onClose={onClose}
+          onSubmit={handleAcceptTransfer}
+          submissionErrors={submissionErrors}
+        />
+      </ConfirmationDialog>
+    );
+  }
+);
 
 interface ContentProps {
-  hasConfirmed?: boolean;
-  isLoading: boolean;
-  isError: boolean;
-  errors: APIError[] | null;
   entities: TransferEntities;
+  errors: APIError[] | null;
   expiry?: string;
-  submissionErrors: APIError[] | null;
   handleToggleConfirm: () => void;
+  hasConfirmed?: boolean;
+  isError: boolean;
+  isLoading: boolean;
   onClose: () => void;
   onSubmit: () => void;
+  submissionErrors: APIError[] | null;
 }
 
-export const DialogContent: React.FC<ContentProps> = React.memo((props) => {
+export const DialogContent = React.memo((props: ContentProps) => {
   const {
     entities,
     errors,
     expiry,
-    hasConfirmed,
     handleToggleConfirm,
+    hasConfirmed,
     isError,
     isLoading,
     submissionErrors,
   } = props;
-  const classes = useStyles();
+
+  const { data: profile } = useProfile();
 
   if (isLoading) {
     return (
@@ -216,7 +198,7 @@ export const DialogContent: React.FC<ContentProps> = React.memo((props) => {
     );
   }
 
-  const timeRemaining = getTimeRemaining(expiry);
+  const timeRemaining = getTimeRemaining(expiry, profile?.timezone);
 
   return (
     <>
@@ -226,42 +208,44 @@ export const DialogContent: React.FC<ContentProps> = React.memo((props) => {
           ? submissionErrors.map((thisError, idx) => (
               <Notice
                 key={`form-submit-error-${idx}`}
-                error
                 text={thisError.reason}
+                variant="error"
               />
             ))
           : null
       }
-      <div className={classes.transferSummary}>
-        <Typography className={classes.summary}>
+      <StyledDiv>
+        <StyledSummaryTypography>
           This transfer contains:
-        </Typography>
-        <ul className={classes.list}>
-          {Object.keys(entities).map((thisEntityType) => {
-            // According to spec, all entity names are plural and lowercase
-            // (NB: This may cause problems for NodeBalancers if/when they are added to the payload)
-            const entityName = capitalize(thisEntityType).slice(0, -1);
-            return (
-              <li key={thisEntityType}>
-                <Typography className={classes.entityTypeDisplay}>
-                  <strong>
-                    {pluralize(
-                      entityName,
-                      entityName + 's',
-                      entities[thisEntityType].length
-                    )}
-                  </strong>
-                </Typography>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+        </StyledSummaryTypography>
+        <StyledUl>
+          {Object.keys(entities).map(
+            (thisEntityType: keyof TransferEntities) => {
+              // According to spec, all entity names are plural and lowercase
+              // (NB: This may cause problems for NodeBalancers if/when they are added to the payload)
+              const entityName = capitalize(thisEntityType).slice(0, -1);
+              return (
+                <li key={thisEntityType}>
+                  <StyledEntityTypography>
+                    <strong>
+                      {pluralize(
+                        entityName,
+                        entityName + 's',
+                        entities[thisEntityType].length
+                      )}
+                    </strong>
+                  </StyledEntityTypography>
+                </li>
+              );
+            }
+          )}
+        </StyledUl>
+      </StyledDiv>
       {timeRemaining ? (
-        <Typography className={classes.expiry}>{timeRemaining}</Typography>
+        <StyledExpiryTypography>{timeRemaining}</StyledExpiryTypography>
       ) : null}
       <div>
-        <CheckBox
+        <Checkbox
           checked={hasConfirmed}
           onChange={handleToggleConfirm}
           text="I accept responsibility for the billing of services listed above."
@@ -271,7 +255,10 @@ export const DialogContent: React.FC<ContentProps> = React.memo((props) => {
   );
 });
 
-export const getTimeRemaining = (time?: string): string | undefined => {
+export const getTimeRemaining = (
+  time?: string,
+  timezone?: string
+): string | undefined => {
   if (!time) {
     return;
   }
@@ -292,7 +279,7 @@ export const getTimeRemaining = (time?: string): string | undefined => {
     unit,
     unit + 's',
     unit === 'minute' ? minutesRemaining : Math.round(minutesRemaining / 60)
-  )} (${formatDate(time)}).`;
+  )} (${formatDate(time, {
+    timezone,
+  })}).`;
 };
-
-export default React.memo(ConfirmTransferDialog);

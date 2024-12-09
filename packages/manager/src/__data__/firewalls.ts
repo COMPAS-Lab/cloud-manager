@@ -1,60 +1,77 @@
-import { Firewall } from '@linode/api-v4/lib/firewalls';
+import type { Firewall } from '@linode/api-v4/lib/firewalls';
+import type { FirewallDeviceEntityType } from '@linode/api-v4/lib/firewalls';
 
 export const firewall: Firewall = {
+  created: '2019-09-11T19:44:38.526Z',
+  entities: [
+    {
+      id: 1,
+      label: 'my-linode',
+      type: 'linode' as FirewallDeviceEntityType,
+      url: '/test',
+    },
+  ],
   id: 1,
-  status: 'enabled',
   label: 'my-firewall',
-  created_dt: '2019-09-11T19:44:38.526Z',
-  updated_dt: '2019-09-11T19:44:38.526Z',
-  tags: [],
   rules: {
-    inbound_policy: 'DROP',
-    outbound_policy: 'DROP',
     inbound: [
       {
-        protocol: 'ALL',
-        ports: '443',
         action: 'ACCEPT',
+        ports: '443',
+        protocol: 'ALL',
       },
     ],
+    inbound_policy: 'DROP',
     outbound: [
       {
-        protocol: 'UDP',
-        ports: '22',
+        action: 'ACCEPT',
         addresses: {
           ipv4: ['12.12.12.12'],
           ipv6: ['192.168.12.12'],
         },
-        action: 'ACCEPT',
+        ports: '22',
+        protocol: 'UDP',
       },
     ],
+    outbound_policy: 'DROP',
   },
+  status: 'enabled',
+  tags: [],
+  updated: '2019-09-11T19:44:38.526Z',
 };
 
 export const firewall2: Firewall = {
+  created: '2019-12-11T19:44:38.526Z',
+  entities: [
+    {
+      id: 1,
+      label: 'my-linode',
+      type: 'linode' as FirewallDeviceEntityType,
+      url: '/test',
+    },
+  ],
   id: 2,
-  status: 'disabled',
   label: 'zzz',
-  created_dt: '2019-12-11T19:44:38.526Z',
-  updated_dt: '2019-12-11T19:44:38.526Z',
-  tags: [],
   rules: {
-    inbound_policy: 'DROP',
-    outbound_policy: 'DROP',
     inbound: [],
+    inbound_policy: 'DROP',
     outbound: [
       {
-        protocol: 'ALL',
-        ports: '443',
         action: 'ACCEPT',
+        ports: '443',
+        protocol: 'ALL',
       },
       {
-        protocol: 'ALL',
-        ports: '80',
         action: 'ACCEPT',
+        ports: '80',
+        protocol: 'ALL',
       },
     ],
+    outbound_policy: 'DROP',
   },
+  status: 'disabled',
+  tags: [],
+  updated: '2019-12-11T19:44:38.526Z',
 };
 
 export const firewalls = [firewall, firewall2];

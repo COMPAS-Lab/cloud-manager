@@ -1,47 +1,55 @@
 import { makePayment } from '@linode/api-v4/lib/account/payments';
+import { Tooltip } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
 import {
   BraintreePayPalButtons,
-  CreateOrderBraintreeActions,
   FUNDING,
-  OnApproveBraintreeActions,
-  OnApproveBraintreeData,
   usePayPalScriptReducer,
 } from '@paypal/react-paypal-js';
+import { useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
-import { makeStyles } from 'src/components/core/styles';
-import Tooltip from 'src/components/core/Tooltip';
-import CircleProgress from 'src/components/CircleProgress';
-import Grid from 'src/components/Grid';
-import { reportException } from 'src/exceptionReporting';
-import { queryKey as accountBillingKey } from 'src/queries/accountBilling';
-import { useClientToken } from 'src/queries/accountPayment';
-import { queryClient } from 'src/queries/base';
-import { SetSuccess } from './types';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles(() => ({
-  root: {
-    position: 'relative',
-  },
+import { CircleProgress } from 'src/components/CircleProgress';
+import { reportException } from 'src/exceptionReporting';
+import { getPaymentLimits } from 'src/features/Billing/billingUtils';
+import { useAccount } from 'src/queries/account/account';
+import { useClientToken } from 'src/queries/account/payment';
+import { accountQueries } from 'src/queries/account/queries';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+
+import type { SetSuccess } from './types';
+import type { APIError } from '@linode/api-v4/lib/types';
+import type {
+  CreateOrderBraintreeActions,
+  OnApproveBraintreeActions,
+  OnApproveBraintreeData,
+} from '@paypal/react-paypal-js';
+
+const useStyles = makeStyles()(() => ({
   loading: {
     padding: 4,
   },
   mask: {
-    width: 200,
     height: 38,
-    position: 'absolute',
-    zIndex: 10,
     left: 0,
+    position: 'absolute',
     top: 0,
+    width: 200,
+    zIndex: 10,
+  },
+  root: {
+    position: 'relative',
   },
 }));
 
 interface Props {
-  usd: string;
-  setSuccess: SetSuccess;
+  disabled: boolean;
+  renderError: (errorMsg: string) => JSX.Element;
   setError: (error: string) => void;
   setProcessing: (processing: boolean) => void;
-  renderError: (errorMsg: string) => JSX.Element;
-  disabled: boolean;
+  setSuccess: SetSuccess;
+  usd: string;
 }
 
 interface TransactionInfo {
@@ -49,25 +57,29 @@ interface TransactionInfo {
   orderID: string;
 }
 
-export const PayPalButton: React.FC<Props> = (props) => {
-  const classes = useStyles();
+export const PayPalButton = (props: Props) => {
+  const { classes } = useStyles();
   const {
     data,
-    isLoading: clientTokenLoading,
     error: clientTokenError,
+    isLoading: clientTokenLoading,
   } = useClientToken();
-  const [{ options, isPending }, dispatch] = usePayPalScriptReducer();
+  const [{ isPending, options }, dispatch] = usePayPalScriptReducer();
+  const { data: account } = useAccount();
+  const queryClient = useQueryClient();
 
   const {
-    usd,
     disabled: disabledDueToProcessing,
-    setSuccess,
+    renderError,
     setError,
     setProcessing,
-    renderError,
+    setSuccess,
+    usd,
   } = props;
 
-  const disabledDueToPrice = +usd < 5 || +usd > 10000;
+  const { max, min } = getPaymentLimits(account?.balance);
+
+  const disabledDueToPrice = +usd < min || +usd > max;
 
   React.useEffect(() => {
     /**
@@ -105,9 +117,9 @@ export const PayPalButton: React.FC<Props> = (props) => {
         type: 'resetOptions',
         value: {
           ...options,
-          vault: false,
           commit: true,
           intent: 'capture',
+          vault: false,
         },
       });
     }
@@ -139,9 +151,9 @@ export const PayPalButton: React.FC<Props> = (props) => {
     actions: CreateOrderBraintreeActions
   ): Promise<string> => {
     return actions.braintree.createPayment({
-      flow: 'checkout',
-      currency: 'USD',
       amount: stateRef!.current!.amount,
+      currency: 'USD',
+      flow: 'checkout',
       intent: 'capture',
     });
   };
@@ -154,31 +166,43 @@ export const PayPalButton: React.FC<Props> = (props) => {
 
     try {
       const payload = await actions.braintree.tokenizePayment(data);
-      // send nonce to server
+
+      // send nonce to the Linode API
       const response = await makePayment({
         nonce: payload.nonce,
         usd: stateRef!.current!.amount,
+      }).catch((error: APIError[]) => {
+        // Process and surface any Linode API errors during payment
+        const errorText = getAPIErrorOrDefault(
+          error,
+          'Unable to complete PayPal payment.'
+        )[0].reason;
+        setError(errorText);
+        setProcessing(false);
       });
-      queryClient.invalidateQueries(`${accountBillingKey}-payments`);
+      if (response) {
+        queryClient.invalidateQueries({
+          queryKey: accountQueries.payments._def,
+        });
 
-      setSuccess(
-        `Payment for $${
-          stateRef!.current!.amount
-        } successfully submitted with PayPal`,
-        true,
-        response.warnings
-      );
+        setSuccess(
+          `Payment for $${response.usd} successfully submitted with PayPal`,
+          true,
+          response.warnings
+        );
+      }
     } catch (error) {
+      // Process, surface, and log any Braintree errors during payment
       if (error.statusCode === 'CANCELED') {
         return;
       }
 
-      const errorMsg = 'Unable to complete PayPal payment.';
-      reportException(error, {
-        message: errorMsg,
-      });
+      const errorMsg = 'Unable to tokenize PayPal payment.';
+      reportException(
+        'Braintree was unable to tokenize PayPal one time payment.',
+        { error }
+      );
       setError(errorMsg);
-    } finally {
       setProcessing(false);
     }
   };
@@ -191,17 +215,18 @@ export const PayPalButton: React.FC<Props> = (props) => {
       'An error occurred when trying to make a one-time PayPal payment.',
       { error }
     );
+    setError('Unable to open PayPal.');
   };
 
   if (clientTokenLoading || isPending || !options['data-client-token']) {
     return (
       <Grid
-        container
-        className={classes.loading}
-        justifyContent="center"
         alignContent="center"
+        className={classes.loading}
+        container
+        justifyContent="center"
       >
-        <CircleProgress mini />
+        <CircleProgress size="sm" />
       </Grid>
     );
   }
@@ -214,21 +239,21 @@ export const PayPalButton: React.FC<Props> = (props) => {
     <div className={classes.root}>
       {disabledDueToPrice && (
         <Tooltip
-          title="Payment amount must be between $5 and $10000"
           data-qa-help-tooltip
           enterTouchDelay={0}
           leaveTouchDelay={5000}
+          title={`Payment amount must be between $${min} and $${max}`}
         >
           <div className={classes.mask} />
         </Tooltip>
       )}
       <BraintreePayPalButtons
-        style={{ height: 35 }}
-        fundingSource={FUNDING.PAYPAL}
-        disabled={disabledDueToPrice || disabledDueToProcessing}
         createOrder={createOrder}
+        disabled={disabledDueToPrice || disabledDueToProcessing}
+        fundingSource={FUNDING.PAYPAL}
         onApprove={onApprove}
         onError={onError}
+        style={{ height: 35 }}
       />
     </div>
   );

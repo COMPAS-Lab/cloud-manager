@@ -10,7 +10,7 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage } from '../types';
+import { Filter, Params, ResourcePage } from '../types';
 import { Grants, User } from './types';
 
 /**
@@ -19,7 +19,7 @@ import { Grants, User } from './types';
  * Returns a paginated list of users on this account.
  *
  */
-export const getUsers = (params?: any, filters?: any) =>
+export const getUsers = (params?: Params, filters?: Filter) =>
   Request<ResourcePage<User>>(
     setURL(`${API_ROOT}/account/users`),
     setMethod('GET'),
@@ -38,7 +38,7 @@ export const getUsers = (params?: any, filters?: any) =>
 
 export const getUser = (username: string) =>
   Request<User>(
-    setURL(`${API_ROOT}/account/users/${username}`),
+    setURL(`${API_ROOT}/account/users/${encodeURIComponent(username)}`),
     setMethod('GET')
   );
 
@@ -69,7 +69,7 @@ export const createUser = (data: Partial<User>) =>
 
 export const updateUser = (username: string, data: Partial<User>) =>
   Request<User>(
-    setURL(`${API_ROOT}/account/users/${username}`),
+    setURL(`${API_ROOT}/account/users/${encodeURIComponent(username)}`),
     setMethod('PUT'),
     setData(data, UpdateUserSchema)
   );
@@ -85,7 +85,7 @@ export const updateUser = (username: string, data: Partial<User>) =>
 
 export const deleteUser = (username: string) =>
   Request<{}>(
-    setURL(`${API_ROOT}/account/users/${username}`),
+    setURL(`${API_ROOT}/account/users/${encodeURIComponent(username)}`),
     setMethod('DELETE')
   );
 
@@ -102,7 +102,7 @@ export const deleteUser = (username: string) =>
  */
 export const getGrants = (username: string) =>
   Request<Grants>(
-    setURL(`${API_ROOT}/account/users/${username}/grants`),
+    setURL(`${API_ROOT}/account/users/${encodeURIComponent(username)}/grants`),
     setMethod('GET')
   );
 
@@ -120,7 +120,7 @@ export const getGrants = (username: string) =>
  */
 export const updateGrants = (username: string, data: Partial<Grants>) =>
   Request<Grants>(
-    setURL(`${API_ROOT}/account/users/${username}/grants`),
+    setURL(`${API_ROOT}/account/users/${encodeURIComponent(username)}/grants`),
     setMethod('PUT'),
     setData(data)
   );

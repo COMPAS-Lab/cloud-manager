@@ -1,74 +1,67 @@
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { compose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import TypeToConfirm from 'src/components/TypeToConfirm';
-import Notice from 'src/components/Notice';
-import { titlecase } from 'src/features/linodes/presentation';
-import { capitalize } from 'src/utilities/capitalize';
-import { DialogProps } from '../Dialog';
-import withPreferences, {
-  Props as PreferencesProps,
-} from 'src/containers/preferences.container';
 
-interface Props extends Omit<DialogProps, 'title'> {
-  open: boolean;
-  error?: string;
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Notice } from 'src/components/Notice/Notice';
+import { TypeToConfirm } from 'src/components/TypeToConfirm/TypeToConfirm';
+import { Typography } from 'src/components/Typography';
+import { titlecase } from 'src/features/Linodes/presentation';
+import { usePreferences } from 'src/queries/profile/preferences';
+import { capitalize } from 'src/utilities/capitalize';
+
+import type { DialogProps } from '../Dialog/Dialog';
+
+export interface DeletionDialogProps extends Omit<DialogProps, 'title'> {
   entity: string;
-  onClose: () => void;
-  onDelete: () => void;
+  error?: string;
   label: string;
   loading: boolean;
+  onClose: () => void;
+  onDelete: () => void;
+  open: boolean;
   typeToConfirm?: boolean;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  text: {
-    paddingTop: theme.spacing(2),
-    paddingBottom: theme.spacing(),
-  },
-}));
-
-type CombinedProps = Props & PreferencesProps;
-
-const DeletionDialog: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+/**
+ * A Deletion Dialog is used for deleting entities such as Linodes, NodeBalancers, Volumes, or other entities.
+ *
+ * Require `typeToConfirm` when an action would have a significant negative impact if done in error, consider requiring the user to enter a unique identifier such as entity label before activating the action button.
+ * If a user has opted out of type-to-confirm this will be ignored
+ */
+export const DeletionDialog = React.memo((props: DeletionDialogProps) => {
+  const theme = useTheme();
   const {
     entity,
     error,
     label,
+    loading,
     onClose,
     onDelete,
     open,
-    loading,
-    preferences,
     typeToConfirm,
-    getUserPreferences,
-    updateUserPreferences,
     ...rest
   } = props;
+  const { data: preferences } = usePreferences();
   const [confirmationText, setConfirmationText] = React.useState('');
   const typeToConfirmRequired =
     typeToConfirm && preferences?.type_to_confirm !== false;
   const renderActions = () => (
-    <ActionsPanel style={{ padding: 0 }}>
-      <Button buttonType="secondary" onClick={onClose} data-qa-cancel>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={onDelete}
-        disabled={typeToConfirmRequired && confirmationText !== label}
-        loading={loading}
-        data-qa-confirm
-        data-testid="delete-btn"
-      >
-        Delete {titlecase(entity)}
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        'data-testid': 'confirm',
+        disabled: typeToConfirmRequired && confirmationText !== label,
+        label: ` Delete ${titlecase(entity)}`,
+        loading,
+        onClick: onDelete,
+      }}
+      secondaryButtonProps={{
+        'data-testid': 'cancel',
+        label: 'Cancel',
+        onClick: onClose,
+      }}
+      style={{ padding: 0 }}
+    />
   );
 
   React.useEffect(() => {
@@ -80,39 +73,40 @@ const DeletionDialog: React.FC<CombinedProps> = (props) => {
 
   return (
     <ConfirmationDialog
+      actions={renderActions}
+      onClose={onClose}
       open={open}
       title={`Delete ${titlecase(entity)} ${label}?`}
-      onClose={onClose}
-      actions={renderActions}
       {...rest}
     >
-      {error && <Notice error text={error} />}
-      <Notice warning>
+      {error && <Notice text={error} variant="error" />}
+      <Notice variant="warning">
         <Typography style={{ fontSize: '0.875rem' }}>
           <strong>Warning:</strong> Deleting this {entity} is permanent and
           can&rsquo;t be undone.
         </Typography>
       </Notice>
       <TypeToConfirm
-        onChange={(input) => {
-          setConfirmationText(input);
-        }}
-        value={confirmationText}
-        label={`${capitalize(entity)} Name:`}
-        placeholder={label}
-        visible={typeToConfirmRequired}
         confirmationText={
-          <Typography component={'span'} className={classes.text}>
+          <Typography
+            sx={{
+              paddingBottom: theme.spacing(),
+              paddingTop: theme.spacing(2),
+            }}
+            component={'span'}
+          >
             To confirm deletion, type the name of the {entity} (
             <strong>{label}</strong>) in the field below:
           </Typography>
         }
+        onChange={(input) => {
+          setConfirmationText(input);
+        }}
+        label={`${capitalize(entity)} Name:`}
+        placeholder={label}
+        value={confirmationText}
+        visible={typeToConfirmRequired}
       />
     </ConfirmationDialog>
   );
-};
-
-export default compose<CombinedProps, Props>(
-  React.memo,
-  withPreferences()
-)(DeletionDialog);
+});

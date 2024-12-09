@@ -1,73 +1,56 @@
+import { Paper } from '@linode/ui';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  header: {
-    marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(),
-  },
-  example: {
-    backgroundColor:
-      theme.name === 'darkTheme' ? theme.bg.white : theme.bg.offWhite,
-    margin: `${theme.spacing(2)}px 0`,
-    padding: theme.spacing(2),
-  },
-}));
+import { HighlightedMarkdown } from 'src/components/HighlightedMarkdown/HighlightedMarkdown';
+import { Link } from 'src/components/Link';
+import { Stack } from 'src/components/Stack';
+import { Typography } from 'src/components/Typography';
 
 interface Props {
-  rootClass?: string;
   isReply?: boolean;
 }
 
-type CombinedProps = Props;
-
-const MarkdownReference: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const MarkdownReference = (props: Props) => {
   return (
-    <div className={props.rootClass}>
+    <Stack spacing={2}>
       <Typography>
         You can use Markdown to format your{' '}
-        {props.isReply ? 'reply' : 'question'}. For more examples see this
-        <a
-          target="_blank"
-          aria-describedby="external-site"
-          rel="noopener noreferrer"
-          href="http://demo.showdownjs.com/"
-        >
-          {' '}
-          Markdown cheatsheet.
-        </a>
+        {props.isReply ? 'reply' : 'question'}. For more examples, see this{' '}
+        <Link external to="https://commonmark.org/help/">
+          Markdown cheatsheet
+        </Link>
       </Typography>
-      <Typography className={classes.header}>
-        <strong>Examples</strong>
-      </Typography>
-      <div className={classes.example}>
+      <Typography fontFamily={(theme) => theme.font.bold}>Examples</Typography>
+      <Paper
+        sx={(theme) => ({
+          backgroundColor: theme.palette.background.default,
+          p: 2,
+        })}
+      >
         <Typography>[I am a link](https://google.com)</Typography>
-        <br />
         <Typography
           dangerouslySetInnerHTML={{
             __html: '<a>I am a link</a>',
           }}
         />
-      </div>
-      <div className={classes.example}>
+      </Paper>
+      <Paper
+        sx={(theme) => ({
+          backgroundColor: theme.palette.background.default,
+          p: 2,
+        })}
+      >
         <Typography>
-          ```
+          ```js
           <br />
           const someCode = 'hello world';
           <br />
           ```
         </Typography>
-        <Typography
-          dangerouslySetInnerHTML={{
-            __html: `<pre style="white-space: pre-wrap;">const someCode = "hello world"</pre>`,
-          }}
+        <HighlightedMarkdown
+          textOrMarkdown={'```ts\nconst someCode = "hello world"\n```'}
         />
-      </div>
-    </div>
+      </Paper>
+    </Stack>
   );
 };
-
-export default React.memo(MarkdownReference);

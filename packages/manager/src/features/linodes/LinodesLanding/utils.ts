@@ -1,7 +1,8 @@
-import { LinodeStatus } from '@linode/api-v4/lib/linodes';
+import { Config, LinodeStatus } from '@linode/api-v4/lib/linodes';
+
 import { reportException } from 'src/exceptionReporting';
 
-export const parseMaintenanceStartTime = (startTime?: string | null) => {
+export const parseMaintenanceStartTime = (startTime?: null | string) => {
   if (!startTime) {
     return 'No Maintenance Needed';
   }
@@ -11,8 +12,8 @@ export const parseMaintenanceStartTime = (startTime?: string | null) => {
    */
   if (startTime.match(/valid/i)) {
     reportException('Error parsing maintenance start time', {
-      rawDate: startTime,
       convertedDate: startTime,
+      rawDate: startTime,
     });
     return 'Maintenance Window Unknown';
   }
@@ -20,7 +21,7 @@ export const parseMaintenanceStartTime = (startTime?: string | null) => {
   return startTime;
 };
 
-export type ExtendedStatus = LinodeStatus | 'maintenance' | 'busy';
+export type ExtendedStatus = 'busy' | 'maintenance' | LinodeStatus;
 
 // Given a Linode's status, assign it a priority so the "Status" column can be sorted in this way.
 export const statusToPriority = (status: ExtendedStatus): number => {
@@ -39,4 +40,28 @@ export const statusToPriority = (status: ExtendedStatus): number => {
       // All long-running statuses ("resizing", "cloning", etc.) are given priority 3.
       return 3;
   }
+};
+
+export const getLinodeIconStatus = (status: LinodeStatus) => {
+  if (status === 'running') {
+    return 'active';
+  }
+  if (['offline', 'stopped'].includes(status)) {
+    return 'inactive';
+  }
+  return 'other';
+};
+
+// Return all (unique) vpc IDs that a linode is assigned to
+export const getVPCsFromLinodeConfigs = (configs: Config[]): number[] => {
+  const vpcIds = new Set<number>();
+  for (const config of configs) {
+    for (const linodeInterface of config.interfaces) {
+      if (linodeInterface.purpose === 'vpc' && linodeInterface.vpc_id) {
+        vpcIds.add(linodeInterface.vpc_id);
+      }
+    }
+  }
+
+  return Array.from(vpcIds);
 };

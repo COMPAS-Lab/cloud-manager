@@ -1,23 +1,30 @@
+import Grid from '@mui/material/Unstable_Grid2';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import CircleProgress from 'src/components/CircleProgress';
+import { useHistory } from 'react-router-dom';
+
+import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Grid from 'src/components/Grid';
-import LandingHeader from 'src/components/LandingHeader';
-import Notice from 'src/components/Notice';
-import withImagesContainer, {
-  WithImages,
-} from 'src/containers/withImages.container';
-import { useReduxLoad } from 'src/hooks/useReduxLoad';
-import { filterImagesByType } from 'src/store/image/image.helpers';
-import StackScriptPanel from './StackScriptPanel';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { Notice } from 'src/components/Notice/Notice';
+import { listToItemsByID } from 'src/queries/base';
+import { useAllImagesQuery } from 'src/queries/images';
 
-type CombinedProps = WithImages & RouteComponentProps<{}, any, any>;
+import StackScriptPanel from './StackScriptPanel/StackScriptPanel';
 
-export const StackScriptsLanding: React.FC<CombinedProps> = (props) => {
-  const { history, imagesData } = props;
-  const { _loading } = useReduxLoad(['images']);
+import type { Image } from '@linode/api-v4';
+
+export const StackScriptsLanding = () => {
+  const history = useHistory<{
+    successMessage?: string;
+  }>();
+
+  const { data: _imagesData, isLoading: _loading } = useAllImagesQuery(
+    {},
+    { is_public: true }
+  );
+
+  const imagesData: Record<string, Image> = listToItemsByID(_imagesData ?? []);
 
   const goToCreateStackScript = () => {
     history.push('/stackscripts/create');
@@ -26,27 +33,29 @@ export const StackScriptsLanding: React.FC<CombinedProps> = (props) => {
   return (
     <React.Fragment>
       <DocumentTitleSegment segment="StackScripts" />
-      {!!history.location.state && !!history.location.state.successMessage && (
-        <Notice success text={history.location.state.successMessage} />
-      )}
+      {!!history.location.state && !!history.location.state.successMessage ? (
+        <Notice
+          text={history.location.state.successMessage}
+          variant="success"
+        />
+      ) : null}
       <LandingHeader
-        title="StackScripts"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/stackscripts"
         entity="StackScript"
-        createButtonWidth={180}
+        onButtonClick={goToCreateStackScript}
         removeCrumbX={1}
-        docsLink="https://www.linode.com/docs/platform/stackscripts"
-        onAddNew={goToCreateStackScript}
+        title="StackScripts"
       />
-      <Grid container className="m0">
+      <Grid className="m0" container>
         {_loading ? (
           <CircleProgress />
         ) : (
-          <Grid item className="p0" xs={12}>
+          <Grid className="p0" xs={12}>
             <StackScriptPanel
+              history={history}
+              location={history.location}
               publicImages={imagesData}
-              queryString={props.location.search}
-              history={props.history}
-              location={props.location}
+              queryString={history.location.search}
             />
           </Grid>
         )}
@@ -55,11 +64,8 @@ export const StackScriptsLanding: React.FC<CombinedProps> = (props) => {
   );
 };
 
-export default compose<CombinedProps, {}>(
-  withImagesContainer((ownProps, imagesData, imagesLoading, imagesError) => ({
-    ...ownProps,
-    imagesData: filterImagesByType(imagesData, 'public'),
-    imagesLoading,
-    imagesError,
-  }))
-)(StackScriptsLanding);
+export default StackScriptsLanding;
+
+export const stackScriptsLandingLazyRoute = createLazyRoute('/stackscripts')({
+  component: StackScriptsLanding,
+});

@@ -1,5 +1,5 @@
-import { Image } from '@linode/api-v4/lib/images';
-import { APIError } from '@linode/api-v4/lib/types';
+import { InputAdornment, Paper } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import ActionsPanel from 'src/components/ActionsPanel';
 import Button from 'src/components/Button';
@@ -63,110 +63,89 @@ const useStyles = makeStyles((theme: Theme) => ({
 }));
 
 interface TextFieldHandler {
-  value: string;
   handler: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-interface Images {
-  // available to select in the dropdown
-  available: Image[];
-  // image ids that are already selected
-  selected: string[];
+  value: string;
 }
 
 interface Props {
   currentUser: string;
-  images: Images;
-  label: TextFieldHandler;
-  revision: TextFieldHandler;
   description: TextFieldHandler;
-  script: TextFieldHandler;
-  errors?: APIError[];
-  onSubmit: () => void;
-  onCancel: () => void;
-  onSelectChange: (image: Item<string>[]) => void;
-  isSubmitting: boolean;
-  disabled?: boolean;
-  mode: 'create' | 'edit';
   disableSubmit: boolean;
+  disabled?: boolean;
+  errors?: APIError[];
+  isSubmitting: boolean;
+  label: TextFieldHandler;
+  mode: 'create' | 'edit';
+  onCancel: () => void;
+  onSelectChange: (image: Image[]) => void;
+  onSubmit: () => void;
+  revision: TextFieldHandler;
+  script: TextFieldHandler;
+  selectedImages: string[];
 }
 
-type CombinedProps = Props;
-
 const errorResources = {
-  label: 'A label',
   images: 'Images',
+  label: 'A label',
   script: 'A script',
 };
 
-// exported as a class component, otherwise no display name
-// appears in tests
-export const StackScriptForm: React.FC<CombinedProps> = (props) => {
+export const StackScriptForm = React.memo((props: Props) => {
   const {
     currentUser,
-    label,
-    revision,
     description,
-    script,
+    disableSubmit,
+    disabled,
     errors,
+    isSubmitting,
+    label,
+    mode,
+    onCancel,
     onSelectChange,
     onSubmit,
-    onCancel,
-    isSubmitting,
-    images,
-    mode,
-    disabled,
-    disableSubmit,
+    revision,
+    script,
+    selectedImages,
   } = props;
 
-  const classes = useStyles();
-
-  const hasErrorFor = getAPIErrorsFor(errorResources, errors);
-  const selectedImages = imageToItem(images.selected);
+  const hasErrorFor = getAPIErrorFor(errorResources, errors);
 
   return (
-    <Paper className={classes.root}>
-      <Grid container>
-        <Grid item className={classes.gridWithTips}>
-          <TextField
+    <Paper sx={(theme) => ({ padding: theme.spacing(2) })}>
+      <Grid container spacing={2}>
+        <StyledGridWithTips>
+          <StyledTextField
             InputProps={{
               startAdornment: (
                 <InputAdornment position="end">{currentUser} /</InputAdornment>
               ),
             }}
+            data-qa-stackscript-label
+            disabled={disabled}
+            errorText={hasErrorFor('label')}
             label="StackScript Label"
-            required
             onChange={label.handler}
             placeholder="Enter a label"
-            value={label.value}
-            errorText={hasErrorFor('label')}
+            required
             tooltipText="StackScript labels must be between 3 and 128 characters."
-            className={classes.labelField}
-            disabled={disabled}
-            data-qa-stackscript-label
+            value={label.value}
           />
           <TextField
-            multiline
-            rows={1}
-            label="Description"
-            placeholder="Enter a description"
-            onChange={description.handler}
-            value={description.value}
-            disabled={disabled}
             data-qa-stackscript-description
+            disabled={disabled}
+            label="Description"
+            multiline
+            onChange={description.handler}
+            placeholder="Enter a description"
+            rows={1}
+            value={description.value}
           />
           <ImageSelect
-            images={images.available}
-            onSelect={onSelectChange}
-            required
-            value={selectedImages}
-            isMulti
-            label="Target Images"
-            imageFieldError={hasErrorFor('images')}
-            helperText={
-              'Select which images are compatible with this StackScript. "Any/All" allows you to use private images.'
-            }
-            disabled={disabled}
+            textFieldProps={{
+              required: true,
+              tooltipText:
+                'Select which images are compatible with this StackScript. "Any/All" allows you to use private images.',
+            }}
             anyAllOption
             data-qa-stackscript-target-select
           />
@@ -189,49 +168,42 @@ export const StackScriptForm: React.FC<CombinedProps> = (props) => {
         /* -- Clanode Change End -- */}
       </Grid>
       <TextField
-        multiline
-        rows={1}
-        label="Script"
-        placeholder={`#!/bin/bash \n\n# Your script goes here`}
-        onChange={script.handler}
-        value={script.value}
-        errorText={hasErrorFor('script')}
-        required
-        InputProps={{ className: classes.scriptTextarea }}
-        disabled={disabled}
+        InputProps={{ sx: { maxWidth: '100%' } }}
         data-qa-stackscript-script
+        disabled={disabled}
+        errorText={hasErrorFor('script')}
+        label="Script"
+        multiline
+        onChange={script.handler}
+        placeholder={`#!/bin/bash \n\n# Your script goes here`}
+        required
+        rows={3}
+        value={script.value}
       />
       <TextField
-        label="Revision Note"
-        placeholder="Enter a revision note"
-        onChange={revision.handler}
-        value={revision.value}
-        InputProps={{ className: classes.revisionTextarea }}
-        disabled={disabled}
+        InputProps={{ sx: { maxWidth: '100%' } }}
         data-qa-stackscript-revision
+        disabled={disabled}
+        label="Revision Note"
+        onChange={revision.handler}
+        placeholder="Enter a revision note"
+        value={revision.value}
       />
-      <ActionsPanel className={classes.actions}>
-        <Button
-          onClick={onCancel}
-          buttonType="secondary"
-          className="cancel"
-          disabled={disabled}
-          data-qa-cancel
-        >
-          Reset
-        </Button>
-        <Button
-          onClick={onSubmit}
-          buttonType="primary"
-          loading={isSubmitting}
-          disabled={disabled || disableSubmit}
-          data-qa-save
-        >
-          {mode === 'edit' ? 'Save Changes' : 'Create StackScript'}
-        </Button>
-      </ActionsPanel>
+      <StyledActionsPanel
+        primaryButtonProps={{
+          'data-testid': 'save',
+          disabled: disabled || disableSubmit,
+          label: mode === 'edit' ? 'Save Changes' : 'Create StackScript',
+          loading: isSubmitting,
+          onClick: onSubmit,
+        }}
+        secondaryButtonProps={{
+          'data-testid': 'cancel',
+          disabled,
+          label: 'Reset',
+          onClick: onCancel,
+        }}
+      />
     </Paper>
   );
-};
-
-export default React.memo(StackScriptForm);
+});

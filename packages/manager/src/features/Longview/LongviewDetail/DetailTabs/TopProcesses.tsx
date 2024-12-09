@@ -1,52 +1,44 @@
-import { APIError } from '@linode/api-v4/lib/types';
+import { Box } from '@linode/ui';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import Box from 'src/components/core/Box';
-import { makeStyles } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
+
 import OrderBy from 'src/components/OrderBy';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
-import TableSortCell from 'src/components/TableSortCell';
-import {
+import { TableSortCell } from 'src/components/TableSortCell';
+import { Typography } from 'src/components/Typography';
+import { readableBytes } from 'src/utilities/unitConversions';
+
+import { formatCPU } from '../../shared/formatters';
+import { StyledItemGrid } from './CommonStyles.styles';
+import { StyledLink } from './TopProcesses.styles';
+
+import type { APIError } from '@linode/api-v4/lib/types';
+import type {
   LongviewTopProcesses,
   TopProcessStat,
 } from 'src/features/Longview/request.types';
-import { readableBytes } from 'src/utilities/unitConversions';
-import { formatCPU } from '../../shared/formatters';
-
-const useStyles = makeStyles(() => ({
-  detailsLink: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    position: 'relative',
-    top: 3,
-  },
-}));
 
 export interface Props {
-  topProcessesData: LongviewTopProcesses;
-  topProcessesLoading: boolean;
-  topProcessesError?: APIError[];
-  lastUpdatedError?: APIError[];
   clientID: number;
+  lastUpdatedError?: APIError[];
+  topProcessesData: LongviewTopProcesses;
+  topProcessesError?: APIError[];
+  topProcessesLoading: boolean;
 }
 
-export const TopProcesses: React.FC<Props> = (props) => {
-  const classes = useStyles();
+export const TopProcesses = React.memo((props: Props) => {
   const {
-    topProcessesData,
-    topProcessesLoading,
-    topProcessesError,
-    lastUpdatedError,
     clientID,
+    lastUpdatedError,
+    topProcessesData,
+    topProcessesError,
+    topProcessesLoading,
   } = props;
 
   const errorMessage = Boolean(topProcessesError || lastUpdatedError)
@@ -54,52 +46,49 @@ export const TopProcesses: React.FC<Props> = (props) => {
     : undefined;
 
   return (
-    <Grid item xs={12} lg={4}>
+    <StyledItemGrid lg={4} xs={12}>
       <Box display="flex" flexDirection="row" justifyContent="space-between">
         <Typography variant="h2">Top Processes</Typography>
-        <Link
-          to={`/longview/clients/${clientID}/processes`}
-          className={classes.detailsLink}
-        >
+        <StyledLink to={`/longview/clients/${clientID}/processes`}>
           View Details
-        </Link>
+        </StyledLink>
       </Box>
       <OrderBy
         data={extendTopProcesses(topProcessesData)}
-        orderBy={'cpu'}
         order={'desc'}
+        orderBy={'cpu'}
         preferenceKey="top-processes"
       >
         {({ data: orderedData, handleOrderChange, order, orderBy }) => (
-          <Table spacingTop={16} aria-label="List of Top Processes">
+          <Table aria-label="List of Top Processes" spacingTop={16}>
             <TableHead>
               <TableRow>
                 <TableSortCell
-                  data-qa-table-header="Process"
                   active={orderBy === 'name'}
-                  label="name"
+                  data-qa-table-header="Process"
                   direction={order}
                   handleClick={handleOrderChange}
+                  label="name"
                   style={{ width: '40%' }}
                 >
                   Process
                 </TableSortCell>
                 <TableSortCell
-                  data-qa-table-header="CPU"
                   active={orderBy === 'cpu'}
-                  label="cpu"
+                  data-qa-table-header="CPU"
                   direction={order}
                   handleClick={handleOrderChange}
+                  label="cpu"
                   style={{ width: '25%' }}
                 >
                   CPU
                 </TableSortCell>
                 <TableSortCell
-                  data-qa-table-header="Memory"
                   active={orderBy === 'mem'}
-                  label="mem"
+                  data-qa-table-header="Memory"
                   direction={order}
                   handleClick={handleOrderChange}
+                  label="mem"
                   style={{ width: '15%' }}
                 >
                   Memory
@@ -116,9 +105,9 @@ export const TopProcesses: React.FC<Props> = (props) => {
           </Table>
         )}
       </OrderBy>
-    </Grid>
+    </StyledItemGrid>
   );
-};
+});
 
 const renderLoadingErrorData = (
   data: ExtendedTopProcessStat[],
@@ -132,7 +121,7 @@ const renderLoadingErrorData = (
     return <TableRowLoading columns={4} />;
   }
   if (data.length === 0) {
-    return <TableRowEmptyState colSpan={4} />;
+    return <TableRowEmpty colSpan={4} />;
   }
 
   return (
@@ -141,45 +130,41 @@ const renderLoadingErrorData = (
       .slice(0, 6)
       .map((thisTopProcessStat, idx) => (
         <TopProcessRow
-          key={`longview-top-process-${idx}`}
-          name={thisTopProcessStat.name}
           cpu={thisTopProcessStat.cpu}
+          key={`longview-top-process-${idx}`}
           mem={thisTopProcessStat.mem}
+          name={thisTopProcessStat.name}
         />
       ))
   );
 };
 
 interface TopProcessRowProps {
-  name: string;
   cpu: number;
   mem: number;
+  name: string;
 }
 
-export const TopProcessRow: React.FC<TopProcessRowProps> = React.memo(
-  (props) => {
-    const { name, cpu, mem } = props;
+export const TopProcessRow = React.memo((props: TopProcessRowProps) => {
+  const { cpu, mem, name } = props;
 
-    // Memory is given from the API in KB.
-    const memInBytes = mem * 1024;
+  // Memory is given from the API in KB.
+  const memInBytes = mem * 1024;
 
-    return (
-      <TableRow ariaLabel={name} data-testid="longview-top-process-row">
-        <TableCell parentColumn="Process" data-qa-top-process-process>
-          {name}
-        </TableCell>
-        <TableCell parentColumn="CPU" data-qa-top-process-cpu>
-          {formatCPU(cpu)}
-        </TableCell>
-        <TableCell parentColumn="Memory" data-qa-top-process-memory>
-          {readableBytes(memInBytes, { round: 0 }).formatted}
-        </TableCell>
-      </TableRow>
-    );
-  }
-);
-
-export default React.memo(TopProcesses);
+  return (
+    <TableRow data-testid="longview-top-process-row">
+      <TableCell data-qa-top-process-process parentColumn="Process">
+        {name}
+      </TableCell>
+      <TableCell data-qa-top-process-cpu parentColumn="CPU">
+        {formatCPU(cpu)}
+      </TableCell>
+      <TableCell data-qa-top-process-memory parentColumn="Memory">
+        {readableBytes(memInBytes, { round: 0 }).formatted}
+      </TableCell>
+    </TableRow>
+  );
+});
 
 interface ExtendedTopProcessStat extends TopProcessStat {
   name: string;

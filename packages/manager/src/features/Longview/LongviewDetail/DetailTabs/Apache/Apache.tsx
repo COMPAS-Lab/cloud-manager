@@ -1,29 +1,22 @@
-import { APIError } from '@linode/api-v4/lib/types';
+import { Box } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import Box from 'src/components/core/Box';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import ExternalLink from 'src/components/ExternalLink';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import { isToday as _isToday } from 'src/utilities/isToday';
-import { WithStartAndEnd } from '../../../request.types';
-import TimeRangeSelect from '../../../shared/TimeRangeSelect';
-import { useGraphs } from '../OverviewGraphs/useGraphs';
-import ApacheGraphs from './ApacheGraphs';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    width: 250,
-  },
-  title: {
-    [theme.breakpoints.down('md')]: {
-      marginLeft: theme.spacing(),
-      marginRight: theme.spacing(),
-    },
-  },
-}));
+import { DocumentTitleSegment } from 'src/components/DocumentTitle';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { isToday as _isToday } from 'src/utilities/isToday';
+
+import {
+  StyledTimeRangeSelect,
+  StyledTypography,
+} from '../CommonStyles.styles';
+import { useGraphs } from '../OverviewGraphs/useGraphs';
+import { ApacheGraphs } from './ApacheGraphs';
+
+import type { WithStartAndEnd } from '../../../request.types';
+import type { APIError } from '@linode/api-v4/lib/types';
 
 interface Props {
   clientAPIKey?: string;
@@ -32,17 +25,16 @@ interface Props {
   timezone: string;
 }
 
-export const Apache: React.FC<Props> = (props) => {
+export const Apache = React.memo((props: Props) => {
   const { clientAPIKey, lastUpdated, lastUpdatedError, timezone } = props;
-  const classes = useStyles();
   const [version, setVersion] = React.useState<string | undefined>();
 
   const [time, setTimeBox] = React.useState<WithStartAndEnd>({
-    start: 0,
     end: 0,
+    start: 0,
   });
 
-  const { data, loading, error, request } = useGraphs(
+  const { data, error, loading, request } = useGraphs(
     ['apache'],
     clientAPIKey,
     time.start,
@@ -67,7 +59,7 @@ export const Apache: React.FC<Props> = (props) => {
   }, [time, clientAPIKey, lastUpdated, lastUpdatedError]);
 
   const handleStatsChange = (start: number, end: number) => {
-    setTimeBox({ start, end });
+    setTimeBox({ end, start });
   };
 
   const apache = data.Applications?.Apache;
@@ -76,15 +68,13 @@ export const Apache: React.FC<Props> = (props) => {
 
   if (notice !== null) {
     return (
-      <Notice warning>
+      <Notice variant="warning">
         <Typography>{notice}</Typography>
         <Typography>
           See our{' '}
-          <ExternalLink
-            fixedIcon
-            link="https://www.linode.com/docs/platform/longview/longview-app-for-apache/#troubleshooting"
-            text="guide"
-          />{' '}
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/capture-apache-metrics-with-linode-longview#troubleshooting">
+            guide
+          </Link>{' '}
           for help troubleshooting the Apache Longview app.
         </Typography>
       </Notice>
@@ -92,48 +82,47 @@ export const Apache: React.FC<Props> = (props) => {
   }
 
   return (
-    <Grid container direction="column">
+    <Grid container direction="column" spacing={2}>
       <DocumentTitleSegment segment={'Apache'} />
-      <Grid item xs={12}>
+      <Grid sx={{ boxSizing: 'border-box', margin: '0' }} xs={12}>
         <Box
+          alignItems="center"
           display="flex"
           flexDirection="row"
           justifyContent="space-between"
-          alignItems="center"
         >
           <div>
-            <Typography className={classes.title} variant="h2">
-              Apache
-            </Typography>
+            <StyledTypography variant="h2">Apache</StyledTypography>
             {version && <Typography variant="body1">{version}</Typography>}
           </div>
 
-          <TimeRangeSelect
-            small
-            className={classes.root}
-            handleStatsChange={handleStatsChange}
+          <StyledTimeRangeSelect
             defaultValue="Past 30 Minutes"
-            label="Select Time Range"
+            handleStatsChange={handleStatsChange}
             hideLabel
+            label="Select Time Range"
+            small
           />
         </Box>
       </Grid>
-      <Grid item xs={12} className="py0">
+      <Grid
+        className="py0"
+        sx={{ boxSizing: 'border-box', margin: '0' }}
+        xs={12}
+      >
         <ApacheGraphs
           data={data?.Applications?.Apache}
-          processesData={apacheProcesses.data?.Processes ?? {}}
-          processesLoading={apacheProcesses.loading}
-          processesError={apacheProcesses.error}
+          end={time.end}
+          error={lastUpdatedError?.[0]?.reason || error}
           isToday={isToday}
           loading={loading}
-          error={lastUpdatedError?.[0]?.reason || error}
-          timezone={timezone}
+          processesData={apacheProcesses.data?.Processes ?? {}}
+          processesError={apacheProcesses.error}
+          processesLoading={apacheProcesses.loading}
           start={time.start}
-          end={time.end}
+          timezone={timezone}
         />
       </Grid>
     </Grid>
   );
-};
-
-export default React.memo(Apache);
+});

@@ -1,6 +1,11 @@
-import * as Factory from 'factory.ts';
-import { DNSResolvers, Region } from '@linode/api-v4/lib/regions/types';
-import { dcDisplayNames } from 'src/constants';
+import Factory from 'src/factories/factoryProxy';
+
+import type {
+  Country,
+  DNSResolvers,
+  Region,
+  RegionAvailability,
+} from '@linode/api-v4/lib/regions/types';
 
 export const resolverFactory = Factory.Sync.makeFactory<DNSResolvers>({
   ipv4: '1.1.1.1',
@@ -8,11 +13,49 @@ export const resolverFactory = Factory.Sync.makeFactory<DNSResolvers>({
 });
 
 export const regionFactory = Factory.Sync.makeFactory<Region>({
-  id: Factory.each(
-    (id) => Object.keys(dcDisplayNames)[id + 1] || `region-${id}`
-  ),
-  status: 'ok',
-  country: 'US',
   capabilities: ['Block Storage'],
+  country: 'us',
+  id: Factory.each((id) => `us-${id}`),
+  label: Factory.each((id) => `${id}, NJ`),
+  placement_group_limits: {
+    maximum_linodes_per_pg: 10,
+    maximum_pgs_per_customer: 5,
+  },
   resolvers: resolverFactory.build(),
+  site_type: 'core',
+  status: 'ok',
 });
+
+export const regionWithDynamicPricingFactory = Factory.Sync.makeFactory<Region>(
+  {
+    capabilities: [
+      'Linodes',
+      'NodeBalancers',
+      'Block Storage',
+      'Object Storage',
+      'Kubernetes',
+      'Cloud Firewall',
+      'Placement Group',
+      'Vlans',
+      'Premium Plans',
+    ],
+    country: 'id' as Country,
+    id: 'id-cgk',
+    label: 'Jakarta, ID',
+    placement_group_limits: {
+      maximum_linodes_per_pg: 10,
+      maximum_pgs_per_customer: 5,
+    },
+    resolvers: resolverFactory.build(),
+    site_type: 'core',
+    status: 'ok',
+  }
+);
+
+export const regionAvailabilityFactory = Factory.Sync.makeFactory<RegionAvailability>(
+  {
+    available: false,
+    plan: 'g6-standard-7',
+    region: 'us-east',
+  }
+);

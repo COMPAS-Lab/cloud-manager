@@ -1,77 +1,63 @@
+import { useTheme } from '@mui/material/styles';
 import { pathOr } from 'ramda';
 import * as React from 'react';
-import { compose } from 'recompose';
-import {
-  makeStyles,
-  Theme,
-  withTheme,
-  WithTheme,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
+import { Typography } from 'src/components/Typography';
 import { isToday as _isToday } from 'src/utilities/isToday';
+
 import { Stat, StatWithDummyPoint } from '../../../request.types';
 import { convertData } from '../../../shared/formatters';
 import GraphCard from '../../GraphCard';
+import { StyledDiv } from './Graphs.styles';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  graphContainer: {
-    marginTop: theme.spacing(),
-    display: 'flex',
-    flexFlow: 'row wrap',
-    justifyContent: 'space-around',
-    '& > div': {
-      flexGrow: 1,
-      width: '33%',
-      [theme.breakpoints.down('md')]: {
-        marginTop: theme.spacing(),
-        width: '60%',
-      },
-    },
-  },
-}));
-
-export interface Props {
-  isSwap: boolean;
+export interface GraphProps {
   childOf: boolean;
-  sysInfoType: string;
-  isMounted: boolean;
-  timezone: string;
+  diskLabel: string;
+  endTime: number;
+  free: Stat[];
   iFree: Stat[];
   iTotal: Stat[];
-  free: Stat[];
-  total: Stat[];
-  reads: Stat[];
-  writes: Stat[];
-  diskLabel: string;
-  startTime: number;
-  endTime: number;
+  isMounted: boolean;
+  isSwap: boolean;
   loading: boolean;
+  reads: Stat[];
+  startTime: number;
+  sysInfoType: string;
+  timezone: string;
+  total: Stat[];
+  writes: Stat[];
 }
 
-type CombinedProps = Props & WithTheme;
-
-const Graphs: React.FC<CombinedProps> = (props) => {
+export const Graphs = React.memo((props: GraphProps) => {
   const {
-    isSwap,
     childOf,
-    sysInfoType,
     diskLabel,
-    theme,
-    loading,
-    timezone,
-    free,
-    total,
-    iFree,
-    isMounted,
-    iTotal,
-    startTime,
     endTime,
+    free,
+    iFree,
+    iTotal,
+    isMounted,
+    isSwap,
+    loading,
     reads,
+    startTime,
+    sysInfoType,
+    timezone,
+    total,
     writes,
   } = props;
 
-  const classes = useStyles();
+  const theme = useTheme();
+
+  const isToday = _isToday(startTime, endTime);
+  const labelHelperText = generateHelperText(sysInfoType, isSwap, isMounted);
+
+  const _free = React.useMemo(() => formatSpace(free, total), [free, total]);
+  const _inodes = React.useMemo(() => formatINodes(iFree, iTotal), [
+    iFree,
+    iTotal,
+  ]);
 
   if (childOf) {
     /** @todo document the why here. This comes from old Longview.JS */
@@ -86,41 +72,33 @@ const Graphs: React.FC<CombinedProps> = (props) => {
     );
   }
 
-  const isToday = _isToday(startTime, endTime);
-  const labelHelperText = generateHelperText(sysInfoType, isSwap, isMounted);
-
-  const _free = React.useMemo(() => formatSpace(free, total), [free, total]);
-  const _inodes = React.useMemo(() => formatINodes(iFree, iTotal), [
-    iFree,
-    iTotal,
-  ]);
-
   return (
-    <GraphCard title={diskLabel} helperText={labelHelperText}>
-      <div className={classes.graphContainer}>
+    <GraphCard helperText={labelHelperText} title={diskLabel}>
+      <StyledDiv>
         {sysInfoType.toLowerCase() !== 'openvz' && (
           <div data-testid="diskio-graph">
             <LongviewLineGraph
-              loading={loading}
               data={[
                 {
+                  backgroundColor: theme.graphs.diskIO.write,
+                  borderColor: 'transparent',
                   data: convertData(writes, startTime, endTime, formatDiskIO),
                   label: 'Write',
-                  borderColor: 'transparent',
-                  backgroundColor: theme.graphs.diskIO.write,
                 },
                 {
+                  backgroundColor: theme.graphs.diskIO.read,
+                  borderColor: 'transparent',
                   data: convertData(reads, startTime, endTime, formatDiskIO),
                   label: 'Read',
-                  borderColor: 'transparent',
-                  backgroundColor: theme.graphs.diskIO.read,
                 },
               ]}
-              title="Disk I/O"
+              ariaLabel="Disk I/O Graph"
+              loading={loading}
+              nativeLegend
               showToday={isToday}
               subtitle="ops/s"
               timezone={timezone}
-              nativeLegend
+              title="Disk I/O"
             />
           </div>
         )}
@@ -136,55 +114,57 @@ const Graphs: React.FC<CombinedProps> = (props) => {
                 <LongviewLineGraph
                   data={[
                     {
+                      backgroundColor: theme.graphs.space,
+                      borderColor: 'transparent',
                       data: convertData(_free, startTime, endTime),
                       label: 'Space',
-                      borderColor: 'transparent',
-                      backgroundColor: theme.graphs.space,
                     },
                   ]}
-                  showToday={isToday}
-                  title="Space"
-                  subtitle="GB"
-                  timezone={timezone}
+                  ariaLabel="Disk Space Graph"
                   nativeLegend
+                  showToday={isToday}
+                  subtitle="GB"
                   // @todo replace with byte-to-target converter after rebase
                   suggestedMax={total[0]?.y / 1024 / 1024 / 1024}
+                  timezone={timezone}
+                  title="Space"
                 />
               </div>
               <div data-testid="inodes-graph">
                 <LongviewLineGraph
                   data={[
                     {
+                      backgroundColor: theme.graphs.inodes,
+                      borderColor: 'transparent',
                       data: convertData(_inodes, startTime, endTime),
                       label: 'Inodes',
-                      borderColor: 'transparent',
-                      backgroundColor: theme.graphs.inodes,
                     },
                   ]}
-                  showToday={isToday}
-                  title="Inodes"
-                  timezone={timezone}
+                  ariaLabel="Inodes Graph"
                   nativeLegend
+                  showToday={isToday}
                   // @todo replace with byte-to-target converter after rebase
                   suggestedMax={iTotal[0]?.y}
+                  timezone={timezone}
+                  title="Inodes"
                 />
               </div>
             </React.Fragment>
           )
         }
-      </div>
+      </StyledDiv>
     </GraphCard>
   );
-};
+});
 
 export const formatINodes = (
   ifree: StatWithDummyPoint[],
   itotal: StatWithDummyPoint[]
 ): StatWithDummyPoint[] => {
   return itotal.map((eachTotalStat, index) => {
-    const { y: totalY, x: totalX } = eachTotalStat;
+    const { x: totalX, y: totalY } = eachTotalStat;
     const { y: freeY } = pathOr(
-      { y: null, x: 0 },
+      { x: 0, y: null },
       [index],
       ifree
     ) as StatWithDummyPoint;
@@ -245,5 +225,3 @@ export const generateHelperText = (
 
   return '';
 };
-
-export default compose<CombinedProps, Props>(React.memo, withTheme)(Graphs);

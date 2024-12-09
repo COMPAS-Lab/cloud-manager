@@ -1,20 +1,23 @@
+import { Box } from '@linode/ui';
 import * as React from 'react';
-import Dialog, { DialogProps as _DialogProps } from 'src/components/Dialog';
-import Typography from 'src/components/core/Typography';
-import Link from 'src/components/Link';
-import withPreferences, {
-  Props as PreferencesProps,
-} from 'src/containers/preferences.container';
-import Button from 'src/components/Button';
-import Notice from 'src/components/Notice';
-import { compose } from 'recompose';
 
-type DialogProps = Pick<_DialogProps, 'onClose' | 'open'>;
+import { Button } from 'src/components/Button/Button';
+import { Dialog } from 'src/components/Dialog/Dialog';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import {
+  useMutatePreferences,
+  usePreferences,
+} from 'src/queries/profile/preferences';
 
-type CombinedProps = DialogProps & PreferencesProps;
+import type { DialogProps } from 'src/components/Dialog/Dialog';
 
-const PreferenceEditor: React.FC<CombinedProps> = (props) => {
-  const { getUserPreferences, updateUserPreferences } = props;
+type Props = Pick<DialogProps, 'onClose' | 'open'>;
+
+export const PreferenceEditor = (props: Props) => {
+  const { refetch: refetchPreferences } = usePreferences();
+  const { mutateAsync: updatePreferences } = useMutatePreferences(true);
 
   const [userPrefs, setUserPrefs] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -24,7 +27,8 @@ const PreferenceEditor: React.FC<CombinedProps> = (props) => {
 
   React.useEffect(() => {
     setLoading(true);
-    getUserPreferences()
+    refetchPreferences()
+      .then(({ data: userPreferences }) => userPreferences ?? Promise.reject())
       .then((userPreferences) => {
         setLoading(false);
         setUserPrefs(JSON.stringify(userPreferences, null, 2));
@@ -32,7 +36,7 @@ const PreferenceEditor: React.FC<CombinedProps> = (props) => {
       .catch(() => {
         setErrorMessage('Unable to load user preferences');
       });
-  }, [getUserPreferences]);
+  }, []);
 
   const handleSavePreferences = () => {
     try {
@@ -40,7 +44,7 @@ const PreferenceEditor: React.FC<CombinedProps> = (props) => {
       setSubmitting(true);
       setSuccessMessage('');
       setErrorMessage('');
-      updateUserPreferences(parsed as any)
+      updatePreferences(parsed)
         .then(() => {
           setSuccessMessage('Preferences updated successfully');
           setSubmitting(false);
@@ -55,14 +59,17 @@ const PreferenceEditor: React.FC<CombinedProps> = (props) => {
 
   return (
     <Dialog
-      title="Edit Preferences"
-      open={props.open}
-      onClose={props.onClose}
+      fullWidth
       maxWidth="sm"
+      onClose={props.onClose}
+      open={props.open}
+      title="Edit Preferences"
     >
-      {errorMessage && <Notice spacingBottom={8} error text={errorMessage} />}
+      {errorMessage && (
+        <Notice spacingBottom={8} text={errorMessage} variant="error" />
+      )}
       {successMessage && (
-        <Notice spacingBottom={8} success text={successMessage} />
+        <Notice spacingBottom={8} text={successMessage} variant="success" />
       )}
       <Typography>
         Update user preferences tied to Cloud Manager. See the{' '}
@@ -74,28 +81,26 @@ const PreferenceEditor: React.FC<CombinedProps> = (props) => {
       {loading && <Typography>Loading...</Typography>}
       <div>
         <textarea
-          value={userPrefs}
           style={{
-            marginTop: 16,
-            width: 400,
-            height: 300,
             fontFamily: '"Ubuntu Mono", monospace"',
+            height: 300,
+            marginTop: 16,
+            width: '100%',
           }}
           onChange={(e) => setUserPrefs(e.target.value)}
+          value={userPrefs}
         ></textarea>
       </div>
-      <Button
-        style={{ marginTop: 8 }}
-        buttonType="primary"
-        onClick={handleSavePreferences}
-        loading={submitting}
-      >
-        Submit
-      </Button>
+      <Box display="flex" justifyContent="flex-end">
+        <Button
+          buttonType="primary"
+          loading={submitting}
+          onClick={handleSavePreferences}
+          sx={{ marginTop: 1 }}
+        >
+          Save
+        </Button>
+      </Box>
     </Dialog>
   );
 };
-
-const enhanced = compose<CombinedProps, DialogProps>(withPreferences());
-
-export default enhanced(PreferenceEditor);

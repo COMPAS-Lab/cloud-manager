@@ -1,4 +1,9 @@
-import Axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import Axios, {
+  AxiosError,
+  AxiosHeaders,
+  AxiosRequestConfig,
+  AxiosResponse,
+} from 'axios';
 import { ValidationError, AnySchema } from 'yup';
 import { API_ROOT } from './constants';
 import { APIError } from './types';
@@ -23,13 +28,11 @@ export const baseRequest = Axios.create({
  */
 export const setToken = (token: string) => {
   return baseRequest.interceptors.request.use((config) => {
-    return {
-      ...config,
-      headers: {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      },
-    };
+    const headers = new AxiosHeaders(config.headers);
+
+    headers.set('Authorization', `Bearer ${token}`);
+
+    return { ...config, headers };
   });
 };
 
@@ -53,7 +56,7 @@ export const setMethod = (method: 'GET' | 'POST' | 'PUT' | 'DELETE') =>
   set('method', method);
 
 /** Param */
-export const setParams = (params: any = {}) => set('params', params);
+export const setParams = (params: Params | undefined) => set('params', params);
 
 export const setHeaders = (newHeaders: any = {}) => (object: any) => {
   return !isEmpty(newHeaders)
@@ -95,7 +98,7 @@ export const setData = (
     return (object: any) => ({
       ...object,
       data: updatedData,
-      validationErrors: convertYupToLinodeErrors(error),
+      validationErrors: convertYupToLinodeErrors(error as ValidationError),
     });
   }
 };
@@ -104,7 +107,7 @@ export const setData = (
  * Attempt to convert a Yup error to our pattern. The only magic here is the recursive call
  * to itself since we have nested structures (think NodeBalancers).
  */
-const convertYupToLinodeErrors = (
+export const convertYupToLinodeErrors = (
   validationError: ValidationError
 ): APIError[] => {
   const { inner } = validationError;
@@ -130,7 +133,7 @@ const mapYupToLinodeAPIError = ({
 });
 
 /** X-Filter */
-export const setXFilter = (xFilter: any) => {
+export const setXFilter = (xFilter: Filter | undefined) => {
   return (object: any) =>
     !isEmpty(xFilter)
       ? {
@@ -168,46 +171,6 @@ export const requestGenerator = <T>(...fns: Function[]): Promise<T> => {
     );
   }
   return baseRequest(config).then((response) => response.data);
-
-  /*
-   * If in the future, we want to hook into every single
-   * async action for the purpose of sending the request data
-   * to Google Tag Manager, we can uncomment out the following
-   * .then() and .catch() on return Axios(config)
-   */
-
-  // .then(response => {
-  //   /*
-  //    * This is sending an event to the Google Tag Manager
-  //    * data layer. This is important because it lets us track
-  //    * async actions as custom events
-  //    */
-  //   if ((window as any).dataLayer) {
-  //     (window as any).dataLayer = (window as any).dataLayer || [];
-  //     (window as any).dataLayer.push({
-  //       'event': 'asyncActionSuccess',
-  //       'url': response.config.url,
-  //       'method': response.config.method,
-  //     });
-  //   };
-  //   return response;
-  // })
-  // .catch(e => {
-  //   /*
-  //    * This is sending an event to the Google Tag Manager
-  //    * data layer. This is important because it lets us track
-  //    * async actions as custom events
-  //    */
-  //   if ((window as any).dataLayer) {
-  //     (window as any).dataLayer = (window as any).dataLayer || [];
-  //     (window as any).dataLayer.push({
-  //       'event': 'asyncActionFailure',
-  //       'url': e.response.config.url,
-  //       'method': e.response.config.method,
-  //     });
-  //   };
-  //   return Promise.reject(e);
-  // });
 };
 
 /**
@@ -234,7 +197,9 @@ export const mockAPIError = (
             status,
             statusText,
             headers: {},
-            config: {},
+            config: {
+              headers: new AxiosHeaders(),
+            },
           })
         ),
       process.env.NODE_ENV === 'test' ? 0 : 250
@@ -276,6 +241,23 @@ export const CancellableRequest = <T>(
         (response) => response.data
       ),
   };
+};
+
+/**
+ * setUserAgentPrefix
+ *
+ * Helper function to set a custom prefix on the user agent
+ *
+ * @param prefix
+ */
+export const setUserAgentPrefix = (prefix: string) => {
+  return baseRequest.interceptors.request.use((config) => {
+    const headers = new AxiosHeaders(config.headers);
+
+    headers.set('User-Agent', `${prefix}/${config.headers['User-Agent']}`);
+
+    return { ...config, headers };
+  });
 };
 
 export default requestGenerator;

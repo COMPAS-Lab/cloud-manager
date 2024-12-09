@@ -1,29 +1,29 @@
-import 'font-logos/assets/font-logos.css';
+import CssBaseline from '@mui/material/CssBaseline';
+import { QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
-import { Provider } from 'react-redux';
-import {
-  BrowserRouter as Router,
-  Route,
-  RouteComponentProps,
-  Switch,
-} from 'react-router-dom';
-import { initAnalytics, initTagManager } from 'src/analytics';
-import AuthenticationWrapper from 'src/components/AuthenticationWrapper';
-import CookieWarning from 'src/components/CookieWarning';
-import SnackBar from 'src/components/SnackBar';
-import SplashScreen from 'src/components/SplashScreen';
-import { GA_ID, GTM_ID, isProductionBuild } from 'src/constants';
+import { Provider as ReduxStoreProvider } from 'react-redux';
+import { Route, BrowserRouter as Router, Switch } from 'react-router-dom';
+
+import { CookieWarning } from 'src/components/CookieWarning';
+import { Snackbar } from 'src/components/Snackbar/Snackbar';
+import { SplashScreen } from 'src/components/SplashScreen';
 import 'src/exceptionReporting';
 import Logout from 'src/layouts/Logout';
-import 'src/request';
-import store from 'src/store';
+import { setupInterceptors } from 'src/request';
+import { storeFactory } from 'src/store';
+
+import { App } from './App';
+import NullComponent from './components/NullComponent';
+import { loadDevTools, shouldLoadDevTools } from './dev-tools/load';
 import './index.css';
-import LinodeThemeWrapper from './LinodeThemeWrapper';
-import loadDevTools from './dev-tools/load';
-import { QueryClientProvider } from 'react-query';
-import { ReactQueryDevtools } from 'react-query/devtools';
-import { queryClient } from './queries/base';
+import { LinodeThemeWrapper } from './LinodeThemeWrapper';
+import { queryClientFactory } from './queries/base';
+import { getRoot } from './utilities/rootManager';
+
+const queryClient = queryClientFactory('longLived');
+const store = storeFactory();
+
+setupInterceptors(store);
 
 const Lish = React.lazy(() => import('src/features/Lish'));
 const App = React.lazy(() => import('./App'));

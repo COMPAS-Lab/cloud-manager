@@ -1,161 +1,141 @@
+import { useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { compose } from 'recompose';
-import Paper from 'src/components/core/Paper';
-import {
-  makeStyles,
-  Theme,
-  WithTheme,
-  withTheme,
-} from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
+
 import { LongviewProcesses, NginxResponse } from '../../../request.types';
 import { convertData } from '../../../shared/formatters';
-import ProcessGraphs from '../ProcessGraphs';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: `${theme.spacing(3) + 2}px ${theme.spacing(3) + 2}px ${
-      theme.spacing(5) + 4
-    }px`,
-  },
-  smallGraph: {
-    [theme.breakpoints.down('sm')]: {
-      marginTop: theme.spacing(3) + 2,
-    },
-    marginTop: theme.spacing(6) + 3,
-  },
-}));
+import {
+  StyledItemGrid,
+  StyledRootPaper,
+  StyledSmallGraphGrid,
+} from '../CommonStyles.styles';
+import { ProcessGraphs } from '../ProcessGraphs';
 
 interface Props {
   data?: NginxResponse;
-  error?: string;
-  loading: boolean;
-  timezone: string;
-  isToday: boolean;
-  start: number;
   end: number;
+  error?: string;
+  isToday: boolean;
+  loading: boolean;
   processesData: LongviewProcesses;
-  processesLoading: boolean;
   processesError?: string;
+  processesLoading: boolean;
+  start: number;
+  timezone: string;
 }
 
-type CombinedProps = Props & WithTheme;
-
-export const NGINXGraphs: React.FC<CombinedProps> = (props) => {
+export const NGINXGraphs = React.memo((props: Props) => {
   const {
     data,
+    end,
     error,
     isToday,
     loading,
-    timezone,
-    start,
-    end,
     processesData,
-    processesLoading,
     processesError,
-    theme,
+    processesLoading,
+    start,
+    timezone,
   } = props;
 
-  const classes = useStyles();
+  const theme = useTheme();
 
   const _convertData = React.useCallback(convertData, [data, start, end]);
 
   const graphProps = {
     error,
-    timezone,
     loading,
-    showToday: isToday,
     nativeLegend: true,
+    showToday: isToday,
+    timezone,
   };
 
   return (
-    <Paper className={classes.root}>
+    <StyledRootPaper>
       <Grid container direction="column" spacing={0}>
-        <Grid item xs={12}>
+        <StyledItemGrid xs={12}>
           <LongviewLineGraph
-            title="Requests"
-            subtitle="requests/s"
-            unit=" requests/s"
             data={[
               {
-                label: 'Requests',
-                borderColor: 'transparent',
                 backgroundColor: theme.graphs.requests,
+                borderColor: 'transparent',
                 data: _convertData(data?.requests ?? [], start, end),
+                label: 'Requests',
               },
             ]}
+            ariaLabel="Requests Per Second Graph"
+            subtitle="requests/s"
+            title="Requests"
+            unit=" requests/s"
             {...graphProps}
           />
-        </Grid>
-        <Grid item xs={12}>
-          <Grid container direction="row">
-            <Grid item xs={12} sm={6} className={classes.smallGraph}>
+        </StyledItemGrid>
+        <StyledItemGrid xs={12}>
+          <Grid container direction="row" spacing={2}>
+            <StyledSmallGraphGrid sm={6} xs={12}>
               <LongviewLineGraph
-                title="Connections"
-                subtitle="connections/s"
-                unit=" connections/s"
                 data={[
                   {
-                    label: 'Accepted',
-                    borderColor: 'transparent',
                     backgroundColor: theme.graphs.connections.accepted,
+                    borderColor: 'transparent',
                     data: _convertData(data?.accepted_cons ?? [], start, end),
+                    label: 'Accepted',
                   },
                   {
-                    label: 'Handled',
-                    borderColor: 'transparent',
                     backgroundColor: theme.graphs.connections.handled,
+                    borderColor: 'transparent',
                     data: _convertData(data?.handled_cons ?? [], start, end),
+                    label: 'Handled',
                   },
                 ]}
+                ariaLabel="Connections Per Second Graph"
+                subtitle="connections/s"
+                title="Connections"
+                unit=" connections/s"
                 {...graphProps}
               />
-            </Grid>
-            <Grid item xs={12} sm={6} className={classes.smallGraph}>
+            </StyledSmallGraphGrid>
+            <StyledSmallGraphGrid sm={6} xs={12}>
               <LongviewLineGraph
-                title="Workers"
                 data={[
                   {
-                    label: 'Waiting',
-                    borderColor: 'transparent',
                     backgroundColor: theme.graphs.workers.waiting,
+                    borderColor: 'transparent',
                     data: _convertData(data?.waiting ?? [], start, end),
+                    label: 'Waiting',
                   },
                   {
-                    label: 'Reading',
-                    borderColor: 'transparent',
                     backgroundColor: theme.graphs.workers.reading,
+                    borderColor: 'transparent',
                     data: _convertData(data?.reading ?? [], start, end),
+                    label: 'Reading',
                   },
                   {
-                    label: 'Writing',
-                    borderColor: 'transparent',
                     backgroundColor: theme.graphs.workers.writing,
+                    borderColor: 'transparent',
                     data: _convertData(data?.writing ?? [], start, end),
+                    label: 'Writing',
                   },
                 ]}
+                ariaLabel="Workers Graph"
+                title="Workers"
                 {...graphProps}
               />
-            </Grid>
+            </StyledSmallGraphGrid>
           </Grid>
-        </Grid>
+        </StyledItemGrid>
         <ProcessGraphs
           data={processesData}
-          loading={processesLoading}
-          error={processesError || error}
-          timezone={timezone}
-          isToday={isToday}
-          start={start}
           end={end}
+          error={processesError || error}
+          isToday={isToday}
+          loading={processesLoading}
+          start={start}
+          timezone={timezone}
         />
       </Grid>
-    </Paper>
+    </StyledRootPaper>
   );
-};
-
-const enhanced = compose<CombinedProps, Props>(
-  withTheme,
-  React.memo
-)(NGINXGraphs);
-export default enhanced;
+});

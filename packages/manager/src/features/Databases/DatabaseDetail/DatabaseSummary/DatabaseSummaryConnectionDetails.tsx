@@ -1,139 +1,81 @@
 import { getSSLFields } from '@linode/api-v4/lib/databases/databases';
-import { Database, SSLFields } from '@linode/api-v4/lib/databases/types';
+import Grid from '@mui/material/Unstable_Grid2/Grid2';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
+
 import DownloadIcon from 'src/assets/icons/lke-download.svg';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import Box from 'src/components/core/Box';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import CopyTooltip from 'src/components/CopyTooltip';
-import Grid from 'src/components/Grid';
-import HelpIcon from 'src/components/HelpIcon';
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { Typography } from 'src/components/Typography';
 import { DB_ROOT_USERNAME } from 'src/constants';
-import { useDatabaseCredentialsQuery } from 'src/queries/databases';
+import { useDatabaseCredentialsQuery } from 'src/queries/databases/databases';
 import { downloadFile } from 'src/utilities/downloadFile';
 import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  header: {
-    marginBottom: theme.spacing(2),
-  },
-  copyToolTip: {
-    '& svg': {
-      color: theme.palette.primary.main,
-      height: `16px !important`,
-      width: `16px !important`,
-    },
-    marginRight: 12,
-  },
-  inlineCopyToolTip: {
-    display: 'inline-flex',
-    '& svg': {
-      height: `16px`,
-      width: `16px`,
-    },
-    marginLeft: 4,
-    '&:hover': {
-      backgroundColor: 'transparent',
-    },
-  },
-  actionBtnsCtn: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    padding: `${theme.spacing(1)}px 0`,
-  },
-  actionBtn: {
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    borderRight: '1px solid #c4c4c4',
-    '&:hover': {
-      opacity: 0.7,
-    },
-    '&:last-child': {
-      borderRight: 'none',
-    },
-    marginLeft: theme.spacing(2),
-  },
-  actionText: {
-    color: theme.textColors.linkActiveLight,
-    whiteSpace: 'nowrap',
-  },
-  connectionDetailsCtn: {
-    padding: '8px 15px',
-    background: theme.bg.bgAccessRow,
-    border: `1px solid ${theme.name === 'lightTheme' ? '#ccc' : '#222'}`,
-    '& p': {
-      lineHeight: '1.5rem',
-      '& span': {
-        fontWeight: 'bold',
-      },
-    },
-  },
-  showBtn: {
-    color: theme.palette.primary.main,
-    marginLeft: theme.spacing(),
-    fontSize: '0.875rem',
-    minHeight: 'auto',
-    minWidth: 'auto',
-    padding: 0,
-  },
-  progressCtn: {
-    marginLeft: 22,
-    marginBottom: 2,
-    '& circle': {
-      stroke: theme.palette.primary.main,
-    },
-    alignSelf: 'flex-end',
-  },
-  error: {
-    color: theme.color.red,
-    marginLeft: theme.spacing(2),
-  },
-  helpIcon: {
-    padding: 0,
-    marginLeft: 4,
-  },
-  provisioningText: {
-    fontStyle: 'italic',
-    fontWeight: 'lighter !important' as 'lighter',
-  },
-}));
+import {
+  StyledGridContainer,
+  StyledLabelTypography,
+  StyledValueGrid,
+} from './DatabaseSummaryClusterConfiguration.style';
+import { useStyles } from './DatabaseSummaryConnectionDetails.style';
+
+import type { Database, SSLFields } from '@linode/api-v4/lib/databases/types';
 
 interface Props {
   database: Database;
 }
 
+const sxTooltipIcon = {
+  marginLeft: '4px',
+  padding: '0px',
+};
+
 const privateHostCopy =
   'A private network host and a private IP can only be used to access a Database Cluster from Linodes in the same data center and will not incur transfer costs.';
 
-const mongoHostHelperCopy =
-  'This is a public hostname. Coming soon: connect to your MongoDB clusters using private IPs';
-
-export const DatabaseSummaryConnectionDetails: React.FC<Props> = (props) => {
+export const DatabaseSummaryConnectionDetails = (props: Props) => {
   const { database } = props;
-  const classes = useStyles();
+  const { classes } = useStyles();
   const { enqueueSnackbar } = useSnackbar();
+  const isLegacy = database.platform !== 'rdbms-default';
+
   const [showCredentials, setShowPassword] = React.useState<boolean>(false);
+  const [isCACertDownloading, setIsCACertDownloading] = React.useState<boolean>(
+    false
+  );
 
   const {
     data: credentials,
-    isLoading: credentialsLoading,
     error: credentialsError,
+    isLoading: credentialsLoading,
     refetch: getDatabaseCredentials,
   } = useDatabaseCredentialsQuery(database.engine, database.id);
+
+  const username =
+    database.platform === 'rdbms-default'
+      ? 'akmadmin'
+      : database.engine === 'postgresql'
+      ? 'linpostgres'
+      : DB_ROOT_USERNAME;
 
   const password =
     showCredentials && credentials ? credentials?.password : '••••••••••';
 
+  const hostTooltipComponentProps = {
+    tooltip: {
+      style: {
+        minWidth: 285,
+      },
+    },
+  };
+  const HOST_TOOLTIP_COPY =
+    'Use the IPv6 address (AAAA record) for this hostname to avoid network transfer charges when connecting to this database from Linodes within the same region.';
+
   const handleShowPasswordClick = () => {
     setShowPassword((showCredentials) => !showCredentials);
   };
-
-  const isMongoReplicaSet =
-    database.engine === 'mongodb' && database.cluster_size > 1;
 
   React.useEffect(() => {
     if (showCredentials && !credentials) {
@@ -142,16 +84,19 @@ export const DatabaseSummaryConnectionDetails: React.FC<Props> = (props) => {
   }, [credentials, getDatabaseCredentials, showCredentials]);
 
   const handleDownloadCACertificate = () => {
+    setIsCACertDownloading(true);
     getSSLFields(database.engine, database.id)
       .then((response: SSLFields) => {
         // Convert to utf-8 from base64
         try {
           const decodedFile = window.atob(response.ca_certificate);
           downloadFile(`${database.label}-ca-certificate.crt`, decodedFile);
+          setIsCACertDownloading(false);
         } catch (e) {
           enqueueSnackbar('Error parsing your CA Certificate file', {
             variant: 'error',
           });
+          setIsCACertDownloading(false);
           return;
         }
       })
@@ -160,42 +105,94 @@ export const DatabaseSummaryConnectionDetails: React.FC<Props> = (props) => {
           errorResponse,
           'Unable to download your CA Certificate'
         );
+        setIsCACertDownloading(false);
         enqueueSnackbar(error, { variant: 'error' });
       });
   };
 
-  const disableShowBtn = ['provisioning', 'failed'].includes(database.status);
-  // const connectionDetailsCopy = `username = ${credentials?.username}\npassword = ${credentials?.password}\nhost = ${database.host}\nport = ${database.port}\ssl = ${ssl}`;
+  const disableShowBtn = ['failed', 'provisioning'].includes(database.status);
+  const disableDownloadCACertificateBtn = database.status === 'provisioning';
+  const readOnlyHostValue =
+    database?.hosts?.standby ?? database?.hosts?.secondary ?? '';
+
+  const readOnlyHost = () => {
+    const defaultValue = isLegacy ? '-' : 'not available';
+    const value = readOnlyHostValue ?? defaultValue;
+    return (
+      <>
+        {value}
+        {value && (
+          <CopyTooltip
+            className={classes.inlineCopyToolTip}
+            text={readOnlyHostValue}
+          />
+        )}
+        {isLegacy && (
+          <TooltipIcon
+            status="help"
+            sxTooltipIcon={sxTooltipIcon}
+            text={privateHostCopy}
+          />
+        )}
+      </>
+    );
+  };
 
   const credentialsBtn = (handleClick: () => void, btnText: string) => {
     return (
       <Button
-        onClick={handleClick}
         className={classes.showBtn}
         disabled={disableShowBtn}
+        onClick={handleClick}
       >
         {btnText}
       </Button>
     );
   };
 
+  const caCertificateJSX = (
+    <>
+      <Button
+        className={classes.caCertBtn}
+        disabled={disableDownloadCACertificateBtn}
+        loading={isCACertDownloading}
+        onClick={handleDownloadCACertificate}
+      >
+        <DownloadIcon />
+        Download CA Certificate
+      </Button>
+      {disableDownloadCACertificateBtn && (
+        <span className="tooltipIcon">
+          <TooltipIcon
+            status="help"
+            sxTooltipIcon={sxTooltipIcon}
+            text="Your Database Cluster is currently provisioning."
+          />
+        </span>
+      )}
+    </>
+  );
+
   return (
     <>
       <Typography className={classes.header} variant="h3">
         Connection Details
       </Typography>
-      <Grid className={classes.connectionDetailsCtn} data-qa-connection-details>
-        <Typography>
-          <span>username</span> ={' '}
-          {database.engine === 'postgresql' ? 'linpostgres' : DB_ROOT_USERNAME}
-        </Typography>
-        <Box display="flex">
-          <Typography>
-            <span>password</span> = {password}
-          </Typography>
-          {credentialsLoading ? (
+      <StyledGridContainer container lg={7} md={10} spacing={0}>
+        <Grid md={4} xs={3}>
+          <StyledLabelTypography>Username</StyledLabelTypography>
+        </Grid>
+        <StyledValueGrid md={8} xs={9}>
+          {username}
+        </StyledValueGrid>
+        <Grid md={4} xs={3}>
+          <StyledLabelTypography>Password</StyledLabelTypography>
+        </Grid>
+        <StyledValueGrid md={8} xs={9}>
+          {password}
+          {showCredentials && credentialsLoading ? (
             <div className={classes.progressCtn}>
-              <CircleProgress mini tag />
+              <CircleProgress noPadding size="xs" />
             </div>
           ) : credentialsError ? (
             <>
@@ -210,160 +207,75 @@ export const DatabaseSummaryConnectionDetails: React.FC<Props> = (props) => {
               showCredentials && credentials ? 'Hide' : 'Show'
             )
           )}
-          {disableShowBtn ? (
-            <HelpIcon
-              className={classes.helpIcon}
+          {disableShowBtn && (
+            <TooltipIcon
               text={
                 database.status === 'provisioning'
                   ? 'Your Database Cluster is currently provisioning.'
                   : 'Your root password is unavailable when your Database Cluster has failed.'
               }
+              status="help"
+              sxTooltipIcon={sxTooltipIcon}
             />
-          ) : null}
-          {showCredentials && credentials ? (
+          )}
+          {showCredentials && credentials && (
             <CopyTooltip
               className={classes.inlineCopyToolTip}
               text={password}
             />
-          ) : null}
-        </Box>
-        <Box>
-          {!isMongoReplicaSet ? (
-            <Box display="flex" flexDirection="row" alignItems="center">
-              {database.hosts?.primary ? (
-                <>
-                  <Typography>
-                    <span>host</span> ={' '}
-                    <span style={{ fontWeight: 'normal' }}>
-                      {database.hosts?.primary}
-                    </span>{' '}
-                  </Typography>
-                  <CopyTooltip
-                    className={classes.inlineCopyToolTip}
-                    text={database.hosts?.primary}
-                  />
-                  {database.engine === 'mongodb' ? (
-                    <HelpIcon
-                      className={classes.helpIcon}
-                      text={mongoHostHelperCopy}
-                    />
-                  ) : null}
-                </>
-              ) : (
-                <Typography>
-                  <span>host</span> ={' '}
-                  <span className={classes.provisioningText}>
-                    Your hostname will appear here once it is available.
-                  </span>
-                </Typography>
-              )}
-            </Box>
-          ) : (
-            <>
-              <Typography>
-                <span>hosts</span> ={' '}
-                {!database.peers || database.peers.length === 0 ? (
-                  <span className={classes.provisioningText}>
-                    Your hostnames will appear here once they are available.
-                  </span>
-                ) : null}
-              </Typography>
-              {database.peers && database.peers.length > 0
-                ? database.peers.map((hostname, i) => (
-                    <Box
-                      key={hostname}
-                      display="flex"
-                      flexDirection="row"
-                      alignItems="center"
-                    >
-                      <Typography
-                        style={{
-                          marginTop: 0,
-                          marginBottom: 0,
-                          marginLeft: 16,
-                        }}
-                      >
-                        <span style={{ fontWeight: 'normal' }}>{hostname}</span>
-                      </Typography>
-                      <CopyTooltip
-                        className={classes.inlineCopyToolTip}
-                        text={hostname}
-                      />
-                      {/*  Display the helper text on the first hostname */}
-                      {i === 0 ? (
-                        <HelpIcon
-                          className={classes.helpIcon}
-                          text={mongoHostHelperCopy}
-                        />
-                      ) : null}
-                    </Box>
-                  ))
-                : null}
-            </>
           )}
-        </Box>
-        {database.hosts.secondary ? (
-          <Box display="flex" flexDirection="row" alignItems="center">
-            <Typography>
-              <span>private network host</span> = {database.hosts.secondary}
-            </Typography>
-            <CopyTooltip
-              className={classes.inlineCopyToolTip}
-              text={database.hosts.secondary}
-            />
-            <HelpIcon className={classes.helpIcon} text={privateHostCopy} />
-          </Box>
-        ) : null}
-        <Typography>
-          <span>port</span> = {database.port}
-        </Typography>
-        {isMongoReplicaSet ? (
-          database.replica_set ? (
-            <Box display="flex" flexDirection="row" alignItems="center">
-              <Typography>
-                <span>replica set</span> ={' '}
-                <span style={{ fontWeight: 'normal' }}>
-                  {database.replica_set}
-                </span>
-              </Typography>
+        </StyledValueGrid>
+        <Grid md={4} xs={3}>
+          <StyledLabelTypography>Host</StyledLabelTypography>
+        </Grid>
+        <StyledValueGrid md={8} xs={9}>
+          {database.hosts?.primary ? (
+            <>
+              {database.hosts?.primary}
               <CopyTooltip
                 className={classes.inlineCopyToolTip}
-                text={database.replica_set}
+                text={database.hosts?.primary}
               />
-            </Box>
+              {!isLegacy && (
+                <TooltipIcon
+                  status="help"
+                  sxTooltipIcon={sxTooltipIcon}
+                  componentsProps={hostTooltipComponentProps}
+                  text={HOST_TOOLTIP_COPY}
+                />
+              )}
+            </>
           ) : (
             <Typography>
-              <span>replica set</span> ={' '}
               <span className={classes.provisioningText}>
-                Your replica set will appear here once it is available.
+                Your hostname will appear here once it is available.
               </span>
             </Typography>
-          )
-        ) : null}
-        <Typography>
-          <span>ssl</span> = {database.ssl_connection ? 'ENABLED' : 'DISABLED'}
-        </Typography>
-      </Grid>
+          )}
+        </StyledValueGrid>
+        <Grid md={4} xs={3}>
+          <StyledLabelTypography>
+            {isLegacy ? 'Private Network Host' : 'Read-only Host'}
+          </StyledLabelTypography>
+        </Grid>
+        <StyledValueGrid md={8} xs={9}>
+          {readOnlyHost()}
+        </StyledValueGrid>
+        <Grid md={4} xs={3}>
+          <StyledLabelTypography>Port</StyledLabelTypography>
+        </Grid>
+        <StyledValueGrid md={8} xs={9}>
+          {database.port}
+        </StyledValueGrid>
+        <Grid md={4} xs={3}>
+          <StyledLabelTypography>SSL</StyledLabelTypography>
+        </Grid>
+        <StyledValueGrid md={8} xs={9}>
+          {database.ssl_connection ? 'ENABLED' : 'DISABLED'}
+        </StyledValueGrid>
+      </StyledGridContainer>
       <div className={classes.actionBtnsCtn}>
-        {database.ssl_connection ? (
-          <Grid
-            item
-            onClick={handleDownloadCACertificate}
-            role="button"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleDownloadCACertificate();
-              }
-            }}
-            tabIndex={0}
-            className={classes.actionBtn}
-          >
-            <DownloadIcon style={{ marginRight: 8 }} />
-            <Typography className={classes.actionText}>
-              Download CA Certificate
-            </Typography>
-          </Grid>
-        ) : null}
+        {database.ssl_connection ? caCertificateJSX : null}
       </div>
     </>
   );

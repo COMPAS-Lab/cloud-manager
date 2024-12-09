@@ -1,91 +1,146 @@
 import * as React from 'react';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import { Metrics } from 'src/utilities/statMetrics';
-import styled, { StyleProps } from './MetricDisplay.styles';
 
-interface MetricsDisplayProps {
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { Typography } from 'src/components/Typography';
+
+import {
+  StyledButton,
+  StyledTable,
+  StyledTableCell,
+} from './MetricDisplay.styles';
+
+import type { Metrics } from 'src/utilities/statMetrics';
+
+const ROW_HEADERS = ['Max', 'Avg', 'Last'] as const;
+
+type MetricKey = 'average' | 'last' | 'max';
+const METRIC_KEYS: MetricKey[] = ['max', 'average', 'last'];
+
+export type LegendColor =
+  | 'blue'
+  | 'darkGreen'
+  | 'green'
+  | 'lightGreen'
+  | 'purple'
+  | 'red'
+  | 'yellow';
+
+interface Props {
+  /**
+   * Array of rows to hide. Each row should contain the legend title.
+   */
+  hiddenRows?: string[];
+  /**
+   * Sets the height of the legend. Overflow scroll if the content exceeds the height.
+   */
+  legendHeight?: string;
+  /**
+   * Array of rows to display. Each row should contain the data to display, the format function to use, the legend color, and the legend title.
+   */
   rows: MetricsDisplayRow[];
 }
 
-interface MetricsDisplayRow {
-  legendColor:
-    | 'yellow'
-    | 'red'
-    | 'blue'
-    | 'green'
-    | 'purple'
-    | 'lightGreen'
-    | 'darkGreen';
-  legendTitle: string;
-  format: (n: number) => string;
+export interface MetricsDisplayRow {
   data: Metrics;
+  format: (n: number) => string;
+  handleLegendClick?: () => void;
+  legendColor: LegendColor;
+  legendTitle: string;
 }
 
-type CombinedProps = MetricsDisplayProps & StyleProps;
-
-export const MetricsDisplay = ({ classes, rows }: CombinedProps) => {
-  const rowHeaders = ['Max', 'Avg', 'Last'];
-
+const HeaderRow = () => {
+  const sxProps = { borderTop: 'none !important' };
   return (
-    <Table aria-label="Stats and metrics" className={classes.root} noBorder>
-      <TableHead>
-        <TableRow>
-          <TableCell>{''}</TableCell>
-          {rowHeaders.map((section, idx) => (
-            <TableCell
-              key={idx}
-              data-qa-header-cell
-              className={classes.tableHeadInner}
-            >
-              <Typography variant="body1" className={classes.text}>
-                {section}
-              </Typography>
-            </TableCell>
-          ))}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {rows.map((row) => {
-          const { legendTitle, legendColor, data, format } = row;
-          return (
-            <TableRow key={legendTitle} data-qa-metric-row>
-              <TableCell className={classes.legend}>
-                <div className={classes[legendColor]} data-qa-legend-title>
-                  <Typography component="span">{legendTitle}</Typography>
-                </div>
-              </TableCell>
-              {metricsBySection(data).map((section, idx) => {
-                return (
-                  <TableCell
-                    key={idx}
-                    parentColumn={rowHeaders[idx]}
-                    data-qa-body-cell
-                  >
-                    <Typography variant="body1" className={classes.text}>
-                      {format(section)}
-                    </Typography>
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <TableHead sx={{ ...sxProps, position: 'relative', zIndex: 2 }}>
+      <TableRow sx={sxProps}>
+        <TableCell sx={sxProps} />
+        {ROW_HEADERS.map((header) => (
+          <TableCell data-qa-header-cell key={header} sx={sxProps}>
+            {header}
+          </TableCell>
+        ))}
+      </TableRow>
+    </TableHead>
   );
 };
 
-// Grabs the sections we want (max, average, last) and puts them in an array
-// so we can map through them and create JSX
-export const metricsBySection = (data: Metrics): number[] => [
-  data.max,
-  data.average,
-  data.last,
-];
+const MetricRow = ({
+  hidden,
+  row,
+}: {
+  hidden?: boolean;
+  row: MetricsDisplayRow;
+}) => {
+  const { data, format, handleLegendClick, legendColor, legendTitle } = row;
 
-export default styled(MetricsDisplay);
+  return (
+    <TableRow
+      sx={{
+        '&:last-child': {
+          '.MuiTableCell-root': {
+            borderBottom: 0,
+          },
+        },
+      }}
+      data-qa-metric-row
+    >
+      <StyledTableCell>
+        <StyledButton
+          data-testid="legend-title"
+          disableTouchRipple
+          hidden={hidden}
+          legendColor={legendColor}
+          onClick={handleLegendClick}
+        >
+          <Typography component="span">{legendTitle}</Typography>
+        </StyledButton>
+      </StyledTableCell>
+      {METRIC_KEYS.map((key, idx) => (
+        <TableCell
+          data-qa-body-cell
+          key={key}
+          parentColumn={ROW_HEADERS[idx]}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          {format(data[key])}
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+};
+
+export const MetricsDisplay = ({
+  hiddenRows = [],
+  legendHeight = '100%',
+  rows,
+}: Props) => (
+  <StyledTable
+    sx={(theme) => ({
+      '.MuiTable-root': {
+        border: 0,
+      },
+      overflowY: 'auto',
+      [theme.breakpoints.up(1100)]: {
+        height: legendHeight,
+      },
+    })}
+    aria-label="Stats and metrics"
+    stickyHeader
+  >
+    <HeaderRow />
+    <TableBody>
+      {rows.map((row) => (
+        <MetricRow
+          hidden={hiddenRows.includes(row.legendTitle)}
+          key={row.legendTitle}
+          row={row}
+        />
+      ))}
+    </TableBody>
+  </StyledTable>
+);
+
+export default MetricsDisplay;

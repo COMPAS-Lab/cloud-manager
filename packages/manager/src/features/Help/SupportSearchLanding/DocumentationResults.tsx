@@ -1,45 +1,48 @@
-import OpenInNew from '@material-ui/icons/OpenInNew';
+import { Paper } from '@linode/ui';
 import * as React from 'react';
-import ListItem from 'src/components/core/ListItem';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ExternalLink from 'src/components/ExternalLink';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  noResultsContainer: {
-    padding: `${theme.spacing(2)}px ${theme.spacing(3)}px`,
+import { Link } from 'src/components/Link';
+import { ListItem } from 'src/components/ListItem';
+import { Typography } from 'src/components/Typography';
+
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
+  header: {
+    marginBottom: theme.spacing(2),
+    marginTop: theme.spacing(3),
   },
   icon: {
     color: '#3683DC',
     fontSize: '0.8rem',
     marginLeft: theme.spacing(1),
   },
-  header: {
-    marginTop: theme.spacing(3),
-    marginBottom: theme.spacing(2),
-  },
   label: {
     color: '#3683DC',
   },
   link: {
-    marginTop: theme.spacing(2),
+    display: 'inline-block',
     fontFamily: theme.font.bold,
+    marginTop: theme.spacing(2),
+  },
+  noResultsContainer: {
+    padding: `${theme.spacing(2)} ${theme.spacing(3)}`,
   },
   searchItem: {
-    position: 'initial',
+    '&:last-child': {
+      borderBottom: 0,
+    },
     backgroundColor: theme.color.white,
     borderBottom: `1px solid ${theme.palette.divider}`,
-    '&:hover': {
-      backgroundColor: theme.bg.offWhite,
-    },
+    fontSize: '0.9rem',
   },
 }));
 
 export interface SearchResult {
   data: {
-    source: string;
     href: string;
+    source: string;
   };
   label: string;
 }
@@ -50,38 +53,33 @@ interface Props {
   target: string;
 }
 
-type CombinedProps = Props;
-
-const DocumentationResults: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const DocumentationResults = (props: Props) => {
+  const { classes } = useStyles();
   const { results, sectionTitle, target } = props;
 
   const renderResults = () => {
     return results.map((result: SearchResult, idx: number) => (
       <ListItem
         className={classes.searchItem}
+        component="a"
         key={idx}
         role="menuitem"
-        component="a"
-        onClick={() => window.open(result.data.href, '_newtab')}
         tabIndex={0}
       >
-        <Typography
-          variant="body1"
-          className={classes.label}
-          data-qa-search-result
-        >
-          {result.label}
-          <OpenInNew className={classes.icon} />
-        </Typography>
+        <Link to={result.data.href}>{result.label}</Link>
       </ListItem>
     ));
   };
 
-  const renderEmptyState = () => {
+  const renderEmptyState = (): JSX.Element => {
     return (
       <Paper className={classes.noResultsContainer}>
-        <Typography variant="body1">No results</Typography>
+        <Typography
+          data-testid="data-qa-documentation-no-results"
+          variant="body1"
+        >
+          No results
+        </Typography>
       </Paper>
     );
   };
@@ -89,23 +87,20 @@ const DocumentationResults: React.FC<CombinedProps> = (props) => {
   return (
     <>
       <Typography
-        variant="h2"
         className={classes.header}
         data-qa-results={sectionTitle}
+        variant="h2"
       >
         Most Relevant {sectionTitle}
       </Typography>
       <Paper>
         <nav>{results.length > 0 ? renderResults() : renderEmptyState()}</nav>
       </Paper>
-      <ExternalLink
-        link={target}
-        text={`View more ${sectionTitle}`}
-        data-qa-view-more={sectionTitle}
+      <Link
         className={classes.link}
-      />
+        data-qa-view-more={sectionTitle}
+        to={target}
+      >{`View more ${sectionTitle}`}</Link>
     </>
   );
 };
-
-export default DocumentationResults;

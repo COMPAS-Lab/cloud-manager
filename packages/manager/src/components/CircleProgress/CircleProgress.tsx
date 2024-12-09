@@ -1,126 +1,113 @@
-import classNames from 'classnames';
+import { Box, omittedProps } from '@linode/ui';
+import _CircularProgress from '@mui/material/CircularProgress';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import CircularProgress, {
-  CircularProgressProps,
-} from 'src/components/core/CircularProgress';
-import { makeStyles, Theme } from 'src/components/core/styles';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 20px',
-    position: 'relative',
-    width: '100%',
-    [theme.breakpoints.up('md')]: {
-      flex: 1,
-      height: 300,
-    },
-  },
-  progress: {
-    position: 'relative',
-    [theme.breakpoints.down('xs')]: {
-      width: '72px !important',
-      height: '72px !important',
-    },
-  },
-  top: {
-    width: 70,
-    height: 70,
-    borderRadius: '50%',
-    border: '1px solid #999',
-    [theme.breakpoints.up('sm')]: {
-      width: 120,
-      height: 120,
-    },
-  },
-  topWrapper: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-  },
-  mini: {
-    padding: theme.spacing() * 1.3,
-  },
-  noPadding: {
-    padding: 0,
-  },
-  tag: {
-    width: '12px !important',
-    height: '12px !important',
-    padding: 0,
-    marginLeft: 4,
-    marginRight: 4,
-    '& circle': {
-      stroke: 'white',
-    },
-  },
-  valueInside: {
-    position: 'absolute',
-    marginTop: 4,
-  },
-}));
+import type { CircularProgressProps } from '@mui/material/CircularProgress';
+import type { SxProps, Theme } from '@mui/material/styles';
 
-interface Props extends CircularProgressProps {
-  className?: string;
+interface CircleProgressProps extends Omit<CircularProgressProps, 'size'> {
+  /**
+   * Additional child elements to pass in
+   */
   children?: JSX.Element;
-  mini?: boolean;
-  noInner?: boolean;
+  /**
+   * Removes the padding
+   */
   noPadding?: boolean;
-  tag?: boolean;
+  /**
+   * Sets the size of the spinner
+   * @default "lg"
+   */
+  size?: 'lg' | 'md' | 'sm' | 'xs';
+  /**
+   * Additional styles to apply to the root element.
+   */
+  sx?: SxProps<Theme>;
 }
 
-type CombinedProps = Props;
+const SIZE_MAP = {
+  lg: 124,
+  md: 40,
+  sm: 20,
+  xs: 14,
+};
 
-export const CircleProgressComponent: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { className, children, mini, noInner, noPadding, tag, ...rest } = props;
+/**
+ * Use for short, indeterminate activities requiring user attention. Defaults to large.
+ *
+ * sizes:
+ * xs = 14
+ * md = 20
+ * md = 40
+ * lg = 124
+ */
+const CircleProgress = (props: CircleProgressProps) => {
+  const { children, noPadding, size, sx, ...rest } = props;
 
-  const variant = typeof props.value === 'number' ? 'static' : 'indeterminate';
+  const variant =
+    typeof props.value === 'number' ? 'determinate' : 'indeterminate';
   const value = typeof props.value === 'number' ? props.value : 0;
 
-  return mini ? (
-    <CircularProgress
-      className={classNames({
-        [classes.mini]: true,
-        [classes.noPadding]: noPadding,
-        [classes.tag]: tag,
-      })}
-      size={noPadding ? 22 : 40}
-      aria-label="Content is loading"
-      data-qa-circle-progress
-      data-testid="circle-progress"
-      tabIndex={0}
-    />
-  ) : (
-    <div
-      className={`${className} ${classes.root}`}
-      aria-label="Content is loading"
-    >
+  if (size) {
+    return (
+      <StyledCustomCircularProgress
+        aria-label="Content is loading"
+        data-qa-circle-progress
+        data-testid="circle-progress"
+        noPadding={noPadding}
+        size={noPadding ? SIZE_MAP[size] : SIZE_MAP[size] * 2}
+        tabIndex={0}
+      />
+    );
+  }
+
+  return (
+    <StyledRootDiv aria-label="Content is loading" sx={sx}>
       {children !== undefined && (
-        <div className={classes.valueInside}>{children}</div>
+        <Box sx={{ marginTop: 4, position: 'absolute' }}>{children}</Box>
       )}
-      {noInner !== true && (
-        <div className={classes.topWrapper}>
-          <div className={classes.top} />
-        </div>
-      )}
-      <CircularProgress
+      <StyledCircularProgress
         {...rest}
-        className={classes.progress}
-        size={124}
-        value={value}
-        variant={variant}
-        thickness={2}
         data-qa-circle-progress={value}
         data-testid="circle-progress"
+        size={SIZE_MAP['lg']}
+        thickness={2}
+        value={value}
+        variant={variant}
       />
-    </div>
+    </StyledRootDiv>
   );
 };
 
-export default CircleProgressComponent;
+export { CircleProgress };
+
+const StyledRootDiv = styled('div')(({ theme }) => ({
+  alignItems: 'center',
+  display: 'flex',
+  justifyContent: 'center',
+  margin: '0 auto 20px',
+  position: 'relative',
+  [theme.breakpoints.up('md')]: {
+    flex: 1,
+    height: 300,
+  },
+  width: '100%',
+}));
+
+const StyledCircularProgress = styled(_CircularProgress)(({ theme }) => ({
+  position: 'relative',
+  [theme.breakpoints.down('sm')]: {
+    height: '72px !important',
+    width: '72px !important',
+  },
+}));
+
+const StyledCustomCircularProgress = styled(_CircularProgress, {
+  shouldForwardProp: omittedProps(['noPadding']),
+})<{ noPadding: boolean | undefined }>(({ theme, ...props }) => ({
+  padding: `calc(${theme.spacing()} * 1.3)`,
+  ...(props.noPadding && {
+    padding: 0,
+  }),
+}));

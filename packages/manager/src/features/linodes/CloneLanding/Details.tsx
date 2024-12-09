@@ -1,16 +1,26 @@
 import { Disk, Linode } from '@linode/api-v4/lib/linodes';
-import Close from '@material-ui/icons/Close';
+import Close from '@mui/icons-material/Close';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import Divider from 'src/components/core/Divider';
-import List from 'src/components/core/List';
-import ListItem from 'src/components/core/ListItem';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import { formatRegion } from 'src/utilities';
-import LinodeSelect from '../LinodeSelect';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Button } from 'src/components/Button/Button';
+import { Divider } from 'src/components/Divider';
+import { Link } from 'src/components/Link';
+import { List } from 'src/components/List';
+import { ListItem } from 'src/components/ListItem';
+import { Notice } from 'src/components/Notice/Notice';
+import { Paper } from '@linode/ui';
+import { Typography } from 'src/components/Typography';
+import { LinodeSelect } from 'src/features/Linodes/LinodeSelect/LinodeSelect';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+
+import {
+  StyledButton,
+  StyledDiv,
+  StyledHeader,
+  StyledTypography,
+} from './Details.styles';
 import {
   EstimatedCloneTimeMode,
   ExtendedConfig,
@@ -18,92 +28,46 @@ import {
   getEstimatedCloneTime,
 } from './utilities';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: theme.spacing(2),
-  },
-  header: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing(2),
-  },
-  clearButton: {
-    top: -(theme.spacing(1) / 2),
-  },
-  list: {
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  nestedList: {
-    marginLeft: theme.spacing(2),
-    flexBasis: '100%',
-  },
-  closeIcon: {
-    cursor: 'pointer',
-    paddingTop: 0,
-    paddingBottom: 0,
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: theme.color.white,
-    border: 'none',
-    '& path': {
-      fill: theme.palette.primary.main,
-    },
-  },
-  submitButton: {
-    marginTop: theme.spacing(3),
-  },
-  labelOuter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-  },
-  errorText: {
-    color: theme.color.red,
-    marginTop: theme.spacing(1),
-    '& a': {
-      textDecoration: 'underline',
-      color: theme.color.red,
-    },
-  },
-}));
-
 interface Props {
-  selectedConfigs: ExtendedConfig[];
-  selectedDisks: Disk[];
-  selectedLinodeId: number | null;
-  selectedLinodeRegion?: string;
-  thisLinodeRegion: string;
-  isSubmitting: boolean;
+  clearAll: () => void;
   currentLinodeId: number;
   errorMap: Record<string, string | undefined>;
+  handleCancel: () => void;
+  handleClone: () => void;
+  handleSelectLinode: (linodeId: number) => void;
   handleToggleConfig: (id: number) => void;
   handleToggleDisk: (id: number) => void;
-  handleSelectLinode: (linodeId: number) => void;
-  handleClone: () => void;
-  clearAll: () => void;
+  isSubmitting: boolean;
+  selectedConfigs: ExtendedConfig[];
+  selectedDisks: Disk[];
+  selectedLinodeId: null | number;
+  selectedLinodeRegion?: string;
+  thisLinodeRegion: string;
 }
 
-export const Configs: React.FC<Props> = (props) => {
+export const Details = (props: Props) => {
   const {
+    clearAll,
     currentLinodeId,
+    errorMap,
+    handleCancel,
+    handleClone,
+    handleSelectLinode,
+    handleToggleConfig,
+    handleToggleDisk,
+    isSubmitting,
     selectedConfigs,
     selectedDisks,
     selectedLinodeId,
-    thisLinodeRegion,
-    isSubmitting,
-    errorMap,
-    handleToggleConfig,
-    handleToggleDisk,
-    handleSelectLinode,
     selectedLinodeRegion,
-    handleClone,
-    clearAll,
+    thisLinodeRegion,
   } = props;
 
-  const classes = useStyles();
+  const { data: regions } = useRegionsQuery();
+
+  const region = regions?.find((r) => r.id === thisLinodeRegion);
+
+  const theme = useTheme();
 
   const noneError = errorMap.none;
   // When duplicating a disk on the SAME Linode, if there's not a enough space,
@@ -130,8 +94,8 @@ export const Configs: React.FC<Props> = (props) => {
   }
 
   const errorMessageLinks = {
-    shrink: `/linodes/${selectedLinodeId}/advanced`,
     resize: `/linodes/${selectedLinodeId}/resize`,
+    shrink: `/linodes/${selectedLinodeId}/advanced`,
   };
 
   /**
@@ -162,46 +126,48 @@ export const Configs: React.FC<Props> = (props) => {
   const estimatedCloneTime = getEstimatedCloneTime(totalSize, mode);
 
   return (
-    <Paper className={classes.root}>
-      <header className={classes.header}>
+    <Paper
+      data-testid="config-clone-selection-details"
+      sx={{ padding: theme.spacing(2) }}
+    >
+      <StyledHeader>
         <Typography variant="h2">Selected</Typography>
         <Button
-          className={classes.clearButton}
-          onClick={clearAll}
           buttonType="secondary"
-          compact
+          compactX
+          onClick={clearAll}
+          sx={{ top: `-${theme.spacing(0.5)}` }}
         >
           Clear
         </Button>
-      </header>
+      </StyledHeader>
 
       {noneError && !isNoneErrorActuallyALinodeError && (
-        <Notice error text={noneError} />
+        <Notice text={noneError} variant="error" />
       )}
 
       <List>
         {selectedConfigs.map((eachConfig) => {
           return (
             <ListItem
-              key={eachConfig.id}
-              className={classes.list}
-              disableGutters
               dense
+              disableGutters
+              key={eachConfig.id}
+              sx={{ flexWrap: 'wrap', justifyContent: 'space-between' }}
             >
-              <div className={classes.labelOuter}>
+              <StyledDiv>
                 <Typography variant="h3">{eachConfig.label}</Typography>
-                <button
-                  onClick={() => handleToggleConfig(eachConfig.id)}
-                  className={classes.closeIcon}
+                <StyledButton
                   data-qa-inline-delete
+                  onClick={() => handleToggleConfig(eachConfig.id)}
                 >
                   <Close />
-                </button>
-              </div>
-              <List className={classes.nestedList}>
+                </StyledButton>
+              </StyledDiv>
+              <List sx={{ flexBasis: '100%', marginLeft: theme.spacing(2) }}>
                 {eachConfig.associatedDisks.map((eachDisk) => {
                   return (
-                    <ListItem key={eachDisk.label} disableGutters dense>
+                    <ListItem dense disableGutters key={eachDisk.label}>
                       <Typography>{eachDisk.label}</Typography>
                     </ListItem>
                   );
@@ -215,30 +181,29 @@ export const Configs: React.FC<Props> = (props) => {
         {selectedDisks.map((eachDisk) => {
           return (
             <ListItem
-              key={eachDisk.id}
-              className={classes.list}
-              disableGutters
               dense
+              disableGutters
+              key={eachDisk.id}
+              sx={{ flexWrap: 'wrap', justifyContent: 'space-between' }}
             >
               <Typography variant="h3">{eachDisk.label}</Typography>
-              <button
-                onClick={() => handleToggleDisk(eachDisk.id)}
-                className={classes.closeIcon}
+              <StyledButton
                 data-qa-inline-delete
+                onClick={() => handleToggleDisk(eachDisk.id)}
               >
                 <Close />
-              </button>
+              </StyledButton>
             </ListItem>
           );
         })}
       </List>
 
       {(selectedConfigs.length > 0 || selectedDisks.length > 0) && (
-        <Divider spacingTop={16} spacingBottom={16} />
+        <Divider spacingBottom={16} spacingTop={16} />
       )}
 
-      <Typography>
-        Current Datacenter: {formatRegion(thisLinodeRegion)}
+      <Typography data-testid={`current-datacenter-${region?.id}`}>
+        Current Data Center: {region?.label ?? thisLinodeRegion}
       </Typography>
 
       {/* Show the estimated clone time if we're able to submit the form. */}
@@ -247,65 +212,44 @@ export const Configs: React.FC<Props> = (props) => {
       )}
 
       <LinodeSelect
-        label="Destination"
-        selectedLinode={selectedLinodeId}
-        handleChange={(linode) => {
+        onSelectionChange={(linode) => {
           if (linode !== null) {
             handleSelectLinode(linode.id);
           }
         }}
-        filterCondition={
+        optionsFilter={
           shouldExcludeCurrentLinode
             ? (linode: Linode) => linode.id !== currentLinodeId
             : undefined
         }
-        textFieldProps={{
-          error: !!linodeError,
-        }}
-        groupByRegion
-        updateFor={[
-          selectedLinodeId,
-          shouldExcludeCurrentLinode,
-          errorMap,
-          classes,
-        ]}
-        isClearable={false}
+        clearable={false}
+        errorText={linodeError}
+        placeholder="Destination"
+        value={selectedLinodeId}
       />
 
       {linodeError && (
-        <Typography variant="body1" className={classes.errorText}>
+        <StyledTypography variant="body1">
           {linodeError}{' '}
-          <a
-            href={errorMessageLinks.shrink}
-            target="_blank"
-            aria-describedby="external-site"
-            rel="noopener noreferrer"
-          >
-            Shrink your existing disks
-          </a>{' '}
+          <Link to={errorMessageLinks.shrink}>Shrink your existing disks</Link>{' '}
           or{' '}
-          <a
-            href={errorMessageLinks.resize}
-            target="_blank"
-            aria-describedby="external-site"
-            rel="noopener noreferrer"
-          >
+          <Link to={errorMessageLinks.resize}>
             resize your Linode to a larger plan.
-          </a>
-        </Typography>
+          </Link>
+        </StyledTypography>
       )}
-
-      <Button
-        className={classes.submitButton}
-        disabled={isCloneButtonDisabled}
-        buttonType="primary"
-        onClick={handleClone}
-        loading={isSubmitting}
-      >
-        Clone
-      </Button>
+      <ActionsPanel
+        primaryButtonProps={{
+          disabled: isCloneButtonDisabled,
+          label: 'Clone',
+          loading: isSubmitting,
+          onClick: handleClone,
+        }}
+        secondaryButtonProps={{
+          label: 'Cancel',
+          onClick: handleCancel,
+        }}
+      />
     </Paper>
   );
 };
-
-export default Configs;

@@ -1,672 +1,425 @@
-import { Account, updateAccountInfo } from '@linode/api-v4/lib/account';
-import { APIError } from '@linode/api-v4/lib/types';
-import countryData, { Region } from 'country-region-data';
-import { defaultTo, lensPath, pathOr, pick, set } from 'ramda';
+import Grid from '@mui/material/Unstable_Grid2';
+import { allCountries } from 'country-region-data';
+import { useFormik } from 'formik';
 import * as React from 'react';
-import { compose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
+import { makeStyles } from 'tss-react/mui';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import EnhancedSelect from 'src/components/EnhancedSelect/Select';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
 import {
-  createStyles,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import EnhancedSelect, { Item } from 'src/components/EnhancedSelect/Select';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import withFeatureFlags, {
-  FeatureFlagConsumerProps,
-} from 'src/containers/withFeatureFlagConsumer.container';
-import { queryClient } from 'src/queries/base';
-import withNotifications, {
-  WithNotifications,
-} from 'src/store/notification/notification.containers';
-import composeState from 'src/utilities/composeState';
+  getRestrictedResourceText,
+  useIsTaxIdEnabled,
+} from 'src/features/Account/utils';
+import { TAX_ID_HELPER_TEXT } from 'src/features/Billing/constants';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { useAccount, useMutateAccount } from 'src/queries/account/account';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
+import { useProfile } from 'src/queries/profile/profile';
 import { getErrorMap } from 'src/utilities/errorUtils';
-import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
-import { Country } from './types';
 
-type ClassNames = 'mainFormContainer' | 'actions';
-
-const styles = () =>
-  createStyles({
-    mainFormContainer: {
-      maxWidth: 860,
-      '& .MuiGrid-item:not(:first-child) label': {
-        marginTop: 0,
-      },
-    },
-    actions: {
-      display: 'flex',
-      justifyContent: 'flex-end',
-      paddingBottom: 0,
-      '& button': {
-        marginBottom: 0,
-      },
-    },
-  });
+import type { Item } from 'src/components/EnhancedSelect/Select';
 
 interface Props {
-  onClose: () => void;
-  open: boolean;
   focusEmail: boolean;
+  onClose: () => void;
 }
-
-interface State {
-  isValid: boolean;
-  submitting: boolean;
-  success?: string;
-  fields: Partial<Account>;
-  errResponse: APIError[] | undefined;
-}
-
-type CombinedProps = Props &
-  WithStyles<ClassNames> &
-  WithNotifications &
-  FeatureFlagConsumerProps;
-
-const field = (path: string[]) => lensPath(['fields', ...path]);
-
-const L = {
-  fields: {
-    email: field(['email']),
-    first_name: field(['first_name']),
-    last_name: field(['last_name']),
-    company: field(['company']),
-    address_1: field(['address_1']),
-    address_2: field(['address_2']),
-    country: field(['country']),
-    state: field(['state']),
-    city: field(['city']),
-    zip: field(['zip']),
-    phone: field(['phone']),
-    tax_id: field(['tax_id']),
-  },
-};
 
 const excludedUSRegions = ['Micronesia', 'Marshall Islands', 'Palau'];
 
-class UpdateContactInformationForm extends React.Component<
-  CombinedProps,
-  State
-> {
-  state: State = {
-    isValid: true,
-    submitting: false,
-    fields: {},
-    errResponse: undefined,
-  };
+const UpdateContactInformationForm = ({ focusEmail, onClose }: Props) => {
+  const { data: account } = useAccount();
+  const { error, isPending, mutateAsync } = useMutateAccount();
+  const { data: notifications, refetch } = useNotificationsQuery();
+  const { classes } = useStyles();
+  const emailRef = React.useRef<HTMLInputElement>();
+  const { data: profile } = useProfile();
+  const { isTaxIdEnabled } = useIsTaxIdEnabled();
+  const isChildUser = profile?.user_type === 'child';
+  const isParentUser = profile?.user_type === 'parent';
+  const isReadOnly =
+    useRestrictedGlobalGrantCheck({
+      globalGrantType: 'account_access',
+      permittedGrantLevel: 'read_write',
+    }) || isChildUser;
 
-  composeState = composeState;
+  const formik = useFormik({
+    enableReinitialize: true,
+    initialValues: {
+      address_1: account?.address_1,
+      address_2: account?.address_2,
+      city: account?.city,
+      company: account?.company,
+      country: account?.country,
+      email: account?.email,
+      first_name: account?.first_name,
+      last_name: account?.last_name,
+      phone: account?.phone,
+      state: account?.state,
+      tax_id: account?.tax_id,
+      zip: account?.zip,
+    },
+    async onSubmit(values) {
+      const clonedValues = { ...values };
 
-  emailRef = React.createRef<HTMLInputElement>();
-
-  async componentDidMount() {
-    const account = queryClient.getQueryData<Account>('account');
-
-    // 'account' has all data returned form the /v4/account endpoint.
-    // We need to pick only editable fields and fields we want to
-    // display in the form.
-    const editableContactInformationFields = pick(
-      [
-        'email',
-        'first_name',
-        'last_name',
-        'company',
-        'address_1',
-        'address_2',
-        'country',
-        'state',
-        'city',
-        'zip',
-        'phone',
-        'tax_id',
-      ],
-      account
-    );
-
-    if (account) {
-      this.setState({ fields: editableContactInformationFields });
-    }
-
-    // Auto-focus the "Email" field if appropriate (if the user is here via
-    // "billing_bounce_notification"). We also have to set field state so that
-    // if the user clicks "Submit" without changing anything, we include the
-    // "email" field in the PUT request (this is the same as "Confirming" the
-    // email address is correct).
-    if (this.props.focusEmail && this.emailRef.current) {
-      this.emailRef.current.focus();
-      this.emailRef.current.scrollIntoView();
-      this.setState({
-        fields: { ...this.state.fields, email: account?.email },
-      });
-    }
-  }
-
-  render() {
-    if (!this.state.fields) {
-      return null;
-    }
-
-    return (
-      <form>
-        {this.renderForm(this.state.fields as Account)}
-        {this.renderFormActions()}
-      </form>
-    );
-  }
-
-  renderForm = (account: Account) => {
-    const { classes, flags } = this.props;
-    const { fields, success } = this.state;
-
-    const errorMap = getErrorMap(
-      [
-        'address_1',
-        'address_2',
-        'city',
-        'country',
-        'company',
-        'email',
-        'first_name',
-        'last_name',
-        'phone',
-        'state',
-        'tax_id',
-        'zip',
-      ],
-      this.state.errResponse
-    );
-
-    const generalError = errorMap.none;
-
-    const countryResults: Item<string>[] = countryData.map(
-      (country: Country) => {
-        return {
-          value: country.countryShortCode,
-          label: country.countryName,
-        };
-      }
-    );
-
-    const currentCountryResult = countryData.filter((country: Country) =>
-      fields.country
-        ? country.countryShortCode === fields.country
-        : country.countryShortCode === account.country
-    );
-
-    const countryRegions: Region[] = pathOr(
-      [],
-      ['0', 'regions'],
-      currentCountryResult
-    );
-
-    const regionResults = countryRegions.map((region) => {
-      if (fields.country === 'US' && region.name === 'Virgin Islands') {
-        return {
-          value: region.shortCode,
-          label: 'Virgin Islands, U.S.',
-        };
+      if (isParentUser) {
+        // This is a disabled field that we want to omit from payload.
+        delete clonedValues.company;
       }
 
-      return {
-        value: region.shortCode,
-        label: region.name,
-      };
-    });
+      await mutateAsync(clonedValues);
 
-    let filteredRegionResults;
-
-    if (fields.country === 'US') {
-      filteredRegionResults = regionResults.filter(
-        (region) => !excludedUSRegions.includes(region.label)
+      // If there's a "billing_email_bounce" notification on the account, and
+      // the user has just updated their email, re-request notifications to
+      // potentially clear the email bounce notification.
+      const hasBillingEmailBounceNotification = notifications?.find(
+        (notification) => notification.type === 'billing_email_bounce'
       );
 
-      filteredRegionResults.push({
-        value: 'UM',
-        label: 'United States Minor Outlying Islands',
-      });
-    } else {
-      filteredRegionResults = regionResults;
+      if (hasBillingEmailBounceNotification) {
+        refetch();
+      }
+      onClose();
+    },
+  });
+
+  React.useEffect(() => {
+    if (focusEmail && emailRef.current) {
+      emailRef.current.focus();
+      emailRef.current.scrollIntoView();
+    }
+  }, []);
+
+  const errorMap = getErrorMap(
+    [
+      'address_1',
+      'address_2',
+      'city',
+      'country',
+      'company',
+      'email',
+      'first_name',
+      'last_name',
+      'phone',
+      'state',
+      'tax_id',
+      'zip',
+    ],
+    error
+  );
+
+  const generalError = errorMap.none;
+
+  /**
+   * `country-region-data` mapping:
+   *
+   * COUNTRY
+   * - country[0] is the readable name of the country (e.g. "United States")
+   * - country[1] is the ISO 3166-1 alpha-2 code of the country (e.g. "US")
+   * - country[2] is an array of regions for the country
+   *
+   * REGION
+   * - region[0] is the readable name of the region (e.g. "Alabama")
+   * - region[1] is the ISO 3166-2 code of the region (e.g. "AL")
+   */
+  const countryResults: Item<string>[] = allCountries.map((country) => {
+    return {
+      label: country[0],
+      value: country[1],
+    };
+  });
+
+  const currentCountryResult = allCountries.filter((country) =>
+    formik.values.country
+      ? country[1] === formik.values.country
+      : country[1] === account?.country
+  );
+
+  const countryRegions = currentCountryResult?.[0]?.[2] ?? [];
+
+  const regionResults = countryRegions.map((region) => {
+    if (formik.values.country === 'US' && region[0] === 'Virgin Islands') {
+      return {
+        label: 'Virgin Islands, U.S.',
+        value: region[1],
+      };
     }
 
-    return (
+    return {
+      label: region[0],
+      value: region[1],
+    };
+  });
+
+  let filteredRegionResults;
+
+  if (formik.values.country === 'US') {
+    filteredRegionResults = regionResults.filter(
+      (region) => !excludedUSRegions.includes(region.label)
+    );
+
+    filteredRegionResults.push({
+      label: 'United States Minor Outlying Islands',
+      value: 'UM',
+    });
+  } else {
+    filteredRegionResults = regionResults;
+  }
+
+  // Prevent edge case field error for "Company Name" when updating billing info
+  // for accounts that did not initially require an address.
+  if (formik.values.company === null) {
+    formik.setFieldValue('company', '');
+  }
+
+  const handleCountryChange = (item: Item<string>) => {
+    formik.setFieldValue('country', item.value);
+    formik.setFieldValue('tax_id', '');
+  };
+
+  return (
+    <form onSubmit={formik.handleSubmit}>
       <Grid
-        container
         className={classes.mainFormContainer}
+        columnSpacing={2}
+        container
         data-qa-update-contact
+        spacing={0}
       >
-        {generalError && (
-          <Grid item xs={12}>
-            <Notice error text={generalError} />
-          </Grid>
-        )}
-        {success && (
-          <Grid item xs={12}>
-            <Notice success text={success} />
-          </Grid>
-        )}
-
-        <Grid
-          item
-          xs={12}
-          updateFor={[account.email, fields.email, errorMap.email, classes]}
-        >
-          <TextField
-            label="Email"
-            errorText={errorMap.email}
-            helperTextPosition="top"
-            inputRef={this.emailRef}
-            onChange={this.updateEmail}
-            required
-            type="email"
-            value={defaultTo(account.email, fields.email)}
-            data-qa-contact-email
-          />
-        </Grid>
-
-        <Grid
-          item
-          xs={12}
-          sm={6}
-          updateFor={[
-            account.first_name,
-            fields.first_name,
-            errorMap.first_name,
-            classes,
-          ]}
-        >
-          <TextField
-            label="First Name"
-            errorText={errorMap.first_name}
-            onChange={this.updateFirstName}
-            value={defaultTo(account.first_name, fields.first_name)}
-            data-qa-contact-first-name
-          />
-        </Grid>
-
-        <Grid
-          item
-          xs={12}
-          sm={6}
-          updateFor={[
-            account.last_name,
-            fields.last_name,
-            errorMap.last_name,
-            classes,
-          ]}
-        >
-          <TextField
-            label="Last Name"
-            errorText={errorMap.last_name}
-            onChange={this.updateLastName}
-            value={defaultTo(account.last_name, fields.last_name)}
-            data-qa-contact-last-name
-          />
-        </Grid>
-
-        <Grid
-          item
-          xs={12}
-          updateFor={[
-            account.company,
-            fields.company,
-            errorMap.company,
-            classes,
-          ]}
-        >
-          <Grid item xs={12}>
-            <TextField
-              label="Company Name"
-              errorText={errorMap.company}
-              onChange={this.updateCompany}
-              value={defaultTo(account.company, fields.company)}
-              data-qa-company
+        {isReadOnly && (
+          <Grid xs={12}>
+            <Notice
+              text={getRestrictedResourceText({
+                isChildUser,
+                resourceType: 'Account',
+              })}
+              variant="error"
             />
           </Grid>
-        </Grid>
-
-        <Grid
-          item
-          xs={12}
-          updateFor={[
-            account.address_1,
-            fields.address_1,
-            errorMap.address_1,
-            classes,
-          ]}
-        >
+        )}
+        {generalError && (
+          <Grid xs={12}>
+            <Notice text={generalError} variant="error" />
+          </Grid>
+        )}
+        <Grid xs={12}>
           <TextField
-            label="Address"
-            errorText={errorMap.address_1}
-            onChange={this.updateAddress1}
-            value={defaultTo(account.address_1, fields.address_1)}
+            data-qa-contact-email
+            disabled={isReadOnly}
+            errorText={errorMap.email}
+            helperTextPosition="top"
+            inputRef={emailRef}
+            label="Email"
+            name="email"
+            onChange={formik.handleChange}
+            required
+            trimmed
+            type="email"
+            value={formik.values.email}
+          />
+        </Grid>
+        <Grid sm={6} xs={12}>
+          <TextField
+            data-qa-contact-first-name
+            disabled={isReadOnly}
+            errorText={errorMap.first_name}
+            label="First Name"
+            name="first_name"
+            onChange={formik.handleChange}
+            value={formik.values.first_name}
+          />
+        </Grid>
+        <Grid sm={6} xs={12}>
+          <TextField
+            data-qa-contact-last-name
+            disabled={isReadOnly}
+            errorText={errorMap.last_name}
+            label="Last Name"
+            name="last_name"
+            onChange={formik.handleChange}
+            value={formik.values.last_name}
+          />
+        </Grid>
+        <Grid xs={12}>
+          <TextField
+            data-qa-company
+            disabled={isReadOnly || isParentUser}
+            errorText={errorMap.company}
+            label="Company Name"
+            name="company"
+            onChange={formik.handleChange}
+            value={formik.values.company}
+          />
+        </Grid>
+        <Grid xs={12}>
+          <TextField
             data-qa-contact-address-1
+            disabled={isReadOnly}
+            errorText={errorMap.address_1}
+            label="Address"
+            name="address_1"
+            onChange={formik.handleChange}
+            value={formik.values.address_1}
           />
         </Grid>
-
-        <Grid
-          item
-          xs={12}
-          updateFor={[
-            account.address_2,
-            fields.address_2,
-            errorMap.address_2,
-            classes,
-          ]}
-        >
+        <Grid xs={12}>
           <TextField
-            label="Address 2"
-            errorText={errorMap.address_2}
-            onChange={this.updateAddress2}
-            value={defaultTo(account.address_2, fields.address_2)}
             data-qa-contact-address-2
+            disabled={isReadOnly}
+            errorText={errorMap.address_2}
+            label="Address 2"
+            name="address_2"
+            onChange={formik.handleChange}
+            value={formik.values.address_2}
           />
         </Grid>
 
-        <Grid
-          item
-          xs={12}
-          sm={6}
-          updateFor={[
-            account.country,
-            fields.country,
-            errorMap.country,
-            classes,
-          ]}
-        >
+        <Grid sm={6} xs={12}>
           <EnhancedSelect
-            label="Country"
-            errorText={errorMap.country}
-            isClearable={false}
-            onChange={this.updateCountry}
-            options={countryResults}
-            placeholder="Select a Country"
-            required={flags.regionDropdown}
-            value={countryResults.find(({ value }) =>
-              fields.country
-                ? value === fields.country
-                : value === account.country
-            )}
             textFieldProps={{
               dataAttrs: {
                 'data-qa-contact-country': true,
               },
             }}
+            value={countryResults.find(
+              ({ value }) => value === formik.values.country
+            )}
+            disabled={isReadOnly}
+            errorText={errorMap.country}
+            isClearable={false}
+            label="Country"
+            onChange={(item) => handleCountryChange(item)}
+            options={countryResults}
+            placeholder="Select a Country"
+            required
           />
         </Grid>
-
-        <Grid
-          item
-          xs={12}
-          sm={6}
-          updateFor={[
-            fields.state,
-            fields.zip,
-            fields.country,
-            errorMap.state,
-            errorMap.zip,
-            errorMap.country,
-            classes,
-          ]}
-        >
-          {flags.regionDropdown &&
-          (fields.country === 'US' || fields.country == 'CA') ? (
+        <Grid sm={6} xs={12}>
+          {formik.values.country === 'US' || formik.values.country == 'CA' ? (
             <EnhancedSelect
-              label={`${fields.country === 'US' ? 'State' : 'Province'}`}
-              errorText={errorMap.state}
-              isClearable={false}
-              onChange={this.updateState}
-              options={filteredRegionResults}
               placeholder={
-                account.state ||
-                `Select ${fields.country === 'US' ? 'state' : 'province'}`
-              }
-              required={flags.regionDropdown}
-              value={
-                filteredRegionResults.find(({ value }) =>
-                  fields.state
-                    ? value === fields.state
-                    : value === account.state
-                ) ?? ''
+                formik.values.country === 'US'
+                  ? 'Enter state'
+                  : 'Enter province'
               }
               textFieldProps={{
-                'data-qa-contact-state-province': true,
+                dataAttrs: {
+                  'data-qa-contact-state-province': true,
+                },
               }}
+              value={
+                filteredRegionResults.find(
+                  ({ value }) => value === formik.values.state
+                ) ?? null
+              }
+              disabled={isReadOnly}
+              errorText={errorMap.state}
+              isClearable={false}
+              label={`${formik.values.country === 'US' ? 'State' : 'Province'}`}
+              onChange={(item) => formik.setFieldValue('state', item.value)}
+              options={filteredRegionResults}
+              required
             />
           ) : (
             <TextField
-              label="State / Province"
-              errorText={errorMap.state}
-              onChange={(e) =>
-                this.updateState({
-                  label: e.target.value,
-                  value: e.target.value,
-                })
-              }
-              placeholder="Enter region"
-              required={flags.regionDropdown}
-              value={fields.state || ''}
               data-qa-contact-state-province
+              disabled={isReadOnly}
+              errorText={errorMap.state}
+              label="State / Province"
+              name="state"
+              onChange={formik.handleChange}
+              placeholder="Enter region"
+              required
+              value={formik.values.state}
             />
           )}
         </Grid>
-
-        <Grid
-          item
-          xs={12}
-          sm={6}
-          updateFor={[account.city, fields.city, errorMap.city, classes]}
-        >
+        <Grid sm={6} xs={12}>
           <TextField
-            label="City"
-            errorText={errorMap.city}
-            onChange={this.updateCity}
-            value={defaultTo(account.city, fields.city)}
             data-qa-contact-city
+            disabled={isReadOnly}
+            errorText={errorMap.city}
+            label="City"
+            name="city"
+            onChange={formik.handleChange}
+            value={formik.values.city}
           />
         </Grid>
-
-        <Grid item xs={12} sm={6}>
+        <Grid sm={6} xs={12}>
           <TextField
-            label="Postal Code"
-            errorText={errorMap.zip}
-            onChange={this.updateZip}
-            value={defaultTo(account.zip, fields.zip)}
             data-qa-contact-post-code
+            disabled={isReadOnly}
+            errorText={errorMap.zip}
+            label="Postal Code"
+            name="zip"
+            onChange={formik.handleChange}
+            value={formik.values.zip}
           />
         </Grid>
-
-        <Grid
-          item
-          xs={12}
-          updateFor={[account.phone, fields.phone, errorMap.phone, classes]}
-        >
+        <Grid xs={12}>
           <TextField
-            label="Phone"
-            type="tel"
-            errorText={errorMap.phone}
-            onChange={this.updatePhone}
-            value={defaultTo(account.phone, fields.phone)}
             data-qa-contact-phone
+            disabled={isReadOnly}
+            errorText={errorMap.phone}
+            label="Phone"
+            name="phone"
+            onChange={formik.handleChange}
+            type="tel"
+            value={formik.values.phone}
           />
         </Grid>
-
-        <Grid
-          item
-          xs={12}
-          updateFor={[account.tax_id, fields.tax_id, errorMap.tax_id, classes]}
-        >
+        <Grid xs={12}>
           <TextField
-            label="Tax ID"
-            errorText={errorMap.tax_id}
-            onChange={this.updateTaxID}
-            value={defaultTo(account.tax_id, fields.tax_id)}
+            helperText={
+              isTaxIdEnabled &&
+              formik.values.country !== 'US' &&
+              TAX_ID_HELPER_TEXT
+            }
             data-qa-contact-tax-id
+            disabled={isReadOnly}
+            errorText={errorMap.tax_id}
+            label="Tax ID"
+            name="tax_id"
+            onChange={formik.handleChange}
+            value={formik.values.tax_id}
           />
         </Grid>
       </Grid>
-    );
-  };
+      <ActionsPanel
+        primaryButtonProps={{
+          'data-testid': 'save-contact-info',
+          disabled: isReadOnly,
+          label: 'Save Changes',
+          loading: isPending,
+          type: 'submit',
+        }}
+        secondaryButtonProps={{
+          'data-testid': 'reset-contact-info',
+          label: 'Cancel',
+          onClick: onClose,
+        }}
+        className={classes.actions}
+      />
+    </form>
+  );
+};
 
-  renderFormActions = () => {
-    const { classes, flags } = this.props;
+const useStyles = makeStyles()({
+  actions: {
+    '& button': {
+      marginBottom: 0,
+    },
+    display: 'flex',
+    justifyContent: 'flex-end',
+    paddingBottom: 0,
+  },
+  mainFormContainer: {
+    '& .MuiGrid-item:not(:first-of-type) label': {
+      marginTop: 0,
+    },
+    maxWidth: 860,
+  },
+});
 
-    return (
-      <ActionsPanel className={classes.actions}>
-        <Button
-          buttonType="secondary"
-          onClick={this.props.onClose}
-          data-qa-reset-contact-info
-        >
-          Cancel
-        </Button>
-        <Button
-          buttonType="primary"
-          disabled={flags.regionDropdown && !this.state.isValid}
-          onClick={this.submitForm}
-          loading={this.state.submitting}
-          data-qa-save-contact-info
-        >
-          Save Changes
-        </Button>
-      </ActionsPanel>
-    );
-  };
-
-  renderEmpty = () => null;
-
-  updateAddress1 = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.address_1, e.target.value)]);
-  };
-
-  updateAddress2 = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.address_2, e.target.value)]);
-  };
-
-  updateCity = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.city, e.target.value)]);
-  };
-
-  updateCompany = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.company, e.target.value)]);
-  };
-
-  updateEmail = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { flags } = this.props;
-    if (flags.regionDropdown && e.target.value === '') {
-      this.setState({ isValid: false });
-    } else {
-      this.setState({ isValid: true });
-    }
-    this.composeState([set(L.fields.email, e.target.value)]);
-  };
-
-  updateFirstName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.first_name, e.target.value)]);
-  };
-
-  updateLastName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.last_name, e.target.value)]);
-  };
-
-  updatePhone = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.phone, e.target.value)]);
-  };
-
-  updateState = (selectedRegion: Item) => {
-    const { flags } = this.props;
-    if (
-      flags.regionDropdown &&
-      (selectedRegion.value === undefined || selectedRegion.value === '')
-    ) {
-      this.setState({ isValid: false });
-    } else {
-      this.setState({ isValid: true });
-    }
-    this.composeState([set(L.fields.state, selectedRegion.value)]);
-  };
-
-  updateCountry = (selectedCountry: Item) => {
-    const { flags } = this.props;
-
-    this.setState({
-      fields: {
-        ...this.state.fields,
-        state: undefined,
-      },
-    });
-
-    if (flags.regionDropdown) {
-      this.setState({
-        isValid: false,
-      });
-    }
-    this.composeState([set(L.fields.country, selectedCountry.value)]);
-  };
-
-  updateTaxID = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.tax_id, e.target.value)]);
-  };
-
-  updateZip = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.composeState([set(L.fields.zip, e.target.value)]);
-  };
-
-  submitForm = () => {
-    this.setState({
-      success: undefined,
-      submitting: true,
-    });
-
-    queryClient.executeMutation({
-      variables: this.state.fields,
-      mutationFn: updateAccountInfo,
-      mutationKey: 'account',
-      onSuccess: (data) => {
-        // If there's a "billing_email_bounce" notification on the account, and
-        // the user has just updated their email, re-request notifications to
-        // potentially clear the email bounce notification.
-        const hasBillingEmailBounceNotification = this.props.notifications.find(
-          (thisNotification) => thisNotification.type === 'billing_email_bounce'
-        );
-        if (this.state.fields.email && hasBillingEmailBounceNotification) {
-          this.props.requestNotifications();
-        }
-
-        // If we refactor this component to a functional component,
-        // this is something we would look into cleaning up
-        queryClient.setQueryData('account', (oldData: Account) => ({
-          ...oldData,
-          ...data,
-        }));
-
-        this.setState({
-          success: 'Account information updated.',
-          submitting: false,
-          errResponse: undefined,
-        });
-        this.props.onClose();
-      },
-      onError: (error: APIError[]) => {
-        this.setState({
-          submitting: false,
-          success: undefined,
-          errResponse: error,
-        });
-        scrollErrorIntoView();
-      },
-    });
-  };
-}
-
-const styled = withStyles(styles);
-
-const enhanced = compose<CombinedProps, Props>(
-  styled,
-  withFeatureFlags,
-  withNotifications()
-);
-
-export default enhanced(UpdateContactInformationForm);
+export default UpdateContactInformationForm;

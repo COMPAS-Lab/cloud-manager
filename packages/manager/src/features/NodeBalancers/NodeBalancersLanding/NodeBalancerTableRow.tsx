@@ -1,114 +1,55 @@
-import { NodeBalancerWithConfigs } from '@linode/api-v4/lib/nodebalancers';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import IPAddress from 'src/features/linodes/LinodesLanding/IPAddress';
-import RegionIndicator from 'src/features/linodes/LinodesLanding/RegionIndicator';
+
+import { Hidden } from 'src/components/Hidden';
+import { Skeleton } from 'src/components/Skeleton';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { IPAddress } from 'src/features/Linodes/LinodesLanding/IPAddress';
+import { RegionIndicator } from 'src/features/Linodes/LinodesLanding/RegionIndicator';
+import { useAllNodeBalancerConfigsQuery } from 'src/queries/nodebalancers';
 import { convertMegabytesTo } from 'src/utilities/unitConversions';
-import NodeBalancerActionMenu from './NodeBalancerActionMenu';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  // @todo: temporary measure that will cause scroll for the 'Name' and 'Backend Status'
-  // column until we implement a hideOnTablet prop for EntityTables to prevent the
-  // ActionCell from being misaligned
-  labelWrapper: {
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    alignItems: 'center',
-    whiteSpace: 'nowrap',
-  },
-  statusWrapper: {
-    whiteSpace: 'nowrap',
-  },
-  portLink: {
-    color: theme.textColors.linkActiveLight,
-  },
-  link: {
-    display: 'block',
-    color: theme.textColors.linkActiveLight,
-    lineHeight: '1.125rem',
-    '&:hover, &:focus': {
-      textDecoration: 'underline',
-    },
-  },
-  ipsWrapper: {
-    display: 'inline-flex',
-    flexDirection: 'column',
-    '& [data-qa-copy-ip] button > svg': {
-      opacity: 0,
-    },
-  },
-  row: {
-    '&:hover': {
-      '& [data-qa-copy-ip] button > svg': {
-        opacity: 1,
-      },
-    },
-    '& [data-qa-copy-ip] button:focus > svg': {
-      opacity: 1,
-    },
-  },
-}));
+import { NodeBalancerActionMenu } from './NodeBalancerActionMenu';
 
-interface Props {
-  toggleDialog: (id: number, label: string) => void;
+import type { NodeBalancer } from '@linode/api-v4/lib/nodebalancers';
+
+interface Props extends NodeBalancer {
+  onDelete: () => void;
 }
 
-type CombinedProps = NodeBalancerWithConfigs & Props;
+export const NodeBalancerTableRow = (props: Props) => {
+  const { id, ipv4, label, onDelete, region, transfer } = props;
 
-const NodeBalancerTableRow: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { id, label, configs, transfer, ipv4, region, toggleDialog } = props;
+  const { data: configs } = useAllNodeBalancerConfigsQuery(id);
 
-  const nodesUp = configs.reduce(
-    (result, config) => config.nodes_status.up + result,
-    0
-  );
-  const nodesDown = configs.reduce(
-    (result, config) => config.nodes_status.down + result,
-    0
-  );
+  const nodesUp =
+    configs?.reduce((result, config) => config.nodes_status.up + result, 0) ??
+    0;
+  const nodesDown =
+    configs?.reduce((result, config) => config.nodes_status.down + result, 0) ??
+    0;
 
   return (
-    <TableRow
-      key={id}
-      data-qa-nodebalancer-cell={label}
-      className={`${classes.row} fade-in-table`}
-      ariaLabel={label}
-    >
-      <TableCell data-qa-nodebalancer-label>
-        <div className={classes.labelWrapper}>
-          <Link
-            to={`/nodebalancers/${id}`}
-            tabIndex={0}
-            className={classes.link}
-          >
-            {label}
-          </Link>
-        </div>
+    <TableRow key={id}>
+      <TableCell>
+        <Link tabIndex={0} to={`/nodebalancers/${id}`}>
+          {label}
+        </Link>
       </TableCell>
-
-      <Hidden xsDown>
-        <TableCell data-qa-node-status className={classes.statusWrapper}>
+      <Hidden smDown>
+        <TableCell noWrap>
           <span>{nodesUp} up</span> - <span>{nodesDown} down</span>
         </TableCell>
       </Hidden>
-      <Hidden smDown>
-        <TableCell data-qa-transferred>
-          {convertMegabytesTo(transfer.total)}
-        </TableCell>
-
-        <TableCell data-qa-ports>
-          {configs.length === 0 && 'None'}
-          {configs.map(({ port, id: configId }, i) => (
+      <Hidden mdDown>
+        <TableCell>{convertMegabytesTo(transfer.total)}</TableCell>
+        <TableCell>
+          {!configs ? <Skeleton /> : null}
+          {configs?.length === 0 && 'None'}
+          {configs?.map(({ id: configId, port }, i) => (
             <React.Fragment key={configId}>
-              <Link
-                to={`/nodebalancers/${id}/configurations/${configId}`}
-                className={classes.portLink}
-              >
+              <Link to={`/nodebalancers/${id}/configurations/${configId}`}>
                 {port}
               </Link>
               {i < configs.length - 1 ? ', ' : ''}
@@ -116,27 +57,21 @@ const NodeBalancerTableRow: React.FC<CombinedProps> = (props) => {
           ))}
         </TableCell>
       </Hidden>
-
-      <TableCell data-qa-nodebalancer-ips>
-        <div className={classes.ipsWrapper}>
-          <IPAddress ips={[ipv4]} showMore />
-        </div>
+      <TableCell>
+        <IPAddress ips={[ipv4]} isHovered={true} showMore />
       </TableCell>
-      <Hidden xsDown>
+      <Hidden smDown>
         <TableCell data-qa-region>
           <RegionIndicator region={region} />
         </TableCell>
       </Hidden>
-
       <TableCell actionCell>
         <NodeBalancerActionMenu
-          nodeBalancerId={id}
-          toggleDialog={toggleDialog}
           label={label}
+          nodeBalancerId={id}
+          toggleDialog={onDelete}
         />
       </TableCell>
     </TableRow>
   );
 };
-
-export default NodeBalancerTableRow;

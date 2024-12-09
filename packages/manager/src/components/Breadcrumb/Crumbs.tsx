@@ -1,70 +1,42 @@
-import classNames from 'classnames';
 import { LocationDescriptor } from 'history';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { compose } from 'recompose';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import FinalCrumb from './FinalCrumb';
-import FinalCrumbPrefix from './FinalCrumbPrefix';
+
+import {
+  StyledDiv,
+  StyledSlashTypography,
+  StyledTypography,
+} from './Crumbs.styles';
+import { FinalCrumb } from './FinalCrumb';
+import { FinalCrumbPrefix } from './FinalCrumbPrefix';
 import { EditableProps, LabelProps } from './types';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  crumbsWrapper: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  crumb: {
-    fontSize: '1.125rem',
-    lineHeight: 'normal',
-    textTransform: 'capitalize',
-    whiteSpace: 'nowrap',
-  },
-  crumbLink: {
-    color: theme.textColors.tableHeader,
-    '&:hover': {
-      textDecoration: 'underline',
-    },
-  },
-  noCap: {
-    textTransform: 'initial',
-  },
-  slash: {
-    color: theme.textColors.tableHeader,
-    fontSize: 20,
-    marginRight: 2,
-    marginLeft: 2,
-  },
-}));
-
 export interface CrumbOverridesProps {
-  position: number;
-  linkTo?: LocationDescriptor;
   label?: string;
+  linkTo?: LocationDescriptor;
   noCap?: boolean;
+  position: number;
 }
 
 interface Props {
-  pathMap: string[];
   crumbOverrides?: CrumbOverridesProps[];
+  disabledBreadcrumbEditButton?: boolean;
   firstAndLastOnly?: boolean;
-  labelTitle?: string;
   labelOptions?: LabelProps;
+  labelTitle?: string;
   onEditHandlers?: EditableProps;
+  pathMap: string[];
 }
 
-type CombinedProps = Props;
-
-const Crumbs: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const Crumbs = React.memo((props: Props) => {
   const {
-    pathMap,
     crumbOverrides,
+    disabledBreadcrumbEditButton,
     firstAndLastOnly,
     labelOptions,
     labelTitle,
     onEditHandlers,
+    pathMap,
   } = props;
 
   const allCrumbsButLast = pathMap.slice(0, -1);
@@ -82,7 +54,7 @@ const Crumbs: React.FC<CombinedProps> = (props) => {
           crumbOverrides && crumbOverrides.find((e) => e.position === key + 1);
 
         return (
-          <div key={key} className={classes.crumbsWrapper}>
+          <StyledDiv key={key}>
             <Link
               to={
                 crumbOverrides && override
@@ -93,12 +65,11 @@ const Crumbs: React.FC<CombinedProps> = (props) => {
               }
               data-qa-link
             >
-              <Typography
-                className={classNames({
-                  [classes.crumb]: true,
-                  [classes.crumbLink]: true,
-                  [classes.noCap]: override && override.noCap,
-                })}
+              <StyledTypography
+                sx={{
+                  ...(override &&
+                    override.noCap && { textTransform: 'initial' }),
+                }}
                 data-qa-link-text
                 data-testid={'link-text'}
               >
@@ -107,45 +78,33 @@ const Crumbs: React.FC<CombinedProps> = (props) => {
                     ? override.label
                     : crumb
                   : crumb}
-              </Typography>
+              </StyledTypography>
             </Link>
-            <Typography component="span" className={classes.slash}>
-              /
-            </Typography>
-          </div>
+            <StyledSlashTypography>/</StyledSlashTypography>
+          </StyledDiv>
         );
       })}
-
-      {/*
-        for prepending some SVG or other element before the final crumb.
-        See users detail page for example
-      */}
+      {/* for prepending some SVG or other element before the final crumb. */}
       {labelOptions && labelOptions.prefixComponent && (
         <FinalCrumbPrefix
           prefixComponent={labelOptions.prefixComponent}
           prefixStyle={labelOptions.prefixStyle}
         />
       )}
-
-      {/*
-        the final crumb has the possibility of being a link, editable text
-        or just static text
-      */}
+      {/* the final crumb has the possibility of being a link, editable text or just static text */}
       <FinalCrumb
         crumb={labelTitle || lastCrumb}
+        disabledBreadcrumbEditButton={disabledBreadcrumbEditButton}
         labelOptions={labelOptions}
         onEditHandlers={onEditHandlers}
       />
-
       {/*
-        for appending some SVG or other element after the final crumb.
-        See support ticket detail as an example
-      */}
+      for appending some SVG or other element after the final crumb.
+      See support ticket detail as an example
+    */}
       {labelOptions &&
         labelOptions.suffixComponent &&
         labelOptions.suffixComponent}
     </>
   );
-};
-
-export default compose<CombinedProps, Props>(React.memo)(Crumbs);
+});

@@ -1,121 +1,88 @@
-import { UserDefinedField } from '@linode/api-v4/lib/stackscripts';
+import { InputLabel } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import InputLabel from 'src/components/core/InputLabel';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import MenuItem from 'src/components/MenuItem';
-import Notice from 'src/components/Notice';
-import Radio from 'src/components/Radio';
-import RenderGuard from 'src/components/RenderGuard';
-import TextField from 'src/components/TextField';
 
-type ClassNames = 'root' | 'radioGroupLabel';
+import { Autocomplete } from 'src/components/Autocomplete/Autocomplete';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { Notice } from 'src/components/Notice/Notice';
+import { Radio } from 'src/components/Radio/Radio';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      margin: `${theme.spacing(3)}px 0 0`,
-    },
-    radioGroupLabel: {
-      display: 'block',
-    },
-  });
+import type { UserDefinedField } from '@linode/api-v4/lib/stackscripts';
 
 interface Props {
-  updateFormState: (key: string, value: any) => void;
-  value: string;
+  error?: string;
   field: UserDefinedField;
   isOptional: boolean;
-  error?: string;
+  updateFormState: (key: string, value: any) => void;
+  value: string;
 }
 
-interface State {
-  oneof: string[];
-  selectedOption: string;
-}
+export const UserDefinedSelect = (props: Props) => {
+  const { error, field, isOptional, updateFormState, value } = props;
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+  const [oneof, setOneof] = React.useState<string[]>(field.oneof!.split(','));
 
-class UserDefinedSelect extends React.Component<CombinedProps, State> {
-  state: State = {
-    oneof: this.props.field.oneof!.split(','),
-    selectedOption: '',
+  React.useEffect(() => {
+    setOneof(field.oneof!.split(','));
+  }, [field.oneof]);
+
+  const handleSelectOneOf = (value: string) => {
+    updateFormState(field.name, value);
   };
 
-  handleSelectOneOf = (e: any) => {
-    const { updateFormState, field } = this.props;
-    updateFormState(field.name, e.target.value);
-  };
+  const options = oneof.map((item) => ({ label: item }));
 
-  render() {
-    const { oneof } = this.state;
-    const { value, error, field, classes, isOptional } = this.props;
-
-    /* Display a select if there are more than 2 oneof options, otherwise display as radio. */
-    if (oneof.length > 2) {
-      return (
-        <div>
-          {error && <Notice error text={error} spacingTop={8} />}
-          <TextField
-            label={field.label}
-            onChange={this.handleSelectOneOf}
-            value={value}
-            select
-          >
-            {oneof.map((choice: string, index) => {
-              return (
-                <MenuItem value={choice} key={index}>
-                  {choice}
-                </MenuItem>
-              );
-            })}
-          </TextField>
-        </div>
-      );
-    } else {
-      return (
-        <div className={classes.root}>
-          {error && <Notice error text={error} spacingTop={8} />}
-          <InputLabel className={classes.radioGroupLabel}>
-            {field.label}
-            {!isOptional && '*'}
-          </InputLabel>
-
-          {oneof.map((choice: string, index) => {
-            return (
-              <React.Fragment key={index}>
-                <FormControlLabel
-                  value={choice}
-                  control={
-                    <Radio
-                      name={choice}
-                      checked={!!value && value === choice}
-                      /*
-                      NOTE: Although the API returns a default value and we're auto selecting
-                      a value for the user, it is not necessary to store this value
-                      in the state because it's not necessary for the POST request, since
-                      the backend will automatically POST with that default value
-                    */
-                      onChange={this.handleSelectOneOf}
-                      data-qa-perm-none-radio
-                    />
-                  }
-                  label={choice}
-                />
-              </React.Fragment>
-            );
-          })}
-        </div>
-      );
-    }
+  if (oneof.length > 4) {
+    return (
+      <div>
+        {error && <Notice spacingTop={8} text={error} variant="error" />}
+        <Autocomplete
+          disableClearable
+          label={field.label}
+          onChange={(_, option) => handleSelectOneOf(option.label)}
+          options={options}
+          value={options.find((option) => option.label === value)}
+        />
+      </div>
+    );
   }
-}
+  return (
+    <StyledRootDiv>
+      {error && <Notice spacingTop={8} text={error} variant="error" />}
+      <StyledInputLabel>
+        {field.label}
+        {!isOptional && '*'}
+      </StyledInputLabel>
 
-const styled = withStyles(styles);
+      {oneof.map((choice: string, index) => (
+        <FormControlLabel
+          control={
+            <Radio
+              checked={!!value && value === choice}
+              data-qa-perm-none-radio
+              name={choice}
+              onChange={(e) => handleSelectOneOf(e.target.value)}
+            />
+          }
+          key={index}
+          label={choice}
+          value={choice}
+        />
+      ))}
+    </StyledRootDiv>
+  );
+};
 
-export default styled(RenderGuard<CombinedProps>(UserDefinedSelect));
+const StyledInputLabel = styled(InputLabel, { label: 'StyledInputLabel' })({
+  display: 'block',
+  marginBottom: '4px',
+});
+
+const StyledRootDiv = styled('div', { label: 'StyledRootDiv' })(
+  ({ theme }) => ({
+    display: 'flex',
+    flexDirection: 'column',
+    margin: `${theme.spacing(3)} 0 0`,
+    marginTop: theme.spacing(2),
+  })
+);

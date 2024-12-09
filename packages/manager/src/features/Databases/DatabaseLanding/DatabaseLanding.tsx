@@ -1,52 +1,120 @@
-import { DatabaseInstance } from '@linode/api-v4/lib/databases';
+import { Box } from '@mui/material';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
-import CircleProgress from 'src/components/CircleProgress';
-import Hidden from 'src/components/core/Hidden';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import TableRow from 'src/components/core/TableRow';
-import ErrorState from 'src/components/ErrorState';
-import LandingHeader from 'src/components/LandingHeader';
-import PaginationFooter from 'src/components/PaginationFooter';
-import ProductInformationBanner from 'src/components/ProductInformationBanner';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableSortCell from 'src/components/TableSortCell';
+
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { LandingHeader } from 'src/components/LandingHeader';
+import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
+import { Tab } from 'src/components/Tabs/Tab';
+import { TabList } from 'src/components/Tabs/TabList';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import { Tabs } from 'src/components/Tabs/Tabs';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { DatabaseEmptyState } from 'src/features/Databases/DatabaseLanding/DatabaseEmptyState';
+import DatabaseLandingTable from 'src/features/Databases/DatabaseLanding/DatabaseLandingTable';
+import { useIsDatabasesEnabled } from 'src/features/Databases/utilities';
+import { DatabaseClusterInfoBanner } from 'src/features/GlobalNotifications/DatabaseClusterInfoBanner';
 import { useOrder } from 'src/hooks/useOrder';
 import { usePagination } from 'src/hooks/usePagination';
-import { useDatabasesQuery } from 'src/queries/databases';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import {
+  useDatabaseTypesQuery,
+  useDatabasesQuery,
+} from 'src/queries/databases/databases';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import DatabaseEmptyState from './DatabaseEmptyState';
-import { DatabaseRow } from './DatabaseRow';
 
 const preferenceKey = 'databases';
 
-const DatabaseLanding: React.FC = () => {
+const DatabaseLanding = () => {
   const history = useHistory();
-  const pagination = usePagination(1, preferenceKey);
+  const newDatabasesPagination = usePagination(1, preferenceKey, 'new');
+  const legacyDatabasesPagination = usePagination(1, preferenceKey, 'legacy');
+  const isRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'add_databases',
+  });
 
-  const { order, orderBy, handleOrderChange } = useOrder(
+  const {
+    isDatabasesV2Enabled,
+    isUserExistingBeta,
+    isDatabasesV2GA,
+    isUserNewBeta,
+  } = useIsDatabasesEnabled();
+
+  const { isLoading: isTypeLoading } = useDatabaseTypesQuery({
+    platform: isDatabasesV2Enabled ? 'rdbms-default' : 'rdbms-legacy',
+  });
+
+  const isDefaultEnabled =
+    isUserExistingBeta || isUserNewBeta || isDatabasesV2GA;
+
+  const {
+    handleOrderChange: newDatabaseHandleOrderChange,
+    order: newDatabaseOrder,
+    orderBy: newDatabaseOrderBy,
+  } = useOrder(
     {
-      orderBy: 'label',
       order: 'desc',
+      orderBy: 'label',
     },
-    `${preferenceKey}-order`
+    `new-${preferenceKey}-order`
   );
 
-  const filter = {
-    ['+order_by']: orderBy,
-    ['+order']: order,
+  const newDatabasesFilter: Record<string, string> = {
+    ['+order']: newDatabaseOrder,
+    ['+order_by']: newDatabaseOrderBy,
+    ['platform']: 'rdbms-default',
   };
 
-  const { data, error, isLoading } = useDatabasesQuery(
+  const {
+    data: newDatabases,
+    error: newDatabasesError,
+    isLoading: newDatabasesIsLoading,
+  } = useDatabasesQuery(
     {
-      page: pagination.page,
-      page_size: pagination.pageSize,
+      page: newDatabasesPagination.page,
+      page_size: newDatabasesPagination.pageSize,
     },
-    filter
+    newDatabasesFilter,
+    isDefaultEnabled
   );
 
+  const {
+    handleOrderChange: legacyDatabaseHandleOrderChange,
+    order: legacyDatabaseOrder,
+    orderBy: legacyDatabaseOrderBy,
+  } = useOrder(
+    {
+      order: 'desc',
+      orderBy: 'label',
+    },
+    `legacy-${preferenceKey}-order`
+  );
+
+  const legacyDatabasesFilter: Record<string, string> = {
+    ['+order']: legacyDatabaseOrder,
+    ['+order_by']: legacyDatabaseOrderBy,
+  };
+
+  if (isUserExistingBeta || isDatabasesV2GA) {
+    legacyDatabasesFilter['platform'] = 'rdbms-legacy';
+  }
+
+  const {
+    data: legacyDatabases,
+    error: legacyDatabasesError,
+    isLoading: legacyDatabasesIsLoading,
+  } = useDatabasesQuery(
+    {
+      page: legacyDatabasesPagination.page,
+      page_size: legacyDatabasesPagination.pageSize,
+    },
+    legacyDatabasesFilter,
+    !isUserNewBeta
+  );
+
+  const error = newDatabasesError || legacyDatabasesError;
   if (error) {
     return (
       <ErrorState
@@ -57,89 +125,87 @@ const DatabaseLanding: React.FC = () => {
     );
   }
 
-  if (isLoading) {
+  if (newDatabasesIsLoading || legacyDatabasesIsLoading || isTypeLoading) {
     return <CircleProgress />;
   }
 
-  if (data?.results === 0) {
+  const showEmpty = !newDatabases?.data.length && !legacyDatabases?.data.length;
+  if (showEmpty) {
     return <DatabaseEmptyState />;
   }
 
+  const isV2Enabled = isDatabasesV2Enabled || isDatabasesV2GA;
+  const showTabs = isV2Enabled && !!legacyDatabases?.data.length;
+  const isNewDatabase = isV2Enabled && !!newDatabases?.data.length;
+  const showSuspend = isDatabasesV2GA && !!newDatabases?.data.length;
+
+  const legacyTable = () => {
+    return (
+      <DatabaseLandingTable
+        data={legacyDatabases?.data}
+        handleOrderChange={legacyDatabaseHandleOrderChange}
+        order={legacyDatabaseOrder}
+        orderBy={legacyDatabaseOrderBy}
+      />
+    );
+  };
+
+  const defaultTable = () => {
+    return (
+      <DatabaseLandingTable
+        data={newDatabases?.data}
+        handleOrderChange={newDatabaseHandleOrderChange}
+        isNewDatabase={true}
+        showSuspend={showSuspend}
+        order={newDatabaseOrder}
+        orderBy={newDatabaseOrderBy}
+      />
+    );
+  };
+
+  const singleTable = () => {
+    return isNewDatabase ? defaultTable() : legacyTable();
+  };
+
   return (
     <React.Fragment>
-      <ProductInformationBanner
-        bannerLocation="Databases"
-        productInformationIndicator={false}
-        productInformationWarning
-      />
       <LandingHeader
-        title="Database Clusters"
+        buttonDataAttrs={{
+          tooltipText: getRestrictedResourceText({
+            action: 'create',
+            isSingular: false,
+            resourceType: 'Databases',
+          }),
+        }}
         createButtonText="Create Database Cluster"
-        createButtonWidth={205}
-        docsLink="https://www.linode.com/docs/products/databases/managed-databases/"
-        onAddNew={() => history.push('/databases/create')}
+        disabledCreateButton={isRestricted}
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/managed-databases"
+        onButtonClick={() => history.push('/databases/create')}
+        title="Database Clusters"
       />
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableSortCell
-              active={orderBy === 'label'}
-              direction={order}
-              label="label"
-              handleClick={handleOrderChange}
-            >
-              Cluster Label
-            </TableSortCell>
-            <TableSortCell
-              active={orderBy === 'status'}
-              direction={order}
-              label="status"
-              handleClick={handleOrderChange}
-            >
-              Status
-            </TableSortCell>
-            <Hidden xsDown>
-              <TableSortCell
-                active={orderBy === 'cluster_size'}
-                direction={order}
-                label="cluster_size"
-                handleClick={handleOrderChange}
-              >
-                Configuration
-              </TableSortCell>
-            </Hidden>
-            <TableCell>Engine</TableCell>
-            <Hidden smDown>
-              <TableCell>Region</TableCell>
-            </Hidden>
-            <Hidden mdDown>
-              <TableSortCell
-                active={orderBy === 'created'}
-                direction={order}
-                label="created"
-                handleClick={handleOrderChange}
-              >
-                Created
-              </TableSortCell>
-            </Hidden>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data?.data.map((database: DatabaseInstance) => (
-            <DatabaseRow key={database.id} database={database} />
-          ))}
-        </TableBody>
-      </Table>
-      <PaginationFooter
-        count={data?.results || 0}
-        handlePageChange={pagination.handlePageChange}
-        handleSizeChange={pagination.handlePageSizeChange}
-        page={pagination.page}
-        pageSize={pagination.pageSize}
-        eventCategory="Databases Table"
-      />
+      {showTabs && !isDatabasesV2GA && <DatabaseClusterInfoBanner />}
+      <Box>
+        {showTabs ? (
+          <Tabs>
+            <TabList>
+              <Tab>New Database Clusters</Tab>
+              <Tab>Legacy Database Clusters</Tab>
+            </TabList>
+            <TabPanels>
+              <SafeTabPanel index={0}>{defaultTable()}</SafeTabPanel>
+              <SafeTabPanel index={1}>{legacyTable()}</SafeTabPanel>
+            </TabPanels>
+          </Tabs>
+        ) : (
+          singleTable()
+        )}
+      </Box>
     </React.Fragment>
   );
 };
+
+export const databaseLandingLazyRoute = createLazyRoute('/databases')({
+  component: DatabaseLanding,
+});
 
 export default React.memo(DatabaseLanding);

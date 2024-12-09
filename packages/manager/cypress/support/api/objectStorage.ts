@@ -4,15 +4,18 @@ import {
   getObjectList,
   getObjectStorageKeys,
   getObjectURL,
-  ObjectStorageBucket,
-  ObjectStorageKey,
-  ObjectStorageObject,
   revokeObjectStorageKey,
 } from '@linode/api-v4/lib/object-storage';
 import axios from 'axios';
 import { authenticate } from 'support/api/authentication';
 import { isTestLabel } from 'support/api/common';
 import { depaginate } from 'support/util/paginate';
+
+import type {
+  ObjectStorageBucket,
+  ObjectStorageKey,
+  ObjectStorageObject,
+} from '@linode/api-v4';
 
 /**
  * Asynchronously deletes all objects within a test bucket.
@@ -37,7 +40,10 @@ export const deleteAllTestBucketObjects = async (
 
   authenticate();
   // @TODO Improve object retrieval to account for pagination for buckets with many objects.
-  const storageObjects = await getObjectList(clusterId, bucketLabel);
+  const storageObjects = await getObjectList({
+    bucket: bucketLabel,
+    clusterId,
+  });
   const storageObjectDeletePromises = storageObjects.data.map(
     async (storageObject: ObjectStorageObject) => {
       const objectUrl = await getObjectURL(
@@ -64,11 +70,11 @@ export const deleteAllTestBucketObjects = async (
 export const deleteAllTestBuckets = async () => {
   authenticate();
   const bucketsPage = (page: number) => getBuckets({ page });
-  const buckets: ObjectStorageBucket[] = (await depaginate(bucketsPage)).filter(
-    (bucket: ObjectStorageBucket) => {
-      return isTestLabel(bucket.label);
-    }
-  );
+  const buckets: ObjectStorageBucket[] = (
+    await depaginate<ObjectStorageBucket>(bucketsPage)
+  ).filter((bucket: ObjectStorageBucket) => {
+    return isTestLabel(bucket.label);
+  });
 
   const deleteBucketsPromises = buckets.map(
     async (bucket: ObjectStorageBucket) => {
@@ -80,7 +86,8 @@ export const deleteAllTestBuckets = async () => {
     }
   );
 
-  return Promise.all(deleteBucketsPromises);
+  await Promise.all(deleteBucketsPromises);
+  return;
 };
 
 /**
@@ -90,15 +97,13 @@ export const deleteAllTestBuckets = async () => {
  *
  * @returns Promise that resolves when all test access keys are deleted.
  */
-export const deleteAllTestAccessKeys = async (): Promise<
-  ObjectStorageKey[]
-> => {
+export const deleteAllTestAccessKeys = async (): Promise<void> => {
   authenticate();
   const getAccessKeysPage = (page: number) => getObjectStorageKeys({ page });
 
   // Get all access keys that begin with `cy-test`.
   const accessKeys: ObjectStorageKey[] = (
-    await depaginate(getAccessKeysPage)
+    await depaginate<ObjectStorageKey>(getAccessKeysPage)
   ).filter((accessKey: ObjectStorageKey) => {
     return isTestLabel(accessKey.label);
   });
@@ -110,5 +115,6 @@ export const deleteAllTestAccessKeys = async (): Promise<
     }
   );
 
-  return Promise.all(revokeAccessKeysPromises);
+  await Promise.all(revokeAccessKeysPromises);
+  return;
 };

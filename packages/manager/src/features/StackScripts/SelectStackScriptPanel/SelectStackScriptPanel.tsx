@@ -1,76 +1,50 @@
-import { Grant } from '@linode/api-v4/lib/account';
-import { Image } from '@linode/api-v4/lib/images';
-import { Linode } from '@linode/api-v4/lib/linodes';
+import { getStackScript } from '@linode/api-v4/lib/stackscripts';
+import { Box } from '@linode/ui';
+import * as React from 'react';
+import { compose } from 'recompose';
+
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { Notice } from 'src/components/Notice/Notice';
+import { RenderGuard } from 'src/components/RenderGuard';
+import { Typography } from 'src/components/Typography';
+import { withProfile } from 'src/containers/profile.container';
+import { formatDate } from 'src/utilities/formatDate';
+import { getQueryParamFromQueryString } from 'src/utilities/queryParams';
+import { truncate } from 'src/utilities/truncate';
+
+import { StackScriptTableHead } from '../Partials/StackScriptTableHead';
 import {
-  getStackScript,
+  StyledLinkDiv,
+  StyledPanelPaper,
+  StyledSelectingPaper,
+  StyledTable,
+} from './SelectStackScriptPanel.styles';
+import SelectStackScriptPanelContent from './SelectStackScriptPanelContent';
+import StackScriptSelectionRow from './StackScriptSelectionRow';
+
+import type { Grant } from '@linode/api-v4/lib/account';
+import type { Image } from '@linode/api-v4/lib/images';
+import type { Linode } from '@linode/api-v4/lib/linodes';
+import type {
   StackScript,
   UserDefinedField,
 } from '@linode/api-v4/lib/stackscripts';
-import { ResourcePage } from '@linode/api-v4/lib/types';
-import * as React from 'react';
-import { compose } from 'recompose';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import Paper from 'src/components/core/Paper';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import RenderGuard, { RenderGuardProps } from 'src/components/RenderGuard';
-import Table from 'src/components/Table';
-import withProfile, { ProfileProps } from 'src/components/withProfile';
-import { formatDate } from 'src/utilities/formatDate';
-import { getParamFromUrl } from 'src/utilities/queryParams';
-import { truncate } from 'src/utilities/truncate';
-import StackScriptTableHead from '../Partials/StackScriptTableHead';
-import SelectStackScriptPanelContent from './SelectStackScriptPanelContent';
-import StackScriptSelectionRow from './StackScriptSelectionRow';
+import type { Filter, Params, ResourcePage } from '@linode/api-v4/lib/types';
+import type { RenderGuardProps } from 'src/components/RenderGuard';
+import type { WithProfileProps } from 'src/containers/profile.container';
 
 export interface ExtendedLinode extends Linode {
   heading: string;
   subHeadings: string[];
 }
 
-type ClassNames = 'table' | 'selecting' | 'link' | 'panel' | 'inner';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    table: {
-      backgroundColor: theme.color.white,
-      flexGrow: 1,
-      width: '100%',
-    },
-    selecting: {
-      maxHeight: '1000px',
-      minHeight: '400px',
-      overflowY: 'scroll',
-      paddingTop: 0,
-    },
-    link: {
-      display: 'block',
-      marginBottom: 24,
-      marginTop: theme.spacing(),
-      textAlign: 'right',
-    },
-    panel: {
-      backgroundColor: theme.color.white,
-      flexGrow: 1,
-      marginBottom: theme.spacing(3),
-      width: '100%',
-    },
-    inner: {
-      padding: 0,
-    },
-  });
-
 interface Props extends RenderGuardProps {
-  selectedId: number | undefined;
-  selectedUsername?: string;
+  category: string;
+  disabled?: boolean;
   error?: string;
+  header: string;
+  isOnCreate?: boolean;
   onSelect: (
     id: number,
     label: string,
@@ -78,24 +52,20 @@ interface Props extends RenderGuardProps {
     images: string[],
     userDefinedFields: UserDefinedField[]
   ) => void;
+  openStackScriptDetailsDialog: (stackscriptId: number) => void;
   publicImages: Record<string, Image>;
-  resetSelectedStackScript: () => void;
-  disabled?: boolean;
   request: (
     username: string,
-    params?: any,
-    filter?: any,
+    params?: Params,
+    filter?: Filter,
     stackScriptGrants?: Grant[]
-  ) => Promise<ResourcePage<any>>;
-  category: string;
-  header: string;
-  isOnCreate?: boolean;
+  ) => Promise<ResourcePage<StackScript>>;
+  resetSelectedStackScript: () => void;
+  selectedId: number | undefined;
+  selectedUsername?: string;
 }
 
-type CombinedProps = Props &
-  RenderGuardProps &
-  WithStyles<ClassNames> &
-  ProfileProps;
+interface SelectStackScriptPanelProps extends Props, WithProfileProps {}
 
 interface State {
   stackScript?: StackScript;
@@ -103,16 +73,26 @@ interface State {
   stackScriptLoading: boolean;
 }
 
-class SelectStackScriptPanel extends React.Component<CombinedProps, State> {
-  state: State = {
-    stackScriptLoading: false,
-    stackScriptError: false,
-  };
-
+class SelectStackScriptPanel extends React.Component<
+  SelectStackScriptPanelProps,
+  State
+> {
   mounted: boolean = false;
 
+  resetStackScript = () => {
+    this.setState({ stackScript: undefined, stackScriptLoading: false });
+  };
+
+  state: State = {
+    stackScriptError: false,
+    stackScriptLoading: false,
+  };
+
   componentDidMount() {
-    const selected = +getParamFromUrl(location.search, 'stackScriptID');
+    const selected = +getQueryParamFromQueryString(
+      location.search,
+      'stackScriptID'
+    );
     /** '' converted to a number is 0 */
     if (!isNaN(selected) && selected !== 0) {
       this.setState({ stackScriptLoading: true });
@@ -128,7 +108,7 @@ class SelectStackScriptPanel extends React.Component<CombinedProps, State> {
           );
         })
         .catch((_) => {
-          this.setState({ stackScriptLoading: false, stackScriptError: true });
+          this.setState({ stackScriptError: true, stackScriptLoading: false });
         });
     }
     this.mounted = true;
@@ -138,20 +118,9 @@ class SelectStackScriptPanel extends React.Component<CombinedProps, State> {
     this.mounted = false;
   }
 
-  resetStackScript = () => {
-    this.setState({ stackScript: undefined, stackScriptLoading: false });
-  };
-
   render() {
-    const {
-      category,
-      classes,
-      request,
-      selectedId,
-      error,
-      profile,
-    } = this.props;
-    const { stackScript, stackScriptLoading, stackScriptError } = this.state;
+    const { category, error, profile, request, selectedId } = this.props;
+    const { stackScript, stackScriptError, stackScriptLoading } = this.state;
 
     if (selectedId) {
       if (stackScriptLoading) {
@@ -160,11 +129,10 @@ class SelectStackScriptPanel extends React.Component<CombinedProps, State> {
       if (stackScript) {
         return (
           <React.Fragment>
-            <Table
+            <StyledTable
               aria-label="List of StackScripts"
-              noOverflow={true}
-              tableClass={classes.table}
               data-qa-select-stackscript
+              noOverflow={true}
             >
               <StackScriptTableHead
                 currentFilterType={null}
@@ -172,65 +140,74 @@ class SelectStackScriptPanel extends React.Component<CombinedProps, State> {
               />
               <tbody>
                 <StackScriptSelectionRow
-                  key={stackScript.id}
-                  label={stackScript.label}
-                  stackScriptUsername={stackScript.username}
-                  disabledCheckedSelect
-                  description={truncate(stackScript.description, 100)}
-                  deploymentsActive={stackScript.deployments_active}
+                  openStackScriptDetailsDialog={
+                    this.props.openStackScriptDetailsDialog
+                  }
                   updated={formatDate(stackScript.updated, {
                     displayTime: false,
+                    timezone: profile.data?.timezone,
                   })}
                   checked={selectedId === stackScript.id}
-                  updateFor={[selectedId === stackScript.id]}
+                  deploymentsActive={stackScript.deployments_active}
+                  description={truncate(stackScript.description, 100)}
+                  disabledCheckedSelect
+                  key={stackScript.id}
+                  label={stackScript.label}
                   stackScriptID={stackScript.id}
+                  stackScriptUsername={stackScript.username}
+                  updateFor={[selectedId === stackScript.id]}
                 />
               </tbody>
-            </Table>
-            <div className={classes.link}>
-              <Button onClick={this.resetStackScript} buttonType="secondary">
+            </StyledTable>
+            <StyledLinkDiv>
+              <Button buttonType="secondary" onClick={this.resetStackScript}>
                 Choose another StackScript
               </Button>
-            </div>
+            </StyledLinkDiv>
           </React.Fragment>
         );
       }
     }
 
     return (
-      <Paper className={classes.panel}>
-        <div className={classes.inner}>
+      <StyledPanelPaper>
+        <Box padding={0}>
           {error && (
-            <Notice text={error} error spacingTop={8} spacingBottom={0} />
+            <Notice
+              spacingBottom={0}
+              spacingTop={8}
+              text={error}
+              variant="error"
+            />
           )}
           {stackScriptError && (
             <Typography variant="body1">
               An error occurred while loading the selected StackScript.
             </Typography>
           )}
-          <Paper className={classes.selecting}>
+          <StyledSelectingPaper>
             <SelectStackScriptPanelContent
-              onSelect={this.props.onSelect}
-              resetStackScriptSelection={this.props.resetSelectedStackScript}
-              publicImages={this.props.publicImages}
-              currentUser={profile.data?.username || ''}
-              request={request}
-              key={category + '-tab'}
+              openStackScriptDetailsDialog={
+                this.props.openStackScriptDetailsDialog
+              }
               category={category}
+              currentUser={profile.data?.username || ''}
               disabled={this.props.disabled}
               isOnCreate={this.props.isOnCreate}
+              key={category + '-tab'}
+              onSelect={this.props.onSelect}
+              publicImages={this.props.publicImages}
+              request={request}
+              resetStackScriptSelection={this.props.resetSelectedStackScript}
             />
-          </Paper>
-        </div>
-      </Paper>
+          </StyledSelectingPaper>
+        </Box>
+      </StyledPanelPaper>
     );
   }
 }
 
-const styled = withStyles(styles);
-
-export default compose<CombinedProps, Props>(
+export default compose<SelectStackScriptPanelProps, Props>(
   RenderGuard,
-  styled,
   withProfile
 )(SelectStackScriptPanel);

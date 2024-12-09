@@ -1,71 +1,114 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Typography } from 'src/components/Typography';
+import { useRemoveFirewallDeviceMutation } from 'src/queries/firewalls';
+import { linodeQueries } from 'src/queries/linodes/linodes';
+import { nodebalancerQueries } from 'src/queries/nodebalancers';
+
+import type { FirewallDevice } from '@linode/api-v4';
 
 export interface Props {
-  open: boolean;
-  error?: string;
-  loading: boolean;
-  deviceLabel: string;
+  device: FirewallDevice | undefined;
+  firewallId: number;
   firewallLabel: string;
   onClose: () => void;
-  onRemove: () => void;
+  onService: boolean | undefined;
+  open: boolean;
 }
 
-export const RemoveDeviceDialog: React.FC<Props> = (props) => {
-  const {
-    deviceLabel,
-    error,
-    firewallLabel,
-    loading,
-    onClose,
-    onRemove,
-    open,
-  } = props;
+export const RemoveDeviceDialog = React.memo((props: Props) => {
+  const { device, firewallId, firewallLabel, onClose, onService, open } = props;
+
+  const { enqueueSnackbar } = useSnackbar();
+  const deviceType = device?.entity.type;
+
+  const { error, isPending, mutateAsync } = useRemoveFirewallDeviceMutation(
+    firewallId,
+    device?.id ?? -1
+  );
+
+  const queryClient = useQueryClient();
+
+  const deviceDialog = deviceType === 'linode' ? 'Linode' : 'NodeBalancer';
+
+  const onDelete = async () => {
+    if (!device) {
+      return;
+    }
+
+    await mutateAsync();
+
+    const toastMessage = onService
+      ? `Firewall ${firewallLabel} successfully unassigned`
+      : `${deviceDialog} ${device.entity.label} successfully removed`;
+
+    enqueueSnackbar(toastMessage, {
+      variant: 'success',
+    });
+
+    if (error) {
+      enqueueSnackbar(error[0].reason, { variant: 'error' });
+    }
+
+    // Since the linode was removed as a device, invalidate the linode-specific firewall query
+    if (deviceType === 'linode') {
+      queryClient.invalidateQueries({
+        queryKey: linodeQueries.linode(device.entity.id)._ctx.firewalls
+          .queryKey,
+      });
+    }
+
+    if (deviceType === 'nodebalancer') {
+      queryClient.invalidateQueries({
+        queryKey: nodebalancerQueries.nodebalancer(device.entity.id)._ctx
+          .firewalls.queryKey,
+      });
+    }
+
+    onClose();
+  };
+
+  const dialogTitle = onService
+    ? `Unassign Firewall ${firewallLabel}?`
+    : `Remove ${deviceDialog} ${device?.entity.label}?`;
+
+  const confirmationText = (
+    <Typography>
+      Are you sure you want to{' '}
+      {onService
+        ? `unassign Firewall ${firewallLabel} from ${deviceDialog} ${device?.entity.label}?`
+        : `remove ${deviceDialog} ${device?.entity.label} from Firewall ${firewallLabel}?`}
+    </Typography>
+  );
+
+  const primaryButtonText = onService ? 'Unassign Firewall' : 'Remove';
+
   return (
     <ConfirmationDialog
-      title={`Remove ${deviceLabel} from ${firewallLabel}?`}
-      open={open}
+      actions={
+        <ActionsPanel
+          primaryButtonProps={{
+            label: primaryButtonText,
+            loading: isPending,
+            onClick: onDelete,
+          }}
+          secondaryButtonProps={{
+            label: 'Cancel',
+            onClick: onClose,
+          }}
+          style={{ padding: 0 }}
+        />
+      }
+      error={error?.[0]?.reason}
       onClose={onClose}
-      actions={renderActions(loading, onClose, onRemove)}
+      open={open}
+      title={dialogTitle}
     >
-      {error && <Notice error text={error} />}
-      <Typography>
-        Are you sure you want to remove {deviceLabel} from {firewallLabel}?
-      </Typography>
+      {confirmationText}
     </ConfirmationDialog>
   );
-};
-
-const renderActions = (
-  loading: boolean,
-  onClose: () => void,
-  onDelete: () => void
-) => {
-  return (
-    <ActionsPanel style={{ padding: 0 }}>
-      <Button
-        buttonType="secondary"
-        onClick={onClose}
-        data-qa-cancel
-        data-testid={'dialog-cancel'}
-      >
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={onDelete}
-        loading={loading}
-        data-qa-confirm
-        data-testid={'dialog-confirm'}
-      >
-        Remove
-      </Button>
-    </ActionsPanel>
-  );
-};
-
-export default React.memo(RemoveDeviceDialog);
+});

@@ -1,33 +1,38 @@
 import { recycleClusterNodes } from '@linode/api-v4/lib/kubernetes';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Dialog from 'src/components/ConfirmationDialog';
-import Typography from 'src/components/core/Typography';
-import { localStorageWarning } from 'src/features/Kubernetes/kubeUtils';
-import useKubernetesClusters from 'src/hooks/useKubernetesClusters';
-interface DialogProps {
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Typography } from 'src/components/Typography';
+import {
+  getNextVersion,
+  localStorageWarning,
+} from 'src/features/Kubernetes/kubeUtils';
+import {
+  useKubernetesClusterMutation,
+  useKubernetesVersionQuery,
+} from 'src/queries/kubernetes';
+
+interface Props {
   clusterID: number;
   clusterLabel: string;
-  isOpen: boolean;
   currentVersion: string;
-  nextVersion: string | null;
+  isOpen: boolean;
   onClose: () => void;
 }
 
-export const UpgradeDialog: React.FC<DialogProps> = (props) => {
-  const {
-    clusterID,
-    clusterLabel,
-    currentVersion,
-    nextVersion,
-    isOpen,
-    onClose,
-  } = props;
+export const UpgradeDialog = (props: Props) => {
+  const { clusterID, clusterLabel, currentVersion, isOpen, onClose } = props;
+
+  const { data: versions } = useKubernetesVersionQuery();
   const { enqueueSnackbar } = useSnackbar();
 
-  const { updateKubernetesCluster } = useKubernetesClusters();
+  const { mutateAsync: updateKubernetesCluster } = useKubernetesClusterMutation(
+    clusterID
+  );
+
+  const nextVersion = getNextVersion(currentVersion, versions ?? []);
 
   const [hasUpdatedSuccessfully, setHasUpdatedSuccessfully] = React.useState(
     false
@@ -44,14 +49,14 @@ export const UpgradeDialog: React.FC<DialogProps> = (props) => {
     }
   }, [isOpen]);
 
-  if (nextVersion === null) {
-    return null;
-  }
-
   const onSubmitUpgradeDialog = () => {
+    if (!nextVersion) {
+      setError('Your Kubernetes Cluster is already on the latest version.');
+      return;
+    }
     setSubmitting(true);
     setError(undefined);
-    updateKubernetesCluster(clusterID, {
+    updateKubernetesCluster({
       k8s_version: nextVersion,
     })
       .then((_) => {
@@ -84,43 +89,32 @@ export const UpgradeDialog: React.FC<DialogProps> = (props) => {
     ? `Step 2: Recycle All Cluster Nodes`
     : `Step 1: Upgrade ${clusterLabel} to Kubernetes ${nextVersion}`;
 
-  const actions = hasUpdatedSuccessfully ? (
-    <ActionsPanel style={{ padding: 0 }}>
-      <Button buttonType="secondary" onClick={onClose} data-qa-cancel>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={onSubmitRecycleDialog}
-        loading={submitting}
-        data-qa-confirm
-      >
-        Recycle All Nodes
-      </Button>
-    </ActionsPanel>
-  ) : (
-    <ActionsPanel style={{ padding: 0 }}>
-      <Button buttonType="secondary" onClick={onClose} data-qa-cancel>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={onSubmitUpgradeDialog}
-        loading={submitting}
-        data-qa-confirm
-      >
-        Upgrade Version
-      </Button>
-    </ActionsPanel>
+  const actions = (
+    <ActionsPanel
+      primaryButtonProps={{
+        'data-testid': 'confirm',
+        label: hasUpdatedSuccessfully ? 'Recycle All Nodes' : 'Upgrade Version',
+        loading: submitting,
+        onClick: hasUpdatedSuccessfully
+          ? onSubmitRecycleDialog
+          : onSubmitUpgradeDialog,
+      }}
+      secondaryButtonProps={{
+        'data-testid': 'cancel',
+        label: 'Cancel',
+        onClick: onClose,
+      }}
+      style={{ padding: 0 }}
+    />
   );
 
   return (
-    <Dialog
-      title={dialogTitle}
-      error={error}
-      open={isOpen}
-      onClose={onClose}
+    <ConfirmationDialog
       actions={actions}
+      error={error}
+      onClose={onClose}
+      open={isOpen}
+      title={dialogTitle}
     >
       <Typography>
         {hasUpdatedSuccessfully ? (
@@ -138,7 +132,7 @@ export const UpgradeDialog: React.FC<DialogProps> = (props) => {
           </>
         )}
       </Typography>
-    </Dialog>
+    </ConfirmationDialog>
   );
 };
 

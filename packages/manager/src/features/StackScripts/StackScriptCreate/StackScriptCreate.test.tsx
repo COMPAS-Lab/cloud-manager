@@ -1,75 +1,51 @@
-import { shallow } from 'enzyme';
 import * as React from 'react';
+
+import { reactRouterProps } from 'src/__data__/reactRouterProps';
+import { profileFactory } from 'src/factories';
+import { queryClientFactory } from 'src/queries/base';
+import { renderWithThemeAndHookFormContext } from 'src/utilities/testHelpers';
 
 import { StackScriptCreate } from './StackScriptCreate';
 
-import { reactRouterProps } from 'src/__data__/reactRouterProps';
-import { imageFactory, normalizeEntities, profileFactory } from 'src/factories';
-import { UseQueryResult } from 'react-query';
-import { Grants, Profile } from '@linode/api-v4/lib';
-import { APIError } from '@linode/api-v4/lib/types';
+import type { Grants, Profile } from '@linode/api-v4/lib';
+import type { APIError } from '@linode/api-v4/lib/types';
+import type { UseQueryResult } from '@tanstack/react-query';
 
-const images = normalizeEntities(imageFactory.buildList(10));
+const queryClient = queryClientFactory();
 
 describe('StackScriptCreate', () => {
-  const component = shallow(
-    <StackScriptCreate
-      {...reactRouterProps}
-      mode="create"
-      classes={{
-        backButton: '',
-        createTitle: '',
-      }}
-      imagesData={images}
-      imagesLoading={false}
-      profile={
-        { data: profileFactory.build() } as UseQueryResult<Profile, APIError[]>
-      }
-      grants={{ data: {} } as UseQueryResult<Grants, APIError[]>}
-      setDocs={jest.fn()}
-      clearDocs={jest.fn()}
-    />
-  );
-  xit('should render a title that reads "Create StackScript', () => {
-    const titleText = component
-      .find('WithStyles(Typography)')
-      .first()
-      .children()
-      .text();
-    expect(titleText).toBe('Create StackScript');
-  });
-
-  xit(`should render a confirmation dialog with the
-  title "Clear StackScript Configuration?"`, () => {
-    const modalTitle = component
-      .find('WithStyles(ConfirmationDialog)')
-      .prop('title');
-    expect(modalTitle).toBe('Clear StackScript Configuration?');
-  });
-
-  xit('should render StackScript Form', () => {
-    expect(component.find('StackScriptForm')).toHaveLength(1);
-  });
-
-  describe('Back Arrow Icon Button', () => {
-    xit('should render back array icon button', () => {
-      const backIcon = component.find('WithStyles(IconButton)').first();
-      expect(backIcon.find('pure(KeyboardArrowLeft)')).toHaveLength(1);
+  it('should render header, inputs, and buttons', () => {
+    const { getByLabelText, getByText } = renderWithThemeAndHookFormContext({
+      component: (
+        <StackScriptCreate
+          {...reactRouterProps}
+          profile={
+            { data: profileFactory.build() } as UseQueryResult<
+              Profile,
+              APIError[]
+            >
+          }
+          grants={{ data: {} } as UseQueryResult<Grants, APIError[]>}
+          mode="create"
+          queryClient={queryClient}
+        />
+      ),
     });
 
-    xit('back arrow icon should link back to stackscripts landing', () => {
-      const backIcon = component.find('WithStyles(IconButton)').first();
-      const parentLink = backIcon.closest('Link');
-      expect(parentLink.prop('to')).toBe('/stackscripts');
-    });
-  });
+    expect(getByText('Create')).toBeVisible();
 
-  describe('Breadcrumb', () => {
-    const breadcrumb = component.find(
-      '[data-qa-create-stackscript-breadcrumb]'
-    );
-    it('should render', () => {
-      expect(breadcrumb).toHaveLength(1);
-    });
+    expect(getByLabelText('StackScript Label (required)')).toBeVisible();
+    expect(getByLabelText('Description')).toBeVisible();
+    expect(getByLabelText('Target Images (required)')).toBeVisible();
+    expect(getByLabelText('Script (required)')).toBeVisible();
+    expect(getByLabelText('Revision Note')).toBeVisible();
+
+    const createButton = getByText('Create StackScript').closest('button');
+    expect(createButton).toBeVisible();
+    expect(createButton).toBeDisabled();
+
+    const resetButton = getByText('Reset').closest('button');
+    expect(resetButton).toBeVisible();
+    expect(resetButton).toBeEnabled();
   });
 });

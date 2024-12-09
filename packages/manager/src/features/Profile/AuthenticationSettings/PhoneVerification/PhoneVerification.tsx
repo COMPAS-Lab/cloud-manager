@@ -1,41 +1,57 @@
-import {
-  SendPhoneVerificationCodePayload,
-  VerifyVerificationCodePayload,
-} from '@linode/api-v4/lib/profile/types';
-import { APIError } from '@linode/api-v4/lib/types';
-import classNames from 'classnames';
+import { Box, InputAdornment } from '@linode/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFormik } from 'formik';
-import { CountryCode, parsePhoneNumber } from 'libphonenumber-js';
+import { parsePhoneNumber } from 'libphonenumber-js';
 import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import Box from 'src/components/core/Box';
-import FormHelperText from 'src/components/core/FormHelperText';
-import InputAdornment from 'src/components/core/InputAdornment';
-import Typography from 'src/components/core/Typography';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
+
+import { Button } from 'src/components/Button/Button';
 import { LinkButton } from 'src/components/LinkButton';
-import TextField from 'src/components/TextField';
-import { queryClient } from 'src/queries/base';
+import { MaskableText } from 'src/components/MaskableText/MaskableText';
+import { TextField } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
 import {
-  queryKey,
+  profileQueries,
   updateProfileData,
   useProfile,
   useSendPhoneVerificationCodeMutation,
   useVerifyPhoneVerificationCodeMutation,
-} from 'src/queries/profile';
+} from 'src/queries/profile/profile';
+
 import { countries } from './countries';
 import { getCountryFlag, getCountryName, getFormattedNumber } from './helpers';
-import { useStyles } from './styles';
+import {
+  StyledButtonContainer,
+  StyledCodeSentMessageBox,
+  StyledFormHelperText,
+  StyledISOCodeSelect,
+  StyledInputContainer,
+  StyledLabel,
+  StyledPhoneNumberInput,
+  StyledPhoneNumberTitle,
+} from './PhoneVerification.styles';
 
-export const PhoneVerification = () => {
-  const classes = useStyles();
+import type {
+  SendPhoneVerificationCodePayload,
+  VerifyVerificationCodePayload,
+} from '@linode/api-v4/lib/profile/types';
+import type { APIError } from '@linode/api-v4/lib/types';
+import type { CountryCode } from 'libphonenumber-js';
 
+export interface SelectPhoneVerificationOption {
+  label: string;
+  value: string;
+}
+
+export const PhoneVerification = ({
+  phoneNumberRef,
+}: {
+  phoneNumberRef: React.RefObject<HTMLInputElement>;
+}) => {
   const { data: profile } = useProfile();
   const { enqueueSnackbar } = useSnackbar();
-
+  const queryClient = useQueryClient();
   const hasVerifiedPhoneNumber = Boolean(profile?.verified_phone_number);
-
   const [isViewMode, setIsViewMode] = React.useState(hasVerifiedPhoneNumber);
   const [isPhoneInputFocused, setIsPhoneInputFocused] = React.useState(false);
 
@@ -50,19 +66,17 @@ export const PhoneVerification = () => {
 
   const {
     data,
+    error: sendPhoneVerificationCodeError,
+    isPending: isResending,
+    mutateAsync: resendPhoneVerificationCode,
     mutateAsync: sendPhoneVerificationCode,
     reset: resetSendCodeMutation,
-    error: sendPhoneVerificationCodeError,
   } = useSendPhoneVerificationCodeMutation();
 
   const {
-    mutateAsync: resendPhoneVerificationCode,
-    isLoading: isResending,
-  } = useSendPhoneVerificationCodeMutation();
-
-  const {
-    mutateAsync: sendVerificationCode,
     error: verifyError,
+    mutateAsync: sendVerificationCode,
+    reset: resetCodeMutation,
   } = useVerifyPhoneVerificationCodeMutation();
 
   const isCodeSent = data !== undefined;
@@ -70,6 +84,7 @@ export const PhoneVerification = () => {
   const onSubmitPhoneNumber = async (
     values: SendPhoneVerificationCodePayload
   ) => {
+    resetCodeMutation();
     return await sendPhoneVerificationCode(values);
   };
 
@@ -84,12 +99,17 @@ export const PhoneVerification = () => {
 
     if (countryOfNewPhoneNumber) {
       // if Cloud Manager is aware of the country the user used, we can assume how the API will parse and return the number
-      updateProfileData({
-        verified_phone_number: `${countryOfNewPhoneNumber.dialingCode}${sendCodeForm.values.phone_number}`,
-      });
+      updateProfileData(
+        {
+          verified_phone_number: `${countryOfNewPhoneNumber.dialingCode}${sendCodeForm.values.phone_number}`,
+        },
+        queryClient
+      );
     } else {
       // Cloud Manager does not know about the country, so lets refetch the user's phone number so we know it's displaying correctly
-      queryClient.invalidateQueries(queryKey);
+      queryClient.invalidateQueries({
+        queryKey: profileQueries.profile().queryKey,
+      });
     }
 
     // reset form states
@@ -105,8 +125,8 @@ export const PhoneVerification = () => {
 
   const sendCodeForm = useFormik<SendPhoneVerificationCodePayload>({
     initialValues: {
-      phone_number: '',
       iso_code: 'US',
+      phone_number: '',
     },
     onSubmit: onSubmitPhoneNumber,
   });
@@ -140,8 +160,7 @@ export const PhoneVerification = () => {
   };
 
   const onEnterDifferentPhoneNumber = () => {
-    resetSendCodeMutation();
-    sendCodeForm.resetForm();
+    reset();
   };
 
   const onResendVerificationCode = () => {
@@ -156,19 +175,6 @@ export const PhoneVerification = () => {
       );
   };
 
-  const customStyles = {
-    menu: () => ({
-      width: '500px',
-      marginLeft: '-1px !important',
-      marginTop: '0px !important',
-    }),
-    singleValue: (provided: React.CSSProperties) => ({
-      ...provided,
-      textAlign: 'center',
-      fontSize: '20px',
-    }),
-  };
-
   const selectedCountry = countries.find(
     (country) => country.code === sendCodeForm.values.iso_code
   );
@@ -180,7 +186,7 @@ export const PhoneVerification = () => {
   return (
     <>
       {!isViewMode && isCodeSent ? (
-        <Box className={classes.codeSentMessage}>
+        <StyledCodeSentMessageBox>
           <Typography>
             SMS verification code was sent to{' '}
             {parsePhoneNumber(
@@ -193,8 +199,9 @@ export const PhoneVerification = () => {
               Enter a different phone number
             </LinkButton>
           </Typography>
-        </Box>
+        </StyledCodeSentMessageBox>
       ) : null}
+
       <Box>
         <form
           onSubmit={
@@ -203,79 +210,102 @@ export const PhoneVerification = () => {
         >
           {isViewMode ? (
             <>
-              <Typography variant="h3" className={classes.phoneNumberTitle}>
+              <StyledPhoneNumberTitle variant="h3">
                 Phone Number
-              </Typography>
-              <Box display="flex" alignItems="center" style={{ gap: 10 }}>
+              </StyledPhoneNumberTitle>
+              <Box alignItems="center" display="flex" style={{ gap: 10 }}>
                 <Typography>
-                  {profile?.verified_phone_number
-                    ? getFormattedNumber(profile.verified_phone_number)
-                    : 'No Phone Number'}
+                  <MaskableText
+                    text={
+                      profile?.verified_phone_number
+                        ? getFormattedNumber(profile.verified_phone_number)
+                        : 'No Phone Number'
+                    }
+                    isToggleable
+                  />
                 </Typography>
-                <LinkButton onClick={onEdit}>Edit</LinkButton>
+                <LinkButton
+                  style={{
+                    bottom: -0.5,
+                    fontSize: '0.85rem',
+                    position: 'relative',
+                  }}
+                  onClick={onEdit}
+                >
+                  Edit
+                </LinkButton>
               </Box>
             </>
           ) : isCodeSent ? (
             <TextField
-              label="Verification Code"
-              id="otp_code"
-              name="otp_code"
-              type="text"
-              onChange={verifyCodeForm.handleChange}
-              value={verifyCodeForm.values.otp_code}
-              errorText={verifyError?.[0].reason}
               helperText={
                 <LinkButton
-                  onClick={onResendVerificationCode}
                   isDisabled={isResending}
                   isLoading={isResending}
+                  onClick={onResendVerificationCode}
                 >
                   Resend verification code
                 </LinkButton>
               }
+              errorText={verifyError?.[0].reason}
+              id="otp_code"
+              label="Verification Code"
+              name="otp_code"
+              onChange={verifyCodeForm.handleChange}
+              type="text"
+              value={verifyCodeForm.values.otp_code}
             />
           ) : (
             <>
-              <Typography className={classes.label}>Phone Number</Typography>
-              <Box
+              <StyledLabel>Phone Number</StyledLabel>
+              <StyledInputContainer
                 display="flex"
-                className={classNames(classes.inputContainer, {
-                  [classes.focused]: isPhoneInputFocused,
-                })}
+                isPhoneInputFocused={isPhoneInputFocused}
               >
-                <Select
-                  onFocus={() => setIsPhoneInputFocused(true)}
-                  onBlur={() => setIsPhoneInputFocused(false)}
-                  styles={customStyles}
-                  menuPlacement="bottom"
-                  className={classes.select}
-                  id="iso_code"
-                  name="iso_code"
-                  type="text"
-                  isClearable={false}
+                <StyledISOCodeSelect
+                  isOptionEqualToValue={(option, value) =>
+                    option.label === value.label
+                  }
+                  onChange={(_, item: SelectPhoneVerificationOption) => {
+                    sendCodeForm.setFieldValue('iso_code', item.value);
+                  }}
+                  options={countries.map((country) => ({
+                    label: `${getCountryName(country.name)} ${
+                      country.dialingCode
+                    } ${getCountryFlag(country.code)}`,
+                    value: country.code,
+                  }))}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        border: '1px solid #3683dc',
+                        maxHeight: '285px',
+                        overflow: 'hidden',
+                        textWrap: 'nowrap',
+                        width: 'fit-content',
+                      },
+                    },
+                  }}
+                  textFieldProps={{
+                    hideLabel: true,
+                    style: {
+                      border: 'none',
+                      minWidth: '72px',
+                    },
+                  }}
                   value={{
-                    value: sendCodeForm.values.iso_code,
                     label: getCountryFlag(sendCodeForm.values.iso_code),
                   }}
-                  isOptionSelected={(option: Item) =>
-                    sendCodeForm.values.iso_code === option.value
-                  }
-                  onChange={(item: Item) =>
-                    sendCodeForm.setFieldValue('iso_code', item.value)
-                  }
-                  options={countries.map((counrty) => ({
-                    label: `${getCountryName(counrty.name)} ${
-                      counrty.dialingCode
-                    } ${getCountryFlag(counrty.code)}`,
-                    value: counrty.code,
-                  }))}
-                  noMarginTop
-                  hideLabel
-                />
-                <TextField
-                  onFocus={() => setIsPhoneInputFocused(true)}
+                  autoHighlight
+                  disableClearable
+                  disablePortal={true}
+                  id="iso_code"
+                  label="ISO Code"
                   onBlur={() => setIsPhoneInputFocused(false)}
-                  className={classes.phoneNumberInput}
+                  onFocus={() => setIsPhoneInputFocused(true)}
+                  placeholder=""
+                />
+                <StyledPhoneNumberInput
                   InputProps={{
                     startAdornment: selectedCountry ? (
                       <InputAdornment position="end">
@@ -283,27 +313,26 @@ export const PhoneVerification = () => {
                       </InputAdornment>
                     ) : undefined,
                   }}
-                  label="Phone Number"
-                  id="phone_number"
-                  name="phone_number"
-                  type="tel"
-                  onChange={sendCodeForm.handleChange}
-                  value={sendCodeForm.values.phone_number}
                   hideLabel
+                  id="phone_number"
+                  inputRef={phoneNumberRef}
+                  label="Phone Number"
+                  name="phone_number"
+                  onBlur={() => setIsPhoneInputFocused(false)}
+                  onChange={sendCodeForm.handleChange}
+                  onFocus={() => setIsPhoneInputFocused(true)}
+                  type="tel"
+                  value={sendCodeForm.values.phone_number}
                 />
-              </Box>
+              </StyledInputContainer>
               {sendPhoneVerificationCodeError ? (
-                <FormHelperText className={classes.errorText} role="alert">
+                <StyledFormHelperText role="alert">
                   {sendPhoneVerificationCodeError[0].reason}
-                </FormHelperText>
+                </StyledFormHelperText>
               ) : null}
             </>
           )}
-          <Box
-            display="flex"
-            justifyContent="flex-end"
-            className={classes.buttonContainer}
-          >
+          <StyledButtonContainer display="flex" justifyContent="flex-end">
             {isCodeSent || (hasVerifiedPhoneNumber && !isViewMode) ? (
               <Button
                 buttonType="secondary"
@@ -314,14 +343,14 @@ export const PhoneVerification = () => {
               </Button>
             ) : null}
             <Button
-              loading={isFormSubmitting}
-              disabled={isViewMode}
               buttonType="primary"
+              disabled={isViewMode}
+              loading={isFormSubmitting}
               type="submit"
             >
               {isCodeSent ? 'Verify Phone Number' : 'Send Verification Code'}
             </Button>
-          </Box>
+          </StyledButtonContainer>
         </form>
       </Box>
     </>

@@ -1,48 +1,36 @@
+import Grid from '@mui/material/Unstable_Grid2';
+import { styled, useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import EntityIcon, { Variant } from 'src/components/EntityIcon/EntityIcon';
-import Grid from 'src/components/Grid';
-import EditableInput from './EditableInput';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    minHeight: 40,
-  },
-  icon: {
-    marginRight: theme.spacing(1),
-  },
-  smallInput: {
-    position: 'relative',
-    paddingRight: 20,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-all',
-    fontSize: 15,
-  },
-}));
+import { EntityIcon } from 'src/components/EntityIcon/EntityIcon';
+import { Typography } from 'src/components/Typography';
 
-interface Props {
-  text: string;
-  onEdit: (s: string) => Promise<any>;
-  iconVariant?: Variant;
+import { EditableInput } from './EditableInput';
+
+import type { EntityVariants } from 'src/components/EntityIcon/EntityIcon';
+
+interface EditableEntityLabelProps {
+  iconVariant?: EntityVariants;
   loading: boolean;
-  subText?: string;
+  onEdit: (s: string) => Promise<any>;
   status?: string;
+  subText?: string;
+  text: string;
 }
 
-export const EditableEntityLabel: React.FC<Props> = (props) => {
-  const { iconVariant, loading, status, subText, text, onEdit } = props;
+export const EditableEntityLabel = (props: EditableEntityLabelProps) => {
+  const { iconVariant, loading, onEdit, status, subText, text } = props;
   const [isEditing, toggleEditing] = React.useState<boolean>(false);
   const [inputText, setInputText] = React.useState<string>(text);
   const [error, setError] = React.useState<string | undefined>();
-  const classes = useStyles();
+  const theme = useTheme();
 
   const onSubmit = () => {
     setError(undefined);
     if (inputText !== text) {
       onEdit(inputText)
         .then(() => toggleEditing(false))
-        .catch((e) => setError(e)); // @todo have to make sure this is passed as a string
+        .catch((e) => setError(e.toString()));
     } else {
       toggleEditing(false);
     }
@@ -60,41 +48,45 @@ export const EditableEntityLabel: React.FC<Props> = (props) => {
 
   return (
     <Grid
+      sx={{
+        margin: 0,
+        minHeight: '40px',
+      }}
+      alignItems="center"
       container
       direction="row"
-      wrap="nowrap"
-      alignItems="center"
       justifyContent="flex-start"
-      className={`${classes.root} m0`}
+      wrap="nowrap"
     >
       {!isEditing && iconVariant && (
-        <Grid item className="py0 px0">
+        <Grid className="py0 px0">
           <EntityIcon
-            variant={iconVariant}
+            style={{
+              marginRight: theme.spacing(1),
+            }}
             status={status}
-            className={classes.icon}
+            variant={iconVariant}
           />
         </Grid>
       )}
-      <Grid item className="py0">
+      <Grid className="py0">
         <Grid container>
-          <Grid item className="py0 px0">
-            <EditableInput
-              errorText={error}
-              loading={loading}
-              onEdit={onSubmit}
-              openForEdit={handleOpen}
+          <Grid className="py0 px0">
+            <StyledEditableInput
               cancelEdit={handleClose}
-              onInputChange={(t: string) => setInputText(t)}
-              text={text}
+              errorText={error}
               inputText={inputText}
               isEditing={isEditing}
+              loading={loading}
+              onEdit={onSubmit}
+              onInputChange={(t: string) => setInputText(t)}
+              openForEdit={handleOpen}
+              text={text}
               typeVariant="table-cell"
-              className={classes.smallInput}
             />
           </Grid>
           {subText && !isEditing && (
-            <Grid item xs={12} className="py0 px0">
+            <Grid className="py0 px0" xs={12}>
               <Typography variant="body1">{subText}</Typography>
             </Grid>
           )}
@@ -104,4 +96,10 @@ export const EditableEntityLabel: React.FC<Props> = (props) => {
   );
 };
 
-export default EditableEntityLabel;
+const StyledEditableInput = styled(EditableInput)(() => ({
+  fontSize: 15,
+  paddingRight: 20,
+  position: 'relative',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-all',
+}));

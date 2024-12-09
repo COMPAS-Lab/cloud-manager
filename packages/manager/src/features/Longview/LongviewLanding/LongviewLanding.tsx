@@ -2,39 +2,42 @@ import {
   getActiveLongviewPlan,
   getLongviewSubscriptions,
 } from '@linode/api-v4/lib/longview';
-import {
+import { styled } from '@mui/material/styles';
+import { createLazyRoute } from '@tanstack/react-router';
+import { useSnackbar } from 'notistack';
+import { isEmpty } from 'ramda';
+import * as React from 'react';
+import { matchPath } from 'react-router-dom';
+
+import { LandingHeader } from 'src/components/LandingHeader';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
+import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
+import { TabLinkList } from 'src/components/Tabs/TabLinkList';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import { Tabs } from 'src/components/Tabs/Tabs';
+import withLongviewClients from 'src/containers/longview.container';
+import { useAPIRequest } from 'src/hooks/useAPIRequest';
+import { useAccountSettings } from 'src/queries/account/settings';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+
+import { SubscriptionDialog } from './SubscriptionDialog';
+
+import type {
   ActiveLongviewPlan,
   LongviewSubscription,
 } from '@linode/api-v4/lib/longview/types';
-import { withSnackbar, WithSnackbarProps } from 'notistack';
-import { isEmpty } from 'ramda';
-import * as React from 'react';
-import { matchPath, RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import Tabs from 'src/components/core/ReachTabs';
-import LandingHeader from 'src/components/LandingHeader';
-import SafeTabPanel from 'src/components/SafeTabPanel';
-import SuspenseLoader from 'src/components/SuspenseLoader';
-import TabLinkList from 'src/components/TabLinkList';
-import withLongviewClients, {
-  Props as LongviewProps,
-} from 'src/containers/longview.container';
-import { useAPIRequest } from 'src/hooks/useAPIRequest';
-import { isManaged } from 'src/queries/accountSettings';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import SubscriptionDialog from './SubscriptionDialog';
+import type { RouteComponentProps } from 'react-router-dom';
+import type { Props as LongviewProps } from 'src/containers/longview.container';
 
 const LongviewClients = React.lazy(() => import('./LongviewClients'));
 const LongviewPlans = React.lazy(() => import('./LongviewPlans'));
 
-type CombinedProps = LongviewProps &
-  RouteComponentProps<{}> &
-  WithSnackbarProps;
+interface LongviewLandingProps extends LongviewProps, RouteComponentProps<{}> {}
 
-export const LongviewLanding: React.FunctionComponent<CombinedProps> = (
-  props
-) => {
+export const LongviewLanding = (props: LongviewLandingProps) => {
+  const { enqueueSnackbar } = useSnackbar();
   const activeSubscriptionRequestHook = useAPIRequest<ActiveLongviewPlan>(
     () => getActiveLongviewPlan().then((response) => response),
     {}
@@ -45,6 +48,10 @@ export const LongviewLanding: React.FunctionComponent<CombinedProps> = (
   );
 
   const { createLongviewClient } = props;
+
+  const { data: accountSettings } = useAccountSettings();
+
+  const isManaged = Boolean(accountSettings?.managed);
 
   const [newClientLoading, setNewClientLoading] = React.useState<boolean>(
     false
@@ -57,14 +64,18 @@ export const LongviewLanding: React.FunctionComponent<CombinedProps> = (
   const tabs = [
     /* NB: These must correspond to the routes inside the Switch */
     {
-      title: 'Clients',
       routeName: `${props.match.url}/clients`,
+      title: 'Clients',
     },
     {
-      title: 'Plan Details',
       routeName: `${props.match.url}/plan-details`,
+      title: 'Plan Details',
     },
   ];
+
+  const isLongviewCreationRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'add_longview',
+  });
 
   const matches = (p: string) => {
     return Boolean(matchPath(p, { path: props.location.pathname }));
@@ -89,7 +100,7 @@ export const LongviewLanding: React.FunctionComponent<CombinedProps> = (
           setSubscriptionDialogOpen(true);
         } else {
           // Any network or other errors handled with a toast
-          props.enqueueSnackbar(
+          enqueueSnackbar(
             getAPIErrorOrDefault(
               errorResponse,
               'Error creating Longview client.'
@@ -106,7 +117,7 @@ export const LongviewLanding: React.FunctionComponent<CombinedProps> = (
       history: { push },
     } = props;
 
-    if (isManaged()) {
+    if (isManaged) {
       push({
         pathname: '/support/tickets',
         state: {
@@ -122,21 +133,28 @@ export const LongviewLanding: React.FunctionComponent<CombinedProps> = (
   return (
     <>
       <LandingHeader
-        title="Longview"
-        entity="Client"
         createButtonText="Add Client"
-        docsLink="https://www.linode.com/docs/platform/longview/longview/"
+        docsLink="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-longview"
+        entity="Client"
         loading={newClientLoading}
-        onAddNew={handleAddClient}
+        onButtonClick={handleAddClient}
         removeCrumbX={1}
+        title="Longview"
+        disabledCreateButton={isLongviewCreationRestricted}
+        buttonDataAttrs={{
+          tooltipText: getRestrictedResourceText({
+            action: 'create',
+            isSingular: false,
+            resourceType: 'Longview Clients',
+          }),
+        }}
       />
-      <Tabs
+      <StyledTabs
         index={Math.max(
           tabs.findIndex((tab) => matches(tab.routeName)),
           0
         )}
         onChange={navToURL}
-        style={{ marginTop: 0 }}
       >
         <TabLinkList tabs={tabs} />
 
@@ -158,24 +176,31 @@ export const LongviewLanding: React.FunctionComponent<CombinedProps> = (
             </SafeTabPanel>
           </TabPanels>
         </React.Suspense>
-      </Tabs>
+      </StyledTabs>
       <SubscriptionDialog
-        isOpen={subscriptionDialogOpen}
-        isManaged={isManaged()}
-        onClose={() => setSubscriptionDialogOpen(false)}
-        onSubmit={handleSubmit}
         clientLimit={
           isEmpty(activeSubscriptionRequestHook.data)
             ? 10
             : (activeSubscriptionRequestHook.data as LongviewSubscription)
                 .clients_included
         }
+        isManaged={isManaged}
+        isOpen={subscriptionDialogOpen}
+        onClose={() => setSubscriptionDialogOpen(false)}
+        onSubmit={handleSubmit}
       />
     </>
   );
 };
 
-export default compose<CombinedProps, {} & RouteComponentProps>(
-  withLongviewClients(),
-  withSnackbar
-)(LongviewLanding);
+const StyledTabs = styled(Tabs, {
+  label: 'StyledTabs',
+})(() => ({
+  marginTop: 0,
+}));
+
+export const longviewLandingLazyRoute = createLazyRoute('/longview')({
+  component: LongviewLanding,
+});
+
+export default withLongviewClients()(LongviewLanding);

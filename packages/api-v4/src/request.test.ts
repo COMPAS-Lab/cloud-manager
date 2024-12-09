@@ -1,6 +1,5 @@
 import adapter from 'axios-mock-adapter';
 import { object, string } from 'yup';
-
 import request, {
   baseRequest,
   isEmpty,
@@ -9,7 +8,7 @@ import request, {
   setMethod,
   setParams,
   setURL,
-  setXFilter
+  setXFilter,
 } from './request';
 
 const TEST_URL = 'https://www.example.com';
@@ -19,7 +18,7 @@ mock.onAny().reply(200, { data: {} });
 
 beforeEach(() => {
   mock.resetHistory();
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('Linode JS SDK', () => {
@@ -66,7 +65,7 @@ describe('Linode JS SDK', () => {
 
       it('should handle nested filters', async () => {
         const filter = {
-          '+or': [{ vcpus: 1 }, { class: 'standard' }]
+          '+or': [{ vcpus: 1 }, { class: 'standard' }],
         };
         await request(setXFilter(filter));
         expect(mock.history.get[0].headers).toHaveProperty(
@@ -122,10 +121,10 @@ describe('Linode JS SDK', () => {
 
   describe('Yup client validation', () => {
     const testSchema = object({
-      name: string().required('This is required!')
+      name: string().required('This is required!'),
     });
 
-    const spy = jest.spyOn(testSchema, 'validateSync');
+    const spy = vi.spyOn(testSchema, 'validateSync');
 
     it('should validate the schema before submitting a request', async () => {
       await request(setData({ name: 'valid-name' }, testSchema));
@@ -134,12 +133,12 @@ describe('Linode JS SDK', () => {
     });
 
     it('should return schema errors as an array of Linode API errors without submitting a request', async () => {
-      await request(setData({} as any, testSchema)).catch(error => {
+      await request(setData({} as any, testSchema)).catch((error) => {
         expect(error).toEqual([
           {
             field: 'name',
-            reason: 'This is required!'
-          }
+            reason: 'This is required!',
+          },
         ]);
 
         expect(spy).toHaveBeenCalledTimes(1);

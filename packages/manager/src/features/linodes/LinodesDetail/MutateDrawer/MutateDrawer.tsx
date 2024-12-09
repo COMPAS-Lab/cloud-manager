@@ -1,93 +1,93 @@
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ListItem from 'src/components/core/ListItem';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
-import Notice from 'src/components/Notice';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Drawer } from 'src/components/Drawer';
+import { Link } from 'src/components/Link';
+import { ListItem } from 'src/components/ListItem';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
 
 interface MutateInfo {
-  vcpus: number | null;
-  memory: number | null;
-  disk: number | null;
-  transfer: number | null;
-  network_out: number | null;
+  disk: null | number;
+  memory: null | number;
+  network_out: null | number;
+  transfer: null | number;
+  vcpus: null | number;
 }
 
 interface Spec {
-  label: string;
-  newAmount: number | null;
   currentAmount: number;
+  label: string;
+  newAmount: null | number;
+  unit: string;
 }
 
 interface ExtendedUpgradeInfo {
-  vcpus: Spec;
-  memory: Spec;
   disk: Spec;
-  transfer: Spec;
+  memory: Spec;
   network_out: Spec;
+  transfer: Spec;
+  vcpus: Spec;
 }
 
 interface Props {
-  open: boolean;
+  currentTypeInfo: MutateInfo;
+  error: string | undefined;
+  estimatedTimeToUpgradeInMins: number;
   handleClose: () => void;
   initMutation: () => void;
-  mutateInfo: MutateInfo;
-  currentTypeInfo: MutateInfo;
+  isMovingFromSharedToDedicated: boolean;
   linodeId: number;
   loading: boolean;
-  error: string;
-  estimatedTimeToUpgradeInMins: number;
-  isMovingFromSharedToDedicated: boolean;
+  mutateInfo: MutateInfo;
+  open: boolean;
 }
 
 interface State {
   extendedUpgradeInfo: ExtendedUpgradeInfo;
 }
 
-type CombinedProps = Props;
-
-class MutateDrawer extends React.Component<CombinedProps, State> {
-  constructor(props: CombinedProps) {
+export class MutateDrawer extends React.Component<Props, State> {
+  constructor(props: Props) {
     super(props);
 
     this.state = {
       extendedUpgradeInfo: {
-        vcpus: {
-          label: 'vCPUs',
-          newAmount: props.mutateInfo.vcpus,
-          currentAmount: props.currentTypeInfo.vcpus,
-          unit: '',
-        },
-        memory: {
-          label: 'RAM',
-          newAmount: props.mutateInfo.memory,
-          currentAmount: props.currentTypeInfo.memory,
-          unit: 'MB',
-        },
         disk: {
+          currentAmount:
+            props.currentTypeInfo.disk !== null
+              ? props.currentTypeInfo.disk / 1024
+              : props.currentTypeInfo.disk,
           label: 'Storage',
           newAmount:
             props.mutateInfo.disk !== null
               ? props.mutateInfo.disk / 1024
               : props.mutateInfo.disk,
-          currentAmount:
-            props.currentTypeInfo.disk !== null
-              ? props.currentTypeInfo.disk / 1024
-              : props.currentTypeInfo.disk,
           unit: 'GB',
         },
-        transfer: {
-          label: 'Transfer',
-          newAmount: props.mutateInfo.transfer,
-          currentAmount: props.currentTypeInfo.transfer,
-          unit: 'GB',
+        memory: {
+          currentAmount: props.currentTypeInfo.memory,
+          label: 'RAM',
+          newAmount: props.mutateInfo.memory,
+          unit: 'MB',
         },
         network_out: {
+          currentAmount: props.currentTypeInfo.network_out,
           label: 'Outbound Mbits',
           newAmount: props.mutateInfo.network_out,
-          currentAmount: props.currentTypeInfo.network_out,
           unit: 'Mbits',
+        },
+        transfer: {
+          currentAmount: props.currentTypeInfo.transfer,
+          label: 'Transfer',
+          newAmount: props.mutateInfo.transfer,
+          unit: 'GB',
+        },
+        vcpus: {
+          currentAmount: props.currentTypeInfo.vcpus,
+          label: 'vCPUs',
+          newAmount: props.mutateInfo.vcpus,
+          unit: '',
         },
       },
     } as State;
@@ -95,18 +95,18 @@ class MutateDrawer extends React.Component<CombinedProps, State> {
 
   render() {
     const {
-      open,
-      handleClose,
-      loading,
       error,
       estimatedTimeToUpgradeInMins,
+      handleClose,
+      loading,
+      open,
     } = this.props;
 
     const { extendedUpgradeInfo } = this.state;
 
     return (
-      <Drawer open={open} onClose={handleClose} title="Free Upgrade Available">
-        {error && <Notice error text={error} />}
+      <Drawer onClose={handleClose} open={open} title="Free Upgrade Available">
+        {error && <Notice text={error} variant="error" />}
         <Typography>
           This Linode has pending upgrades. The resources that are affected
           include:
@@ -115,31 +115,33 @@ class MutateDrawer extends React.Component<CombinedProps, State> {
           <HighmemG6ToG7 />
         ) : (
           <ul className="nonMUI-list">
-            {Object.keys(extendedUpgradeInfo).map((newSpec) => {
-              const {
-                label,
-                currentAmount,
-                newAmount,
-                unit,
-              } = extendedUpgradeInfo[newSpec];
+            {Object.keys(extendedUpgradeInfo).map(
+              (newSpec: keyof typeof extendedUpgradeInfo) => {
+                const {
+                  currentAmount,
+                  label,
+                  newAmount,
+                  unit,
+                } = extendedUpgradeInfo[newSpec];
 
-              if (newAmount === null) {
-                return null;
+                if (newAmount === null) {
+                  return null;
+                }
+                return (
+                  <ListItem key={label}>
+                    <Typography>
+                      {label} goes from {currentAmount} {unit} to{' '}
+                      <strong>
+                        {newAmount} {unit}
+                      </strong>
+                    </Typography>
+                  </ListItem>
+                );
               }
-              return (
-                <ListItem key={label}>
-                  <Typography>
-                    {label} goes from {currentAmount} {unit} to{' '}
-                    <strong>
-                      {newAmount} {unit}
-                    </strong>
-                  </Typography>
-                </ListItem>
-              );
-            })}
+            )}
           </ul>
         )}
-        <Typography variant="h2" style={{ marginTop: 32, marginBottom: 16 }}>
+        <Typography style={{ marginBottom: 16, marginTop: 32 }} variant="h2">
           How it Works
         </Typography>
         <Typography>
@@ -155,7 +157,7 @@ class MutateDrawer extends React.Component<CombinedProps, State> {
             running).
           </ListItem>
         </ol>
-        <Typography variant="body1" style={{ marginTop: 16 }}>
+        <Typography style={{ marginTop: 16 }} variant="body1">
           After the migration completes, you can take advantage of the new
           resources by resizing your disk images. We estimate this upgrade
           process will take{' '}
@@ -167,37 +169,29 @@ class MutateDrawer extends React.Component<CombinedProps, State> {
           </strong>
           , but that may vary based on host and network load.
         </Typography>
-        <ActionsPanel style={{ marginTop: 32 }}>
-          <Button
-            loading={loading}
-            onClick={this.props.initMutation}
-            buttonType="primary"
-            compact
-          >
-            Enter the Upgrade Queue
-          </Button>
-        </ActionsPanel>
+        <ActionsPanel
+          primaryButtonProps={{
+            label: 'Enter the Upgrade Queue',
+            loading,
+            onClick: this.props.initMutation,
+          }}
+          style={{ marginTop: 32 }}
+        />
+
         {/*
          * Show when the relevant docs exist
          */}
         <Typography style={{ display: 'none' }}>
           {`Need help? Refer to the `}
-          <a
-            href="google.com"
-            target="_blank"
-            aria-describedby="external-site"
-            rel="noopener noreferrer"
-          >
+          <Link external to="google.com">
             supporting documentation
-          </a>
+          </Link>
           .
         </Typography>
       </Drawer>
     );
   }
 }
-
-export default MutateDrawer;
 
 const HighmemG6ToG7: React.FC<{}> = () => {
   return (

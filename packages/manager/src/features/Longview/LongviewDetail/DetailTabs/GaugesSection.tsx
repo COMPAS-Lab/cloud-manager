@@ -1,79 +1,77 @@
 import { APIError } from '@linode/api-v4/lib/types';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { compose } from 'recompose';
 
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-
-import CPUGauge from '../../LongviewLanding/Gauges/CPU';
-import LoadGauge from '../../LongviewLanding/Gauges/Load';
-import NetworkGauge from '../../LongviewLanding/Gauges/Network';
-import RAMGauge from '../../LongviewLanding/Gauges/RAM';
-import StorageGauge from '../../LongviewLanding/Gauges/Storage';
-import SwapGauge from '../../LongviewLanding/Gauges/Swap';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  gaugeContainer: {
-    marginBottom: theme.spacing(5) + 8,
-  },
-  gaugesOuter: {
-    [theme.breakpoints.down('md')]: {
-      marginBottom: theme.spacing(2),
-    },
-    [theme.breakpoints.up('lg')]: {
-      maxWidth: 450,
-    },
-  },
-}));
+import { CPUGauge } from '../../LongviewLanding/Gauges/CPU';
+import { LoadGauge } from '../../LongviewLanding/Gauges/Load';
+import { NetworkGauge } from '../../LongviewLanding/Gauges/Network';
+import { RAMGauge } from '../../LongviewLanding/Gauges/RAM';
+import { StorageGauge } from '../../LongviewLanding/Gauges/Storage';
+import { SwapGauge } from '../../LongviewLanding/Gauges/Swap';
 
 interface Props {
   clientID: number;
   lastUpdatedError?: APIError[];
 }
 
-const GaugesSection: React.FC<Props> = (props) => {
-  const classes = useStyles();
-
+export const GaugesSection = React.memo((props: Props) => {
   return (
-    <Grid container item xs={12} md={5} className={classes.gaugesOuter}>
-      <Grid item xs={4} className={classes.gaugeContainer}>
+    <StyledOuterGrid container md={5} spacing={2} xs={12}>
+      <StyledGaugeContainerGrid xs={4}>
         <CPUGauge
           clientID={props.clientID}
           lastUpdatedError={props.lastUpdatedError}
         />
-      </Grid>
-      <Grid item xs={4} className={classes.gaugeContainer}>
+      </StyledGaugeContainerGrid>
+      <StyledGaugeContainerGrid xs={4}>
         <RAMGauge
           clientID={props.clientID}
           lastUpdatedError={props.lastUpdatedError}
         />
-      </Grid>
-      <Grid item xs={4} className={classes.gaugeContainer}>
+      </StyledGaugeContainerGrid>
+      <StyledGaugeContainerGrid xs={4}>
         <SwapGauge
           clientID={props.clientID}
           lastUpdatedError={props.lastUpdatedError}
         />
-      </Grid>
-      <Grid item xs={4} className={classes.gaugeContainer}>
+      </StyledGaugeContainerGrid>
+      <StyledGaugeContainerGrid xs={4}>
         <LoadGauge
           clientID={props.clientID}
           lastUpdatedError={props.lastUpdatedError}
         />
-      </Grid>
-      <Grid item xs={4} className={classes.gaugeContainer}>
+      </StyledGaugeContainerGrid>
+      <StyledGaugeContainerGrid xs={4}>
         <NetworkGauge
           clientID={props.clientID}
           lastUpdatedError={props.lastUpdatedError}
         />
-      </Grid>
-      <Grid item xs={4} className={classes.gaugeContainer}>
+      </StyledGaugeContainerGrid>
+      <StyledGaugeContainerGrid xs={4}>
         <StorageGauge
           clientID={props.clientID}
           lastUpdatedError={props.lastUpdatedError}
         />
-      </Grid>
-    </Grid>
+      </StyledGaugeContainerGrid>
+    </StyledOuterGrid>
   );
-};
+});
 
-export default compose<Props, Props>(React.memo)(GaugesSection);
+const StyledGaugeContainerGrid = styled(Grid, {
+  label: 'StyledGaugeContainerGrid',
+})(({ theme }) => ({
+  marginBottom: theme.spacing(6),
+  boxSizing: 'border-box',
+}));
+
+const StyledOuterGrid = styled(Grid, { label: 'StyledOuterGrid' })(
+  ({ theme }) => ({
+    [theme.breakpoints.down('lg')]: {
+      marginBottom: theme.spacing(2),
+    },
+    [theme.breakpoints.up('lg')]: {
+      maxWidth: 450,
+    },
+  })
+);

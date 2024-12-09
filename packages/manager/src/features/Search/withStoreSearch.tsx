@@ -1,30 +1,50 @@
-import { Domain } from '@linode/api-v4/lib/domains';
-import { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
 import * as React from 'react';
-import { connect } from 'react-redux';
 import { compose, withStateHandlers } from 'recompose';
-import { ApplicationState } from 'src/store';
-import entitiesErrors, {
-  ErrorObject,
-} from 'src/store/selectors/entitiesErrors';
-import entitiesLoading from 'src/store/selectors/entitiesLoading';
-import getSearchEntities, {
-  bucketToSearchableItem,
-  domainToSearchableItem,
-} from 'src/store/selectors/getSearchEntities';
-import { refinedSearch } from './refinedSearch';
+
 import {
-  SearchableItem,
+  bucketToSearchableItem,
+  databaseToSearchableItem,
+  domainToSearchableItem,
+  firewallToSearchableItem,
+  imageToSearchableItem,
+  kubernetesClusterToSearchableItem,
+  nodeBalToSearchableItem,
+  volumeToSearchableItem,
+} from 'src/store/selectors/getSearchEntities';
+
+import { refinedSearch } from './refinedSearch';
+import { emptyResults, separateResultsByEntity } from './utils';
+
+import type {
   SearchResults,
   SearchResultsByEntity,
+  SearchableItem,
 } from './search.interfaces';
-import { emptyResults, separateResultsByEntity } from './utils';
+import type {
+  DatabaseInstance,
+  Firewall,
+  Image,
+  KubernetesCluster,
+  NodeBalancer,
+  Region,
+  Volume,
+} from '@linode/api-v4';
+import type { Domain } from '@linode/api-v4/lib/domains';
+import type { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
 
 interface HandlerProps {
   search: (
     query: string,
     buckets: ObjectStorageBucket[],
-    domains: Domain[]
+    domains: Domain[],
+    volumes: Volume[],
+    clusters: KubernetesCluster[],
+    images: Image[],
+    regions: Region[],
+    searchableLinodes: SearchableItem<number | string>[],
+    nodebalancers: NodeBalancer[],
+    firewalls: Firewall[],
+    databases: DatabaseInstance[]
   ) => SearchResults;
 }
 export interface SearchProps extends HandlerProps {
@@ -32,7 +52,6 @@ export interface SearchProps extends HandlerProps {
   entities: SearchableItem[];
   entitiesLoading: boolean;
   searchResultsByEntity: SearchResultsByEntity;
-  errors: ErrorObject;
 }
 
 export const search = (
@@ -40,7 +59,7 @@ export const search = (
   inputValue: string
 ): SearchResults => {
   if (!inputValue || inputValue === '') {
-    return { searchResultsByEntity: emptyResults, combinedResults: [] };
+    return { combinedResults: [], searchResultsByEntity: emptyResults };
   }
 
   const combinedResults = refinedSearch(inputValue, entities);
@@ -58,23 +77,22 @@ export default () => (Component: React.ComponentType<any>) => {
     });
   };
 
-  const connected = connect((state: ApplicationState) => {
-    return {
-      entities: getSearchEntities(state.__resources),
-      entitiesLoading: entitiesLoading(state.__resources),
-      errors: entitiesErrors(state.__resources),
-    };
-  });
-
   return compose<SearchProps, {}>(
-    connected,
     withStateHandlers<any, any, any>(
       { searchResultsByEntity: emptyResults },
       {
-        search: (_, props: SearchProps) => (
+        search: (_) => (
           query: string,
           objectStorageBuckets: ObjectStorageBucket[],
-          domains: Domain[]
+          domains: Domain[],
+          volumes: Volume[],
+          clusters: KubernetesCluster[],
+          images: Image[],
+          regions: Region[],
+          searchableLinodes: SearchableItem<number | string>[],
+          nodebalancers: NodeBalancer[],
+          firewalls: Firewall[],
+          databases: DatabaseInstance[]
         ) => {
           const searchableBuckets = objectStorageBuckets.map((bucket) =>
             bucketToSearchableItem(bucket)
@@ -82,14 +100,42 @@ export default () => (Component: React.ComponentType<any>) => {
           const searchableDomains = domains.map((domain) =>
             domainToSearchableItem(domain)
           );
+          const searchableVolumes = volumes.map((volume) =>
+            volumeToSearchableItem(volume)
+          );
+          const searchableImages = images.map((image) =>
+            imageToSearchableItem(image)
+          );
+          const searchableClusters = clusters.map((cluster) =>
+            kubernetesClusterToSearchableItem(cluster, regions)
+          );
+          const searchableNodebalancers = nodebalancers.map((nodebalancer) =>
+            nodeBalToSearchableItem(nodebalancer)
+          );
+          const searchableFirewalls = firewalls.map((firewall) =>
+            firewallToSearchableItem(firewall)
+          );
+          const searchableDatabases = databases.map((database) =>
+            databaseToSearchableItem(database)
+          );
           const results = search(
-            [...props.entities, ...searchableBuckets, ...searchableDomains],
+            [
+              ...searchableLinodes,
+              ...searchableImages,
+              ...searchableBuckets,
+              ...searchableDomains,
+              ...searchableVolumes,
+              ...searchableClusters,
+              ...searchableNodebalancers,
+              ...searchableFirewalls,
+              ...searchableDatabases,
+            ],
             query
           );
-          const { searchResultsByEntity, combinedResults } = results;
+          const { combinedResults, searchResultsByEntity } = results;
           return {
-            searchResultsByEntity,
             combinedResults,
+            searchResultsByEntity,
           };
         },
       }

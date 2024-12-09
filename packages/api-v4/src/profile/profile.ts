@@ -10,10 +10,11 @@ import Request, {
   setData,
   setMethod,
   setParams,
+  setHeaders,
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage } from '../types';
+import { Filter, Params, ResourcePage } from '../types';
 import {
   Profile,
   ProfileLogin,
@@ -24,6 +25,7 @@ import {
   SendPhoneVerificationCodePayload,
   VerifyVerificationCodePayload,
 } from './types';
+import type { RequestOptions } from '../types';
 
 /**
  * getProfile
@@ -31,8 +33,13 @@ import {
  * Return the current (logged in) user's profile.
  *
  */
-export const getProfile = () =>
-  Request<Profile>(setURL(`${API_ROOT}/profile`), setMethod('GET'));
+export const getProfile = ({ headers }: RequestOptions = {}) => {
+  return Request<Profile>(
+    setURL(`${API_ROOT}/profile`),
+    setMethod('GET'),
+    setHeaders(headers)
+  );
+};
 
 /**
  * updateProfile
@@ -81,7 +88,7 @@ export const getMyGrants = () =>
  *
  * Returns a paginated list of all trusted devices associated with the user's profile.
  */
-export const getTrustedDevices = (params: any, filter: any) =>
+export const getTrustedDevices = (params?: Params, filter?: Filter) =>
   Request<ResourcePage<TrustedDevice>>(
     setURL(`${API_ROOT}/profile/devices`),
     setMethod('GET'),
@@ -95,7 +102,10 @@ export const getTrustedDevices = (params: any, filter: any) =>
  * Deletes a trusted device from a user's profile
  */
 export const deleteTrustedDevice = (id: number) =>
-  Request<{}>(setURL(`${API_ROOT}/profile/devices/${id}`), setMethod('DELETE'));
+  Request<{}>(
+    setURL(`${API_ROOT}/profile/devices/${encodeURIComponent(id)}`),
+    setMethod('DELETE')
+  );
 
 /**
  * getUserPreferences
@@ -123,7 +133,7 @@ export const updateUserPreferences = (payload: UserPreferences) => {
   );
 };
 
-export const getLogins = (params: any, filter: any) => {
+export const getLogins = (params?: Params, filter?: Filter) => {
   return Request<ResourcePage<ProfileLogin>>(
     setURL(`${API_ROOT}/profile/logins`),
     setMethod('GET'),

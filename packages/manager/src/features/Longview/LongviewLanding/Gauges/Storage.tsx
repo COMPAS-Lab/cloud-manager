@@ -1,64 +1,66 @@
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { WithTheme, withTheme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import GaugePercent from 'src/components/GaugePercent';
+
+import { GaugePercent } from 'src/components/GaugePercent/GaugePercent';
+import { Typography } from 'src/components/Typography';
 import withClientStats, {
   Props as LVDataProps,
 } from 'src/containers/longview.stats.container';
 import { readableBytes } from 'src/utilities/unitConversions';
-import { sumStorage } from '../../shared/utilities';
-import { baseGaugeProps, BaseProps as Props } from './common';
 
-type CombinedProps = Props & LVDataProps & WithTheme;
+import { sumStorage } from '../../shared/utilities';
+import { BaseProps as Props, baseGaugeProps } from './common';
+
+interface getUsedStorageProps extends Props, LVDataProps {}
 
 export const getUsedStorage = (data: LVDataProps['longviewClientData']) => {
   const storageInBytes = sumStorage(data.Disk);
   return storageInBytes ? storageInBytes.total - storageInBytes.free : 0;
 };
 
-const StorageGauge: React.FC<CombinedProps> = (props) => {
-  const {
-    longviewClientDataError: error,
-    longviewClientDataLoading: loading,
-    longviewClientData,
-    lastUpdatedError,
-  } = props;
+export const StorageGauge = withClientStats<Props>((props) => props.clientID)(
+  (props: getUsedStorageProps) => {
+    const {
+      lastUpdatedError,
+      longviewClientData,
+      longviewClientDataError: error,
+      longviewClientDataLoading: loading,
+    } = props;
 
-  const storageInBytes = sumStorage(longviewClientData.Disk);
+    const theme = useTheme();
 
-  const usedStorage = storageInBytes
-    ? storageInBytes.total - storageInBytes.free
-    : 0;
+    const storageInBytes = sumStorage(longviewClientData.Disk);
 
-  return (
-    <GaugePercent
-      {...baseGaugeProps}
-      max={storageInBytes ? storageInBytes.total : 0}
-      value={usedStorage}
-      innerText={innerText(
-        readableBytes(usedStorage).formatted,
-        loading,
-        !!error || !!lastUpdatedError
-      )}
-      filledInColor={props.theme.graphs.orange}
-      subTitle={
-        <>
-          <Typography>
-            <strong>Storage</strong>
-          </Typography>
-          {!error && !loading && storageInBytes && (
+    const usedStorage = storageInBytes
+      ? storageInBytes.total - storageInBytes.free
+      : 0;
+
+    return (
+      <GaugePercent
+        {...baseGaugeProps}
+        innerText={innerText(
+          readableBytes(usedStorage).formatted,
+          loading,
+          !!error || !!lastUpdatedError
+        )}
+        subTitle={
+          <>
             <Typography>
-              {readableBytes(storageInBytes.total).formatted}
+              <strong>Storage</strong>
             </Typography>
-          )}
-        </>
-      }
-    />
-  );
-};
-
-export default withClientStats<Props>((props) => props.clientID)(
-  withTheme(StorageGauge)
+            {!error && !loading && storageInBytes && (
+              <Typography>
+                {readableBytes(storageInBytes.total).formatted}
+              </Typography>
+            )}
+          </>
+        }
+        filledInColor={theme.graphs.orange}
+        max={storageInBytes ? storageInBytes.total : 0}
+        value={usedStorage}
+      />
+    );
+  }
 );
 
 export const innerText = (value: string, loading: boolean, error: boolean) => {

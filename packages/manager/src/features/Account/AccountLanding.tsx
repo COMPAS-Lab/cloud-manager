@@ -1,9 +1,7 @@
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
 import { matchPath, useHistory, useLocation } from 'react-router-dom';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import Tabs from 'src/components/core/ReachTabs';
-import Typography from 'src/components/core/Typography';
-import DismissibleBanner from 'src/components/DismissibleBanner';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
 import LandingHeader, {
   LandingHeaderProps,
@@ -23,7 +21,11 @@ const Billing = React.lazy(
 const EntityTransfersLanding = React.lazy(
   () => import('src/features/EntityTransfers/EntityTransfersLanding')
 );
-const Users = React.lazy(() => import('src/features/Users'));
+const Users = React.lazy(() =>
+  import('../Users/UsersLanding').then((module) => ({
+    default: module.UsersLanding,
+  }))
+);
 const GlobalSettings = React.lazy(() => import('./GlobalSettings'));
 const MaintenanceLanding = React.lazy(
   () => import('./Maintenance/MaintenanceLanding')
@@ -34,7 +36,9 @@ const MaintenanceLanding = React.lazy(
   const location = useLocation();
   /* -- Clanode Change -- */
   const { data: profile } = useProfile();
-  const { data: account } = useAccount();
+
+  const [isDrawerOpen, setIsDrawerOpen] = React.useState<boolean>(false);
+  const sessionContext = React.useContext(switchAccountSessionContext);
 
   // const grantData = getGrantData();
   // const accountAccessGrant = grantData?.global?.account_access;
@@ -44,24 +48,23 @@ const MaintenanceLanding = React.lazy(
 
   const tabs = [
     {
-      title: 'Billing Info',
       routeName: '/account/billing',
+      title: 'Billing Info',
     },
     {
-      title: 'Users & Grants',
       routeName: '/account/users',
     } /*
     {
-      title: 'Service Transfers',
       routeName: '/account/service-transfers',
+      title: 'Service Transfers',
     },
     {
-      title: 'Maintenance',
       routeName: '/account/maintenance',
+      title: 'Maintenance',
     },
     {
-      title: 'Settings',
       routeName: '/account/settings',
+      title: 'Settings',
     },
     */ /* -- Clanode Change End -- */,
     /* -- Clanode Change -- */
@@ -72,6 +75,16 @@ const MaintenanceLanding = React.lazy(
     '/account/billing/add-payment-method',
     '/account/billing/edit',
   ];
+
+  const handleAccountSwitch = () => {
+    if (isParentTokenExpired) {
+      return sessionContext.updateState({
+        isOpen: true,
+      });
+    }
+
+    setIsDrawerOpen(true);
+  };
 
   const getDefaultTabIndex = () => {
     const tabChoice = tabs.findIndex((tab) =>
@@ -103,7 +116,6 @@ const MaintenanceLanding = React.lazy(
   /* -- Clanode Change End -- */
 
   const landingHeaderProps: LandingHeaderProps = {
-    title: 'Account',
     breadcrumbProps: {
       pathname: '/account',
     },
@@ -111,29 +123,28 @@ const MaintenanceLanding = React.lazy(
   if (isBillingTabSelected) {
     landingHeaderProps.docsLabel = 'How Linode Billing Works';
     landingHeaderProps.docsLink =
-      'https://www.linode.com/docs/guides/how-linode-billing-works/';
+      'https://techdocs.akamai.com/cloud-computing/docs/understanding-how-billing-works';
     landingHeaderProps.createButtonText = 'Make a Payment';
     if (!isAkamaiAccount) {
-      landingHeaderProps.onAddNew = () =>
+      landingHeaderProps.onButtonClick = () =>
         history.replace('/account/billing/make-payment');
     }
-    landingHeaderProps.disabledCreateButton = readOnlyAccountAccess;
+    landingHeaderProps.extraActions = canSwitchBetweenParentOrProxyAccount ? (
+      <SwitchAccountButton
+        onClick={() => {
+          sendSwitchAccountEvent('Account Landing');
+          handleAccountSwitch();
+        }}
+        data-testid="switch-account-button"
+      />
+    ) : undefined;
   }
   */ /* -- Clanode Change End -- */
 
   /* -- Clanode Change -- */ return (
     <React.Fragment>
       <DocumentTitleSegment segment="Account Settings" />
-      <TaxBanner marginBottom={24} />
-      {isAkamaiAccount ? (
-        <DismissibleBanner
-          preferenceKey="akamai-account-billing"
-          productInformationIndicator
-        >
-          <Typography>{akamaiBillingInvoiceText}</Typography>
-        </DismissibleBanner>
-      ) : null}
-      <LandingHeader {...landingHeaderProps} data-qa-profile-header />
+      <LandingHeader {...landingHeaderProps} />
 
       <Tabs index={getDefaultTabIndex()} onChange={handleTabChange}>
         <TabLinkList tabs={tabs} />
@@ -160,8 +171,17 @@ const MaintenanceLanding = React.lazy(
           </TabPanels>
         </React.Suspense>
       </Tabs>
+      <SwitchAccountDrawer
+        onClose={() => setIsDrawerOpen(false)}
+        open={isDrawerOpen}
+        userType={profile?.user_type}
+      />
     </React.Fragment>
   );
 };
+
+export const accountLandingLazyRoute = createLazyRoute('/account')({
+  component: AccountLanding,
+});
 
 export default AccountLanding;

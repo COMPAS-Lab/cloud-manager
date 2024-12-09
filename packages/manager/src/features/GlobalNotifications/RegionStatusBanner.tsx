@@ -1,19 +1,16 @@
-import { Region } from '@linode/api-v4/lib/regions/types';
 import * as React from 'react';
-import Typography from 'src/components/core/Typography';
-import ExternalLink from 'src/components/ExternalLink';
-import Notice from 'src/components/Notice';
-import { dcDisplayNames } from 'src/constants';
-export interface Props {
-  regions: Region[];
-}
+
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { useRegionsQuery } from 'src/queries/regions/regions';
 
 const getFacilitiesList = (warnings: string[]) => (
   <ul>
     {warnings.map((thisWarning) => (
       <li
-        key={`facility-outage-${thisWarning}`}
         data-testid={`facility-outage-${thisWarning}`}
+        key={`facility-outage-${thisWarning}`}
       >
         {thisWarning}
       </li>
@@ -36,7 +33,7 @@ const renderBanner = (statusWarnings: string[]): JSX.Element => {
   const moreThanOneRegionAffected = statusWarnings.length > 1;
   return (
     <>
-      <Typography variant="h3" style={{ paddingBottom: '5px' }}>
+      <Typography style={{ paddingBottom: '5px' }} variant="h3">
         We are aware of an issue affecting service in {` `}
         {moreThanOneRegionAffected
           ? 'the following facilities:'
@@ -48,36 +45,27 @@ const renderBanner = (statusWarnings: string[]): JSX.Element => {
         {moreThanOneRegionAffected ? 'these facilities' : 'this facility'},
         there is no need to open a support ticket at this time. Please monitor
         our{` `}
-        <ExternalLink
-          link="https://status.linode.com"
-          text="status blog"
-          hideIcon
-        />{' '}
-        for further information. Thank you for your patience and understanding.
+        <Link to="https://status.linode.com">status blog</Link> for further
+        information. Thank you for your patience and understanding.
       </Typography>
     </>
   );
 };
 
-export const RegionStatusBanner: React.FC<Props> = (props) => {
-  const { regions } = props;
+export const RegionStatusBanner = React.memo(() => {
+  const { data: regions } = useRegionsQuery();
 
-  const statusWarnings = regions
-    .filter(
-      (thisRegion) =>
-        thisRegion.status === 'outage' && !!dcDisplayNames[thisRegion.id]
-    )
-    .map((thisRegion) => dcDisplayNames[thisRegion.id]);
+  const labelsOfRegionsWithOutages = regions
+    ?.filter((region) => region.status === 'outage')
+    .map((region) => region.label);
 
-  if (statusWarnings.length === 0) {
+  if (!labelsOfRegionsWithOutages || labelsOfRegionsWithOutages?.length === 0) {
     return null;
   }
 
   return (
-    <Notice warning important data-testid="status-banner">
-      {renderBanner(statusWarnings)}
+    <Notice data-testid="status-banner" important variant="warning">
+      {renderBanner(labelsOfRegionsWithOutages)}
     </Notice>
   );
-};
-
-export default React.memo(RegionStatusBanner);
+});

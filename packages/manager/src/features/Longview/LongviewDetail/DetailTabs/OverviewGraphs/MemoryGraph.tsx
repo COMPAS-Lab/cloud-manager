@@ -1,20 +1,19 @@
-import { pathOr } from 'ramda';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
-import { withTheme, WithTheme } from 'src/components/core/styles';
-import LongviewLineGraph from 'src/components/LongviewLineGraph';
+
+import { LongviewLineGraph } from 'src/components/LongviewLineGraph/LongviewLineGraph';
 import {
   convertBytesToTarget,
   readableBytes,
 } from 'src/utilities/unitConversions';
+
 import { Stat } from '../../../request.types';
 import { convertData, formatMemory } from '../../../shared/formatters';
 import { generateUsedMemory, getMaxUnit } from '../../../shared/utilities';
 import { GraphProps } from './types';
 import { useGraphs } from './useGraphs';
 
-export type CombinedProps = GraphProps & WithTheme;
-
-export const MemoryGraph: React.FC<CombinedProps> = (props) => {
+export const MemoryGraph = (props: GraphProps) => {
   const {
     clientAPIKey,
     end,
@@ -22,11 +21,12 @@ export const MemoryGraph: React.FC<CombinedProps> = (props) => {
     lastUpdated,
     lastUpdatedError,
     start,
-    theme,
     timezone,
   } = props;
 
-  const { data, loading, error, request } = useGraphs(
+  const theme = useTheme();
+
+  const { data, error, loading, request } = useGraphs(
     ['memory'],
     clientAPIKey,
     start,
@@ -39,14 +39,10 @@ export const MemoryGraph: React.FC<CombinedProps> = (props) => {
 
   const _convertData = React.useCallback(convertData, [data, start, end]);
 
-  const buffers = pathOr<Stat[]>([], ['Memory', 'real', 'buffers'], data);
-  const cache = pathOr<Stat[]>([], ['Memory', 'real', 'cache'], data);
-  const used = getUsedMemory(
-    pathOr([], ['Memory', 'real', 'used'], data),
-    cache,
-    buffers
-  );
-  const swap = pathOr<Stat[]>([], ['Memory', 'swap', 'used'], data);
+  const buffers = data.Memory?.real.buffers ?? [];
+  const cache = data.Memory?.real.cache ?? [];
+  const used = getUsedMemory(data.Memory?.real.used ?? [], cache, buffers);
+  const swap = data.Memory?.swap.used ?? [];
 
   // Determine the unit based on the largest value
   const unit = React.useMemo(() => getMaxUnit([buffers, cache, used, swap]), [
@@ -58,41 +54,42 @@ export const MemoryGraph: React.FC<CombinedProps> = (props) => {
 
   return (
     <LongviewLineGraph
-      title="Memory"
-      subtitle={unit}
-      formatData={(value: number) => convertBytesToTarget(unit, value)}
-      formatTooltip={(value: number) => readableBytes(value).formatted}
-      error={error}
-      loading={loading}
-      showToday={isToday}
-      timezone={timezone}
-      nativeLegend
       data={[
         {
-          label: 'Swap',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.memory.swap,
+          borderColor: 'transparent',
           data: _convertData(swap, start, end, formatMemory),
+          label: 'Swap',
         },
         {
-          label: 'Buffers',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.memory.buffers,
+          borderColor: 'transparent',
           data: _convertData(buffers, start, end, formatMemory),
+          label: 'Buffers',
         },
         {
-          label: 'Cache',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.memory.cache,
+          borderColor: 'transparent',
           data: _convertData(cache, start, end, formatMemory),
+          label: 'Cache',
         },
         {
-          label: 'Used',
-          borderColor: 'transparent',
           backgroundColor: theme.graphs.memory.used,
+          borderColor: 'transparent',
           data: _convertData(used, start, end, formatMemory),
+          label: 'Used',
         },
       ]}
+      ariaLabel="Memory Usage Graph"
+      error={error}
+      formatData={(value: number) => convertBytesToTarget(unit, value)}
+      formatTooltip={(value: number) => readableBytes(value).formatted}
+      loading={loading}
+      nativeLegend
+      showToday={isToday}
+      subtitle={unit}
+      timezone={timezone}
+      title="Memory"
     />
   );
 };
@@ -112,9 +109,9 @@ export const getUsedMemory = (used: Stat[], cache: Stat[], buffers: Stat[]) => {
   const totalLength = used.length;
   let i = 0;
   for (i; i < totalLength; i++) {
-    const _used = pathOr({}, [i], used);
-    const _cache = pathOr(0, [i, 'y'], cache);
-    const _buffers = pathOr(0, [i, 'y'], buffers);
+    const _used = used[i] ?? {};
+    const _cache = cache[i].y ?? 0;
+    const _buffers = buffers[i].y ?? 0;
     const calculatedUsed = generateUsedMemory(_used.y, _buffers, _cache);
     result.push({
       // Time will be converted to ms in convertData
@@ -124,5 +121,3 @@ export const getUsedMemory = (used: Stat[], cache: Stat[], buffers: Stat[]) => {
   }
   return result;
 };
-
-export default withTheme(MemoryGraph);

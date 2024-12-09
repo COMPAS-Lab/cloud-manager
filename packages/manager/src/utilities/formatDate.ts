@@ -1,17 +1,19 @@
 import { DateTime, Duration } from 'luxon';
-import { reportException } from 'src/exceptionReporting';
-import { DATETIME_DISPLAY_FORMAT, ISO_DATE_FORMAT } from 'src/constants';
-import { parseAPIDate } from 'src/utilities/date';
-import getUserTimezone from 'src/utilities/getUserTimezone';
 
-export type TimeInterval = 'day' | 'week' | 'month' | 'year' | 'never';
+import { DATETIME_DISPLAY_FORMAT, ISO_DATE_FORMAT } from 'src/constants';
+import { reportException } from 'src/exceptionReporting';
+import { parseAPIDate } from 'src/utilities/date';
+
+import { getUserTimezone } from './getUserTimezone';
+
+export type TimeInterval = 'day' | 'month' | 'never' | 'week' | 'year';
 
 const durationMap = {
   day: () => Duration.fromObject({ days: 1 }),
-  week: () => Duration.fromObject({ weeks: 1 }),
   month: () => Duration.fromObject({ months: 1 }),
-  year: () => Duration.fromObject({ years: 1 }),
   never: () => Duration.fromObject({ years: 1000 }),
+  week: () => Duration.fromObject({ weeks: 1 }),
+  year: () => Duration.fromObject({ years: 1 }),
 };
 
 export const shouldHumanize = (
@@ -34,9 +36,10 @@ export const shouldHumanize = (
 };
 
 interface FormatDateOptions {
-  humanizeCutoff?: TimeInterval;
-  format?: string;
   displayTime?: boolean;
+  format?: string;
+  humanizeCutoff?: TimeInterval;
+  timezone?: string;
 }
 /**
  *
@@ -44,11 +47,10 @@ interface FormatDateOptions {
  * @param options
  */
 export const formatDate = (
-  date: string | number,
+  date: number | string,
   options: FormatDateOptions = {}
 ): string => {
-  // Get the timezone from React Query and use it as the timezone
-  const userTimezone = getUserTimezone();
+  const userTimezone = getUserTimezone(options.timezone);
   const time = parseAPIDate(date).setZone(userTimezone);
   // Default to including time in the output. Hide the time if options.displayTime === false
   const defaultFormat =
@@ -79,5 +81,3 @@ export const formatDateISO = (date: string) => {
 
   return time.toISO();
 };
-
-export default formatDate;

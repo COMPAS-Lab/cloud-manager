@@ -1,54 +1,58 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import { compose as recompose } from 'recompose';
-import Hidden from 'src/components/core/Hidden';
-import { withStyles, WithStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import RenderGuard, { RenderGuardProps } from 'src/components/RenderGuard';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import StackScriptsActionMenu from 'src/features/StackScripts/StackScriptPanel/StackScriptActionMenu';
+
+import { Hidden } from 'src/components/Hidden';
+import { TableCell } from 'src/components/TableCell';
+import { Typography } from 'src/components/Typography';
+import { StackScriptActionMenu } from 'src/features/StackScripts/StackScriptPanel/StackScriptActionMenu';
 import { StackScriptCategory } from 'src/features/StackScripts/stackScriptUtils';
-import { ClassNames, styles } from '../StackScriptRowHelpers';
+
+import {
+  StyledImagesTableCell,
+  StyledLabelSpan,
+  StyledLink,
+  StyledRowTableCell,
+  StyledTableRow,
+  StyledTitleTableCell,
+  StyledTitleTypography,
+  StyledTypography,
+  StyledUsernameSpan,
+} from '../CommonStackScript.styles';
 
 export interface Props {
-  label: string;
+  canAddLinodes: boolean;
+  canModify: boolean;
+  // change until we're actually using it.
+  category: StackScriptCategory | string;
+  deploymentsTotal: number;
   description: string;
   images: string[];
-  deploymentsTotal: number;
-  updated: string;
+  isPublic: boolean;
+  label: string;
   stackScriptID: number;
   stackScriptUsername: string;
   triggerDelete: (id: number, label: string) => void;
   triggerMakePublic: (id: number, label: string) => void;
-  canModify: boolean;
-  canAddLinodes: boolean;
-  isPublic: boolean;
   // @todo: when we implement StackScripts pagination, we should remove "| string" in the type below.
   // Leaving this in as an escape hatch now, since there's a bunch of code in
   // /LandingPanel that uses different values for categories that we shouldn't
-  // change until we're actually using it.
-  category: StackScriptCategory | string;
+  updated: string;
 }
 
-export type CombinedProps = Props & WithStyles<ClassNames> & RenderGuardProps;
-
-export const StackScriptRow: React.FC<CombinedProps> = (props) => {
+export const StackScriptRow = (props: Props) => {
   const {
-    classes,
-    label,
+    canAddLinodes,
+    canModify,
+    category,
+    deploymentsTotal,
     description,
     images,
-    deploymentsTotal,
-    updated,
+    isPublic,
+    label,
     stackScriptID,
     stackScriptUsername,
     triggerDelete,
     triggerMakePublic,
-    canModify,
-    isPublic,
-    category,
-    canAddLinodes,
+    updated,
   } = props;
 
   const communityStackScript = category === 'community';
@@ -56,74 +60,61 @@ export const StackScriptRow: React.FC<CombinedProps> = (props) => {
   const renderLabel = () => {
     return (
       <>
-        <Link className={classes.link} to={`/stackscripts/${stackScriptID}`}>
-          <Typography variant="h3" className={classes.libTitle}>
+        <StyledLink to={`/stackscripts/${stackScriptID}`}>
+          <StyledTitleTypography variant="h3">
             {stackScriptUsername && (
-              <span
-                className={`${classes.libRadioLabel} ${classes.stackScriptUsername}`}
-              >
+              <StyledUsernameSpan>
                 {stackScriptUsername} /&nbsp;
-              </span>
+              </StyledUsernameSpan>
             )}
-            <span className={classes.libRadioLabel}>{label}</span>
-          </Typography>
-        </Link>
+            <StyledLabelSpan>{label}</StyledLabelSpan>
+          </StyledTitleTypography>
+        </StyledLink>
         {description && (
-          <Typography variant="body1" className={classes.libDescription}>
-            {description}
-          </Typography>
+          <StyledTypography variant="body1">{description}</StyledTypography>
         )}
       </>
     );
   };
 
   return (
-    <TableRow
-      data-qa-table-row={label}
-      ariaLabel={label}
-      className={classes.row}
-    >
-      <TableCell className={classes.libTitle} data-qa-stackscript-title>
+    <StyledTableRow data-qa-table-row={label}>
+      <StyledTitleTableCell data-qa-stackscript-title>
         {renderLabel()}
-      </TableCell>
+      </StyledTitleTableCell>
       <TableCell>
         <Typography data-qa-stackscript-deploys>{deploymentsTotal}</Typography>
       </TableCell>
-      <Hidden xsDown>
+      <Hidden smDown>
         <TableCell>
           <Typography data-qa-stackscript-revision>{updated}</Typography>
         </TableCell>
       </Hidden>
-      <Hidden mdDown>
-        <TableCell data-qa-stackscript-images className={classes.images}>
+      <Hidden lgDown>
+        <StyledImagesTableCell data-qa-stackscript-images>
           {images.includes('any/all') ? 'Any/All' : images.join(',  ')}
-        </TableCell>
+        </StyledImagesTableCell>
       </Hidden>
       {communityStackScript ? null : ( // We hide the "Status" column in the "Community StackScripts" tab of the StackScripts landing page since all of those are public.
-        <Hidden mdDown>
+        <Hidden lgDown>
           <TableCell data-qa-stackscript-status>
             {isPublic ? 'Public' : 'Private'}
           </TableCell>
         </Hidden>
       )}
-      <TableCell actionCell className={classes.row}>
-        <StackScriptsActionMenu
+      <StyledRowTableCell actionCell>
+        <StackScriptActionMenu
+          canAddLinodes={canAddLinodes}
+          canModify={canModify}
+          category={category}
+          isPublic={isPublic}
           stackScriptID={stackScriptID}
-          stackScriptUsername={stackScriptUsername}
           stackScriptLabel={label}
+          stackScriptUsername={stackScriptUsername}
           triggerDelete={triggerDelete}
           triggerMakePublic={triggerMakePublic}
-          canModify={canModify}
-          canAddLinodes={canAddLinodes}
-          isPublic={isPublic}
-          category={category}
         />
-      </TableCell>
-    </TableRow>
+      </StyledRowTableCell>
+    </StyledTableRow>
   );
 };
-
-export default recompose<CombinedProps, Props & RenderGuardProps>(
-  RenderGuard,
-  withStyles(styles)
-)(StackScriptRow);

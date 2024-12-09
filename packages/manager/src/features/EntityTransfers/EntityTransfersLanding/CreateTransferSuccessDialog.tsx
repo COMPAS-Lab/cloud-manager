@@ -1,21 +1,28 @@
-import { EntityTransfer } from '@linode/api-v4/lib/entity-transfers/types';
+import { Tooltip } from '@linode/ui';
 import copy from 'copy-to-clipboard';
 import { DateTime } from 'luxon';
 import { update } from 'ramda';
 import * as React from 'react';
-import Button from 'src/components/Button';
-import CopyableTextField from 'src/components/CopyableTextField';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import ToolTip from 'src/components/core/Tooltip';
-import Typography from 'src/components/core/Typography';
-import Dialog from 'src/components/Dialog';
-import { parseAPIDate } from 'src/utilities/date';
+import { debounce } from 'throttle-debounce';
+
+import { Button } from 'src/components/Button/Button';
+import { Typography } from 'src/components/Typography';
 import {
   sendEntityTransferCopyDraftEmailEvent,
   sendEntityTransferCopyTokenEvent,
-} from 'src/utilities/ga';
+} from 'src/utilities/analytics/customEventAnalytics';
+import { parseAPIDate } from 'src/utilities/date';
 import { pluralize } from 'src/utilities/pluralize';
-import { debounce } from 'throttle-debounce';
+
+import {
+  StyledCopyDiv,
+  StyledCopyableTextField,
+  StyledDialog,
+  StyledInputDiv,
+  StyledTypography,
+} from './CreateTransferSuccessDialog.styles';
+
+import type { EntityTransfer } from '@linode/api-v4/lib/entity-transfers/types';
 
 const debouncedSendEntityTransferCopyTokenEvent = debounce(
   10 * 1000,
@@ -29,39 +36,15 @@ const debouncedSendEntityTransferDraftEmailEvent = debounce(
   sendEntityTransferCopyDraftEmailEvent
 );
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    paddingBottom: theme.spacing(),
-  },
-  tokenInput: {
-    maxWidth: '100%',
-  },
-  copyButton: {
-    marginTop: theme.spacing(2),
-    maxWidth: 220,
-    alignSelf: 'flex-end',
-  },
-  text: {
-    marginBottom: theme.spacing(),
-  },
-  inputSection: {
-    display: 'flex',
-    flexFlow: 'column nowrap',
-    paddingBottom: theme.spacing(1),
-  },
-}));
-
 interface Props {
   isOpen: boolean;
-  transfer?: EntityTransfer;
   onClose: () => void;
+  transfer?: EntityTransfer;
 }
 
-export const CreateTransferSuccessDialog: React.FC<Props> = (props) => {
+export const CreateTransferSuccessDialog = React.memo((props: Props) => {
   const { isOpen, onClose, transfer } = props;
   const [tooltipOpen, setTooltipOpen] = React.useState([false, false]);
-  const classes = useStyles();
-
   const handleCopy = (idx: number, text: string) => {
     copy(text);
     setTooltipOpen((state) => update(idx, true, state));
@@ -93,71 +76,66 @@ This token will expire ${parseAPIDate(transfer.expiry).toLocaleString(
   )}.`;
 
   return (
-    <Dialog
-      title="Service Transfer Token"
-      open={isOpen}
+    <StyledDialog
       onClose={onClose}
-      className={classes.root}
+      open={isOpen}
+      title="Service Transfer Token"
     >
-      <Typography className={classes.text}>
+      <StyledTypography>
         This token authorizes the transfer of {pluralizedEntities}.
-      </Typography>
+      </StyledTypography>
       <Typography>
         Copy and paste the token or draft text into an email or other secure
         delivery method. It may take up to an hour for the service transfer to
         take effect once accepted by the recipient.
       </Typography>
-      <div className={classes.inputSection}>
-        <CopyableTextField
-          className={classes.tokenInput}
-          value={transfer.token}
-          label="Token"
-          hideIcon
-          fullWidth
+      <StyledInputDiv>
+        <StyledCopyableTextField
           aria-disabled
+          fullWidth
+          hideIcons
+          label="Token"
+          value={transfer.token}
         />
-        <ToolTip open={tooltipOpen[0]} title="Copied!">
-          <div className={classes.copyButton}>
+        <Tooltip open={tooltipOpen[0]} title="Copied!">
+          <StyledCopyDiv>
             <Button
-              buttonType="outlined"
               onClick={() => {
                 // @analytics
                 debouncedSendEntityTransferCopyTokenEvent();
                 handleCopy(0, transfer.token);
               }}
+              buttonType="outlined"
             >
               Copy Token
             </Button>
-          </div>
-        </ToolTip>
-      </div>
-      <div className={classes.inputSection}>
-        <CopyableTextField
-          className={classes.tokenInput}
-          value={draftEmail}
-          label="Draft Email"
-          hideIcon
-          fullWidth
+          </StyledCopyDiv>
+        </Tooltip>
+      </StyledInputDiv>
+      <StyledInputDiv>
+        <StyledCopyableTextField
           aria-disabled
+          fullWidth
+          hideIcons
+          label="Draft Email"
           multiline
+          value={draftEmail}
         />
-        <ToolTip open={tooltipOpen[1]} title="Copied!">
-          <div className={classes.copyButton}>
+        <Tooltip open={tooltipOpen[1]} title="Copied!">
+          <StyledCopyDiv>
             <Button
-              buttonType="primary"
               onClick={() => {
                 // @analytics
                 debouncedSendEntityTransferDraftEmailEvent();
                 handleCopy(1, draftEmail);
               }}
+              buttonType="primary"
             >
               Copy Draft Email
             </Button>
-          </div>
-        </ToolTip>
-      </div>
-    </Dialog>
+          </StyledCopyDiv>
+        </Tooltip>
+      </StyledInputDiv>
+    </StyledDialog>
   );
-};
-
-export default React.memo(CreateTransferSuccessDialog);
+});

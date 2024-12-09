@@ -1,44 +1,50 @@
 import { Image } from '@linode/api-v4/lib/images';
 import { StackScript } from '@linode/api-v4/lib/stackscripts';
-import { APIError, ResourcePage } from '@linode/api-v4/lib/types';
-import classNames from 'classnames';
-import { stringify } from 'qs';
+import { APIError, Filter, ResourcePage } from '@linode/api-v4/lib/types';
 import { pathOr } from 'ramda';
 import * as React from 'react';
 import { RouteComponentProps, withRouter } from 'react-router-dom';
 import { Waypoint } from 'react-waypoint';
 import { compose } from 'recompose';
+
 import StackScriptsIcon from 'src/assets/icons/entityIcons/stackscript.svg';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import Typography from 'src/components/core/Typography';
-import DebouncedSearch from 'src/components/DebouncedSearchTextField';
-import ErrorState from 'src/components/ErrorState';
-import Notice from 'src/components/Notice';
-import Placeholder from 'src/components/Placeholder';
-import Table from 'src/components/Table';
-import withProfile, { ProfileProps } from 'src/components/withProfile';
-import { hasGrant } from 'src/features/Profile/permissionsHelpers';
+import { Button } from 'src/components/Button/Button';
+import { CircleProgress } from 'src/components/CircleProgress';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { Notice } from 'src/components/Notice/Notice';
+import {
+  WithProfileProps,
+  withProfile,
+} from 'src/containers/profile.container';
+import { WithQueryClientProps } from 'src/containers/withQueryClient.container';
 import { isLinodeKubeImageId } from 'src/store/image/image.helpers';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import { sendStackscriptsSearchEvent } from 'src/utilities/ga';
 import { getDisplayName } from 'src/utilities/getDisplayName';
 import { handleUnauthorizedErrors } from 'src/utilities/handleUnauthorizedErrors';
-import { getQueryParam } from 'src/utilities/queryParams';
-import StackScriptTableHead from '../Partials/StackScriptTableHead';
+import { getQueryParamFromQueryString } from 'src/utilities/queryParams';
+
+import { StackScriptTableHead } from '../Partials/StackScriptTableHead';
 import {
   AcceptedFilters,
   generateCatchAllFilter,
   generateSpecificFilter,
 } from '../stackScriptUtils';
 import { StackScriptsRequest } from '../types';
-import withStyles, { StyleProps } from './StackScriptBase.styles';
+import {
+  StyledContentDiv,
+  StyledDebouncedSearchTextfield,
+  StyledEmptyStateDiv,
+  StyledLoaderDiv,
+  StyledPlaceholder,
+  StyledTable,
+} from './StackScriptBase.styles';
+import { StackScriptsEmptyLandingState } from './StackScriptsEmptyLandingPage';
 
-type CurrentFilter = 'label' | 'deploys' | 'revision';
+type CurrentFilter = 'deploys' | 'label' | 'revision';
 
 type SortOrder = 'asc' | 'desc';
 
-type APIFilters = 'label' | 'deployments_total' | 'updated';
+type APIFilters = 'deployments_total' | 'label' | 'updated';
 
 interface FilterInfo {
   apiFilter: APIFilters | null;
@@ -46,40 +52,43 @@ interface FilterInfo {
 }
 
 export interface State {
-  currentPage: number;
-  loading?: boolean;
-  gettingMoreStackScripts: boolean;
   allStackScriptsLoaded: boolean;
-  getMoreStackScriptsFailed: boolean; // did our attempt to get the next page of stackscripts fail?
-  listOfStackScripts: StackScript[];
-  sortOrder: SortOrder;
+  currentFilter: Filter; // @TODO type correctly
   currentFilterType: CurrentFilter | null;
-  currentFilter: any; // @TODO type correctly
-  currentSearchFilter: any;
-  isSorting: boolean;
+  currentPage: number;
+  currentSearchFilter: Filter;
+  didSearch: boolean;
   error?: APIError[];
   fieldError: APIError | undefined;
+  getMoreStackScriptsFailed: boolean; // did our attempt to get the next page of stackscripts fail?
+  gettingMoreStackScripts: boolean;
   isSearching: boolean;
-  didSearch: boolean;
+  isSorting: boolean;
+  listOfStackScripts: StackScript[];
+  loading?: boolean;
+  sortOrder: SortOrder;
   successMessage: string;
 }
 
-type CombinedProps = StyleProps &
+interface Props {
+  category: string;
+  publicImages: Record<string, Image>;
+  request: StackScriptsRequest;
+}
+
+type CombinedProps = Props &
   RouteComponentProps &
-  ProfileProps & {
-    publicImages: Record<string, Image>;
-    category: string;
-    request: StackScriptsRequest;
-  };
+  WithProfileProps &
+  WithQueryClientProps;
 
 interface HelperFunctions {
   getDataAtPage: (page: number, filter?: any, isSorting?: boolean) => any;
   getNext: () => void;
 }
 
-export type StateProps = HelperFunctions & State;
+export interface StateProps extends HelperFunctions, State {}
 
-interface WithStackScriptBaseOptions {
+export interface WithStackScriptBaseOptions {
   isSelecting: boolean;
   // Whether or not `type=` and `query=` QS params should be respected and
   // written to on user input.
@@ -93,36 +102,13 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
   const { isSelecting, useQueryString } = options;
 
   class EnhancedComponent extends React.Component<CombinedProps, State> {
-    static displayName = `WithStackScriptBase(${getDisplayName(Component)})`;
-
-    mounted: boolean = false;
-
-    state: State = {
-      currentPage: 1,
-      loading: true,
-      gettingMoreStackScripts: false,
-      listOfStackScripts: [],
-      allStackScriptsLoaded: false,
-      getMoreStackScriptsFailed: false,
-      sortOrder: 'asc',
-      currentFilterType: null,
-      currentFilter: {
-        ['+order_by']: 'deployments_total',
-        ['+order']: 'desc',
-      },
-      currentSearchFilter: {},
-      isSorting: false,
-      error: undefined,
-      fieldError: undefined,
-      isSearching: false,
-      didSearch: false,
-      successMessage: '',
-    };
-
     componentDidMount() {
       this.mounted = true;
       // If the URL contains a QS param called "query" treat it as a filter.
-      const query = getQueryParam(this.props.location.search, 'query');
+      const query = getQueryParamFromQueryString(
+        this.props.location.search,
+        'query'
+      );
       if (query) {
         return this.handleSearch(query);
       }
@@ -134,19 +120,227 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
       this.mounted = false;
     }
 
+    render() {
+      const {
+        allStackScriptsLoaded,
+        currentFilterType,
+        didSearch,
+        error,
+        fieldError,
+        getMoreStackScriptsFailed,
+        gettingMoreStackScripts,
+        isSearching,
+        isSorting,
+        listOfStackScripts,
+        sortOrder,
+        successMessage,
+      } = this.state;
+
+      const { grants, profile } = this.props;
+
+      const userCannotCreateStackScripts =
+        Boolean(profile.data?.restricted) &&
+        !grants.data?.global.add_stackscripts;
+
+      if (error) {
+        return (
+          <div style={{ overflow: 'hidden' }}>
+            <ErrorState
+              errorText={pathOr(
+                'There was an error.',
+                [0, 'reason'],
+                handleUnauthorizedErrors(
+                  error,
+                  'You are not authorized to view StackScripts for this account.'
+                )
+              )}
+            />
+          </div>
+        );
+      }
+
+      if (this.state.loading) {
+        return (
+          <StyledLoaderDiv>
+            <CircleProgress />
+          </StyledLoaderDiv>
+        );
+      }
+
+      // Use the query string if the argument has been specified.
+      const query = useQueryString
+        ? getQueryParamFromQueryString(this.props.location.search, 'query')
+        : undefined;
+
+      return (
+        <React.Fragment>
+          {fieldError && fieldError.reason && (
+            <Notice text={fieldError.reason} variant="error" />
+          )}
+          {successMessage && <Notice text={successMessage} variant="success" />}
+          {/*
+           * We only want to show this empty state on the initial GET StackScripts request
+           * If the user is searching and 0 results come back, we just want to show
+           * an empty table, rather than showing a message indicating no StackScripts exist
+           */}
+          {!didSearch &&
+          listOfStackScripts &&
+          listOfStackScripts.length === 0 ? (
+            <StyledEmptyStateDiv data-qa-stackscript-empty-msg>
+              {userCannotCreateStackScripts ? (
+                <StyledPlaceholder
+                  icon={StackScriptsIcon}
+                  isEntity
+                  renderAsSecondary
+                  title="StackScripts"
+                >
+                  You don&rsquo;t have any StackScripts to select from.
+                </StyledPlaceholder>
+              ) : (
+                <StackScriptsEmptyLandingState
+                  goToCreateStackScript={this.goToCreateStackScript}
+                />
+              )}
+            </StyledEmptyStateDiv>
+          ) : (
+            <React.Fragment>
+              <StyledContentDiv isSelecting={!isSelecting}>
+                <StyledDebouncedSearchTextfield
+                  tooltipText={
+                    this.props.category === 'community'
+                      ? `Hint: try searching for a specific item by prepending your
+                  search term with "username:", "label:", or "description:"`
+                      : ''
+                  }
+                  debounceTime={400}
+                  defaultValue={query}
+                  hideLabel
+                  isSearching={isSearching}
+                  label="Search by Label, Username, or Description"
+                  onSearch={this.handleSearch}
+                  placeholder="Search by Label, Username, or Description"
+                  value={query ?? ''}
+                />
+              </StyledContentDiv>
+              <StyledTable
+                aria-label="List of StackScripts"
+                colCount={isSelecting ? 1 : 4}
+                noOverflow={true}
+                rowCount={listOfStackScripts.length}
+                style={!isSelecting ? { tableLayout: 'fixed' } : undefined}
+              >
+                <StackScriptTableHead
+                  category={this.props.category}
+                  currentFilterType={currentFilterType}
+                  handleClickTableHeader={this.handleClickTableHeader}
+                  isSelecting={isSelecting}
+                  sortOrder={sortOrder}
+                />
+                <Component
+                  {...this.props}
+                  {...this.state}
+                  getDataAtPage={this.getDataAtPage}
+                  getNext={this.getNext}
+                />
+              </StyledTable>
+
+              {/*
+               * show loading indicator if we're getting more stackscripts
+               * and if we're not showing the "get more stackscripts" button
+               */}
+              {gettingMoreStackScripts && !isSorting && (
+                <div style={{ margin: '32px 0 32px 0', textAlign: 'center' }}>
+                  <CircleProgress size="sm" />
+                </div>
+              )}
+            </React.Fragment>
+          )}
+          {/*
+           * if we're sorting, or if we already loaded all results
+           * or if we're in the middle of getting more results, don't render
+           * the lazy load trigger
+           */}
+          {!isSorting && !allStackScriptsLoaded && !gettingMoreStackScripts && (
+            <div style={{ textAlign: 'center' }}>
+              {/*
+               * If the lazy-load failed (marked by the catch in getNext),
+               * show the "Show more StackScripts button
+               * Otherwise, try to lazy load some more dang stackscripts
+               */}
+              {!getMoreStackScriptsFailed ? (
+                <Waypoint onEnter={this.getNext}>
+                  {/*
+                   * The reason for this empty div is that there was some wonkiness when
+                   * scrolling to the waypoint with trackpads. For some reason, the Waypoint
+                   * would never be scrolled into view no matter how much you scrolled on the
+                   * trackpad. Especially finicky at zoomed in browser sizes
+                   */}
+                  <div style={{ minHeight: '150px' }}></div>
+                </Waypoint>
+              ) : (
+                <Button
+                  buttonType="secondary"
+                  disabled={this.state.gettingMoreStackScripts}
+                  onClick={this.getNext}
+                  style={{ margin: '32px 0 32px 0' }}
+                  title="Show More StackScripts"
+                  value="Show More"
+                >
+                  Show More StackScripts
+                </Button>
+              )}
+            </div>
+          )}
+        </React.Fragment>
+      );
+    }
+
+    static displayName = `WithStackScriptBase(${getDisplayName(Component)})`;
+
+    generateFilterInfo = (value: CurrentFilter): FilterInfo => {
+      switch (value) {
+        case 'label':
+          return {
+            apiFilter: 'label',
+            currentFilter: 'label',
+          };
+        case 'deploys':
+          return {
+            apiFilter: 'deployments_total',
+            currentFilter: 'deploys',
+          };
+        case 'revision':
+          return {
+            apiFilter: 'updated',
+            currentFilter: 'revision',
+          };
+        default:
+          return {
+            apiFilter: null,
+            currentFilter: null,
+          };
+      }
+    };
+
     getDataAtPage = (
       page: number,
-      filter: any = this.state.currentFilter,
+      filter: Filter = this.state.currentFilter,
       isSorting: boolean = false
     ) => {
-      const { request, category } = this.props;
+      const { category, request } = this.props;
       this.setState({
+        currentPage: page,
         gettingMoreStackScripts: true,
         isSorting,
-        currentPage: page,
       });
 
-      return request({ page, page_size: 25 }, filter)
+      return request(
+        {
+          page,
+          page_size: category === 'community' ? 25 : 500,
+        },
+        filter
+      )
         .then((response: ResourcePage<StackScript>) => {
           if (!this.mounted) {
             return;
@@ -194,11 +388,11 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
             return;
           }
           this.setState({
-            listOfStackScripts: filteredData,
-            gettingMoreStackScripts: false,
-            loading: false,
-            isSorting: false,
             getMoreStackScriptsFailed: false,
+            gettingMoreStackScripts: false,
+            isSorting: false,
+            listOfStackScripts: filteredData,
+            loading: false,
           });
           return filteredData;
         })
@@ -214,8 +408,8 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
               e,
               'There was an error loading StackScripts'
             ),
-            loading: false,
             gettingMoreStackScripts: false,
+            loading: false,
           });
         });
     };
@@ -233,42 +427,9 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
       );
     };
 
-    hasNonDeprecatedImages = (stackScriptImages: string[]) => {
-      const { publicImages } = this.props;
-      for (const stackScriptImage of stackScriptImages) {
-        if (publicImages[stackScriptImage]) {
-          return true;
-        }
-      }
-      return false;
-    };
-
-    usesKubeImage = (stackScriptImages: string[]) =>
-      stackScriptImages.some((imageId) => isLinodeKubeImageId(imageId));
-
-    generateFilterInfo = (value: CurrentFilter): FilterInfo => {
-      switch (value) {
-        case 'label':
-          return {
-            apiFilter: 'label',
-            currentFilter: 'label',
-          };
-        case 'deploys':
-          return {
-            apiFilter: 'deployments_total',
-            currentFilter: 'deploys',
-          };
-        case 'revision':
-          return {
-            apiFilter: 'updated',
-            currentFilter: 'revision',
-          };
-        default:
-          return {
-            apiFilter: null,
-            currentFilter: null,
-          };
-      }
+    goToCreateStackScript = () => {
+      const { history } = this.props;
+      history.push('/stackscripts/create');
     };
 
     handleClickTableHeader = (value: string) => {
@@ -284,32 +445,33 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
        */
       const filterWithSearch = !!Object.keys(currentSearchFilter).length
         ? {
-            ['+order_by']: filterInfo.apiFilter,
             ['+order']: sortOrder,
+            ['+order_by']: filterInfo.apiFilter ?? undefined,
             ...currentSearchFilter,
           }
-        : { ['+order_by']: filterInfo.apiFilter, ['+order']: sortOrder };
+        : {
+            ['+order']: sortOrder,
+            ['+order_by']: filterInfo.apiFilter ?? undefined,
+          };
 
       this.getDataAtPage(1, filterWithSearch, true);
       this.setState({
+        currentFilter: {
+          ['+order']: sortOrder,
+          ['+order_by']: filterInfo.apiFilter ?? undefined,
+        },
+        currentFilterType: filterInfo.currentFilter,
         currentPage: 1,
         sortOrder: nextSortOrder,
-        currentFilterType: filterInfo.currentFilter,
-        currentFilter: {
-          ['+order_by']: filterInfo.apiFilter,
-          ['+order']: sortOrder,
-        },
       });
     };
 
-    goToCreateStackScript = () => {
-      const { history } = this.props;
-      history.push('/stackscripts/create');
-    };
-
     handleSearch = (value: string) => {
+      if (!this.mounted) {
+        return;
+      }
       const { currentFilter } = this.state;
-      const { category, request, history } = this.props;
+      const { category, history, request } = this.props;
 
       const lowerCaseValue = value.toLowerCase().trim();
 
@@ -318,7 +480,7 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
         updateQueryString(lowerCaseValue, history);
       }
 
-      let filter: any;
+      let filter: Filter;
 
       /**
        * only allow for advanced search if we're on the community
@@ -356,11 +518,9 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
       }
 
       this.setState({
-        isSearching: true, // wether to show the loading spinner in search bar
         didSearch: true, // table will show default empty state unless didSearch is true
+        isSearching: true, // wether to show the loading spinner in search bar
       });
-
-      sendStackscriptsSearchEvent(lowerCaseValue);
 
       request({ page: 1, page_size: 50 }, { ...filter, ...currentFilter })
         .then((response: any) => {
@@ -368,8 +528,8 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
             return;
           }
           this.setState({
-            listOfStackScripts: response.data,
             isSearching: false,
+            listOfStackScripts: response.data,
             loading: false,
           });
           /*
@@ -384,7 +544,7 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
           } else {
             this.setState({
               allStackScriptsLoaded: false,
-              currentSearchFilter: [],
+              currentSearchFilter: {},
             });
           }
         })
@@ -403,225 +563,45 @@ const withStackScriptBase = (options: WithStackScriptBaseOptions) => (
         });
     };
 
-    render() {
-      const {
-        currentFilterType,
-        isSorting,
-        error,
-        fieldError,
-        isSearching,
-        listOfStackScripts,
-        didSearch,
-        successMessage,
-        sortOrder,
-        allStackScriptsLoaded,
-        gettingMoreStackScripts,
-        getMoreStackScriptsFailed,
-      } = this.state;
-
-      const { classes, profile, grants } = this.props;
-
-      const userCannotCreateStackScripts =
-        Boolean(profile.data?.restricted) &&
-        !hasGrant('add_stackscripts', grants.data);
-
-      if (error) {
-        return (
-          <div style={{ overflow: 'hidden' }}>
-            <ErrorState
-              errorText={pathOr(
-                'There was an error.',
-                [0, 'reason'],
-                handleUnauthorizedErrors(
-                  error,
-                  'You are not authorized to view StackScripts for this account.'
-                )
-              )}
-            />
-          </div>
-        );
+    hasNonDeprecatedImages = (stackScriptImages: string[]) => {
+      const { publicImages } = this.props;
+      for (const stackScriptImage of stackScriptImages) {
+        if (publicImages[stackScriptImage]) {
+          return true;
+        }
       }
+      return false;
+    };
 
-      if (this.state.loading) {
-        return (
-          <div className={classes.loaderWrapper}>
-            <CircleProgress />
-          </div>
-        );
-      }
+    mounted: boolean = false;
 
-      // Use the query string if the argument has been specified.
-      const query = useQueryString
-        ? getQueryParam(this.props.location.search, 'query')
-        : undefined;
+    state: State = {
+      allStackScriptsLoaded: false,
+      currentFilter: {
+        ['+order']: 'desc',
+        ['+order_by']: 'deployments_total',
+      },
+      currentFilterType: null,
+      currentPage: 1,
+      currentSearchFilter: {},
+      didSearch: false,
+      error: undefined,
+      fieldError: undefined,
+      getMoreStackScriptsFailed: false,
+      gettingMoreStackScripts: false,
+      isSearching: false,
+      isSorting: false,
+      listOfStackScripts: [],
+      loading: true,
+      sortOrder: 'asc',
+      successMessage: '',
+    };
 
-      return (
-        <React.Fragment>
-          {fieldError && fieldError.reason && (
-            <Notice text={fieldError.reason} error />
-          )}
-          {successMessage && <Notice text={successMessage} success />}
-          {/*
-           * We only want to show this empty state on the initial GET StackScripts request
-           * If the user is searching and 0 results come back, we just want to show
-           * an empty table, rather than showing a message indicating no StackScripts exist
-           */}
-          {!didSearch &&
-          listOfStackScripts &&
-          listOfStackScripts.length === 0 ? (
-            <div className={classes.emptyState} data-qa-stackscript-empty-msg>
-              {userCannotCreateStackScripts ? (
-                <Placeholder
-                  icon={StackScriptsIcon}
-                  isEntity
-                  renderAsSecondary
-                  title="StackScripts"
-                  className={classes.stackscriptPlaceholder}
-                >
-                  You don&rsquo;t have any StackScripts to select from.
-                </Placeholder>
-              ) : (
-                <Placeholder
-                  icon={StackScriptsIcon}
-                  renderAsSecondary
-                  isEntity
-                  title="StackScripts"
-                  buttonProps={[
-                    {
-                      children: 'Create StackScript',
-                      onClick: () => this.goToCreateStackScript(),
-                    },
-                  ]}
-                  className={classes.stackscriptPlaceholder}
-                >
-                  <Typography variant="subtitle1">
-                    Automate Deployment with StackScripts!
-                  </Typography>
-                  <Typography variant="subtitle1">
-                    <a
-                      href="https://linode.com/docs/platform/stackscripts-new-manager/"
-                      target="_blank"
-                      aria-describedby="external-site"
-                      rel="noopener noreferrer"
-                      className="h-u"
-                    >
-                      Learn more about getting started
-                    </a>
-                    &nbsp;or&nbsp;
-                    <a
-                      href="https://www.linode.com/docs/"
-                      target="_blank"
-                      aria-describedby="external-site"
-                      rel="noopener noreferrer"
-                      className="h-u"
-                    >
-                      visit our guides and tutorials.
-                    </a>
-                  </Typography>
-                </Placeholder>
-              )}
-            </div>
-          ) : (
-            <React.Fragment>
-              <div
-                className={classNames({
-                  [classes.searchWrapper]: true,
-                  [classes.landing]: !isSelecting,
-                })}
-              >
-                <DebouncedSearch
-                  placeholder="Search by Label, Username, or Description"
-                  onSearch={this.handleSearch}
-                  debounceTime={400}
-                  className={classes.searchBar}
-                  isSearching={isSearching}
-                  tooltipText={
-                    this.props.category === 'community'
-                      ? `Hint: try searching for a specific item by prepending your
-                  search term with "username:", "label:", or "description:"`
-                      : ''
-                  }
-                  label="Search by Label, Username, or Description"
-                  hideLabel
-                  defaultValue={query}
-                />
-              </div>
-              <Table
-                aria-label="List of StackScripts"
-                rowCount={listOfStackScripts.length}
-                colCount={isSelecting ? 1 : 4}
-                noOverflow={true}
-                tableClass={classes.table}
-                style={!isSelecting ? { tableLayout: 'fixed' } : undefined}
-              >
-                <StackScriptTableHead
-                  handleClickTableHeader={this.handleClickTableHeader}
-                  sortOrder={sortOrder}
-                  currentFilterType={currentFilterType}
-                  isSelecting={isSelecting}
-                  category={this.props.category}
-                />
-                <Component
-                  {...this.props}
-                  {...this.state}
-                  getDataAtPage={this.getDataAtPage}
-                  getNext={this.getNext}
-                />
-              </Table>
-
-              {/*
-               * show loading indicator if we're getting more stackscripts
-               * and if we're not showing the "get more stackscripts" button
-               */}
-              {gettingMoreStackScripts && !isSorting && (
-                <div style={{ margin: '32px 0 32px 0', textAlign: 'center' }}>
-                  <CircleProgress mini />
-                </div>
-              )}
-            </React.Fragment>
-          )}
-          {/*
-           * if we're sorting, or if we already loaded all results
-           * or if we're in the middle of getting more results, don't render
-           * the lazy load trigger
-           */}
-          {!isSorting && !allStackScriptsLoaded && !gettingMoreStackScripts && (
-            <div style={{ textAlign: 'center' }}>
-              {/*
-               * If the lazy-load failed (marked by the catch in getNext),
-               * show the "Show more StackScripts button
-               * Otherwise, try to lazy load some more dang stackscripts
-               */}
-              {!getMoreStackScriptsFailed ? (
-                <Waypoint onEnter={this.getNext}>
-                  {/*
-                   * The reason for this empty div is that there was some wonkiness when
-                   * scrolling to the waypoint with trackpads. For some reason, the Waypoint
-                   * would never be scrolled into view no matter how much you scrolled on the
-                   * trackpad. Especially finicky at zoomed in browser sizes
-                   */}
-                  <div style={{ minHeight: '150px' }}></div>
-                </Waypoint>
-              ) : (
-                <Button
-                  title="Show More StackScripts"
-                  onClick={this.getNext}
-                  value="Show More"
-                  buttonType="secondary"
-                  disabled={this.state.gettingMoreStackScripts}
-                  style={{ margin: '32px 0 32px 0' }}
-                >
-                  Show More StackScripts
-                </Button>
-              )}
-            </div>
-          )}
-        </React.Fragment>
-      );
-    }
+    usesKubeImage = (stackScriptImages: string[]) =>
+      stackScriptImages.some((imageId) => isLinodeKubeImageId(imageId));
   }
 
-  return compose(withRouter, withProfile, withStyles)(EnhancedComponent);
+  return compose(withRouter, withProfile)(EnhancedComponent);
 };
 
 export default withStackScriptBase;
@@ -631,7 +611,7 @@ const updateQueryString = (
   query: string,
   history: RouteComponentProps<{}>['history']
 ) => {
-  const queryString = stringify({ query });
+  const queryString = new URLSearchParams({ query }).toString();
 
   // Use `replace` instead of `push` so that each keystroke is not a separate
   // browser history item.

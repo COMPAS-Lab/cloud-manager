@@ -1,30 +1,13 @@
-import { useSelector } from 'react-redux';
-import { ApplicationState } from 'src/store';
-import { Profile } from '@linode/api-v4/lib/profile';
-import { useGrants, useProfile } from 'src/queries/profile';
-import { Account, GlobalGrantTypes } from '@linode/api-v4/lib/account';
-import { useAccount } from 'src/queries/account';
-import { useAccountSettings } from 'src/queries/accountSettings';
+import { GlobalGrantTypes } from '@linode/api-v4/lib/account';
 
-export interface AccountManagementProps {
-  account: Account;
-  profile: Profile;
-  _isRestrictedUser: boolean;
-  _hasGrant: (grant: GlobalGrantTypes) => boolean;
-  _hasAccountAccess: boolean;
-  _isManagedAccount: boolean;
-  _isLargeAccount: boolean;
-}
+import { useAccount } from 'src/queries/account/account';
+import { useAccountSettings } from 'src/queries/account/settings';
+import { useGrants, useProfile } from 'src/queries/profile/profile';
 
 export const useAccountManagement = () => {
-  const { data: account } = useAccount();
+  const { data: account, error: accountError } = useAccount();
   const { data: profile } = useProfile();
   const { data: grants } = useGrants();
-
-  const _isLargeAccount = useSelector(
-    (state: ApplicationState) =>
-      state.__resources.accountManagement.isLargeAccount
-  );
 
   const _isRestrictedUser = profile?.restricted ?? false;
   const { data: accountSettings } = useAccountSettings();
@@ -37,15 +20,13 @@ export const useAccountManagement = () => {
   const _isManagedAccount = accountSettings?.managed ?? false;
 
   return {
+    _hasAccountAccess,
+    _hasGrant,
+    _isManagedAccount,
+    _isRestrictedUser,
     account,
+    accountError,
     accountSettings,
     profile,
-    _isRestrictedUser,
-    _hasGrant,
-    _hasAccountAccess,
-    _isManagedAccount,
-    _isLargeAccount,
   };
 };
-
-export default useAccountManagement;

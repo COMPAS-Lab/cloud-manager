@@ -1,49 +1,33 @@
+import { Theme, useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import ActionMenu, { Action } from 'src/components/ActionMenu';
-import { Theme, useMediaQuery, useTheme } from 'src/components/core/styles';
-import InlineMenuAction from 'src/components/InlineMenuAction';
+
+import { Action, ActionMenu } from 'src/components/ActionMenu/ActionMenu';
+import { InlineMenuAction } from 'src/components/InlineMenuAction/InlineMenuAction';
 
 interface Props {
-  openSecretModal: (id: string, label: string) => void;
-  openDeleteModal: (id: string, label: string) => void;
-  openEditDrawer: (
-    isPublic: boolean,
-    redirectUri: string,
-    label: string,
-    clientID?: string
-  ) => void;
   label: string;
-  redirectUri: string;
-  isPublic: boolean;
-  clientID: string;
+  onOpenDeleteDialog: () => void;
+  onOpenEditDrawer: () => void;
+  onOpenResetDialog: () => void;
 }
 
-type CombinedProps = Props;
-
-export const OAuthClientActionMenu: React.FC<CombinedProps> = (props) => {
+export const OAuthClientActionMenu = (props: Props) => {
   const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
-
-  const { label, redirectUri, isPublic, clientID } = props;
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('md'));
 
   const actions: Action[] = [
     {
+      onClick: props.onOpenEditDrawer,
       title: 'Edit',
-      onClick: () => {
-        props.openEditDrawer(isPublic, redirectUri, label, clientID);
-      },
     },
     {
+      onClick: props.onOpenResetDialog,
       title: 'Reset',
-      onClick: () => {
-        props.openSecretModal(clientID, label);
-      },
     },
     {
+      onClick: props.onOpenDeleteDialog,
       title: 'Delete',
-      onClick: () => {
-        props.openDeleteModal(clientID, label);
-      },
     },
   ];
 
@@ -59,8 +43,8 @@ export const OAuthClientActionMenu: React.FC<CombinedProps> = (props) => {
         actions.map((action) => {
           return (
             <InlineMenuAction
-              key={action.title}
               actionText={action.title}
+              key={action.title}
               onClick={action.onClick}
             />
           );

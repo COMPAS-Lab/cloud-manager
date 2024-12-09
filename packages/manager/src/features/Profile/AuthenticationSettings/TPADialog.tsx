@@ -1,64 +1,44 @@
 import { TPAProvider } from '@linode/api-v4/lib/profile';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Typography } from 'src/components/Typography';
 import { LOGIN_ROOT } from 'src/constants';
 import { Provider } from 'src/featureFlags';
-import useFlags from 'src/hooks/useFlags';
-
-const useStyles = makeStyles(() => ({
-  dialog: {
-    '& .dialog-content': {
-      paddingTop: 0,
-      paddingBottom: 0,
-    },
-  },
-  copy: {
-    lineHeight: '1.25rem',
-  },
-}));
-
-interface Props {
+import { useFlags } from 'src/hooks/useFlags';
+export interface TPADialogProps {
   currentProvider: Provider;
   newProvider: TPAProvider;
-  open: boolean;
   onClose: () => void;
+  open: boolean;
 }
 
-type CombinedProps = Props;
-
-const TPADialog: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const TPADialog = (props: TPADialogProps) => {
   const flags = useFlags();
-
-  const { currentProvider, newProvider, open, onClose } = props;
-
+  const { currentProvider, newProvider, onClose, open } = props;
   // Get list of providers from LaunchDarkly
   const providers = flags.tpaProviders ?? [];
-
   const displayName =
     providers.find((thisProvider) => thisProvider.name === newProvider)
       ?.displayName ?? 'Linode';
 
   return (
-    <ConfirmationDialog
-      className={classes.dialog}
-      title={`Change login method to ${displayName}?`}
+    <StyledConfirmationDialog
       actions={() => renderActions(onClose, newProvider)}
-      open={open}
       onClose={onClose}
+      open={open}
+      title={`Change login method to ${displayName}?`}
     >
-      <Typography className={classes.copy} variant="body1">
+      <Typography sx={{ lineHeight: '1.25rem' }} variant="body1">
         This will disable your login via{' '}
         {currentProvider.displayName === 'Linode'
           ? 'username and password'
           : currentProvider.displayName}
         .
       </Typography>
-    </ConfirmationDialog>
+    </StyledConfirmationDialog>
   );
 };
 
@@ -66,37 +46,41 @@ const handleLoginChange = (provider: TPAProvider) => {
   // If the selected provider is 'password', that means the user has decided
   // to disable TPA and revert to using Linode credentials
   return provider === 'password'
-    ? window.open(`${LOGIN_ROOT}/tpa/disable`, '_blank', 'noopener')
+    ? window.open(`${LOGIN_ROOT}/tpa/disable`, '_blank', 'noopener noreferrer')
     : window.open(
         `${LOGIN_ROOT}/tpa/enable/` + `${provider}`,
         '_blank',
-        'noopener'
+        'noopener noreferrer'
       );
 };
 
 const renderActions = (onClose: () => void, provider: TPAProvider) => {
   return (
-    <ActionsPanel className="p0">
-      <Button
-        buttonType="secondary"
-        onClick={onClose}
-        data-testid="confirm-cancel"
-      >
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={() => {
+    <ActionsPanel
+      primaryButtonProps={{
+        'aria-describedby': 'external-site',
+        'data-testid': 'confirm-login-change',
+        label: 'Change login',
+        onClick: () => {
           onClose();
           handleLoginChange(provider);
-        }}
-        aria-describedby="external-site"
-        data-testid="confirm-login-change"
-      >
-        Change login
-      </Button>
-    </ActionsPanel>
+        },
+      }}
+      secondaryButtonProps={{
+        'data-testid': 'confirm-cancel',
+        label: 'Cancel',
+        onClick: onClose,
+      }}
+      className="p0"
+    />
   );
 };
 
-export default React.memo(TPADialog);
+const StyledConfirmationDialog = styled(ConfirmationDialog, {
+  label: 'StyledConfirmationDialog',
+})(() => ({
+  '& .dialog-content': {
+    paddingBottom: 0,
+    paddingTop: 0,
+  },
+}));

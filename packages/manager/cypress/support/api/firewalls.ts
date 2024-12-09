@@ -1,42 +1,84 @@
-// will need to change from beta to regular eventually
-import { deleteByIdBeta, getAllBeta, isTestEntity } from './common';
-export const getFirewalls = (page: number = 1) =>
-  // get firewalls up to 500 per page. if no page number specified, defaults to 1
-  getAllBeta(`networking/firewalls?page=${page}&page_size=500`);
+import {
+  Firewall,
+  deleteFirewall,
+  getFirewalls,
+  createFirewall,
+  FirewallRules,
+} from '@linode/api-v4';
+import { pageSize } from 'support/constants/api';
+import { depaginate } from 'support/util/paginate';
+import { randomLabel } from 'support/util/random';
 
-export const deleteFirewallByLabel = (firewall) => {
-  getFirewalls().then((resp) => {
-    const firewallToDelete = resp.body.data.find((f) => f.label === firewall);
-    deleteFirewallById(firewallToDelete.id);
+import { isTestLabel } from './common';
+
+/**
+ * Determines if Firewall rules are sufficiently locked down to use for a test resource.
+ *
+ * Returns `true` if the rules have default inbound and outbound policies to
+ * drop connections and do not have any additional rules.
+ *
+ * @param rules - Firewall rules to assess.
+ *
+ * @returns `true` if Firewall rules are locked down, `false` otherwise.
+ */
+export const areFirewallRulesLockedDown = (rules: FirewallRules) => {
+  const { outbound, outbound_policy, inbound, inbound_policy } = rules;
+
+  const hasOutboundRules = !!outbound && outbound.length > 0;
+  const hasInboundRules = !!inbound && inbound.length > 0;
+
+  return (
+    outbound_policy === 'DROP' &&
+    inbound_policy === 'DROP' &&
+    !hasInboundRules &&
+    !hasOutboundRules
+  );
+};
+
+/**
+ * Returns a firewall to use for a test resource, creating it if one does not already exist.
+ *
+ * @returns Promise that resolves to existing or new Firewall.
+ */
+export const findOrCreateDependencyFirewall = async () => {
+  const firewalls = await depaginate<Firewall>((page: number) =>
+    getFirewalls({ page, page_size: pageSize })
+  );
+
+  const suitableFirewalls = firewalls.filter(
+    ({ label, rules }: Firewall) =>
+      isTestLabel(label) && areFirewallRulesLockedDown(rules)
+  );
+
+  if (suitableFirewalls.length > 0) {
+    return suitableFirewalls[0];
+  }
+
+  // No suitable firewalls exist, so we'll create one and return it.
+  return createFirewall({
+    label: randomLabel(),
+    rules: {
+      inbound: [],
+      outbound: [],
+      inbound_policy: 'DROP',
+      outbound_policy: 'DROP',
+    },
   });
 };
 
-const deleteTestEntities = (resp) => {
-  resp.body.data.forEach((firewall) => {
-    if (isTestEntity(firewall)) {
-      deleteFirewallById(firewall.id);
-    }
-  });
-};
+/**
+ * Deletes all Firewalls whose labels are prefixed "cy-test-".
+ *
+ * @returns Promise that resolves when Firewalls have been deleted.
+ */
+export const deleteAllTestFirewalls = async (): Promise<void> => {
+  const firewalls = await depaginate<Firewall>((page: number) =>
+    getFirewalls({ page, page_size: pageSize })
+  );
 
-export const deleteAllTestFirewalls = () => {
-  /* get all firewalls, but request without page number specified only yields first page,
-  so it gets number of pages as well */
-  getFirewalls().then((resp) => {
-    const pageNumber = resp.body.pages;
-    /* do this if there's more than one page(500 items), get each page and delete the test entities from it.
-    It probably won't be necessary very often if ever, but here just in case. */
-    if (pageNumber > 1) {
-      for (let currentPage = 1; currentPage <= pageNumber; currentPage++) {
-        getFirewalls(currentPage).then((resp) => {
-          deleteTestEntities(resp);
-        });
-      }
-    } else {
-      deleteTestEntities(resp);
-    }
-  });
-};
+  const deletionPromises = firewalls
+    .filter((firewall: Firewall) => isTestLabel(firewall.label))
+    .map((firewall: Firewall) => deleteFirewall(firewall.id));
 
-export const deleteFirewallById = (firewallId: number) =>
-  deleteByIdBeta('networking/firewalls', firewallId);
+  await Promise.all(deletionPromises);
+};

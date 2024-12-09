@@ -1,55 +1,69 @@
-import classNames from 'classnames';
+import { Box, omittedProps } from '@linode/ui';
+import { styled } from '@mui/material';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  statusIcon: {
-    display: 'inline-block',
-    borderRadius: '50%',
-    height: '16px',
-    width: '16px',
-    marginRight: theme.spacing(),
-    position: 'relative',
-  },
-  statusIconRunning: {
-    backgroundColor: theme.color.teal,
-  },
-  statusIconOffline: {
-    backgroundColor: theme.color.grey8,
-  },
-  statusIconError: {
-    backgroundColor: theme.color.red,
-  },
-  statusIconOther: {
-    backgroundColor: theme.color.orange,
-  },
-}));
+import type { BoxProps } from '@linode/ui';
 
-export type Status = 'active' | 'inactive' | 'error' | 'other';
+export type Status = 'active' | 'error' | 'inactive' | 'other';
 
-export interface StatusProps {
+export interface StatusProps extends BoxProps {
+  /**
+   * Optional property can override the value of the default aria label for status.
+   * This is useful when the status is not descriptive enough.
+   */
+  ariaLabel?: string;
+  /**
+   * When true, displays the icon with a pulsing animation.
+   */
+  pulse?: boolean;
+  /**
+   * Status of the icon.
+   */
   status: Status;
 }
 
-export const StatusIcon: React.FC<StatusProps> = (props) => {
-  const { status } = props;
+export const StatusIcon = React.memo((props: StatusProps) => {
+  const { ariaLabel, pulse, status, ...rest } = props;
 
-  const classes = useStyles();
+  const shouldPulse =
+    pulse === undefined
+      ? // If pulse is not defined, use old behavior for choosing when to pulse
+        !['active', 'error', 'inactive'].includes(status)
+      : pulse;
 
   return (
-    <div
-      className={classNames({
-        [classes.statusIcon]: true,
-        [classes.statusIconRunning]: status === 'active',
-        [classes.statusIconOffline]: status === 'inactive',
-        [classes.statusIconError]: status === 'error',
-        [classes.statusIconOther]: !['inactive', 'active', 'error'].includes(
-          status
-        ),
-        statusOther: !['inactive', 'active', 'error'].includes(status),
-      })}
+    <StyledDiv
+      aria-label={ariaLabel ?? `Status is ${status}`}
+      pulse={shouldPulse}
+      status={status}
+      {...rest}
     />
   );
-};
+});
 
-export default React.memo(StatusIcon);
+const StyledDiv = styled(Box, {
+  shouldForwardProp: omittedProps(['pulse', 'status']),
+})<StatusProps>(({ theme, ...props }) => ({
+  borderRadius: '50%',
+  display: 'inline-block',
+  height: '16px',
+  marginRight: theme.spacing(),
+  position: 'relative',
+  transition: theme.transitions.create(['color']),
+  width: '16px',
+  ...(props.status === 'active' && {
+    backgroundColor: theme.palette.success.dark,
+  }),
+  ...(props.status === 'inactive' && {
+    backgroundColor: theme.color.grey8,
+  }),
+  ...(props.status === 'error' && {
+    backgroundColor: theme.palette.error.dark,
+  }),
+  ...(!['active', 'error', 'inactive'].includes(props.status) && {
+    backgroundColor: theme.palette.warning.dark,
+  }),
+  ...(props.pulse && {
+    animation: 'pulse 1.5s ease-in-out infinite',
+  }),
+}));

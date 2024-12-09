@@ -1,49 +1,37 @@
+import Grid from '@mui/material/Unstable_Grid2/Grid2';
+import { useTheme } from '@mui/material/styles';
 import * as React from 'react';
 
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import EditableEntityLabel from 'src/components/EditableEntityLabel';
-import Grid from 'src/components/Grid';
+import { EditableEntityLabel } from 'src/components/EditableEntityLabel/EditableEntityLabel';
+import { Paper } from '@linode/ui';
 import { DispatchProps } from 'src/containers/longview.container';
 import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
-import ActionMenu, { ActionHandlers } from './LongviewActionMenu';
-import RestrictedUserLabel from './RestrictedUserLabel';
 
-import Instructions from '../shared/InstallationInstructions';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginBottom: theme.spacing(4),
-    padding: theme.spacing(3),
-  },
-  button: {
-    padding: 0,
-    '&:hover': {
-      color: theme.color.red,
-    },
-  },
-}));
+import { InstallationInstructions } from '../shared/InstallationInstructions';
+import { ActionHandlers, LongviewActionMenu } from './LongviewActionMenu';
+import { RestrictedUserLabel } from './RestrictedUserLabel';
 
 interface Props extends ActionHandlers {
+  clientAPIKey: string;
   clientID: number;
   clientLabel: string;
   installCode: string;
-  clientAPIKey: string;
   updateLongviewClient: DispatchProps['updateLongviewClient'];
   userCanModifyClient: boolean;
 }
 
-export const LongviewClientInstructions: React.FC<Props> = (props) => {
+export const LongviewClientInstructions = (props: Props) => {
   const {
+    clientAPIKey,
     clientID,
     clientLabel,
     installCode,
-    clientAPIKey,
-    updateLongviewClient,
     triggerDeleteLongviewClient,
+    updateLongviewClient,
     userCanModifyClient,
   } = props;
-  const classes = useStyles();
+
+  const theme = useTheme();
 
   const [updating, setUpdating] = React.useState<boolean>(false);
 
@@ -62,45 +50,45 @@ export const LongviewClientInstructions: React.FC<Props> = (props) => {
   };
 
   return (
-    <Paper data-testid={clientID} className={classes.root}>
+    <Paper
+      sx={{
+        marginBottom: theme.spacing(4),
+        padding: theme.spacing(3),
+      }}
+      data-testid={clientID}
+    >
       <Grid
-        container
-        direction="row"
-        justifyContent="space-between"
-        alignItems="flex-start"
-        spacing={2}
         aria-label="Installation instructions for the Longview agent"
+        container
         data-testid="installation"
       >
-        <Grid item xs={11}>
-          <Grid container>
-            <Grid item xs={12} md={3}>
-              {userCanModifyClient ? (
-                <EditableEntityLabel
-                  text={clientLabel}
-                  subText="Waiting for data..."
-                  onEdit={handleUpdateLabel}
-                  loading={updating}
-                />
-              ) : (
-                <RestrictedUserLabel
-                  label={clientLabel}
-                  subtext={'Waiting for data...'}
-                />
-              )}
-            </Grid>
-            <Grid item xs={12} md={9}>
-              <Instructions
-                installationKey={installCode}
-                APIKey={clientAPIKey}
+        <Grid xs={11} container>
+          <Grid md={3} xs={12}>
+            {userCanModifyClient ? (
+              <EditableEntityLabel
+                loading={updating}
+                onEdit={handleUpdateLabel}
+                subText="Waiting for data..."
+                text={clientLabel}
               />
-            </Grid>
+            ) : (
+              <RestrictedUserLabel
+                label={clientLabel}
+                subtext={'Waiting for data...'}
+              />
+            )}
+          </Grid>
+          <Grid md={9} xs={12}>
+            <InstallationInstructions
+              APIKey={clientAPIKey}
+              installationKey={installCode}
+            />
           </Grid>
         </Grid>
-        <Grid item xs={1}>
-          <Grid container justifyContent="flex-end">
-            <Grid item>
-              <ActionMenu
+        <Grid xs={1}>
+          <Grid container justifyContent="flex-end" spacing={2}>
+            <Grid>
+              <LongviewActionMenu
                 longviewClientID={clientID}
                 longviewClientLabel={clientLabel}
                 triggerDeleteLongviewClient={triggerDeleteLongviewClient}
@@ -113,5 +101,3 @@ export const LongviewClientInstructions: React.FC<Props> = (props) => {
     </Paper>
   );
 };
-
-export default LongviewClientInstructions;

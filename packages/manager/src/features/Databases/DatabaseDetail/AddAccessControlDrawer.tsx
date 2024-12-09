@@ -1,23 +1,27 @@
 import { APIError } from '@linode/api-v4/lib/types';
+import { Theme } from '@mui/material/styles';
 import { useFormik } from 'formik';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
-import MultipleIPInput from 'src/components/MultipleIPInput/MultipleIPInput';
-import Notice from 'src/components/Notice';
-import { enforceIPMasks } from 'src/features/Firewalls/FirewallDetail/Rules/FirewallRuleDrawer';
+import { makeStyles } from 'tss-react/mui';
+
+import { Database, DatabaseInstance } from '@linode/api-v4';
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Drawer } from 'src/components/Drawer';
+import { MultipleIPInput } from 'src/components/MultipleIPInput/MultipleIPInput';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { enforceIPMasks } from 'src/features/Firewalls/FirewallDetail/Rules/FirewallRuleDrawer.utils';
+import { useDatabaseMutation } from 'src/queries/databases/databases';
 import { handleAPIErrors } from 'src/utilities/formikErrorUtils';
 import {
   ExtendedIP,
   extendedIPToString,
   ipFieldPlaceholder,
+  stringToExtendedIP,
   validateIPs,
 } from 'src/utilities/ipUtils';
 
-const useStyles = makeStyles((theme: Theme) => ({
+const useStyles = makeStyles()((theme: Theme) => ({
   instructions: {
     marginBottom: '2rem',
   },
@@ -27,10 +31,9 @@ const useStyles = makeStyles((theme: Theme) => ({
 }));
 
 interface Props {
-  open: boolean;
+  database: Database | DatabaseInstance;
   onClose: () => void;
-  updateDatabase: any;
-  allowList: ExtendedIP[];
+  open: boolean;
 }
 
 interface Values {
@@ -39,10 +42,10 @@ interface Values {
 
 type CombinedProps = Props;
 
-const AddAccessControlDrawer: React.FC<CombinedProps> = (props) => {
-  const { open, onClose, updateDatabase, allowList } = props;
+const AddAccessControlDrawer = (props: CombinedProps) => {
+  const { database, onClose, open } = props;
 
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   const [error, setError] = React.useState<string | undefined>('');
   const [allowListErrors, setAllowListErrors] = React.useState<APIError[]>();
@@ -57,20 +60,35 @@ const AddAccessControlDrawer: React.FC<CombinedProps> = (props) => {
     setValues({ _allowList: _ipsWithMasks });
   };
 
+  const { mutateAsync: updateDatabase } = useDatabaseMutation(
+    database.engine,
+    database.id
+  );
+
   const handleUpdateAccessControlsClick = (
     { _allowList }: Values,
     {
-      setSubmitting,
       setFieldError,
+      setSubmitting,
     }: {
-      setSubmitting: (isSubmitting: boolean) => void;
       setFieldError: (field: string, reason: string) => void;
+      setSubmitting: (isSubmitting: boolean) => void;
     }
   ) => {
     // Get the IP address strings out of the objects and filter empty strings out.
-    const allowListRetracted = _allowList
-      .map(extendedIPToString)
-      .filter((ip) => ip !== '');
+    // Ensure we append /32 to all IPs if / is not already present.
+    const allowListRetracted = _allowList.reduce((acc, currentIP) => {
+      let ipString = extendedIPToString(currentIP);
+      if (ipString === '') {
+        return acc;
+      }
+
+      if (ipString.indexOf('/') === -1) {
+        ipString += '/32';
+      }
+
+      return [...acc, ipString];
+    }, []);
 
     updateDatabase({ allow_list: [...allowListRetracted] })
       .then(() => {
@@ -113,20 +131,20 @@ const AddAccessControlDrawer: React.FC<CombinedProps> = (props) => {
   };
 
   const {
-    values,
-    isSubmitting,
     handleSubmit,
-    setValues,
+    isSubmitting,
     resetForm,
+    setValues,
+    values,
   } = useFormik({
-    initialValues: {
-      _allowList: allowList,
-    },
     enableReinitialize: true,
+    initialValues: {
+      _allowList: database?.allow_list?.map(stringToExtendedIP),
+    },
     onSubmit: handleUpdateAccessControlsClick,
-    validateOnChange: false,
-    validateOnBlur: false,
     validate: (values: Values) => onValidate(values),
+    validateOnBlur: false,
+    validateOnChange: false,
   });
 
   const handleIPChange = React.useCallback(
@@ -149,54 +167,46 @@ const AddAccessControlDrawer: React.FC<CombinedProps> = (props) => {
   }, [open, resetForm]);
 
   return (
-    <Drawer open={open} onClose={onClose} title="Manage Access Controls">
+    <Drawer onClose={onClose} open={open} title="Manage Access Controls">
       <React.Fragment>
-        {error ? <Notice error text={error} /> : null}
+        {error ? <Notice text={error} variant="error" /> : null}
         {allowListErrors
           ? allowListErrors.map((allowListError) => (
               <Notice
-                error
-                text={allowListError.reason}
                 key={allowListError.reason}
+                text={allowListError.reason}
+                variant="error"
               />
             ))
           : null}
-        <Typography variant="body1" className={classes.instructions}>
+        <Typography className={classes.instructions} variant="body1">
           Add, edit, or remove IPv4 addresses and ranges that should be
           authorized to access your cluster.
         </Typography>
         <form onSubmit={handleSubmit}>
           <MultipleIPInput
-            title="Allowed IP Address(es) or Range(s)"
             aria-label="Allowed IP Addresses or Ranges"
             className={classes.ipSelect}
-            ips={values._allowList}
-            onChange={handleIPChange}
-            onBlur={handleIPBlur}
-            inputProps={{ autoFocus: true }}
-            placeholder={ipFieldPlaceholder}
             forDatabaseAccessControls
+            inputProps={{ autoFocus: true }}
+            ips={values._allowList!}
+            onBlur={handleIPBlur}
+            onChange={handleIPChange}
+            placeholder={ipFieldPlaceholder}
+            title="Allowed IP Address(es) or Range(s)"
           />
-          <ActionsPanel>
-            <Button
-              buttonType="secondary"
-              onClick={onClose}
-              disabled={isSubmitting}
-              style={{ marginBottom: 8 }}
-              loading={false}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              buttonType="primary"
-              disabled={!formTouched}
-              style={{ marginBottom: 8 }}
-              loading={isSubmitting}
-            >
-              Update Access Controls
-            </Button>
-          </ActionsPanel>
+          <ActionsPanel
+            primaryButtonProps={{
+              disabled: !formTouched,
+              label: 'Update Access Controls',
+              loading: isSubmitting,
+              type: 'submit',
+            }}
+            secondaryButtonProps={{
+              label: 'Cancel',
+              onClick: onClose,
+            }}
+          />
         </form>
       </React.Fragment>
     </Drawer>

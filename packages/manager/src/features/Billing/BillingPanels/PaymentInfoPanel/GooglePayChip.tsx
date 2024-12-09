@@ -1,55 +1,57 @@
-import classNames from 'classnames';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { makeStyles } from 'tss-react/mui';
+
 import GooglePayIcon from 'src/assets/icons/payment/googlePay.svg';
-import CircleProgress from 'src/components/CircleProgress';
-import { makeStyles } from 'src/components/core/styles';
+import { CircleProgress } from 'src/components/CircleProgress';
 import { PaymentMessage } from 'src/features/Billing/BillingPanels/PaymentInfoPanel/AddPaymentMethodDrawer/AddPaymentMethodDrawer';
 import {
   gPay,
   initGooglePaymentInstance,
 } from 'src/features/Billing/GooglePayProvider';
 import { useScript } from 'src/hooks/useScript';
-import { useClientToken } from 'src/queries/accountPayment';
+import { useClientToken } from 'src/queries/account/payment';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles()(() => ({
   button: {
-    border: 0,
-    padding: 0,
-    marginRight: -8,
-    backgroundColor: 'transparent',
-    cursor: 'pointer',
     '&:hover': {
       opacity: 0.7,
     },
+    backgroundColor: 'transparent',
+    border: 0,
+    cursor: 'pointer',
+    padding: 0,
   },
   disabled: {
-    cursor: 'default',
-    opacity: 0.3,
     '&:hover': {
       opacity: 0.3,
     },
+    cursor: 'default',
+    opacity: 0.3,
   },
 }));
 
 interface Props {
-  setMessage: (message: PaymentMessage) => void;
-  setProcessing: (processing: boolean) => void;
+  disabled: boolean;
   onClose: () => void;
   renderError: (errorMsg: string) => JSX.Element;
-  disabled: boolean;
+  setMessage: (message: PaymentMessage) => void;
+  setProcessing: (processing: boolean) => void;
 }
 
-export const GooglePayChip: React.FC<Props> = (props) => {
+export const GooglePayChip = (props: Props) => {
   const {
     disabled: disabledDueToProcessing,
-    setMessage,
-    setProcessing,
     onClose,
     renderError,
+    setMessage,
+    setProcessing,
   } = props;
-  const classes = useStyles();
+  const { classes, cx } = useStyles();
   const status = useScript('https://pay.google.com/gp/p/js/pay.js');
-  const { data, isLoading, error: clientTokenError } = useClientToken();
+  const { data, error: clientTokenError, isLoading } = useClientToken();
+  const queryClient = useQueryClient();
   const [initializationError, setInitializationError] = React.useState<boolean>(
     false
   );
@@ -79,12 +81,13 @@ export const GooglePayChip: React.FC<Props> = (props) => {
     gPay(
       'add-recurring-payment',
       {
-        totalPriceStatus: 'NOT_CURRENTLY_KNOWN',
-        currencyCode: 'USD',
         countryCode: 'US',
+        currencyCode: 'USD',
+        totalPriceStatus: 'NOT_CURRENTLY_KNOWN',
       },
       handleMessage,
-      setProcessing
+      setProcessing,
+      queryClient
     );
   };
 
@@ -97,21 +100,27 @@ export const GooglePayChip: React.FC<Props> = (props) => {
   }
 
   if (isLoading) {
-    return <CircleProgress mini />;
+    return (
+      <Grid>
+        <CircleProgress size="sm" />
+      </Grid>
+    );
   }
 
   return (
-    <button
-      className={classNames({
-        [classes.button]: true,
-        [classes.disabled]: disabledDueToProcessing,
-      })}
-      onClick={handlePay}
-      disabled={disabledDueToProcessing}
-      data-qa-button="gpayChip"
-    >
-      <GooglePayIcon width="49" height="26" />
-    </button>
+    <Grid>
+      <button
+        className={cx({
+          [classes.button]: true,
+          [classes.disabled]: disabledDueToProcessing,
+        })}
+        data-qa-button="gpayChip"
+        disabled={disabledDueToProcessing}
+        onClick={handlePay}
+      >
+        <GooglePayIcon height="26" width="49" />
+      </button>
+    </Grid>
   );
 };
 

@@ -10,7 +10,7 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
+import { Filter, Params, ResourcePage as Page } from '../types';
 import {
   CreateDatabasePayload,
   Database,
@@ -22,7 +22,7 @@ import {
   Engine,
   SSLFields,
   UpdateDatabasePayload,
-  UpdateDatabaseResponse,
+  DatabaseFork,
 } from './types';
 
 /**
@@ -31,12 +31,12 @@ import {
  * Return a paginated list of databases on this account.
  *
  */
-export const getDatabases = (params?: any, filters?: any) =>
+export const getDatabases = (params?: Params, filter?: Filter) =>
   Request<Page<DatabaseInstance>>(
     setURL(`${API_ROOT}/databases/instances`),
     setMethod('GET'),
     setParams(params),
-    setXFilter(filters)
+    setXFilter(filter)
   );
 
 /**
@@ -45,12 +45,12 @@ export const getDatabases = (params?: any, filters?: any) =>
  * Return a paginated list of available plans/types for databases
  *
  */
-export const getDatabaseTypes = (params?: any, filters?: any) =>
+export const getDatabaseTypes = (params?: Params, filter?: Filter) =>
   Request<Page<DatabaseType>>(
     setURL(`${API_ROOT}/databases/types`),
     setMethod('GET'),
     setParams(params),
-    setXFilter(filters)
+    setXFilter(filter)
   );
 
 /**
@@ -61,7 +61,7 @@ export const getDatabaseTypes = (params?: any, filters?: any) =>
  */
 export const getDatabaseType = (typeSlug: string) =>
   Request<DatabaseType>(
-    setURL(`${API_ROOT}/databases/types/${typeSlug}`),
+    setURL(`${API_ROOT}/databases/types/${encodeURIComponent(typeSlug)}`),
     setMethod('GET')
   );
 
@@ -71,12 +71,12 @@ export const getDatabaseType = (typeSlug: string) =>
  * Return information on available versions per engine that we offer
  *
  */
-export const getDatabaseEngines = (params?: any, filters?: any) =>
+export const getDatabaseEngines = (params?: Params, filter?: Filter) =>
   Request<Page<DatabaseEngine>>(
     setURL(`${API_ROOT}/databases/engines`),
     setMethod('GET'),
     setParams(params),
-    setXFilter(filters)
+    setXFilter(filter)
   );
 
 /**
@@ -87,7 +87,7 @@ export const getDatabaseEngines = (params?: any, filters?: any) =>
  */
 export const getDatabaseEngine = (engineSlug: string) =>
   Request<DatabaseEngine>(
-    setURL(`${API_ROOT}/databases/engines/${engineSlug}`),
+    setURL(`${API_ROOT}/databases/engines/${encodeURIComponent(engineSlug)}`),
     setMethod('GET')
   );
 
@@ -102,7 +102,7 @@ export const createDatabase = (
   data: CreateDatabasePayload
 ) =>
   Request<Database>(
-    setURL(`${API_ROOT}/databases/${engine}/instances`),
+    setURL(`${API_ROOT}/databases/${encodeURIComponent(engine)}/instances`),
     setMethod('POST'),
     setData(data, createDatabaseSchema)
   );
@@ -115,14 +115,14 @@ export const createDatabase = (
  */
 export const getEngineDatabases = (
   engine: Engine,
-  params?: any,
-  filters?: any
+  params?: Params,
+  filter?: Filter
 ) =>
   Request<Page<Database>>(
-    setURL(`${API_ROOT}/databases/${engine}/instances`),
+    setURL(`${API_ROOT}/databases/${encodeURIComponent(engine)}/instances`),
     setMethod('GET'),
     setParams(params),
-    setXFilter(filters)
+    setXFilter(filter)
   );
 
 /**
@@ -133,14 +133,18 @@ export const getEngineDatabases = (
  */
 export const getEngineDatabase = (engine: Engine, databaseID: number) =>
   Request<Database>(
-    setURL(`${API_ROOT}/databases/${engine}/instances/${databaseID}`),
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}`
+    ),
     setMethod('GET')
   );
 
 /**
  * updateDatabase
  *
- * Update the label or allowed IPs of an
+ * Update the label or allowed IPs or plan of an
  * existing database
  *
  */
@@ -149,10 +153,29 @@ export const updateDatabase = (
   databaseID: number,
   data: UpdateDatabasePayload
 ) =>
-  Request<UpdateDatabaseResponse>(
-    setURL(`${API_ROOT}/databases/${engine}/instances/${databaseID}`),
+  Request<Database>(
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}`
+    ),
     setMethod('PUT'),
     setData(data, updateDatabaseSchema)
+  );
+
+/**
+ * patchDatabase
+ *
+ * Patch security updates for the database (outside of the maintenance window)
+ */
+export const patchDatabase = (engine: Engine, databaseID: number) =>
+  Request<void>(
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}/patch`
+    ),
+    setMethod('POST')
   );
 
 /**
@@ -162,7 +185,11 @@ export const updateDatabase = (
  */
 export const deleteDatabase = (engine: Engine, databaseID: number) =>
   Request<{}>(
-    setURL(`${API_ROOT}/databases/${engine}/instances/${databaseID}`),
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}`
+    ),
     setMethod('DELETE')
   );
 
@@ -175,14 +202,18 @@ export const deleteDatabase = (engine: Engine, databaseID: number) =>
 export const getDatabaseBackups = (
   engine: Engine,
   databaseID: number,
-  params?: any,
-  filters?: any
+  params?: Params,
+  filter?: Filter
 ) =>
   Request<Page<DatabaseBackup>>(
-    setURL(`${API_ROOT}/databases/${engine}/instances/${databaseID}/backups`),
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}/backups`
+    ),
     setMethod('GET'),
     setParams(params),
-    setXFilter(filters)
+    setXFilter(filter)
   );
 
 /**
@@ -198,26 +229,46 @@ export const getDatabaseBackup = (
 ) =>
   Request<DatabaseBackup>(
     setURL(
-      `${API_ROOT}/databases/${engine}/instances/${databaseID}/backups/${backupID}`
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(
+        databaseID
+      )}/backups/${encodeURIComponent(backupID)}`
     ),
     setMethod('GET')
   );
 
 /**
- * restoreWithBackup
+ * legacyRestoreWithBackup
  *
  * Fully restore a backup to the cluster
  */
-export const restoreWithBackup = (
+export const legacyRestoreWithBackup = (
   engine: Engine,
   databaseID: number,
   backupID: number
 ) =>
   Request<{}>(
     setURL(
-      `${API_ROOT}/databases/${engine}/instances/${databaseID}/backups/${backupID}/restore`
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(
+        databaseID
+      )}/backups/${encodeURIComponent(backupID)}/restore`
     ),
     setMethod('POST')
+  );
+
+/**
+ * restoreWithBackup for the New Database
+ *
+ * Fully restore a backup to the cluster
+ */
+export const restoreWithBackup = (engine: Engine, fork: DatabaseFork) =>
+  Request<Database>(
+    setURL(`${API_ROOT}/databases/${encodeURIComponent(engine)}/instances`),
+    setMethod('POST'),
+    setData({ fork })
   );
 
 /**
@@ -229,7 +280,9 @@ export const restoreWithBackup = (
 export const getDatabaseCredentials = (engine: Engine, databaseID: number) =>
   Request<DatabaseCredentials>(
     setURL(
-      `${API_ROOT}/databases/${engine}/instances/${databaseID}/credentials`
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}/credentials`
     ),
     setMethod('GET')
   );
@@ -242,7 +295,9 @@ export const getDatabaseCredentials = (engine: Engine, databaseID: number) =>
 export const resetDatabaseCredentials = (engine: Engine, databaseID: number) =>
   Request<{}>(
     setURL(
-      `${API_ROOT}/databases/${engine}/instances/${databaseID}/credentials/reset`
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}/credentials/reset`
     ),
     setMethod('POST')
   );
@@ -254,6 +309,40 @@ export const resetDatabaseCredentials = (engine: Engine, databaseID: number) =>
  */
 export const getSSLFields = (engine: Engine, databaseID: number) =>
   Request<SSLFields>(
-    setURL(`${API_ROOT}/databases/${engine}/instances/${databaseID}/ssl`),
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}/ssl`
+    ),
     setMethod('GET')
+  );
+
+/**
+ * suspendDatabase
+ *
+ * Suspend the specified database cluster
+ */
+export const suspendDatabase = (engine: Engine, databaseID: number) =>
+  Request<{}>(
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}/suspend`
+    ),
+    setMethod('POST')
+  );
+
+/**
+ * resumeDatabase
+ *
+ * Resume the specified database cluster
+ */
+export const resumeDatabase = (engine: Engine, databaseID: number) =>
+  Request<{}>(
+    setURL(
+      `${API_ROOT}/databases/${encodeURIComponent(
+        engine
+      )}/instances/${encodeURIComponent(databaseID)}/resume`
+    ),
+    setMethod('POST')
   );

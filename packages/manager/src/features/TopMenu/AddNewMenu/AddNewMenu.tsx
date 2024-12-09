@@ -1,23 +1,26 @@
-import { Account, AccountCapability } from '@linode/api-v4/lib/account';
-import KeyboardArrowDown from '@material-ui/icons/KeyboardArrowDown';
+import KeyboardArrowDown from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUp from '@mui/icons-material/KeyboardArrowUp';
 import {
+  Box,
+  ListItemIcon,
   Menu,
-  MenuButton,
-  MenuItems,
-  MenuLink,
-  MenuPopover,
-} from '@reach/menu-button';
-import '@reach/menu-button/styles.css';
+  MenuItem,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import * as React from 'react';
-import { Link, RouteComponentProps, withRouter } from 'react-router-dom';
-import { compose } from 'recompose';
+import { Link } from 'react-router-dom';
+
 import BucketIcon from 'src/assets/icons/entityIcons/bucket.svg';
+import DatabaseIcon from 'src/assets/icons/entityIcons/database.svg';
 import DomainIcon from 'src/assets/icons/entityIcons/domain.svg';
 import FirewallIcon from 'src/assets/icons/entityIcons/firewall.svg';
 import KubernetesIcon from 'src/assets/icons/entityIcons/kubernetes.svg';
 import LinodeIcon from 'src/assets/icons/entityIcons/linode.svg';
 import NodebalancerIcon from 'src/assets/icons/entityIcons/nodebalancer.svg';
 import OneClickIcon from 'src/assets/icons/entityIcons/oneclick.svg';
+import PlacementGroupsIcon from 'src/assets/icons/entityIcons/placement-groups.svg';
 import VolumeIcon from 'src/assets/icons/entityIcons/volume.svg';
 import DatabaseIcon from 'src/assets/icons/entityIcons/database.svg';
 import {
@@ -297,25 +300,7 @@ class AddNewMenu extends React.Component<CombinedProps> {
             </Menu>
           </div>
         )}
-      </dbaasContext.Consumer>
-    );
-  }
-}
-
-export const styledComponent = styled(AddNewMenu);
-
-interface DispatchProps {
-  openVolumeDrawerForCreating: () => void;
-}
-
-interface StateProps {
-  accountCapabilities: AccountCapability[];
-}
-
-const enhanced = compose<CombinedProps, {}>(
-  withRouter,
-  withFeatureFlags,
-  styled
-)(AddNewMenu);
-
-export default enhanced;
+      </Menu>
+    </Box>
+  );
+};

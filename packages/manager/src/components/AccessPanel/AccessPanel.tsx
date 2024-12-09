@@ -1,138 +1,279 @@
-import classNames from 'classnames';
+import { Paper } from '@linode/ui';
 import * as React from 'react';
-import { compose } from 'recompose';
-import Paper from 'src/components/core/Paper';
+import { makeStyles } from 'tss-react/mui';
+
 import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Notice from 'src/components/Notice';
-import RenderGuard, { RenderGuardProps } from 'src/components/RenderGuard';
-import SuspenseLoader from 'src/components/SuspenseLoader';
-import Divider from '../core/Divider';
+  DISK_ENCRYPTION_DEFAULT_DISTRIBUTED_INSTANCES,
+  DISK_ENCRYPTION_DISTRIBUTED_DESCRIPTION,
+  DISK_ENCRYPTION_GENERAL_DESCRIPTION,
+  DISK_ENCRYPTION_UNAVAILABLE_IN_REGION_COPY,
+  ENCRYPT_DISK_DISABLED_REBUILD_DISTRIBUTED_REGION_REASON,
+  ENCRYPT_DISK_DISABLED_REBUILD_LKE_REASON,
+  ENCRYPT_DISK_REBUILD_DISTRIBUTED_COPY,
+  ENCRYPT_DISK_REBUILD_LKE_COPY,
+  ENCRYPT_DISK_REBUILD_STANDARD_COPY,
+} from 'src/components/Encryption/constants';
+import { Encryption } from 'src/components/Encryption/Encryption';
+import { useIsDiskEncryptionFeatureEnabled } from 'src/components/Encryption/utils';
+import { getIsDistributedRegion } from 'src/components/RegionSelect/RegionSelect.utils';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
+import { Typography } from 'src/components/Typography';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { doesRegionSupportFeature } from 'src/utilities/doesRegionSupportFeature';
+
+import { Divider } from '../Divider';
 import UserSSHKeyPanel from './UserSSHKeyPanel';
 
-const PasswordInput = React.lazy(() => import('src/components/PasswordInput'));
+import type { Theme } from '@mui/material/styles';
 
-type ClassNames = 'root' | 'isOptional' | 'passwordInputOuter';
+const PasswordInput = React.lazy(
+  () => import('src/components/PasswordInput/PasswordInput')
+);
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      marginTop: theme.spacing(3),
-    },
+const useStyles = makeStyles<void, 'passwordInputOuter'>()(
+  (theme: Theme, _params, classes) => ({
     isOptional: {
-      '& $passwordInputOuter': {
+      [`& .${classes.passwordInputOuter}`]: {
         marginTop: 0,
       },
     },
     passwordInputOuter: {},
-  });
-
-const styled = withStyles(styles);
+    root: {
+      marginTop: theme.spacing(3),
+    },
+  })
+);
 
 interface Props {
-  password: string | null;
+  authorizedUsers?: string[];
+  className?: string;
+  disabled?: boolean;
+  disabledReason?: JSX.Element | string;
+  diskEncryptionEnabled?: boolean;
+  displayDiskEncryption?: boolean;
   error?: string;
-  sshKeyError?: string;
   handleChange: (value: string) => void;
   heading?: string;
-  label?: string;
-  required?: boolean;
-  placeholder?: string;
-  users?: UserSSHKeyObject[];
-  requestKeys?: () => void;
-  disabled?: boolean;
-  disabledReason?: string;
   hideStrengthLabel?: boolean;
-  className?: string;
-  small?: boolean;
+  isInRebuildFlow?: boolean;
+  isLKELinode?: boolean;
   isOptional?: boolean;
+  label?: string;
+  linodeIsInDistributedRegion?: boolean;
+  password: null | string;
   passwordHelperText?: string;
+  placeholder?: string;
+  required?: boolean;
+  selectedRegion?: string;
+  setAuthorizedUsers?: (usernames: string[]) => void;
+  small?: boolean;
+  toggleDiskEncryptionEnabled?: () => void;
 }
 
-export interface UserSSHKeyObject {
-  gravatarUrl: string;
-  username: string;
-  selected: boolean;
-  keys: string[];
-  onSSHKeyChange: (
-    e: React.ChangeEvent<HTMLInputElement>,
-    result: boolean
-  ) => void;
+interface DiskEncryptionDescriptionDeterminants {
+  isDistributedRegion: boolean | undefined; // Linode Create flow (region selected for a not-yet-created linode)
+  isInRebuildFlow: boolean | undefined;
+  isLKELinode: boolean | undefined;
+  linodeIsInDistributedRegion: boolean | undefined; // Linode Rebuild flow (linode exists already)
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+interface DiskEncryptionDisabledReasonDeterminants {
+  isDistributedRegion: boolean | undefined; // Linode Create flow (region selected for a not-yet-created linode)
+  isInRebuildFlow: boolean | undefined;
+  isLKELinode: boolean | undefined;
+  linodeIsInDistributedRegion: boolean | undefined; // Linode Rebuild flow (linode exists already)
+  regionSupportsDiskEncryption: boolean;
+}
 
-class AccessPanel extends React.Component<CombinedProps> {
-  render() {
-    const {
-      classes,
-      error,
-      sshKeyError,
-      label,
-      required,
-      placeholder,
-      users,
-      disabled,
-      disabledReason,
-      hideStrengthLabel,
-      className,
-      isOptional,
-      passwordHelperText,
-      requestKeys,
-    } = this.props;
+export const AccessPanel = (props: Props) => {
+  const {
+    authorizedUsers,
+    className,
+    disabled,
+    disabledReason,
+    diskEncryptionEnabled,
+    displayDiskEncryption,
+    error,
+    handleChange: _handleChange,
+    hideStrengthLabel,
+    isInRebuildFlow,
+    isLKELinode,
+    isOptional,
+    label,
+    linodeIsInDistributedRegion,
+    password,
+    passwordHelperText,
+    placeholder,
+    required,
+    selectedRegion,
+    setAuthorizedUsers,
+    toggleDiskEncryptionEnabled,
+  } = props;
 
-    return (
-      <Paper
-        className={classNames(
-          {
-            [classes.root]: true,
-            [classes.isOptional]: isOptional,
-          },
-          className
-        )}
-      >
-        {error && <Notice text={error} error />}
-        <React.Suspense fallback={<SuspenseLoader />}>
-          <PasswordInput
-            name="password"
-            data-qa-password-input
-            className={classes.passwordInputOuter}
-            required={required}
+  const { classes, cx } = useStyles();
+
+  const {
+    isDiskEncryptionFeatureEnabled,
+  } = useIsDiskEncryptionFeatureEnabled();
+
+  const regions = useRegionsQuery().data ?? [];
+
+  const regionSupportsDiskEncryption = doesRegionSupportFeature(
+    selectedRegion ?? '',
+    regions,
+    'Disk Encryption'
+  );
+
+  const isDistributedRegion = getIsDistributedRegion(
+    regions ?? [],
+    selectedRegion ?? ''
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    _handleChange(e.target.value);
+
+  const determineDiskEncryptionDescription = ({
+    isDistributedRegion,
+    isInRebuildFlow,
+    isLKELinode,
+    linodeIsInDistributedRegion,
+  }: DiskEncryptionDescriptionDeterminants) => {
+    // Linode Rebuild flow descriptions
+    if (isInRebuildFlow) {
+      // the order is significant: all Distributed instances are encrypted (broadest)
+      if (linodeIsInDistributedRegion) {
+        return ENCRYPT_DISK_REBUILD_DISTRIBUTED_COPY;
+      }
+
+      if (isLKELinode) {
+        return ENCRYPT_DISK_REBUILD_LKE_COPY;
+      }
+
+      if (!isLKELinode && !linodeIsInDistributedRegion) {
+        return ENCRYPT_DISK_REBUILD_STANDARD_COPY;
+      }
+    }
+
+    // Linode Create flow descriptions
+    return isDistributedRegion
+      ? DISK_ENCRYPTION_DISTRIBUTED_DESCRIPTION
+      : DISK_ENCRYPTION_GENERAL_DESCRIPTION;
+  };
+
+  const determineDiskEncryptionDisabledReason = ({
+    isDistributedRegion,
+    isInRebuildFlow,
+    isLKELinode,
+    linodeIsInDistributedRegion,
+    regionSupportsDiskEncryption,
+  }: DiskEncryptionDisabledReasonDeterminants) => {
+    if (isInRebuildFlow) {
+      // the order is significant: setting can't be changed for *any* Distributed instances (broadest)
+      if (linodeIsInDistributedRegion) {
+        return ENCRYPT_DISK_DISABLED_REBUILD_DISTRIBUTED_REGION_REASON;
+      }
+
+      if (isLKELinode) {
+        return ENCRYPT_DISK_DISABLED_REBUILD_LKE_REASON;
+      }
+
+      if (!regionSupportsDiskEncryption) {
+        return DISK_ENCRYPTION_UNAVAILABLE_IN_REGION_COPY;
+      }
+    }
+
+    // Linode Create flow disabled reasons
+    return isDistributedRegion
+      ? DISK_ENCRYPTION_DEFAULT_DISTRIBUTED_INSTANCES
+      : DISK_ENCRYPTION_UNAVAILABLE_IN_REGION_COPY;
+  };
+
+  /**
+   * Display the "Disk Encryption" section if:
+   * 1) the feature is enabled
+   * 2) "displayDiskEncryption" is explicitly passed -- <AccessPanel />
+   * gets used in several places, but we don't want to display Disk Encryption in all
+   * 3) toggleDiskEncryptionEnabled is defined
+   */
+  const diskEncryptionJSX =
+    isDiskEncryptionFeatureEnabled &&
+    displayDiskEncryption &&
+    toggleDiskEncryptionEnabled !== undefined ? (
+      <>
+        <Divider spacingBottom={20} spacingTop={24} />
+        <Encryption
+          descriptionCopy={determineDiskEncryptionDescription({
+            isDistributedRegion,
+            isInRebuildFlow,
+            isLKELinode,
+            linodeIsInDistributedRegion,
+          })}
+          disabled={
+            !regionSupportsDiskEncryption ||
+            isLKELinode ||
+            linodeIsInDistributedRegion
+          }
+          disabledReason={determineDiskEncryptionDisabledReason({
+            isDistributedRegion,
+            isInRebuildFlow,
+            isLKELinode,
+            linodeIsInDistributedRegion,
+            regionSupportsDiskEncryption,
+          })}
+          isEncryptEntityChecked={diskEncryptionEnabled ?? false}
+          onChange={() => toggleDiskEncryptionEnabled()}
+        />
+      </>
+    ) : null;
+
+  return (
+    <Paper
+      className={cx(
+        {
+          [classes.isOptional]: isOptional,
+        },
+        classes.root,
+        className
+      )}
+    >
+      {isDiskEncryptionFeatureEnabled && (
+        <Typography
+          sx={(theme) => ({ paddingBottom: theme.spacing(2) })}
+          variant="h2"
+        >
+          Security
+        </Typography>
+      )}
+      <React.Suspense fallback={<SuspenseLoader />}>
+        <PasswordInput
+          autoComplete="off"
+          className={classes.passwordInputOuter}
+          data-qa-password-input
+          disabled={disabled}
+          disabledReason={disabledReason || ''}
+          errorText={error}
+          helperText={passwordHelperText}
+          hideStrengthLabel={hideStrengthLabel}
+          label={label || 'Root Password'}
+          name="password"
+          noMarginTop
+          onChange={handleChange}
+          placeholder={placeholder || 'Enter a password.'}
+          required={required}
+          value={password || ''}
+        />
+      </React.Suspense>
+      {setAuthorizedUsers !== undefined && authorizedUsers !== undefined ? (
+        <>
+          <Divider spacingBottom={20} spacingTop={24} />
+          <UserSSHKeyPanel
+            authorizedUsers={authorizedUsers}
             disabled={disabled}
-            disabledReason={disabledReason || ''}
-            autoComplete="off"
-            value={this.props.password || ''}
-            label={label || 'Root Password'}
-            placeholder={placeholder || 'Enter a password.'}
-            onChange={this.handleChange}
-            hideStrengthLabel={hideStrengthLabel}
-            helperText={passwordHelperText}
+            setAuthorizedUsers={setAuthorizedUsers}
           />
-        </React.Suspense>
-        {users && (
-          <>
-            <Divider spacingTop={44} spacingBottom={20} />
-            <UserSSHKeyPanel
-              users={users}
-              error={sshKeyError}
-              disabled={disabled}
-              onKeyAddSuccess={requestKeys || (() => null)}
-            />
-          </>
-        )}
-      </Paper>
-    );
-  }
-
-  handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    this.props.handleChange(e.target.value);
-}
-
-export default compose<CombinedProps, Props & RenderGuardProps>(
-  RenderGuard,
-  styled
-)(AccessPanel);
+        </>
+      ) : null}
+      {diskEncryptionJSX}
+    </Paper>
+  );
+};

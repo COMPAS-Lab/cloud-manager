@@ -1,8 +1,6 @@
 import {
   CreditCardSchema,
-  ExecutePaypalPaymentSchema,
   PaymentSchema,
-  StagePaypalPaymentSchema,
   PaymentMethodSchema,
 } from '@linode/validation/lib/account.schema';
 import { API_ROOT } from '../constants';
@@ -13,15 +11,12 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage } from '../types';
+import { Filter, Params, ResourcePage } from '../types';
 import {
   ClientToken,
-  ExecutePayload,
   Payment,
   PaymentMethod,
   PaymentResponse,
-  Paypal,
-  PaypalResponse,
   SaveCreditCardData,
   MakePaymentData,
   PaymentMethodPayload,
@@ -34,7 +29,7 @@ import {
  * on your account.
  *
  */
-export const getPayments = (params?: any, filter?: any) =>
+export const getPayments = (params?: Params, filter?: Filter) =>
   Request<ResourcePage<Payment>>(
     setURL(`${API_ROOT}/account/payments`),
     setMethod('GET'),
@@ -86,50 +81,6 @@ export const makePayment = (data: MakePaymentData) => {
   );
 };
 
-interface StagePaypalData {
-  checkout_token: string;
-  payment_id: string;
-}
-
-/**
- * stagePaypalPayment
- *
- * Begins the process of making a payment through Paypal.
- *
- * @param data { object }
- * @param data.cancel_url The URL to have PayPal redirect to when Payment is canceled.
- * @param data.redirect_url The URL to have PayPal redirect to when Payment is approved.
- * @param data.usd { string } The dollar amount of the payment
- *
- * @returns a payment ID, used for submitting the payment to Paypal.
- *
- */
-export const stagePaypalPayment = (data: Paypal) =>
-  Request<StagePaypalData>(
-    setURL(`${API_ROOT}/account/payments/paypal`),
-    setMethod('POST'),
-    setData(data, StagePaypalPaymentSchema)
-  );
-
-/**
- * executePaypalPayment
- *
- * Executes a payment through Paypal that has been started with the
- * stagePaypalPayment method above. Paypal will capture the designated
- * funds and credit your Linode account.
- *
- * @param data { object }
- * @param data.payment_id The ID returned by stagePaypalPayment
- * @param data.payer_id The PayerID returned by PayPal during the transaction authorization process.
- *
- */
-export const executePaypalPayment = (data: ExecutePayload) =>
-  Request<PaypalResponse>(
-    setURL(`${API_ROOT}/account/payments/paypal/execute`),
-    setMethod('POST'),
-    setData(data, ExecutePaypalPaymentSchema)
-  );
-
 /**
  * saveCreditCard
  *
@@ -153,7 +104,7 @@ export const saveCreditCard = (data: SaveCreditCardData) => {
  * on a user's account
  *
  */
-export const getPaymentMethods = (params?: any) => {
+export const getPaymentMethods = (params?: Params) => {
   return Request<ResourcePage<PaymentMethod>>(
     setURL(`${API_ROOT}/account/payment-methods`),
     setMethod('GET'),
@@ -172,7 +123,7 @@ export const getPaymentMethods = (params?: any) => {
  */
 export const getPaymentMethod = (id: number) => {
   return Request<PaymentMethod>(
-    setURL(`${API_ROOT}/account/payment-method/${id}`),
+    setURL(`${API_ROOT}/account/payment-method/${encodeURIComponent(id)}`),
     setMethod('GET')
   );
 };
@@ -224,7 +175,11 @@ export const addPaymentMethod = (data: PaymentMethodPayload) => {
  */
 export const makeDefaultPaymentMethod = (id: number) => {
   return Request<{}>(
-    setURL(`${API_ROOT}/account/payment-methods/${id}/make-default`),
+    setURL(
+      `${API_ROOT}/account/payment-methods/${encodeURIComponent(
+        id
+      )}/make-default`
+    ),
     setMethod('POST')
   );
 };
@@ -238,7 +193,7 @@ export const makeDefaultPaymentMethod = (id: number) => {
  */
 export const deletePaymentMethod = (id: number) => {
   return Request<{}>(
-    setURL(`${API_ROOT}/account/payment-methods/${id}`),
+    setURL(`${API_ROOT}/account/payment-methods/${encodeURIComponent(id)}`),
     setMethod('DELETE')
   );
 };

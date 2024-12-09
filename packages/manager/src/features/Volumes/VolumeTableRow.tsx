@@ -1,4 +1,4 @@
-import { Event } from '@linode/api-v4/lib/account';
+import { Box } from '@linode/ui';
 import * as React from 'react';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import { compose } from 'recompose';
@@ -16,56 +16,27 @@ import TableRow from 'src/components/TableRow';
 import { ExtendedVolume } from './types';
 import VolumesActionMenu, { ActionHandlers } from './VolumesActionMenu';
 
-export const useStyles = makeStyles((theme: Theme) => ({
+export const useStyles = makeStyles()({
   volumePath: {
     width: '35%',
     wordBreak: 'break-all',
   },
-  chipWrapper: {
-    alignSelf: 'center',
-  },
-}));
+});
 
-export type CombinedProps = ExtendedVolume & ActionHandlers;
+interface Props {
+  handlers: ActionHandlers;
+  isBlockStorageEncryptionFeatureEnabled?: boolean;
+  isDetailsPageRow?: boolean;
+  volume: Volume;
+}
 
-const progressFromEvent = (e?: Event) => {
-  if (!e) {
-    return undefined;
-  }
-
-  if (e.status === 'started' && e.percent_complete) {
-    return e.percent_complete;
-  }
-
-  return undefined;
-};
-
-export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const VolumeTableRow = React.memo((props: Props) => {
+  const { classes } = useStyles();
   const {
-    isUpdating,
-    openForClone,
-    openForConfig,
-    openForEdit,
-    openForResize,
-    handleAttach,
-    handleDelete,
-    handleDetach,
-    handleUpgrade,
-    id,
-    label,
-    tags,
-    size,
-    recentEvent,
-    region,
-    hardware_type: hardwareType,
-    filesystem_path: filesystemPath,
-    linodeLabel,
-    linode_id: linodeId,
-    linodeStatus,
-    eligibleForUpgradeToNVMe,
-    nvmeUpgradeScheduledByUserImminent,
-    nvmeUpgradeScheduledByUserInProgress,
+    handlers,
+    isBlockStorageEncryptionFeatureEnabled,
+    isDetailsPageRow,
+    volume,
   } = props;
 
   const history = useHistory();
@@ -165,20 +136,26 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
       {!isVolumesLanding ? (
         <Hidden xsDown>
           <TableCell className={classes.volumePath} data-qa-fs-path>
-            {filesystemPath}
+            {volume.filesystem_path}
           </TableCell>
         </Hidden>
-      ) : null}
+      )}
       {isVolumesLanding && (
-        <TableCell data-qa-volume-cell-attachment={linodeLabel}>
-          {linodeId ? (
-            <Link to={`/linodes/${linodeId}`} className="link secondaryLink">
-              {linodeLabel}
+        <TableCell data-qa-volume-cell-attachment={volume.linode_label}>
+          {volume.linode_id !== null ? (
+            <Link
+              className="link secondaryLink"
+              to={`/linodes/${volume.linode_id}/storage`}
+            >
+              {volume.linode_label}
             </Link>
           ) : (
             <Typography data-qa-unattached>Unattached</Typography>
           )}
         </TableCell>
+      )}
+      {isBlockStorageEncryptionFeatureEnabled && (
+        <TableCell noWrap>{encryptionStatus}</TableCell>
       )}
       <TableCell actionCell>
         <VolumesActionMenu
@@ -205,16 +182,9 @@ export const VolumeTableRow: React.FC<CombinedProps> = (props) => {
            */
           attached={Boolean(linodeLabel)}
           isVolumesLanding={isVolumesLanding} // Passing this down to govern logic re: showing Attach or Detach in action menu.
-          onAttach={handleAttach}
-          onDetach={handleDetach}
-          poweredOff={linodeStatus === 'offline'}
-          onDelete={handleDelete}
+          volume={volume}
         />
       </TableCell>
     </TableRow>
   );
-};
-
-export default compose<CombinedProps, ActionHandlers & ExtendedVolume>(
-  React.memo
-)(VolumeTableRow);
+});

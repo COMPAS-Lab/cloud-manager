@@ -1,77 +1,52 @@
-import classNames from 'classnames';
 import * as React from 'react';
-import { compose } from 'recompose';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import EditableText from 'src/components/EditableText';
-import H1Header from 'src/components/H1Header';
-import { EditableProps, LabelProps } from './types';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  editableContainer: {
-    marginLeft: -theme.spacing(),
-    '& > div': {
-      width: 250,
-    },
-  },
-  labelWrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  crumb: {
-    color: theme.textColors.tableStatic,
-    fontSize: '1.125rem',
-    textTransform: 'capitalize',
-  },
-  noCap: {
-    textTransform: 'initial',
-  },
-}));
+import {
+  StyledDiv,
+  StyledEditableText,
+  StyledH1Header,
+} from './FinalCrumb.styles';
+import { EditableProps, LabelProps } from './types';
 
 interface Props {
   crumb: string;
-  subtitle?: string;
+  disabledBreadcrumbEditButton?: boolean;
   labelOptions?: LabelProps;
   onEditHandlers?: EditableProps;
 }
 
-type CombinedProps = Props;
-
-const FinalCrumb: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-  const { crumb, labelOptions, onEditHandlers } = props;
+export const FinalCrumb = React.memo((props: Props) => {
+  const {
+    crumb,
+    disabledBreadcrumbEditButton,
+    labelOptions,
+    onEditHandlers,
+  } = props;
 
   if (onEditHandlers) {
     return (
-      <EditableText
-        text={onEditHandlers.editableTextTitle}
-        errorText={onEditHandlers.errorText}
-        onEdit={onEditHandlers.onEdit}
-        onCancel={onEditHandlers.onCancel}
-        labelLink={labelOptions && labelOptions.linkTo}
+      <StyledEditableText
         data-qa-editable-text
-        className={classes.editableContainer}
+        disabledBreadcrumbEditButton={disabledBreadcrumbEditButton}
+        errorText={onEditHandlers.errorText}
+        handleAnalyticsEvent={onEditHandlers.handleAnalyticsEvent}
+        labelLink={labelOptions && labelOptions.linkTo}
+        onCancel={onEditHandlers.onCancel}
+        onEdit={onEditHandlers.onEdit}
+        text={onEditHandlers.editableTextTitle}
       />
     );
   }
 
   return (
-    <div className={classes.labelWrapper}>
-      <H1Header
-        title={crumb}
-        className={classNames({
-          [classes.crumb]: true,
-          [classes.noCap]: labelOptions && labelOptions.noCap,
-        })}
+    <StyledDiv>
+      <StyledH1Header
+        sx={{
+          ...(labelOptions &&
+            labelOptions.noCap && { textTransform: 'initial' }),
+        }}
         dataQaEl={crumb}
+        title={crumb}
       />
-      {labelOptions && labelOptions.subtitle && (
-        <Typography variant="body1" data-qa-label-subtitle>
-          {labelOptions.subtitle}
-        </Typography>
-      )}
-    </div>
+    </StyledDiv>
   );
-};
-
-export default compose<CombinedProps, Props>(React.memo)(FinalCrumb);
+});

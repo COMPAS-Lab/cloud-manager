@@ -1,154 +1,76 @@
-import { deleteUser, User } from '@linode/api-v4/lib/account';
-import { useSnackbar } from 'notistack';
+import { Box } from '@linode/ui';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import * as React from 'react';
-import UserIcon from 'src/assets/icons/user.svg';
-import AddNewLink from 'src/components/AddNewLink';
-import {
-  makeStyles,
-  Theme,
-  useMediaQuery,
-  useTheme,
-} from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
+
+import { Button } from 'src/components/Button/Button';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
-import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
-import usePagination from 'src/hooks/usePagination';
-import { useAccountUsers } from 'src/queries/accountUsers';
-import scrollErrorIntoView from 'src/utilities/scrollErrorIntoView';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { Typography } from 'src/components/Typography';
+import { PARENT_USER } from 'src/features/Account/constants';
+import { useOrder } from 'src/hooks/useOrder';
+import { usePagination } from 'src/hooks/usePagination';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { useAccountUsers } from 'src/queries/account/users';
+import { useProfile } from 'src/queries/profile/profile';
+
 import CreateUserDrawer from './CreateUserDrawer';
-import UserDeleteConfirmationDialog from './UserDeleteConfirmationDialog';
-import ActionMenu from './UsersActionMenu';
+import { UserDeleteConfirmationDialog } from './UserDeleteConfirmationDialog';
+import { UsersLandingProxyTableHead } from './UsersLandingProxyTableHead';
+import { UsersLandingTableBody } from './UsersLandingTableBody';
+import { UsersLandingTableHead } from './UsersLandingTableHead';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  userLandingHeader: {
-    margin: 0,
-    width: '100%',
-  },
-  headline: {
-    marginTop: 8,
-    marginBottom: 8,
-    marginLeft: 15,
-    lineHeight: '1.5rem',
-  },
-  addNewWrapper: {
-    '&.MuiGrid-item': {
-      paddingTop: 0,
-      paddingRight: 0,
-    },
-    [theme.breakpoints.down('sm')]: {
-      marginRight: theme.spacing(),
-    },
-  },
-  '@keyframes fadeIn': {
-    from: {
-      opacity: 0,
-    },
-    to: {
-      opacity: 1,
-    },
-  },
-  title: {
-    marginBottom: theme.spacing(2),
-  },
-  avatar: {
-    borderRadius: '50%',
-    width: 30,
-    height: 30,
-    marginRight: theme.spacing(2),
-    animation: '$fadeIn 150ms linear forwards',
-  },
-  emptyImage: {
-    display: 'inline',
-    width: 30,
-    height: 30,
-    marginRight: theme.spacing(2),
-    [theme.breakpoints.up('md')]: {
-      width: 40,
-      height: 40,
-    },
-  },
-}));
+import type { Filter } from '@linode/api-v4';
 
-interface Props {
-  isRestrictedUser: boolean;
-}
+export const UsersLanding = () => {
+  const theme = useTheme();
+  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = React.useState<boolean>(
+    false
+  );
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedUsername, setSelectedUsername] = React.useState('');
+  const { data: profile } = useProfile();
+  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const matchesLgUp = useMediaQuery(theme.breakpoints.up('lg'));
 
-const UsersLanding: React.FC<Props> = (props) => {
   const pagination = usePagination(1, 'account-users');
-  const { data: users, isLoading, error, refetch } = useAccountUsers(
-    {
+  const order = useOrder();
+
+  const showProxyUserTable =
+    profile?.user_type === 'child' || profile?.user_type === 'proxy';
+
+  const usersFilter: Filter = {
+    ['+order']: order.order,
+    ['+order_by']: order.orderBy,
+    ['user_type']: showProxyUserTable ? 'child' : undefined,
+  };
+
+  // Since this query is disabled for restricted users, use isInitialLoading.
+  const { data: users, error, isInitialLoading, refetch } = useAccountUsers({
+    filters: usersFilter,
+    params: {
       page: pagination.page,
       page_size: pagination.pageSize,
     },
-    true
-  );
-  const { enqueueSnackbar } = useSnackbar();
-  const [createDrawerOpen, setCreateDrawerOpen] = React.useState<boolean>(
-    false
-  );
-  const [
-    deleteConfirmDialogOpen,
-    setDeleteConfirmDialogOpen,
-  ] = React.useState<boolean>(false);
-  const [newUsername, setNewUsername] = React.useState<string | undefined>(
-    undefined
-  );
-  const [userDeleteError, setUserDeleteError] = React.useState<
-    boolean | undefined
-  >(false);
-  const [toDeleteUsername, setToDeleteUsername] = React.useState<
-    string | undefined
-  >('');
+  });
 
-  const classes = useStyles();
-  const theme = useTheme<Theme>();
-  const matchesSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const isRestrictedUser = profile?.restricted;
 
-  const openForCreate = () => {
-    setCreateDrawerOpen(true);
-  };
+  // Since this query is disabled for restricted users, use isInitialLoading.
+  const {
+    data: proxyUser,
+    error: proxyUserError,
+    isInitialLoading: isLoadingProxyUser,
+  } = useAccountUsers({
+    enabled: showProxyUserTable && !isRestrictedUser,
+    filters: { user_type: 'proxy' },
+  });
 
-  const userCreateOnClose = () => {
-    setCreateDrawerOpen(false);
-  };
-
-  const onDeleteConfirm = (username: string) => {
-    setNewUsername(undefined);
-    setUserDeleteError(false);
-    setDeleteConfirmDialogOpen(false);
-
-    deleteUser(username)
-      .then(() => {
-        refetch();
-        enqueueSnackbar(`User ${username} has been deleted successfully.`, {
-          variant: 'success',
-        });
-      })
-      .catch(() => {
-        setUserDeleteError(true);
-        setToDeleteUsername('');
-
-        scrollErrorIntoView();
-      });
-  };
-
-  const onDeleteCancel = () => {
-    setDeleteConfirmDialogOpen(false);
-  };
-
-  const onUsernameDelete = (username: string) => {
-    setDeleteConfirmDialogOpen(true);
-    setToDeleteUsername(username);
-  };
+  const isChildAccountAccessRestricted = useRestrictedGlobalGrantCheck({
+    globalGrantType: 'child_account_access',
+  });
 
   const renderUserRow = (user: User) => {
     return (
@@ -190,94 +112,110 @@ const UsersLanding: React.FC<Props> = (props) => {
     );
   };
 
-  const renderTableContent = () => {
-    if (isLoading) {
-      return (
-        <TableRowLoading
-          columns={4}
-          rows={1}
-          responsive={{ 1: { smDown: true } }}
-        />
-      );
-    }
-
-    if (error) {
-      return <TableRowError colSpan={4} message={error[0].reason} />;
-    }
-
-    if (!users || users.results === 0) {
-      return <TableRowEmptyState colSpan={4} />;
-    }
-
-    return users.data.map((user) => renderUserRow(user));
+  const handleDelete = (username: string) => {
+    setIsDeleteDialogOpen(true);
+    setSelectedUsername(username);
   };
 
   return (
     <React.Fragment>
       <DocumentTitleSegment segment="Users & Grants" />
-      {newUsername && (
-        <Notice success text={`User ${newUsername} created successfully`} />
+      {showProxyUserTable && (
+        <Typography
+          sx={(theme) => ({
+            marginBottom: theme.spacing(2),
+            marginTop: theme.spacing(3),
+            textTransform: 'capitalize',
+            [theme.breakpoints.down('md')]: {
+              marginLeft: theme.spacing(1),
+            },
+          })}
+          variant="h3"
+        >
+          {PARENT_USER} Settings
+        </Typography>
       )}
-      {userDeleteError && (
-        <Notice
-          style={{ marginTop: newUsername ? 16 : 0 }}
-          error
-          text={`Error when deleting user, please try again later`}
-        />
+      {showProxyUserTable && (
+        <Table aria-label="List of Parent Users">
+          <UsersLandingProxyTableHead order={order} />
+          <TableBody>
+            <UsersLandingTableBody
+              error={proxyUserError}
+              isLoading={isLoadingProxyUser}
+              numCols={proxyNumCols}
+              onDelete={handleDelete}
+              users={proxyUser?.data}
+            />
+          </TableBody>
+        </Table>
       )}
-      <Grid
-        container
-        alignItems="flex-end"
-        justifyContent="flex-end"
-        className={classes.userLandingHeader}
+      <Box
+        sx={(theme) => ({
+          alignItems: 'center',
+          display: 'flex',
+          justifyContent: showProxyUserTable ? 'space-between' : 'flex-end',
+          marginBottom: theme.spacing(2),
+          marginTop: theme.spacing(3),
+        })}
       >
-        <Grid item className={classes.addNewWrapper}>
-          <AddNewLink
-            disabled={props.isRestrictedUser}
-            disabledReason={
-              props.isRestrictedUser
-                ? 'You cannot create other users as a restricted user.'
-                : undefined
-            }
-            onClick={openForCreate}
-            label="Add a User"
-          />
-        </Grid>
-      </Grid>
+        {showProxyUserTable && (
+          <Typography
+            sx={(theme) => ({
+              [theme.breakpoints.down('md')]: {
+                marginLeft: theme.spacing(1),
+              },
+            })}
+            variant="h3"
+          >
+            User Settings
+          </Typography>
+        )}
+        <Button
+          tooltipText={
+            isRestrictedUser
+              ? 'You cannot create other users as a restricted user.'
+              : undefined
+          }
+          buttonType="primary"
+          disabled={isRestrictedUser}
+          onClick={() => setIsCreateDrawerOpen(true)}
+        >
+          Add a User
+        </Button>
+      </Box>
       <Table aria-label="List of Users">
-        <TableHead>
-          <TableRow>
-            <TableCell data-qa-username-column>Username</TableCell>
-            {!matchesSmDown && (
-              <TableCell data-qa-email-column>Email Address</TableCell>
-            )}
-            <TableCell data-qa-restriction-column>Account Access</TableCell>
-            <TableCell />
-          </TableRow>
-        </TableHead>
-        <TableBody>{renderTableContent()}</TableBody>
+        <UsersLandingTableHead
+          order={order}
+          showChildAccountAccessCol={showChildAccountAccessCol}
+        />
+        <TableBody>
+          <UsersLandingTableBody
+            error={error}
+            isLoading={isInitialLoading}
+            numCols={numCols}
+            onDelete={handleDelete}
+            users={users?.data}
+          />
+        </TableBody>
       </Table>
       <PaginationFooter
         count={users?.results || 0}
-        page={pagination.page}
-        pageSize={pagination.pageSize}
+        eventCategory="users landing"
         handlePageChange={pagination.handlePageChange}
         handleSizeChange={pagination.handlePageSizeChange}
-        eventCategory="users landing"
+        page={pagination.page}
+        pageSize={pagination.pageSize}
       />
       <CreateUserDrawer
-        open={createDrawerOpen}
-        onClose={userCreateOnClose}
+        onClose={() => setIsCreateDrawerOpen(false)}
+        open={isCreateDrawerOpen}
         refetch={refetch}
       />
       <UserDeleteConfirmationDialog
-        username={toDeleteUsername || ''}
-        open={deleteConfirmDialogOpen}
-        onDelete={onDeleteConfirm}
-        onCancel={onDeleteCancel}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        open={isDeleteDialogOpen}
+        username={selectedUsername}
       />
     </React.Fragment>
   );
 };
-
-export default UsersLanding;

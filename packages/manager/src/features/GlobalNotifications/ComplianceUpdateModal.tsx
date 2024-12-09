@@ -1,27 +1,27 @@
+import { useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
-import { useDispatch } from 'react-redux';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import Typography from 'src/components/core/Typography';
-import SupportLink from 'src/components/SupportLink';
-import { Dispatch } from 'src/hooks/types';
-import { useMutateAccountAgreements } from 'src/queries/accountAgreements';
-import { requestNotifications } from 'src/store/notification/notification.requests';
-import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
-import EUAgreementCheckbox from '../Account/Agreements/EUAgreementCheckbox';
-import { complianceUpdateContext } from 'src/context/complianceUpdateContext';
 
-const ComplianceUpdateModal: React.FC<{}> = () => {
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { SupportLink } from 'src/components/SupportLink';
+import { Typography } from 'src/components/Typography';
+import { complianceUpdateContext } from 'src/context/complianceUpdateContext';
+import { useMutateAccountAgreements } from 'src/queries/account/agreements';
+import { accountQueries } from 'src/queries/account/queries';
+import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
+
+import { EUAgreementCheckbox } from '../Account/Agreements/EUAgreementCheckbox';
+
+export const ComplianceUpdateModal = () => {
   const [error, setError] = React.useState('');
   const [checked, setChecked] = React.useState(false);
-  const dispatch: Dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
   const complianceModelContext = React.useContext(complianceUpdateContext);
 
   const {
+    isPending,
     mutateAsync: updateAccountAgreements,
-    isLoading,
   } = useMutateAccountAgreements();
 
   const handleAgree = () => {
@@ -30,7 +30,9 @@ const ComplianceUpdateModal: React.FC<{}> = () => {
       .then(() => {
         complianceModelContext.close();
         // Re-request notifications so the GDPR notification goes away.
-        dispatch(requestNotifications());
+        queryClient.invalidateQueries({
+          queryKey: accountQueries.notifications.queryKey,
+        });
       })
       .catch((err) => {
         const errorMessage = getErrorStringOrDefault(
@@ -43,32 +45,28 @@ const ComplianceUpdateModal: React.FC<{}> = () => {
 
   return (
     <ConfirmationDialog
-      open={complianceModelContext.isOpen}
-      onClose={complianceModelContext.close}
-      title="Compliance Update"
       actions={() => (
-        <ActionsPanel>
-          <Button
-            buttonType="secondary"
-            onClick={() => {
+        <ActionsPanel
+          primaryButtonProps={{
+            disabled: !checked,
+            label: 'Agree',
+            loading: isPending,
+            onClick: handleAgree,
+          }}
+          secondaryButtonProps={{
+            'data-testid': 'cancel',
+            label: 'Close',
+            onClick: () => {
               setChecked(false);
               complianceModelContext.close();
-            }}
-            data-qa-cancel
-          >
-            Close
-          </Button>
-          <Button
-            buttonType="primary"
-            onClick={handleAgree}
-            loading={isLoading}
-            disabled={!checked}
-          >
-            Agree
-          </Button>
-        </ActionsPanel>
+            },
+          }}
+        />
       )}
       error={error}
+      onClose={complianceModelContext.close}
+      open={complianceModelContext.isOpen}
+      title="Compliance Update"
     >
       <Typography>
         Recent legal changes now require users located in Europe, or with
@@ -79,11 +77,11 @@ const ComplianceUpdateModal: React.FC<{}> = () => {
         After your review, please click the box below if the agreement is
         acceptable, or{' '}
         <SupportLink
-          text="open a Support Ticket"
           onClick={() => {
             setChecked(false);
             complianceModelContext.close();
           }}
+          text="open a Support Ticket"
           title="Updates to the new EU Model Contact"
         />{' '}
         if you have any questions.
@@ -97,5 +95,3 @@ const ComplianceUpdateModal: React.FC<{}> = () => {
     </ConfirmationDialog>
   );
 };
-
-export default ComplianceUpdateModal;

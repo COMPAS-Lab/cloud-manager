@@ -1,18 +1,25 @@
-import { makeStyles, Theme } from 'src/components/core/styles';
+import { Box, omittedProps } from '@linode/ui';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import { Link } from 'react-router-dom';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  menuGrid: {
-    minHeight: 64,
-    height: '100%',
-    width: '100%',
-    margin: 0,
-    padding: 0,
-    [theme.breakpoints.up('sm')]: {
-      minHeight: 72,
-    },
-    [theme.breakpoints.up('md')]: {
-      minHeight: 80,
-    },
+import AkamaiLogo from 'src/assets/logo/akamai-logo.svg';
+import { Accordion } from 'src/components/Accordion';
+import { Divider } from 'src/components/Divider';
+import { SIDEBAR_WIDTH } from 'src/components/PrimaryNav/SideMenu';
+
+export const StyledGrid = styled(Grid, {
+  label: 'StyledGrid',
+})(({ theme }) => ({
+  height: '100%',
+  margin: 0,
+  minHeight: 64,
+  padding: 0,
+  [theme.breakpoints.up('md')]: {
+    minHeight: 80,
+  },
+  [theme.breakpoints.up('sm')]: {
+    minHeight: 72,
   },
   fadeContainer: {
     display: 'flex',
@@ -37,89 +44,86 @@ const useStyles = makeStyles((theme: Theme) => ({
     top: 12,
     left: 48,
   },
-  listItem: {
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer',
-    height: 36,
-    lineHeight: 0,
-    padding: '12px 16px',
-    position: 'relative',
-    transition: theme.transitions.create(['background-color']),
-    '& p': {
-      marginTop: 0,
-      marginBottom: 0,
-    },
-    '&:focus': {
-      textDecoration: 'none',
-    },
-    '&:hover': {
-      border: 'red',
-      backgroundImage: 'linear-gradient(98deg, #38584B 1%, #3A5049 166%)',
-      textDecoration: 'none',
-      '& $linkItem': {
-        color: 'white',
-      },
-      '& .icon': {
-        opacity: 1,
-      },
-      '& svg': {
-        color: theme.color.teal,
-        fill: theme.color.teal,
-      },
-    },
-    '& .icon': {
-      color: '#CFD0D2',
-      marginRight: theme.spacing(2),
-      opacity: 0.5,
-      '& svg': {
-        display: 'flex',
-        alignItems: 'center',
-        height: 20,
-        width: 20,
-        '&:not(.wBorder) circle, & .circle': {
-          display: 'none',
-        },
-      },
-    },
-  },
-  linkItem: {
-    display: 'flex',
-    alignItems: 'center',
-    color: '#fff',
-    fontFamily: 'LatoWebBold', // we keep this bold at all times
-    opacity: 1,
-    transition: theme.transitions.create(['color']),
-    whiteSpace: 'nowrap',
-    '&.hiddenWhenCollapsed': {
-      opacity: 0,
-    },
-  },
-  active: {
-    backgroundImage: 'linear-gradient(98deg, #38584B 1%, #3A5049 166%)',
+  '&:hover, &:focus': {
     textDecoration: 'none',
-    '& .icon': {
-      opacity: 1,
-    },
-    '& svg': {
-      color: theme.color.teal,
-    },
   },
-  divider: {
-    backgroundColor: 'rgba(0, 0, 0, 0.12)',
-    color: '#222',
-  },
-  chip: {
-    backgroundColor: theme.palette.primary.main,
-    color: '#fff',
-    fontFamily: theme.font.bold,
-    fontSize: '0.625rem',
-    height: 16,
-    marginTop: 2,
-    marginLeft: theme.spacing(),
-    letterSpacing: '.25px',
-    textTransform: 'uppercase',
-  },
+  alignItems: 'center',
+  cursor: 'pointer',
+  display: 'flex',
+  minWidth: SIDEBAR_WIDTH,
+  padding: '7px 16px',
+  position: 'relative',
+  ...(props.isActiveLink && {
+    backgroundImage: 'linear-gradient(98deg, #38584B 1%, #3A5049 166%)',
+  }),
+  ...(props.isCollapsed && {
+    backgroundImage: 'none',
+  }),
 }));
 
-export default useStyles;
+export const StyledPrimaryLinkBox = styled(Box, {
+  label: 'StyledPrimaryLinkBox',
+  shouldForwardProp: omittedProps(['isCollapsed']),
+})<{ isCollapsed: boolean }>(({ theme, ...props }) => ({
+  alignItems: 'center',
+  color: theme.tokens.color.Neutrals.White,
+  display: 'flex',
+  fontFamily: 'LatoWebBold',
+  fontSize: '0.875rem',
+  justifyContent: 'space-between',
+  transition: theme.transitions.create(['color', 'opacity']),
+  width: '100%',
+  ...(props.isCollapsed && {
+    opacity: 0,
+  }),
+}));
+
+export const StyledAccordion = styled(Accordion, {
+  label: 'StyledAccordion',
+  shouldForwardProp: omittedProps(['isCollapsed', 'isActiveProductFamily']),
+})<{ isActiveProductFamily: boolean; isCollapsed: boolean }>(
+  ({ theme, ...props }) => ({
+    '& h3': {
+      '& p': {
+        color: '#B8B8B8',
+        transition: theme.transitions.create(['opacity']),
+        ...(props.isCollapsed && {
+          opacity: 0,
+        }),
+      },
+      // product family icon
+      '& svg': {
+        color: props.isActiveProductFamily ? '#00B159' : theme.color.grey4,
+        height: 20,
+        marginRight: 14,
+        transition: theme.transitions.create(['color']),
+        width: 20,
+      },
+      alignItems: 'center',
+      display: 'flex',
+      fontSize: '0.7rem',
+      letterSpacing: '1px',
+      lineheight: 20,
+      padding: '0 10px',
+      textTransform: 'uppercase',
+    },
+    '.MuiAccordionDetails-root': {
+      padding: 0,
+    },
+    '.MuiButtonBase-root, MuiAccordionSummary-root': {
+      '.Mui-expanded': {
+        alignItems: 'center',
+        maxHeight: '42px',
+        minHeight: '42px',
+      },
+      maxHeight: '42px',
+      minHeight: '42px',
+      paddingLeft: 4,
+      svg: {
+        fill: theme.tokens.color.Neutrals.White,
+        stroke: 'transparent',
+      },
+    },
+    backgroundColor: theme.name === 'dark' ? theme.bg.appBar : 'transparent',
+  })
+);

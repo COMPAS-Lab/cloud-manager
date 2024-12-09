@@ -1,35 +1,18 @@
-import Warning from '@material-ui/icons/CheckCircle';
+import Warning from '@mui/icons-material/CheckCircle';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { compose } from 'recompose';
-import {
-  makeStyles,
-  Theme,
-  withTheme,
-  WithTheme,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ErrorState from 'src/components/ErrorState';
-import { AttachmentError } from 'src/features/Support/SupportTicketDetail/SupportTicketDetail';
-import SupportTicketDrawer from 'src/features/Support/SupportTickets/SupportTicketDrawer';
+import { useHistory } from 'react-router-dom';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  errorHeading: {
-    marginBottom: theme.spacing(2),
-  },
-  subheading: {
-    margin: '0 auto',
-    maxWidth: '60%',
-  },
-  cta: {
-    ...theme.applyLinkStyles,
-  },
-}));
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { Typography } from 'src/components/Typography';
+import { SupportTicketDialog } from 'src/features/Support/SupportTickets/SupportTicketDialog';
 
-type CombinedProps = WithTheme & RouteComponentProps;
+import { StyledLinkButton } from '../Button/StyledLinkButton';
 
-const AccountActivationLanding: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+import type { AttachmentError } from 'src/features/Support/SupportTicketDetail/SupportTicketDetail';
+
+const AccountActivationLanding = () => {
+  const history = useHistory();
 
   const [supportDrawerIsOpen, toggleSupportDrawer] = React.useState<boolean>(
     false
@@ -39,7 +22,7 @@ const AccountActivationLanding: React.FC<CombinedProps> = (props) => {
     ticketID: number,
     attachmentErrors?: AttachmentError[]
   ) => {
-    props.history.push({
+    history.push({
       pathname: `/support/tickets/${ticketID}`,
       state: { attachmentErrors },
     });
@@ -49,42 +32,48 @@ const AccountActivationLanding: React.FC<CombinedProps> = (props) => {
 
   return (
     <ErrorState
-      CustomIcon={Warning}
-      CustomIconStyles={{
-        color: props.theme.color.blue,
-      }}
       errorText={
         <React.Fragment>
-          <Typography variant="h2" className={classes.errorHeading}>
-            Thanks for signing up!
+          <Typography
+            sx={(theme) => ({ marginBottom: theme.spacing(2) })}
+            variant="h2"
+          >
+            Your account is currently being reviewed.
           </Typography>
-          <Typography className={classes.subheading}>
-            Your account is currently being reviewed. You&rsquo;ll receive an
-            email from us once our review is complete, so hang tight! If you
-            have questions during this process{' '}
-            <button
-              onClick={() => toggleSupportDrawer(true)}
-              className={classes.cta}
-            >
+          <Typography
+            sx={{
+              margin: '0 auto',
+              maxWidth: '60%',
+            }}
+          >
+            Thanks for signing up! You&rsquo;ll receive an email from us once
+            our review is complete, so hang tight. If you have questions during
+            this process{' '}
+            <StyledLinkButton onClick={() => toggleSupportDrawer(true)}>
               please open a Support ticket
-            </button>
+            </StyledLinkButton>
             .
           </Typography>
-          <SupportTicketDrawer
-            open={supportDrawerIsOpen}
+          <SupportTicketDialog
+            hideProductSelection
+            keepOpenOnSuccess={true}
             onClose={() => toggleSupportDrawer(false)}
             onSuccess={handleTicketSubmitSuccess}
-            keepOpenOnSuccess={true}
-            hideProductSelection
+            open={supportDrawerIsOpen}
             prefilledTitle="Help me activate my account"
           />
         </React.Fragment>
       }
+      CustomIcon={Warning}
+      CustomIconStyles={{ color: '#63A701' }}
     />
   );
 };
 
-export default compose<CombinedProps, {}>(
-  React.memo,
-  withTheme
-)(AccountActivationLanding);
+export const accountActivationLandingLazyRoute = createLazyRoute(
+  '/account-activation'
+)({
+  component: AccountActivationLanding,
+});
+
+export default React.memo(AccountActivationLanding);

@@ -1,3 +1,15 @@
+import { omittedProps } from '@linode/ui';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import * as React from 'react';
+
+export interface EntityDetailProps {
+  body?: JSX.Element;
+  footer?: JSX.Element;
+  header: JSX.Element;
+  noBodyBottomBorder?: boolean;
+}
+
 /**
  * EntityDetail provides a framework for the "Detail Summary" components found on:
  *  1. Detail Pages
@@ -5,62 +17,55 @@
  *  3. Dashboard
  * Provide a Header, Body, and Footer and this component provides the proper positioning for each.
  */
-
-import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-
-export interface EntityDetailProps {
-  header: JSX.Element;
-  body?: JSX.Element;
-  footer: JSX.Element;
-}
-
-const useStyles = makeStyles((theme: Theme) => ({
-  header: {},
-  body: {
-    paddingRight: theme.spacing(),
-    paddingBottom: theme.spacing(),
-    backgroundColor: theme.bg.bgPaper,
-    borderTop: `1px solid ${theme.borderColors.borderTable}`,
-    borderBottom: `1px solid ${theme.borderColors.borderTable}`,
-  },
-  footer: {
-    backgroundColor: theme.bg.bgPaper,
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: `10px 16px !important`,
-  },
-  footerBorder: {
-    borderTop: `1px solid ${theme.borderColors.borderTable}`,
-  },
-}));
-
-export const EntityDetail: React.FC<EntityDetailProps> = (props) => {
-  const { header, body, footer } = props;
-  const classes = useStyles();
+export const EntityDetail = (props: EntityDetailProps) => {
+  const { body, footer, header, noBodyBottomBorder } = props;
 
   return (
     <>
       {header}
-
       {body !== undefined && (
-        <Grid item xs={12} className={classes.body}>
+        <GridBody
+          footer={footer}
+          noBodyBottomBorder={noBodyBottomBorder}
+          xs={12}
+        >
           {body}
-        </Grid>
+        </GridBody>
       )}
-      <Grid
-        item
-        xs={12}
-        className={`${classes.footer} ${
-          body === undefined && classes.footerBorder
-        }`}
-      >
-        {footer}
-      </Grid>
+      {footer !== undefined && (
+        <GridFooter body={body} xs={12}>
+          {footer}
+        </GridFooter>
+      )}
     </>
   );
 };
 
-export default EntityDetail;
+const GridBody = styled(Grid, {
+  label: 'EntityDetailGridBody',
+  shouldForwardProp: omittedProps(['footer', 'noBodyBottomBorder']),
+})<Partial<EntityDetailProps>>(({ theme, ...props }) => ({
+  backgroundColor: theme.bg.bgPaper,
+  borderBottom:
+    props.footer === undefined && props.noBodyBottomBorder
+      ? undefined
+      : `1px solid ${theme.borderColors.borderTable}`, // @TODO LKE-E: This conditional can be removed when/if the footer is introduced in M3-8348
+  borderTop: `1px solid ${theme.borderColors.borderTable}`,
+  paddingBottom: theme.spacing(),
+  paddingRight: theme.spacing(),
+}));
+
+const GridFooter = styled(Grid, {
+  label: 'EntityDetailGridFooter',
+  shouldForwardProp: omittedProps(['body']),
+})<Partial<EntityDetailProps>>(({ theme, ...props }) => ({
+  alignItems: 'center',
+  backgroundColor: theme.bg.bgPaper,
+  borderTop:
+    props.body === undefined
+      ? `1px solid ${theme.borderColors.borderTable}`
+      : undefined,
+  display: 'flex',
+  flexDirection: 'row',
+  padding: `${theme.spacing(1)} ${theme.spacing(2)}`,
+}));

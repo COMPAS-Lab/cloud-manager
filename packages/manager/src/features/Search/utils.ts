@@ -1,32 +1,41 @@
-import { SearchableItem, SearchResultsByEntity } from './search.interfaces';
+import type {
+  SearchResultsByEntity,
+  SearchableItem,
+} from './search.interfaces';
 
 export const emptyResults: SearchResultsByEntity = {
-  linodes: [],
-  volumes: [],
-  domains: [],
-  images: [],
-  nodebalancers: [],
-  kubernetesClusters: [],
   buckets: [],
+  databases: [],
+  domains: [],
+  firewalls: [],
+  images: [],
+  kubernetesClusters: [],
+  linodes: [],
+  nodebalancers: [],
+  volumes: [],
 };
 
 export const separateResultsByEntity = (
   searchResults: SearchableItem[]
 ): SearchResultsByEntity => {
   const separatedResults: SearchResultsByEntity = {
-    linodes: [],
-    volumes: [],
-    domains: [],
-    images: [],
-    nodebalancers: [],
-    kubernetesClusters: [],
     buckets: [],
+    databases: [],
+    domains: [],
+    firewalls: [],
+    images: [],
+    kubernetesClusters: [],
+    linodes: [],
+    nodebalancers: [],
+    volumes: [],
   };
 
   searchResults.forEach((result) => {
     // EntityTypes are singular; we'd like the resulting keys to be plural
     const pluralizedEntityType = result.entityType + 's';
-    separatedResults[pluralizedEntityType].push(result);
+    separatedResults[
+      pluralizedEntityType as keyof typeof separatedResults
+    ].push(result);
   });
   return separatedResults;
 };

@@ -1,6 +1,12 @@
 export * from './account';
 
+export * from './cloudpulse';
+
+export * from './databases';
+
 export * from './domains';
+
+export * from './entity-transfers';
 
 export * from './firewalls';
 
@@ -16,7 +22,13 @@ export * from './managed';
 
 export * from './networking';
 
+export * from './network-transfer';
+
+export * from './nodebalancers';
+
 export * from './object-storage';
+
+export * from './placement-groups';
 
 export * from './profile';
 
@@ -28,14 +40,19 @@ export * from './support';
 
 export * from './tags';
 
+export * from './types';
+
 export * from './vlans';
 
 export * from './volumes';
 
-export * from './nodebalancers';
+export * from './vpcs';
 
-export * from './databases';
+export * from './betas';
 
-export * from './entity-transfers';
-
-export { baseRequest, setToken, isEmpty } from './request';
+export {
+  baseRequest,
+  setToken,
+  isEmpty,
+  convertYupToLinodeErrors,
+} from './request';

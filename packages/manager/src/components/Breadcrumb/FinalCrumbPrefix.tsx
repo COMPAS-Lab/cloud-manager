@@ -1,39 +1,26 @@
+import { styled } from '@mui/material';
 import * as React from 'react';
-import { compose } from 'recompose';
-import { CSSProperties, makeStyles } from 'src/components/core/styles';
-
-const useStyles = makeStyles({
-  prefixComponentWrapper: {
-    '& svg, & img': {
-      position: 'relative',
-      marginRight: 8,
-      marginLeft: 4,
-      top: -2,
-    },
-  },
-});
 
 interface Props {
-  prefixStyle?: CSSProperties;
   prefixComponent: JSX.Element | null;
+  prefixStyle?: React.CSSProperties;
 }
 
-type CombinedProps = Props;
-
-const FinalCrumbPrefix: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const FinalCrumbPrefix = (props: Props) => {
   const { prefixComponent, prefixStyle } = props;
 
   return (
-    <div
-      className={classes.prefixComponentWrapper}
-      data-qa-prefixwrapper
-      style={prefixStyle}
-    >
+    <StyledDiv data-qa-prefixwrapper style={prefixStyle}>
       {prefixComponent}
-    </div>
+    </StyledDiv>
   );
 };
 
-export default compose<CombinedProps, Props>(React.memo)(FinalCrumbPrefix);
+const StyledDiv = styled('div')(({ theme }) => ({
+  '& svg, & img': {
+    marginLeft: theme.spacing(0.5),
+    marginRight: theme.spacing(1),
+    position: 'relative',
+    top: -2,
+  },
+}));

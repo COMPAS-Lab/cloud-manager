@@ -1,114 +1,100 @@
 import { IPAddress } from '@linode/api-v4/lib/networking';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
-import { formatRegion } from 'src/utilities';
 
-type ClassNames = 'root' | 'section';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {},
-    section: {
-      marginBottom: theme.spacing(2),
-      paddingBottom: theme.spacing(2),
-      borderBottom: `1px solid ${theme.palette.divider}`,
-    },
-  });
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Drawer } from 'src/components/Drawer';
+import { Typography } from 'src/components/Typography';
+import { useRegionsQuery } from 'src/queries/regions/regions';
 
 interface Props {
-  open: boolean;
   ip?: IPAddress;
   onClose: () => void;
+  open: boolean;
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
+export const ViewIPDrawer = (props: Props) => {
+  const { ip } = props;
 
-const ViewIPDrawer: React.FC<CombinedProps> = (props) => {
-  const { classes } = props;
+  const { data: regions } = useRegionsQuery();
+
+  const actualRegion = regions?.find((r) => r.id === ip?.region);
 
   return (
-    <Drawer open={props.open} onClose={props.onClose} title={`Details for IP`}>
-      {props.ip && (
+    <Drawer onClose={props.onClose} open={props.open} title={`Details for IP`}>
+      {ip && (
         <React.Fragment>
-          <div className={classes.section} data-qa-ip-address-heading>
+          <StyledSectionDiv data-qa-ip-address-heading>
             <Typography variant="h3">Address</Typography>
-            <Typography variant="body1" data-qa-ip-address>
-              {props.ip.address}
+            <Typography data-qa-ip-address variant="body1">
+              {ip.address}
             </Typography>
-          </div>
+          </StyledSectionDiv>
 
-          <div className={classes.section} data-qa-gateway-heading>
+          <StyledSectionDiv data-qa-gateway-heading>
             <Typography variant="h3">Gateway</Typography>
-            <Typography variant="body1" data-qa-gateway>
-              {props.ip.gateway}
+            <Typography data-qa-gateway variant="body1">
+              {ip.gateway}
             </Typography>
-          </div>
+          </StyledSectionDiv>
 
-          <div className={classes.section} data-qa-subnet-heading>
+          <StyledSectionDiv data-qa-subnet-heading>
             <Typography variant="h3">Subnet Mask</Typography>
-            <Typography variant="body1" data-qa-subnet>
-              {props.ip.subnet_mask}
+            <Typography data-qa-subnet variant="body1">
+              {ip.subnet_mask}
             </Typography>
-          </div>
+          </StyledSectionDiv>
 
-          <div className={classes.section} data-qa-type-heading>
+          <StyledSectionDiv data-qa-type-heading>
             <Typography variant="h3">Type</Typography>
-            <Typography variant="body1" data-qa-type>
-              {props.ip.type}
+            <Typography data-qa-type variant="body1">
+              {ip.type}
             </Typography>
-          </div>
+          </StyledSectionDiv>
 
-          <div className={classes.section} data-qa-public-heading>
+          <StyledSectionDiv data-qa-public-heading>
             <Typography variant="h3">Public</Typography>
-            <Typography variant="body1" data-qa-public>
-              {props.ip.public ? 'Yes' : 'No'}
+            <Typography data-qa-public variant="body1">
+              {ip.public ? 'Yes' : 'No'}
             </Typography>
-          </div>
+          </StyledSectionDiv>
 
-          {props.ip.rdns && (
-            <div className={classes.section} data-qa-rdns-heading>
+          {ip.rdns && (
+            <StyledSectionDiv data-qa-rdns-heading>
               <Typography variant="h3">RDNS</Typography>
-              <Typography variant="body1" data-qa-rdns>
-                {props.ip.rdns}
+              <Typography data-qa-rdns variant="body1">
+                {ip.rdns}
               </Typography>
-            </div>
+            </StyledSectionDiv>
           )}
 
-          <div
-            className={classes.section}
-            style={{ border: 0, paddingBottom: 0 }}
+          <StyledSectionDiv
             data-qa-region-heading
+            style={{ border: 0, paddingBottom: 0 }}
           >
             <Typography variant="h3">Region</Typography>
-            <Typography variant="body1" data-qa-region>
-              {formatRegion(props.ip.region)}
+            <Typography data-qa-region variant="body1">
+              {actualRegion?.label ?? ip.region}
             </Typography>
-          </div>
+          </StyledSectionDiv>
 
-          <ActionsPanel>
-            <Button
-              buttonType="secondary"
-              onClick={props.onClose}
-              data-qa-cancel
-            >
-              Close
-            </Button>
-          </ActionsPanel>
+          <ActionsPanel
+            secondaryButtonProps={{
+              'data-testid': 'cancel',
+              label: 'Close',
+              onClick: props.onClose,
+            }}
+          />
         </React.Fragment>
       )}
     </Drawer>
   );
 };
 
-const styled = withStyles(styles);
-
-export default styled(ViewIPDrawer);
+const StyledSectionDiv = styled('div', { label: 'StyledSectionDiv' })(
+  ({ theme }) => ({
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    marginBottom: theme.spacing(2),
+    paddingBottom: theme.spacing(2),
+  })
+);

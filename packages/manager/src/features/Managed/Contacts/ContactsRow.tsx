@@ -1,38 +1,38 @@
 import { ManagedContact } from '@linode/api-v4/lib/managed';
 import * as React from 'react';
-import Hidden from 'src/components/core/Hidden';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
+
+import { Hidden } from 'src/components/Hidden';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+
 import ActionMenu from './ContactsActionMenu';
 
-interface Props {
+interface ContactsRowProps {
   contact: ManagedContact;
-  updateOrAdd: (contact: ManagedContact) => void;
-  openDrawer: (linodeId: number) => void;
   openDialog: (contactId: number) => void;
+  openDrawer: (linodeId: number) => void;
 }
 
-export const ContactsRow: React.FunctionComponent<Props> = (props) => {
-  const { contact, updateOrAdd, openDrawer, openDialog } = props;
+export const ContactsRow = (props: ContactsRowProps) => {
+  const { contact, openDialog, openDrawer } = props;
 
   return (
-    <TableRow ariaLabel={`Contact ${contact.id}`} key={contact.id}>
+    <TableRow key={contact.id}>
       <TableCell>{contact.name}</TableCell>
-      <Hidden smDown>
+      <Hidden mdDown>
         <TableCell>{contact.group}</TableCell>
       </Hidden>
       <TableCell>{contact.email}</TableCell>
-      <Hidden xsDown>
+      <Hidden smDown>
         <TableCell>{contact.phone.primary}</TableCell>
         <TableCell>{contact.phone.secondary}</TableCell>
       </Hidden>
       <TableCell actionCell>
         <ActionMenu
           contactId={contact.id}
-          updateOrAdd={updateOrAdd}
-          openDrawer={openDrawer}
-          openDialog={openDialog}
           contactName={contact.name}
+          openDialog={openDialog}
+          openDrawer={openDrawer}
         />
       </TableCell>
     </TableRow>

@@ -11,17 +11,23 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
-import {
+import type {
+  Filter,
+  Params,
+  ResourcePage as Page,
+  RequestOptions,
+} from '../types';
+import type {
   ObjectStorageBucket,
-  ObjectStorageBucketAccessRequest,
-  ObjectStorageBucketAccessResponse,
-  ObjectStorageBucketRequestPayload,
-  ObjectStorageBucketSSLRequest,
-  ObjectStorageBucketSSLResponse,
-  ObjectStorageDeleteBucketRequestPayload,
-  ObjectStorageObjectListParams,
-  ObjectStorageObjectListResponse,
+  ObjectStorageEndpoint,
+  UpdateObjectStorageBucketAccessPayload,
+  ObjectStorageBucketAccess,
+  CreateObjectStorageBucketPayload,
+  CreateObjectStorageBucketSSLPayload,
+  ObjectStorageBucketSSL,
+  DeleteObjectStorageBucketPayload,
+  GetObjectStorageObjectListPayload,
+  ObjectStorageObjectList,
 } from './types';
 
 /**
@@ -32,7 +38,11 @@ import {
 export const getBucket = (clusterId: string, bucketName: string) =>
   Request<ObjectStorageBucket>(
     setMethod('GET'),
-    setURL(`${API_ROOT}/object-storage/buckets/${clusterId}/${bucketName}`)
+    setURL(
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        clusterId
+      )}/${encodeURIComponent(bucketName)}`
+    )
   );
 
 /**
@@ -40,7 +50,7 @@ export const getBucket = (clusterId: string, bucketName: string) =>
  *
  * Gets a list of a user's Object Storage Buckets.
  */
-export const getBuckets = (params?: any, filters?: any) =>
+export const getBuckets = (params?: Params, filters?: Filter) =>
   Request<Page<ObjectStorageBucket>>(
     setMethod('GET'),
     setParams(params),
@@ -55,14 +65,33 @@ export const getBuckets = (params?: any, filters?: any) =>
  */
 export const getBucketsInCluster = (
   clusterId: string,
-  params?: any,
-  filters?: any
+  params?: Params,
+  filters?: Filter
 ) =>
   Request<Page<ObjectStorageBucket>>(
     setMethod('GET'),
     setParams(params),
     setXFilter(filters),
-    setURL(`${API_ROOT}/object-storage/buckets/${clusterId}`)
+    setURL(
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(clusterId)}`
+    )
+  );
+
+/**
+ * getBucketsInRegion
+ *
+ * Gets a list of a user's Object Storage Buckets in the specified region.
+ */
+export const getBucketsInRegion = (
+  regionId: string,
+  params?: Params,
+  filters?: Filter
+) =>
+  Request<Page<ObjectStorageBucket>>(
+    setMethod('GET'),
+    setParams(params),
+    setXFilter(filters),
+    setURL(`${API_ROOT}/object-storage/buckets/${encodeURIComponent(regionId)}`)
   );
 
 /**
@@ -73,7 +102,7 @@ export const getBucketsInCluster = (
  * @param data { object } The label and clusterId of the new Bucket.
  *
  */
-export const createBucket = (data: ObjectStorageBucketRequestPayload) =>
+export const createBucket = (data: CreateObjectStorageBucketPayload) =>
   Request<ObjectStorageBucket>(
     setURL(`${API_ROOT}/object-storage/buckets`),
     setMethod('POST'),
@@ -90,25 +119,60 @@ export const createBucket = (data: ObjectStorageBucketRequestPayload) =>
 export const deleteBucket = ({
   cluster,
   label,
-}: ObjectStorageDeleteBucketRequestPayload) =>
+}: DeleteObjectStorageBucketPayload) =>
   Request<ObjectStorageBucket>(
-    setURL(`${API_ROOT}/object-storage/buckets/${cluster}/${label}`),
+    setURL(
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        cluster
+      )}/${encodeURIComponent(label)}`
+    ),
+    setMethod('DELETE')
+  );
+
+/**
+ * deleteBucketWithRegion
+ *
+ * Removes a Bucket from your account with region.
+ *
+ * NOTE: Attempting to delete a non-empty bucket will result in an error.
+ */
+/*
+   @TODO OBJ Multicluster: deleteBucketWithRegion is a function,
+   once feature is rolled out we replace it with existing deleteBucket
+   by updating it with region instead of cluster.
+  */
+
+export const deleteBucketWithRegion = ({
+  region,
+  label,
+}: {
+  region: string;
+  label: string;
+}) =>
+  Request<ObjectStorageBucket>(
+    setURL(
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        region
+      )}/${encodeURIComponent(label)}`
+    ),
     setMethod('DELETE')
   );
 
 /**
  * Returns a list of Objects in a given Bucket.
  */
-export const getObjectList = (
-  clusterId: string,
-  bucketName: string,
-  params?: ObjectStorageObjectListParams
-) =>
-  Request<ObjectStorageObjectListResponse>(
+export const getObjectList = ({
+  clusterId,
+  bucket: bucketName,
+  params,
+}: GetObjectStorageObjectListPayload) =>
+  Request<ObjectStorageObjectList>(
     setMethod('GET'),
     setParams(params),
     setURL(
-      `${API_ROOT}/object-storage/buckets/${clusterId}/${bucketName}/object-list`
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        clusterId
+      )}/${encodeURIComponent(bucketName)}/object-list`
     )
   );
 
@@ -118,12 +182,16 @@ export const getObjectList = (
 export const uploadSSLCert = (
   clusterId: string,
   bucketName: string,
-  data: ObjectStorageBucketSSLRequest
+  data: CreateObjectStorageBucketSSLPayload
 ) =>
-  Request<ObjectStorageBucketSSLResponse>(
+  Request<ObjectStorageBucketSSL>(
     setMethod('POST'),
     setData(data, UploadCertificateSchema),
-    setURL(`${API_ROOT}/object-storage/buckets/${clusterId}/${bucketName}/ssl`)
+    setURL(
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        clusterId
+      )}/${encodeURIComponent(bucketName)}/ssl`
+    )
   );
 
 /**
@@ -133,9 +201,13 @@ export const uploadSSLCert = (
  * the specified bucket, { ssl: false } otherwise.
  */
 export const getSSLCert = (clusterId: string, bucketName: string) =>
-  Request<ObjectStorageBucketSSLResponse>(
+  Request<ObjectStorageBucketSSL>(
     setMethod('GET'),
-    setURL(`${API_ROOT}/object-storage/buckets/${clusterId}/${bucketName}/ssl`)
+    setURL(
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        clusterId
+      )}/${encodeURIComponent(bucketName)}/ssl`
+    )
   );
 
 /**
@@ -146,9 +218,13 @@ export const getSSLCert = (clusterId: string, bucketName: string) =>
  * for removing certs without altering the bucket.
  */
 export const deleteSSLCert = (clusterId: string, bucketName: string) =>
-  Request<ObjectStorageBucketSSLResponse>(
+  Request<{}>(
     setMethod('DELETE'),
-    setURL(`${API_ROOT}/object-storage/buckets/${clusterId}/${bucketName}/ssl`)
+    setURL(
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        clusterId
+      )}/${encodeURIComponent(bucketName)}/ssl`
+    )
   );
 
 /**
@@ -157,10 +233,12 @@ export const deleteSSLCert = (clusterId: string, bucketName: string) =>
  * Returns access information (ACL, CORS) for a given Bucket.
  */
 export const getBucketAccess = (clusterId: string, bucketName: string) =>
-  Request<ObjectStorageBucketAccessResponse>(
+  Request<ObjectStorageBucketAccess>(
     setMethod('GET'),
     setURL(
-      `${API_ROOT}/object-storage/buckets/${clusterId}/${bucketName}/access`
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        clusterId
+      )}/${encodeURIComponent(bucketName)}/access`
     )
   );
 
@@ -172,12 +250,22 @@ export const getBucketAccess = (clusterId: string, bucketName: string) =>
 export const updateBucketAccess = (
   clusterId: string,
   bucketName: string,
-  data: ObjectStorageBucketAccessRequest
+  params: UpdateObjectStorageBucketAccessPayload
 ) =>
   Request<{}>(
     setMethod('PUT'),
     setURL(
-      `${API_ROOT}/object-storage/buckets/${clusterId}/${bucketName}/access`
+      `${API_ROOT}/object-storage/buckets/${encodeURIComponent(
+        clusterId
+      )}/${encodeURIComponent(bucketName)}/access`
     ),
-    setData(data, UpdateBucketAccessSchema)
+    setData(params, UpdateBucketAccessSchema)
+  );
+
+export const getObjectStorageEndpoints = ({ filter, params }: RequestOptions) =>
+  Request<Page<ObjectStorageEndpoint>>(
+    setMethod('GET'),
+    setURL(`${API_ROOT}/object-storage/endpoints`),
+    setParams(params),
+    setXFilter(filter)
   );

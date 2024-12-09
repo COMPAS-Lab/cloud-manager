@@ -1,8 +1,28 @@
-import * as Factory from 'factory.ts';
-import { Grants } from '@linode/api-v4/lib/account';
+import { Grant, Grants } from '@linode/api-v4/lib/account';
+import Factory from 'src/factories/factoryProxy';
+
+export const grantFactory = Factory.Sync.makeFactory<Grant>({
+  id: Factory.each((i) => i),
+  label: Factory.each((i) => `entity-${i}`),
+  permissions: null,
+});
 
 export const grantsFactory = Factory.Sync.makeFactory<Grants>({
+  database: [
+    {
+      id: 0,
+      label: 'example-entity',
+      permissions: 'read_only',
+    },
+  ],
   domain: [
+    {
+      id: 123,
+      label: 'example-entity',
+      permissions: 'read_only',
+    },
+  ],
+  firewall: [
     {
       id: 123,
       label: 'example-entity',
@@ -11,6 +31,7 @@ export const grantsFactory = Factory.Sync.makeFactory<Grants>({
   ],
   global: {
     account_access: 'read_write',
+    add_databases: true,
     add_domains: true,
     add_firewalls: true,
     add_images: true,
@@ -19,17 +40,12 @@ export const grantsFactory = Factory.Sync.makeFactory<Grants>({
     add_nodebalancers: true,
     add_stackscripts: true,
     add_volumes: true,
+    add_vpcs: true,
     cancel_account: false,
+    child_account_access: false,
     longview_subscription: true,
     manager_role: false,
   },
-  firewall: [
-    {
-      id: 123,
-      label: 'example-entity',
-      permissions: 'read_only',
-    },
-  ],
   image: [
     {
       id: 123,
@@ -70,6 +86,23 @@ export const grantsFactory = Factory.Sync.makeFactory<Grants>({
       id: 123,
       label: 'example-entity',
       permissions: 'read_only',
+    },
+  ],
+  vpc: [
+    {
+      id: 123,
+      label: 'example-entity1',
+      permissions: 'read_only',
+    },
+    {
+      id: 124,
+      label: 'example-entity2',
+      permissions: 'read_write',
+    },
+    {
+      id: 125,
+      label: 'example-entity3',
+      permissions: null,
     },
   ],
 });

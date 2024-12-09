@@ -1,104 +1,78 @@
-import {
-  ObjectStorageBucket,
-  ObjectStorageCluster,
-} from '@linode/api-v4/lib/object-storage';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { compose } from 'recompose';
-import BucketIcon from 'src/assets/icons/entityIcons/bucket.svg';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import CircleProgress from 'src/components/CircleProgress';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
+import { makeStyles } from 'tss-react/mui';
+
+import { CircleProgress } from 'src/components/CircleProgress';
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import ErrorState from 'src/components/ErrorState';
-import Grid from 'src/components/Grid';
-import Notice from 'src/components/Notice';
+import { ErrorState } from 'src/components/ErrorState/ErrorState';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
 import OrderBy from 'src/components/OrderBy';
-import Placeholder from 'src/components/Placeholder';
-import TypeToConfirm from 'src/components/TypeToConfirm';
-import TransferDisplay from 'src/components/TransferDisplay';
-import { objectStorageClusterDisplay } from 'src/constants';
-import bucketDrawerContainer, {
-  DispatchProps,
-} from 'src/containers/bucketDrawer.container';
-import withPreferences, {
-  Props as PreferencesProps,
-} from 'src/containers/preferences.container';
-import useOpenClose from 'src/hooks/useOpenClose';
+import { TransferDisplay } from 'src/components/TransferDisplay/TransferDisplay';
+import { TypeToConfirmDialog } from 'src/components/TypeToConfirmDialog/TypeToConfirmDialog';
+import { Typography } from 'src/components/Typography';
+import { useOpenClose } from 'src/hooks/useOpenClose';
 import {
-  BucketError,
   useDeleteBucketMutation,
   useObjectStorageBuckets,
-  useObjectStorageClusters,
-} from 'src/queries/objectStorage';
-import { getErrorStringOrDefault } from 'src/utilities/errorUtils';
+} from 'src/queries/object-storage/queries';
+import { isBucketError } from 'src/queries/object-storage/requests';
+import { useProfile } from 'src/queries/profile/profile';
+import { useRegionsQuery } from 'src/queries/regions/regions';
 import {
   sendDeleteBucketEvent,
   sendDeleteBucketFailedEvent,
-  sendObjectStorageDocsEvent,
-} from 'src/utilities/ga';
+} from 'src/utilities/analytics/customEventAnalytics';
 import { readableBytes } from 'src/utilities/unitConversions';
-import CancelNotice from '../CancelNotice';
-import BucketDetailsDrawer from './BucketDetailsDrawer';
-import BucketTable from './BucketTable';
 
-const useStyles = makeStyles((theme: Theme) => ({
+import { CancelNotice } from '../CancelNotice';
+import { BucketDetailsDrawer } from './BucketDetailsDrawer';
+import { BucketLandingEmptyState } from './BucketLandingEmptyState';
+import { BucketTable } from './BucketTable';
+
+import type {
+  APIError,
+  ObjectStorageBucket,
+  ObjectStorageCluster,
+  ObjectStorageEndpoint,
+} from '@linode/api-v4';
+import type { Theme } from '@mui/material/styles';
+
+const useStyles = makeStyles()((theme: Theme) => ({
   copy: {
     marginTop: theme.spacing(),
   },
-  empty: {
-    '& svg': {
-      marginTop: theme.spacing(1.5),
-      transform: 'scale(0.8)',
-    },
-  },
 }));
 
-interface Props {
-  isRestrictedUser: boolean;
-}
+export const BucketLanding = () => {
+  const { data: profile } = useProfile();
 
-export type CombinedProps = Props & DispatchProps & PreferencesProps;
-
-export const BucketLanding: React.FC<CombinedProps> = (props) => {
-  const { isRestrictedUser, openBucketDrawer, preferences } = props;
-
-  const {
-    data: objectStorageClusters,
-    isLoading: areClustersLoading,
-    error: clustersErrors,
-  } = useObjectStorageClusters();
+  const isRestrictedUser = profile?.restricted;
 
   const {
     data: objectStorageBucketsResponse,
-    isLoading: areBucketsLoading,
     error: bucketsErrors,
-  } = useObjectStorageBuckets(objectStorageClusters);
+    isLoading: areBucketsLoading,
+  } = useObjectStorageBuckets();
 
   const { mutateAsync: deleteBucket } = useDeleteBucketMutation();
 
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   const removeBucketConfirmationDialog = useOpenClose();
-  const [bucketToRemove, setBucketToRemove] = React.useState<
-    ObjectStorageBucket | undefined
-  >(undefined);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const [error, setError] = React.useState<string>('');
-  const [confirmBucketName, setConfirmBucketName] = React.useState<string>('');
+  const [error, setError] = React.useState<APIError[] | undefined>(undefined);
   const [
     bucketDetailDrawerOpen,
     setBucketDetailDrawerOpen,
   ] = React.useState<boolean>(false);
-  const [bucketForDetails, setBucketForDetails] = React.useState<
+  const [selectedBucket, setSelectedBucket] = React.useState<
     ObjectStorageBucket | undefined
   >(undefined);
 
   const handleClickDetails = (bucket: ObjectStorageBucket) => {
     setBucketDetailDrawerOpen(true);
-    setBucketForDetails(bucket);
+    setSelectedBucket(bucket);
   };
 
   const closeBucketDetailDrawer = () => {
@@ -106,21 +80,21 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
   };
 
   const handleClickRemove = (bucket: ObjectStorageBucket) => {
-    setBucketToRemove(bucket);
-    setError('');
+    setSelectedBucket(bucket);
+    setError(undefined);
     removeBucketConfirmationDialog.open();
   };
 
   const removeBucket = () => {
     // This shouldn't happen, but just in case (and to get TS to quit complaining...)
-    if (!bucketToRemove) {
+    if (!selectedBucket) {
       return;
     }
 
-    setError('');
+    setError(undefined);
     setIsLoading(true);
 
-    const { cluster, label } = bucketToRemove;
+    const { cluster, label } = selectedBucket;
 
     deleteBucket({ cluster, label })
       .then(() => {
@@ -135,8 +109,7 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
         sendDeleteBucketFailedEvent(cluster);
 
         setIsLoading(false);
-        const errorText = getErrorStringOrDefault(e, 'Error removing bucket.');
-        setError(errorText);
+        setError(e);
       });
   };
 
@@ -144,55 +117,26 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
     removeBucketConfirmationDialog.close();
   }, [removeBucketConfirmationDialog]);
 
-  const setConfirmBucketNameToInput = React.useCallback((input: string) => {
-    setConfirmBucketName(input);
-  }, []);
-
-  const actions = () => (
-    <ActionsPanel>
-      <Button
-        buttonType="secondary"
-        onClick={closeRemoveBucketConfirmationDialog}
-        data-qa-cancel
-      >
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={removeBucket}
-        disabled={
-          bucketToRemove
-            ? preferences?.type_to_confirm !== false &&
-              confirmBucketName !== bucketToRemove.label
-            : true
-        }
-        loading={isLoading}
-        data-qa-submit-rebuild
-      >
-        Delete Bucket
-      </Button>
-    </ActionsPanel>
-  );
-
   const unavailableClusters =
-    objectStorageBucketsResponse?.errors.map(
-      (error: BucketError) => error.cluster
+    objectStorageBucketsResponse?.errors.map((error) =>
+      isBucketError(error) ? error.cluster : error.endpoint
     ) || [];
 
   if (isRestrictedUser) {
-    return <RenderEmpty onClick={openBucketDrawer} />;
+    return <RenderEmpty />;
   }
 
-  if (clustersErrors || bucketsErrors) {
-    return <RenderError data-qa-error-state />;
+  if (bucketsErrors) {
+    return (
+      <ErrorState
+        data-qa-error-state
+        errorText="There was an error retrieving your buckets. Please reload and try again."
+      />
+    );
   }
 
-  if (
-    areClustersLoading ||
-    areBucketsLoading ||
-    objectStorageBucketsResponse === undefined
-  ) {
-    return <RenderLoading />;
+  if (areBucketsLoading || objectStorageBucketsResponse === undefined) {
+    return <CircleProgress />;
   }
 
   if (objectStorageBucketsResponse?.buckets.length === 0) {
@@ -203,12 +147,13 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
             unavailableClusters={unavailableClusters}
           />
         )}
-        <RenderEmpty onClick={openBucketDrawer} />
+        <RenderEmpty />
       </>
     );
   }
 
   const totalUsage = sumBucketUsage(objectStorageBucketsResponse.buckets);
+  const bucketLabel = selectedBucket ? selectedBucket.label : '';
 
   return (
     <React.Fragment>
@@ -216,7 +161,7 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
       {unavailableClusters.length > 0 && (
         <UnavailableClustersDisplay unavailableClusters={unavailableClusters} />
       )}
-      <Grid item xs={12}>
+      <Grid xs={12}>
         <OrderBy
           data={objectStorageBucketsResponse.buckets}
           order={'asc'}
@@ -224,13 +169,12 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
         >
           {({ data: orderedData, handleOrderChange, order, orderBy }) => {
             const bucketTableProps = {
-              orderBy,
-              order,
-              handleOrderChange,
-              handleClickRemove,
-              handleClickDetails,
-              openBucketDrawer,
               data: orderedData,
+              handleClickDetails,
+              handleClickRemove,
+              handleOrderChange,
+              order,
+              orderBy,
             };
             return <BucketTable {...bucketTableProps} />;
           }}
@@ -238,7 +182,7 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
         {/* If there's more than one Bucket, display the total usage. */}
         {objectStorageBucketsResponse.buckets.length > 1 ? (
           <Typography
-            style={{ marginTop: 18, width: '100%', textAlign: 'center' }}
+            style={{ marginTop: 18, textAlign: 'center', width: '100%' }}
             variant="body1"
           >
             Total storage used: {readableBytes(totalUsage).formatted}
@@ -248,14 +192,23 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
           spacingTop={objectStorageBucketsResponse.buckets.length > 1 ? 8 : 18}
         />
       </Grid>
-      <ConfirmationDialog
-        open={removeBucketConfirmationDialog.isOpen}
+      <TypeToConfirmDialog
+        entity={{
+          action: 'deletion',
+          name: bucketLabel,
+          primaryBtnText: 'Delete',
+          type: 'Bucket',
+        }}
+        errors={error}
+        label={'Bucket Name'}
+        loading={isLoading}
+        onClick={removeBucket}
         onClose={closeRemoveBucketConfirmationDialog}
-        title={`Delete Bucket ${bucketToRemove ? bucketToRemove.label : ''}`}
-        actions={actions}
-        error={error}
+        open={removeBucketConfirmationDialog.isOpen}
+        title={`Delete Bucket ${bucketLabel}`}
+        typographyStyle={{ marginTop: '20px' }}
       >
-        <Notice warning>
+        <Notice variant="warning">
           <Typography style={{ fontSize: '0.875rem' }}>
             <strong>Warning:</strong> Deleting a bucket is permanent and
             can&rsquo;t be undone.
@@ -263,23 +216,13 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
         </Notice>
         <Typography className={classes.copy}>
           A bucket must be empty before deleting it. Please{' '}
-          <a
-            href="https://www.linode.com/docs/platform/object-storage/lifecycle-policies/"
-            target="_blank"
-            aria-describedby="external-site"
-            rel="noopener noreferrer"
-          >
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/lifecycle-policies">
             delete all objects
-          </a>
+          </Link>
           , or use{' '}
-          <a
-            href="https://www.linode.com/docs/platform/object-storage/how-to-use-object-storage/#object-storage-tools"
-            target="_blank"
-            aria-describedby="external-site"
-            rel="noopener noreferrer"
-          >
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/getting-started-with-object-storage#object-storage-tools">
             another tool
-          </a>{' '}
+          </Link>{' '}
           to force deletion.
         </Typography>
         {/* If the user is attempting to delete their last Bucket, remind them
@@ -288,105 +231,35 @@ export const BucketLanding: React.FC<CombinedProps> = (props) => {
         {objectStorageBucketsResponse?.buckets.length === 1 && (
           <CancelNotice className={classes.copy} />
         )}
-        <TypeToConfirm
-          confirmationText={
-            <Typography component={'span'} className={classes.copy}>
-              To confirm deletion, type the name of the bucket (
-              <b>{bucketToRemove?.label}</b>) in the field below:
-            </Typography>
-          }
-          onChange={(input) => setConfirmBucketNameToInput(input)}
-          value={confirmBucketName}
-          label="Bucket Name"
-          visible={preferences?.type_to_confirm}
-          expand
-        />
-      </ConfirmationDialog>
+      </TypeToConfirmDialog>
       <BucketDetailsDrawer
-        open={bucketDetailDrawerOpen}
         onClose={closeBucketDetailDrawer}
-        bucketLabel={bucketForDetails?.label}
-        hostname={bucketForDetails?.hostname}
-        created={bucketForDetails?.created}
-        cluster={bucketForDetails?.cluster}
-        size={bucketForDetails?.size}
-        objectsNumber={bucketForDetails?.objects}
+        open={bucketDetailDrawerOpen}
+        selectedBucket={selectedBucket}
       />
     </React.Fragment>
   );
 };
 
-const RenderLoading: React.FC<{}> = () => {
-  return <CircleProgress />;
+const RenderEmpty = () => {
+  return <BucketLandingEmptyState />;
 };
-
-const RenderError: React.FC<{}> = () => {
-  return (
-    <ErrorState errorText="There was an error retrieving your buckets. Please reload and try again." />
-  );
-};
-
-const RenderEmpty: React.FC<{
-  onClick: () => void;
-}> = (props) => {
-  const classes = useStyles();
-
-  return (
-    <React.Fragment>
-      <DocumentTitleSegment segment="Buckets" />
-      <Placeholder
-        title="Object Storage"
-        className={classes.empty}
-        isEntity
-        icon={BucketIcon}
-        renderAsSecondary
-        buttonProps={[
-          {
-            onClick: props.onClick,
-            children: 'Create Bucket',
-          },
-        ]}
-      >
-        <Typography variant="subtitle1">Need help getting started?</Typography>
-        <Typography variant="subtitle1">
-          <a
-            onClick={() => sendObjectStorageDocsEvent('Empty state')}
-            href="https://linode.com/docs/platform/object-storage"
-            target="_blank"
-            aria-describedby="external-site"
-            rel="noopener noreferrer"
-            className="h-u"
-          >
-            Learn more about storage options for your multimedia, archives, and
-            data backups here.
-          </a>
-        </Typography>
-      </Placeholder>
-    </React.Fragment>
-  );
-};
-
-const enhanced = compose<CombinedProps, Props>(
-  React.memo,
-  bucketDrawerContainer,
-  withPreferences()
-);
-
-export default enhanced(BucketLanding);
 
 interface UnavailableClustersDisplayProps {
-  unavailableClusters: ObjectStorageCluster[];
+  unavailableClusters: (ObjectStorageCluster | ObjectStorageEndpoint)[];
 }
 
-const UnavailableClustersDisplay: React.FC<UnavailableClustersDisplayProps> = React.memo(
-  ({ unavailableClusters }) => {
-    return (
-      <Banner
-        regionsAffected={unavailableClusters.map(
-          (cluster) => objectStorageClusterDisplay[cluster.id] || cluster.region
-        )}
-      />
+const UnavailableClustersDisplay = React.memo(
+  ({ unavailableClusters }: UnavailableClustersDisplayProps) => {
+    const { data: regions } = useRegionsQuery();
+
+    const regionsAffected = unavailableClusters.map(
+      (cluster) =>
+        regions?.find((region) => region.id === cluster.region)?.label ??
+        cluster.region
     );
+
+    return <Banner regionsAffected={regionsAffected} />;
   }
 );
 
@@ -394,11 +267,11 @@ interface BannerProps {
   regionsAffected: string[];
 }
 
-const Banner: React.FC<BannerProps> = React.memo(({ regionsAffected }) => {
+const Banner = React.memo(({ regionsAffected }: BannerProps) => {
   const moreThanOneRegionAffected = regionsAffected.length > 1;
 
   return (
-    <Notice warning important>
+    <Notice important variant="warning">
       <Typography component="div" style={{ fontSize: '1rem' }}>
         There was an error loading buckets in{' '}
         {moreThanOneRegionAffected

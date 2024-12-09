@@ -1,43 +1,45 @@
-import { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
 import * as React from 'react';
-import Hidden from 'src/components/core/Hidden';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
+
+import { Hidden } from 'src/components/Hidden';
 import Paginate from 'src/components/Paginate';
-import PaginationFooter from 'src/components/PaginationFooter';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import TableSortCell from 'src/components/TableSortCell';
-import BucketTableRow from './BucketTableRow';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { TableSortCell } from 'src/components/TableSortCell';
+
+import { BucketTableRow } from './BucketTableRow';
+
+import type { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
 
 interface Props {
   data: ObjectStorageBucket[];
-  orderBy: string;
-  order: 'asc' | 'desc';
-  handleOrderChange: (orderBy: string, order?: 'asc' | 'desc') => void;
-  openBucketDrawer: () => void;
-  handleClickRemove: (bucket: ObjectStorageBucket) => void;
   handleClickDetails: (bucket: ObjectStorageBucket) => void;
+  handleClickRemove: (bucket: ObjectStorageBucket) => void;
+  handleOrderChange: (orderBy: string, order?: 'asc' | 'desc') => void;
+  order: 'asc' | 'desc';
+  orderBy: string;
 }
 
-type CombinedProps = Props;
-
-export const BucketTable: React.FC<CombinedProps> = (props) => {
+export const BucketTable = (props: Props) => {
   const {
     data,
-    orderBy,
-    order,
-    handleOrderChange,
-    handleClickRemove,
     handleClickDetails,
+    handleClickRemove,
+    handleOrderChange,
+    order,
+    orderBy,
   } = props;
+
+  const isEndpointTypeAvailable = Boolean(data[0]?.endpoint_type);
 
   return (
     <Paginate data={data} pageSize={25}>
       {({
-        data: paginatedData,
         count,
+        data: paginatedData,
         handlePageChange,
         handlePageSizeChange,
         page,
@@ -49,51 +51,64 @@ export const BucketTable: React.FC<CombinedProps> = (props) => {
               <TableRow>
                 <TableSortCell
                   active={orderBy === 'label'}
-                  label="label"
+                  data-qa-name
                   direction={order}
                   handleClick={handleOrderChange}
-                  data-qa-name
+                  label="label"
                 >
                   Name
                 </TableSortCell>
-                <Hidden xsDown>
+                <Hidden smDown>
                   <TableSortCell
                     active={orderBy === 'cluster'}
-                    label="cluster"
+                    data-qa-region
                     direction={order}
                     handleClick={handleOrderChange}
-                    data-qa-region
+                    label="cluster"
                   >
                     Region
                   </TableSortCell>
                 </Hidden>
-                <Hidden mdDown>
+                {isEndpointTypeAvailable && (
+                  <Hidden lgDown>
+                    <TableSortCell
+                      active={orderBy === 'endpointType'}
+                      data-qa-created
+                      direction={order}
+                      handleClick={handleOrderChange}
+                      label="endpointType"
+                    >
+                      Endpoint Type
+                    </TableSortCell>
+                  </Hidden>
+                )}
+                <Hidden lgDown>
                   <TableSortCell
                     active={orderBy === 'created'}
-                    label="created"
+                    data-qa-created
                     direction={order}
                     handleClick={handleOrderChange}
-                    data-qa-created
+                    label="created"
                   >
                     Created
                   </TableSortCell>
                 </Hidden>
                 <TableSortCell
                   active={orderBy === 'size'}
-                  label="size"
+                  data-qa-size
                   direction={order}
                   handleClick={handleOrderChange}
-                  data-qa-size
+                  label="size"
                 >
                   Size
                 </TableSortCell>
-                <Hidden xsDown>
+                <Hidden smDown>
                   <TableSortCell
                     active={orderBy === 'objects'}
-                    label="objects"
+                    data-qa-objects
                     direction={order}
                     handleClick={handleOrderChange}
-                    data-qa-objects
+                    label="objects"
                   >
                     Objects
                   </TableSortCell>
@@ -106,19 +121,19 @@ export const BucketTable: React.FC<CombinedProps> = (props) => {
             <TableBody>
               <RenderData
                 data={paginatedData}
-                onRemove={handleClickRemove}
                 onDetails={handleClickDetails}
+                onRemove={handleClickRemove}
               />
             </TableBody>
           </Table>
 
           <PaginationFooter
             count={count}
-            page={page}
-            pageSize={pageSize}
+            eventCategory="object storage landing"
             handlePageChange={handlePageChange}
             handleSizeChange={handlePageSizeChange}
-            eventCategory="object storage landing"
+            page={page}
+            pageSize={pageSize}
           />
         </React.Fragment>
       )}
@@ -128,26 +143,24 @@ export const BucketTable: React.FC<CombinedProps> = (props) => {
 
 interface RenderDataProps {
   data: ObjectStorageBucket[];
-  onRemove: (bucket: ObjectStorageBucket) => void;
   onDetails: (bucket: ObjectStorageBucket) => void;
+  onRemove: (bucket: ObjectStorageBucket) => void;
 }
 
 const RenderData: React.FC<RenderDataProps> = (props) => {
-  const { data, onRemove, onDetails } = props;
+  const { data, onDetails, onRemove } = props;
 
   return (
     // eslint-disable-next-line react/jsx-no-useless-fragment
     <>
-      {data.map((bucket) => (
+      {data.map((bucket, index) => (
         <BucketTableRow
           {...bucket}
-          key={`${bucket.label}-${bucket.cluster}`}
-          onRemove={() => onRemove(bucket)}
+          key={`${bucket.label}-${index}-${bucket.region ?? bucket.cluster}`}
           onDetails={() => onDetails(bucket)}
+          onRemove={() => onRemove(bucket)}
         />
       ))}
     </>
   );
 };
-
-export default BucketTable;

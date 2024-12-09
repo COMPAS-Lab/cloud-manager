@@ -1,76 +1,83 @@
+import { styled, useTheme } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Grid from 'src/components/Grid';
-import DNSResolvers from './DNSResolvers';
-import NetworkTransfer from './NetworkTransfer';
-import TransferHistory from './TransferHistory';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    justifyContent: 'space-between',
-    padding: theme.spacing(3),
-    paddingBottom: theme.spacing(2) + theme.spacing(1) / 2,
-    [theme.breakpoints.down('xs')]: {
-      flexDirection: 'column',
-    },
-  },
-  transferHistoryContainer: {
-    [theme.breakpoints.down('sm')]: {
-      order: 3,
-    },
-  },
-  dnsResolverContainer: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    [theme.breakpoints.up('sm')]: {
-      paddingRight: theme.spacing(),
-    },
-    [theme.breakpoints.down('sm')]: {
-      order: 2,
-    },
-    [theme.breakpoints.down('xs')]: {
-      justifyContent: 'center',
-    },
-  },
-}));
+import { Paper } from '@linode/ui';
+import { useIsGeckoEnabled } from 'src/components/RegionSelect/RegionSelect.utils';
+import { useLinodeQuery } from 'src/queries/linodes/linodes';
+
+import { DNSResolvers } from './DNSResolvers';
+import { NetworkTransfer } from './NetworkTransfer';
+import { TransferHistory } from './TransferHistory';
 
 interface Props {
-  linodeRegion: string;
-  linodeID: number;
-  linodeCreated: string;
-  linodeLabel: string;
+  linodeId: number;
 }
 
-type CombinedProps = Props;
+export const LinodeNetworkingSummaryPanel = React.memo((props: Props) => {
+  // @todo maybe move this query closer to the consuming component
+  const { data: linode } = useLinodeQuery(props.linodeId);
+  const { isGeckoLAEnabled } = useIsGeckoEnabled();
+  const theme = useTheme();
 
-const LinodeNetworkingSummaryPanel: React.FC<CombinedProps> = (props) => {
-  const { linodeID, linodeRegion, linodeCreated, linodeLabel } = props;
-  const classes = useStyles();
+  if (!linode) {
+    return null;
+  }
+
+  const hideNetworkTransfer =
+    isGeckoLAEnabled && linode.site_type === 'distributed';
 
   return (
-    <Paper className={classes.root}>
-      <Grid container justifyContent="space-between">
-        <Grid item xs={12} sm={6} md={3}>
-          <NetworkTransfer linodeID={linodeID} linodeLabel={linodeLabel} />
-        </Grid>
-        <Grid item xs={12} md={6} className={classes.transferHistoryContainer}>
-          <TransferHistory linodeID={linodeID} linodeCreated={linodeCreated} />
-        </Grid>
+    <Paper>
+      <Grid container spacing={4} sx={{ flexGrow: 1 }}>
+        {hideNetworkTransfer ? null : ( // Distributed compute instances have no transfer pool
+          <Grid md={2.5} sm={6} xs={12}>
+            <NetworkTransfer
+              linodeId={linode.id}
+              linodeLabel={linode.label}
+              linodeRegionId={linode.region}
+              linodeType={linode.type}
+            />
+          </Grid>
+        )}
         <Grid
-          item
+          sx={{
+            [theme.breakpoints.down('md')]: {
+              order: 3,
+            },
+          }}
+          md
+          sm
           xs={12}
-          sm={6}
-          md={3}
-          className={classes.dnsResolverContainer}
         >
-          <DNSResolvers region={linodeRegion} />
+          <TransferHistory
+            linodeCreated={linode.created}
+            linodeID={linode.id}
+          />
         </Grid>
+        <StyledDnsResolverGrid
+          sx={{
+            paddingBottom: 0,
+          }}
+          md={3.5}
+          sm={hideNetworkTransfer ? 12 : 6}
+          xs={12}
+        >
+          <DNSResolvers region={linode.region} />
+        </StyledDnsResolverGrid>
       </Grid>
     </Paper>
   );
-};
+});
 
-export default React.memo(LinodeNetworkingSummaryPanel);
+const StyledDnsResolverGrid = styled(Grid, { label: 'StyledDnsResolverGrid' })(
+  ({ theme }) => ({
+    display: 'flex',
+    [theme.breakpoints.down('md')]: {
+      order: 2,
+    },
+    [theme.breakpoints.down('sm')]: {
+      justifyContent: 'flex-start',
+    },
+  })
+);

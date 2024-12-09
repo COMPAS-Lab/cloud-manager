@@ -1,52 +1,33 @@
+import Grid from '@mui/material/Unstable_Grid2';
 import { isEmpty, splitAt } from 'ramda';
 import * as React from 'react';
-import { compose, withStateHandlers } from 'recompose';
-import Button from 'src/components/Button';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import TableBody from 'src/components/core/TableBody';
-import TableHead from 'src/components/core/TableHead';
-import Typography from 'src/components/core/Typography';
+
 import { Item } from 'src/components/EnhancedSelect/Select';
-import Grid from 'src/components/Grid';
-import Table from 'src/components/Table';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import capitalize from 'src/utilities/capitalize';
-import ResultRow from './ResultRow';
+import { Hidden } from 'src/components/Hidden';
+import { Table } from 'src/components/Table';
+import { TableBody } from 'src/components/TableBody';
+import { TableCell } from 'src/components/TableCell';
+import { TableHead } from 'src/components/TableHead';
+import { TableRow } from 'src/components/TableRow';
+import { capitalize } from 'src/utilities/capitalize';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    marginBottom: theme.spacing(3),
-  },
-  entityHeading: {
-    marginBottom: theme.spacing(),
-    [theme.breakpoints.down('sm')]: {
-      marginLeft: theme.spacing(),
-    },
-  },
-  button: {
-    marginTop: theme.spacing(),
-    width: '10%',
-  },
-}));
+import { StyledButton, StyledTypography } from './ResultGroup.styles';
+import { ResultRow } from './ResultRow';
 
-interface Props {
+interface ResultGroupProps {
   entity: string;
-  results: Item[];
   groupSize: number;
-}
-interface HandlerProps {
-  showMore: boolean;
-  toggle: () => void;
+  results: Item[];
 }
 
-type CombinedProps = Props & HandlerProps;
+export const ResultGroup = (props: ResultGroupProps) => {
+  const { entity, groupSize, results } = props;
 
-export const ResultGroup: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+  const [showMore, setShowMore] = React.useState<boolean>(false);
 
-  const { entity, groupSize, results, toggle, showMore } = props;
+  const toggle = () => {
+    setShowMore((showMore) => !showMore);
+  };
 
   if (isEmpty(results)) {
     return null;
@@ -56,14 +37,10 @@ export const ResultGroup: React.FC<CombinedProps> = (props) => {
     results.length > groupSize ? splitAt(groupSize, results) : [results, []];
 
   return (
-    <Grid item className={classes.root}>
-      <Typography
-        variant="h2"
-        data-qa-entity-header={entity}
-        className={classes.entityHeading}
-      >
+    <Grid>
+      <StyledTypography data-qa-entity-header={entity} variant="h2">
         {capitalize(entity)}
-      </Typography>
+      </StyledTypography>
       <Table aria-label="Search Results">
         <TableHead>
           <TableRow>
@@ -95,34 +72,22 @@ export const ResultGroup: React.FC<CombinedProps> = (props) => {
           {showMore &&
             hidden.map((result, idx: number) => (
               <ResultRow
+                data-qa-result-row-component
                 key={idx}
                 result={result}
-                data-qa-result-row-component
               />
             ))}
         </TableBody>
       </Table>
       {!isEmpty(hidden) && (
-        <Button
+        <StyledButton
           buttonType="primary"
-          onClick={toggle}
-          className={classes.button}
           data-qa-show-more-toggle
+          onClick={toggle}
         >
           {showMore ? 'Show Less' : 'Show All'}
-        </Button>
+        </StyledButton>
       )}
     </Grid>
   );
 };
-
-const handlers = withStateHandlers(
-  { showMore: false },
-  {
-    toggle: ({ showMore }) => () => ({ showMore: !showMore }),
-  }
-);
-
-const enhanced = compose<CombinedProps, Props>(handlers)(ResultGroup);
-
-export default enhanced;

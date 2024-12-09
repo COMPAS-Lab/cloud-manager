@@ -1,147 +1,159 @@
-import Check from '@material-ui/icons/Check';
-import Close from '@material-ui/icons/Close';
-import Edit from '@material-ui/icons/Edit';
+import Check from '@mui/icons-material/Check';
+import Close from '@mui/icons-material/Close';
+import Edit from '@mui/icons-material/Edit';
+import { Theme } from '@mui/material/styles';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import Button from 'src/components/Button';
-import ClickAwayListener from 'src/components/core/ClickAwayListener';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import { TextFieldProps } from 'src/components/core/TextField';
-import H1Header from 'src/components/H1Header';
-import TextField from '../TextField';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  '@keyframes fadeIn': {
-    from: {
-      opacity: 0,
-    },
-    to: {
-      opacity: 1,
-    },
-  },
-  root: {
-    display: 'inline-block',
-    border: '1px solid transparent',
-    color: theme.textColors.tableStatic,
-    fontSize: '1.125rem',
-    lineHeight: 1,
-    padding: '5px 8px',
-    textDecoration: 'inherit',
-    transition: theme.transitions.create(['opacity']),
-    wordBreak: 'break-all',
-  },
-  container: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    maxHeight: 48,
-    position: 'relative',
-  },
-  initial: {
-    border: '1px solid transparent',
-    '&:hover, &:focus': {
-      '& $editIcon': {
-        opacity: 1,
-      },
-      '& $icon': {
-        color: theme.color.grey1,
-        '&:hover': {
-          color: theme.color.black,
+import { Button } from 'src/components/Button/Button';
+import { ClickAwayListener } from 'src/components/ClickAwayListener';
+import { H1Header } from 'src/components/H1Header/H1Header';
+
+import { TextField, TextFieldProps } from '../TextField';
+
+const useStyles = makeStyles<void, 'editIcon' | 'icon'>()(
+  (theme: Theme, _params, classes) => ({
+    button: {
+      '&[aria-label="Save"]': {
+        marginLeft: theme.spacing(2),
+        [theme.breakpoints.down('md')]: {
+          marginLeft: theme.spacing(2),
         },
       },
+      background: 'transparent !important',
+      height: 34,
+      marginLeft: 0,
+      minWidth: 'auto',
+      paddingLeft: 6,
+      paddingRight: 6,
     },
-  },
-  textField: {
-    opacity: 0,
-    animation: '$fadeIn .3s ease-in-out forwards',
-    margin: 0,
-  },
-  inputRoot: {
-    backgroundColor: 'transparent',
-    boxShadow: 'none',
-    marginLeft: 7,
-    [theme.breakpoints.up('md')]: {
-      maxWidth: 415,
-      width: '100%',
+    container: {
+      alignItems: 'center',
+      display: 'flex',
+      justifyContent: 'flex-start',
+      position: 'relative',
     },
-  },
-  input: {
-    fontFamily: theme.font.bold,
-    fontSize: '1.125rem',
-    padding: 0,
-    paddingLeft: 2,
-  },
-  button: {
-    background: 'transparent !important',
-    marginTop: 2,
-    marginLeft: 0,
-    minWidth: 'auto',
-    paddingRight: 6,
-    paddingLeft: 6,
-    '&:first-of-type': {
-      marginLeft: theme.spacing(2),
-      [theme.breakpoints.down('sm')]: {
-        marginLeft: theme.spacing(2),
+    editIcon: {
+      [theme.breakpoints.up('sm')]: {
+        '&:focus': {
+          opacity: 1,
+        },
+        opacity: 0,
       },
     },
-  },
-  icon: {
-    color: theme.palette.text.primary,
-    fontSize: '1.25rem',
-    minHeight: 34,
-    '&:hover, &:focus': {
-      color: theme.palette.primary.light,
+    icon: {
+      '&:hover, &:focus': {
+        color: theme.palette.primary.light,
+      },
+      color: theme.palette.text.primary,
+      fontSize: '1.25rem',
+      minHeight: 34,
     },
-  },
-  editIcon: {
-    [theme.breakpoints.up('sm')]: {
-      opacity: 0,
-      '&:focus': {
-        opacity: 1,
+    initial: {
+      '&:hover, &:focus': {
+        [`& .${classes.editIcon}`]: {
+          opacity: 1,
+        },
+        [`& .${classes.icon}`]: {
+          '&:hover': {
+            color: theme.color.black,
+          },
+          color: theme.color.grey1,
+        },
+      },
+      borderLeft: '1px solid transparent',
+    },
+    input: {
+      fontFamily: theme.font.bold,
+      fontSize: '1.125rem',
+      padding: 0,
+      paddingLeft: 2,
+    },
+    inputRoot: {
+      backgroundColor: 'transparent',
+      boxShadow: 'none',
+      marginLeft: 7,
+      [theme.breakpoints.up('md')]: {
+        maxWidth: 415,
+        width: '100%',
       },
     },
-  },
-  headline: {
-    ...theme.typography.h1,
-  },
-  underlineOnHover: {
-    '&:hover, &:focus': {
-      textDecoration: 'underline !important',
+    root: {
+      border: '1px solid transparent',
+      color: theme.textColors.tableStatic,
+      display: 'inline-block',
+      fontSize: '1.125rem !important',
+      lineHeight: 1,
+      padding: '5px 8px',
+      textDecoration: 'inherit',
+      transition: theme.transitions.create(['opacity']),
+      wordBreak: 'break-all',
     },
-  },
-}));
+    textField: {
+      margin: 0,
+    },
+    underlineOnHover: {
+      '&:hover, &:focus': {
+        textDecoration: 'underline !important',
+      },
+    },
+  })
+);
 
 interface Props {
-  onEdit: (text: string) => Promise<any>;
-  onCancel: () => void;
-  text: string;
-  errorText?: string;
-  labelLink?: string;
   className?: string;
+  disabledBreadcrumbEditButton?: boolean;
+  errorText?: string;
+  /**
+   * Send event analytics
+   */
+  handleAnalyticsEvent?: () => void;
+  /**
+   * Optional link for the text when it is not in editing mode
+   */
+  labelLink?: string;
+  /**
+   * Function to cancel editing and restore text to previous text
+   */
+  onCancel: () => void;
+  /**
+   * The function to handle saving edited text
+   */
+  onEdit: (text: string) => Promise<any>;
+  /**
+   * The text inside the textbox
+   */
+  text: string;
+  /**
+   * Optional suffix to append to the text when it is not in editing mode
+   */
+  textSuffix?: string;
 }
 
-type PassThroughProps = Props & TextFieldProps;
+interface PassThroughProps extends Props, Omit<TextFieldProps, 'label'> {}
 
-type FinalProps = PassThroughProps;
-
-const EditableText: React.FC<FinalProps> = (props) => {
-  const classes = useStyles();
+export const EditableText = (props: PassThroughProps) => {
+  const { classes } = useStyles();
 
   const [isEditing, setIsEditing] = React.useState(Boolean(props.errorText));
   const [text, setText] = React.useState(props.text);
   const {
-    labelLink,
-    errorText,
-    onEdit,
-    onCancel,
-    text: propText,
     className,
+    disabledBreadcrumbEditButton,
+    errorText,
+    handleAnalyticsEvent,
+    labelLink,
+    onCancel,
+    onEdit,
+    text: propText,
+    textSuffix,
     ...rest
   } = props;
 
   React.useEffect(() => {
-    setText(props.text);
-  }, [props.text]);
+    setText(propText);
+  }, [propText]);
 
   React.useEffect(() => {
     onCancel();
@@ -153,6 +165,10 @@ const EditableText: React.FC<FinalProps> = (props) => {
   };
 
   const openEdit = () => {
+    // Send analytics when pencil icon is clicked.
+    if (handleAnalyticsEvent) {
+      handleAnalyticsEvent();
+    }
     setIsEditing(true);
   };
 
@@ -163,9 +179,8 @@ const EditableText: React.FC<FinalProps> = (props) => {
      *
      * only exit editing mode if promise resolved
      */
-    if (text !== props.text) {
-      props
-        .onEdit(text)
+    if (text !== propText) {
+      onEdit(text)
         .then(() => {
           setIsEditing(false);
         })
@@ -191,7 +206,11 @@ const EditableText: React.FC<FinalProps> = (props) => {
     }
   };
   const labelText = (
-    <H1Header title={text} className={classes.root} data-qa-editable-text />
+    <H1Header
+      className={classes.root}
+      data-qa-editable-text
+      title={`${text}${textSuffix ?? ''}`}
+    />
   );
 
   return !isEditing && !errorText ? (
@@ -200,7 +219,7 @@ const EditableText: React.FC<FinalProps> = (props) => {
       data-testid={'editable-text'}
     >
       {!!labelLink ? (
-        <Link to={labelLink!} className={classes.underlineOnHover}>
+        <Link className={classes.underlineOnHover} to={labelLink!}>
           {labelText}
         </Link>
       ) : (
@@ -208,46 +227,49 @@ const EditableText: React.FC<FinalProps> = (props) => {
       )}
       {/** pencil icon */}
       <Button
-        className={`${classes.button} ${classes.editIcon}`}
-        onClick={openEdit}
-        data-qa-edit-button
         aria-label={`Edit ${text}`}
+        className={`${classes.button} ${classes.editIcon}`}
+        data-qa-edit-button
+        disabled={disabledBreadcrumbEditButton}
+        onClick={openEdit}
       >
         <Edit className={classes.icon} />
       </Button>
     </div>
   ) : (
-    <ClickAwayListener onClickAway={cancelEditing} mouseEvent="onMouseDown">
+    <ClickAwayListener mouseEvent="onMouseDown" onClickAway={cancelEditing}>
       <div className={`${classes.container} ${className}`} data-qa-edit-field>
         <TextField
           {...rest}
-          className={classes.textField}
-          type="text"
-          label={`Edit ${text} Label`}
-          editable
-          hideLabel
-          onChange={onChange}
-          onKeyDown={handleKeyPress}
-          value={text}
-          errorText={props.errorText}
-          InputProps={{ className: classes.inputRoot }}
           inputProps={{
             className: classes.input,
           }}
+          InputProps={{ className: classes.inputRoot }}
           // eslint-disable-next-line
           autoFocus={true}
+          className={classes.textField}
+          editable
+          errorText={props.errorText}
+          hideLabel
+          label={`Edit ${text} Label`}
+          onChange={onChange}
+          onKeyDown={handleKeyPress}
+          type="text"
+          value={text}
         />
         <Button
+          aria-label="Save"
           className={classes.button}
-          onClick={finishEditing}
           data-qa-save-edit
+          onClick={finishEditing}
         >
           <Check className={classes.icon} />
         </Button>
         <Button
+          aria-label="Cancel"
           className={classes.button}
-          onClick={cancelEditing}
           data-qa-cancel-edit
+          onClick={cancelEditing}
         >
           <Close className={classes.icon} />
         </Button>
@@ -255,5 +277,3 @@ const EditableText: React.FC<FinalProps> = (props) => {
     </ClickAwayListener>
   );
 };
-
-export default EditableText;

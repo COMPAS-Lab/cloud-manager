@@ -1,31 +1,34 @@
+import { Image, deleteImage, getImages } from '@linode/api-v4';
 import { imageFactory } from '@src/factories';
 import { makeResourcePage } from '@src/mocks/serverHandlers';
-import { getAll, deleteById, isTestEntity } from './common';
+import { pageSize } from 'support/constants/api';
+import { depaginate } from 'support/util/paginate';
 
-export const getImages = (page: number = 1) => getAll(`images?page=${page}`);
+import { isTestLabel } from './common';
 
 export const createMockImage = (
-  data?,
+  data?: Image,
+  eol = null,
   label = 'cy-test-image',
   id = 'private/99999999'
 ) => {
-  return makeResourcePage(imageFactory.buildList(1, { label, id, ...data }));
+  return makeResourcePage(
+    imageFactory.buildList(1, { eol, id, label, ...data })
+  );
 };
 
-export const deleteImageById = (imageId: number) =>
-  deleteById('images', imageId);
+/**
+ * Deletes all Images whose labels are prefixed "cy-test-".
+ *
+ * @returns Promise that resolves when Images have been deleted.
+ */
+export const deleteAllTestImages = async (): Promise<void> => {
+  const images = await depaginate<Image>((page: number) =>
+    getImages({ page, page_size: pageSize })
+  );
+  const imageDeletePromises = images
+    .filter((image: Image) => isTestLabel(image.label))
+    .map((image: Image) => deleteImage(image.id));
 
-export const deleteAllTestImages = () => {
-  getImages().then((resp) => {
-    const pages = resp.body.pages;
-    for (let page = 1; page <= pages; page++) {
-      getImages(page).then((resp) => {
-        resp.body.data.forEach((image) => {
-          if (isTestEntity(image)) {
-            deleteImageById(image.id);
-          }
-        });
-      });
-    }
-  });
+  await Promise.all(imageDeletePromises);
 };

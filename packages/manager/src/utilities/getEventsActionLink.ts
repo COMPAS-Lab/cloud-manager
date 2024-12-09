@@ -1,25 +1,18 @@
-import { Entity, EventAction } from '@linode/api-v4/lib/account';
 import { nonClickEvents } from 'src/constants';
-import {
-  EntityType,
-  getEntityByIDFromStore,
-} from 'src/utilities/getEntityByIDFromStore';
+
+import type { Entity, EventAction } from '@linode/api-v4/lib/account';
 
 export const getEngineFromDatabaseEntityURL = (url: string) => {
   return url.match(/databases\/(\w*)\/instances/i)?.[1];
 };
 
-export default (
-  action: EventAction,
-  entity: null | Entity,
-  deleted: undefined | string | boolean
-) => {
+export const getLinkForEvent = (action: EventAction, entity: Entity | null) => {
   const type = entity?.type;
   const id = entity?.id;
   const label = entity?.label;
 
-  if (action.match(/community/gi)) {
-    return entity!.url;
+  if (action.startsWith('community')) {
+    return entity?.url;
   }
 
   if (['disk_delete', 'linode_config_delete'].includes(action)) {
@@ -43,7 +36,7 @@ export default (
    * If we have a deletion event or an event that is marked as referring to a deleted entity
    * we don't want a clickable action.
    */
-  if (action.includes('_delete') || deleted) {
+  if (action.includes('_delete')) {
     return;
   }
 
@@ -62,6 +55,10 @@ export default (
 
   if (action === 'disk_imagize') {
     return `/images`;
+  }
+
+  if (['backups_enable', 'linode_snapshot'].includes(action)) {
+    return `/linodes/${id}/backup`;
   }
 
   switch (type) {
@@ -85,6 +82,9 @@ export default (
     case 'stackscript':
       return `/stackscripts/${id}`;
 
+    case 'firewall':
+      return `/firewalls/${id}`;
+
     case 'nodebalancer':
       // eslint-disable-next-line sonarjs/no-small-switch
       switch (action) {
@@ -97,7 +97,7 @@ export default (
 
     case 'database':
       return `/databases/${getEngineFromDatabaseEntityURL(
-        entity!.url
+        entity?.url
       )}/${id}/summary`;
 
     case 'user':
@@ -106,6 +106,15 @@ export default (
     case 'firewall':
       return `/firewalls/${id}`;
     /* -- Clanode Change End -- */
+
+    case 'vpc':
+      return `/vpcs/${id}`;
+
+    case 'placement_group':
+      return `/placement-groups/${id}`;
+
+    case 'lkecluster':
+      return `/kubernetes/clusters/${id}`;
 
     default:
       return;
@@ -117,31 +126,34 @@ export const getLinkTargets = (entity: Entity | null) => {
     return null;
   }
 
-  const entityInStore = getEntityByIDFromStore(
-    entity.type as EntityType,
-    entity.id
-  );
-  /**
-   * If the entity doesn't exist in the store, don't link to it
-   * as it is probably an old ticket re: an entity that
-   * has since been deleted.
-   */
-  if (!entityInStore) {
-    return null;
-  }
-
   switch (entity.type) {
     case 'linode':
       return `/linodes/${entity.id}`;
     case 'domain':
       return `/domains/${entity.id}`;
+    case 'firewall':
+      return `/firewalls/${entity.id}`;
+    case 'stackscript':
+      return `/stackscripts/${entity.id}`;
     case 'nodebalancer':
       return `/nodebalancers/${entity.id}`;
+    case 'lkecluster':
+      return `/kubernetes/clusters/${entity.id}`;
+    case 'database':
+      return `/databases/${getEngineFromDatabaseEntityURL(entity.url)}/${
+        entity.id
+      }/summary`;
+    case 'image':
+      return '/images';
     case 'longview':
       return '/longview';
     case 'volume':
       return '/volumes';
+    case 'placement_group':
+      return `/placement-groups/${entity.id}`;
+    case 'vpc':
+      return `/vpcs/${entity.id}`;
     default:
-      return '';
+      return null;
   }
 };

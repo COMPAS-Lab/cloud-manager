@@ -1,35 +1,13 @@
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import { IndicatorProps } from 'react-select';
-import CircularProgress from 'src/components/core/CircularProgress';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
 
-type ClassNames = 'root';
+import { CircleProgress } from 'src/components/CircleProgress';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      position: 'relative',
-      right: 20,
-    },
-  });
+export const LoadingIndicator = () => {
+  return <StyledCircleProgress data-testid="input-loading" size="sm" />;
+};
 
-interface Props extends IndicatorProps<any, any> {}
-
-type CombinedProps = Props & WithStyles<ClassNames>;
-
-class LoadingIndicator extends React.PureComponent<CombinedProps> {
-  render() {
-    const { classes } = this.props;
-
-    return <CircularProgress size={20} className={classes.root} />;
-  }
-}
-
-const styled = withStyles(styles);
-
-export default styled(LoadingIndicator);
+const StyledCircleProgress = styled(CircleProgress)(() => ({
+  position: 'relative',
+  right: 20,
+}));

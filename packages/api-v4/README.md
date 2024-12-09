@@ -17,7 +17,7 @@ $ yarn add @linode/api-v4
 or with a CDN:
 
 ```js
-<script src="https://unpkg.com/@linode/api-v4/lib/iife/index.js"></script>
+<script src="https://unpkg.com/@linode/api-v4/lib/index.global.js"></script>
 ```
 
 ## Usage
@@ -141,7 +141,7 @@ pagination and filter parameters to the API:
 
 ```js
 // Return page 2 of Linodes, with a page size of 100:
-getLinodes({ page: 2, pageSize: 100 });
+getLinodes({ page: 2, page_size: 100 });
 
 // Return all public Linode Images:
 getImages({}, { is_public: true });

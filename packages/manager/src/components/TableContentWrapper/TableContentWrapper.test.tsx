@@ -1,12 +1,9 @@
 import { render } from '@testing-library/react';
 import * as React from 'react';
-import {
-  akamaiInvoiceRow,
-  akamaiRowEmptyState,
-} from 'src/features/Billing/BillingPanels/BillingActivityPanel/BillingActivityPanel';
-import { akamaiBillingInvoiceText } from 'src/features/Billing/billingUtils';
+
 import { wrapWithTableBody } from 'src/utilities/testHelpers';
-import TableContentWrapper from './TableContentWrapper';
+
+import { TableContentWrapper } from './TableContentWrapper';
 
 const children = [
   <tr key={1}>
@@ -17,13 +14,27 @@ const children = [
   </tr>,
 ];
 
+const customEmptyRow = (
+  <tr>
+    <td colSpan={4}>
+      <div> A custom empty row </div>
+    </td>
+  </tr>
+);
+
+const customRow = (
+  <tr>
+    <td> A custom row </td>
+  </tr>
+);
+
 describe('TableContentWrapper component', () => {
   it('should render its children if everything is kosher', () => {
     const kosherProps = {
-      lastUpdated: 100,
-      loading: false,
-      length: 1,
       children,
+      lastUpdated: 100,
+      length: 1,
+      loading: false,
     };
     const { getByText } = render(
       wrapWithTableBody(<TableContentWrapper {...kosherProps} />)
@@ -34,10 +45,10 @@ describe('TableContentWrapper component', () => {
 
   it('should render a loading spinner if loading is true', () => {
     const loadingProps = {
-      lastUpdated: 10,
-      loading: true,
-      length: 100,
       children,
+      lastUpdated: 10,
+      length: 100,
+      loading: true,
     };
     const { getByTestId, queryByText } = render(
       wrapWithTableBody(<TableContentWrapper {...loadingProps} />)
@@ -50,11 +61,11 @@ describe('TableContentWrapper component', () => {
   it('should render an error row if an error is provided', () => {
     const mockError = [{ reason: 'API is down' }];
     const errorProps = {
-      loading: false,
+      children,
+      error: mockError,
       lastUpdated: 0,
       length: 0,
-      error: mockError,
-      children,
+      loading: false,
     };
 
     const { getByTestId, getByText, queryByText } = render(
@@ -67,10 +78,10 @@ describe('TableContentWrapper component', () => {
 
   it("should render an empty state if there's no data", () => {
     const emptyProps = {
-      loading: false,
+      children,
       lastUpdated: 10,
       length: 0,
-      children,
+      loading: false,
     };
 
     const { getByText, queryByText } = render(
@@ -82,11 +93,11 @@ describe('TableContentWrapper component', () => {
 
   it('should use the emptyMessage if provided', () => {
     const emptyProps = {
-      loading: false,
+      children,
+      emptyMessage: 'Nothing to see here',
       lastUpdated: 10,
       length: 0,
-      emptyMessage: 'Nothing to see here',
-      children,
+      loading: false,
     };
 
     const { getByText } = render(
@@ -97,29 +108,29 @@ describe('TableContentWrapper component', () => {
 
   it('should render custom empty row state if it is provided', () => {
     const emptyProps = {
-      loading: false,
-      length: 0,
-      rowEmptyState: akamaiRowEmptyState,
       children,
+      length: 0,
+      loading: false,
+      rowEmptyState: customEmptyRow,
     };
 
     const { getByText } = render(
       wrapWithTableBody(<TableContentWrapper {...emptyProps} />)
     );
-    getByText(akamaiBillingInvoiceText);
+    getByText('A custom empty row');
   });
 
   it('should render custom row if it is provided', () => {
     const rowProps = {
-      loading: false,
-      length: 2,
-      customFirstRow: akamaiInvoiceRow,
       children,
+      customFirstRow: customRow,
+      length: 2,
+      loading: false,
     };
 
     const { getByText } = render(
       wrapWithTableBody(<TableContentWrapper {...rowProps} />)
     );
-    getByText(`Future ${akamaiBillingInvoiceText}`);
+    getByText('A custom row');
   });
 });

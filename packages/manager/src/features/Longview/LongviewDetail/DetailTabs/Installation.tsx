@@ -1,34 +1,28 @@
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
+import { Paper } from '@linode/ui';
 
-import Paper from 'src/components/core/Paper';
-
-import Instructions from '../../shared/InstallationInstructions';
-
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    padding: theme.spacing(3),
-  },
-}));
+import { InstallationInstructions } from '../../shared/InstallationInstructions';
 
 interface Props {
-  clientInstallationKey: string;
   clientAPIKey: string;
+  clientInstallationKey: string;
 }
 
-type CombinedProps = Props;
-
-const Installation: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+const Installation = (props: Props) => {
   return (
     <>
       <DocumentTitleSegment segment="Installation" />
-      <Paper data-testid="longview-clients" className={classes.root}>
-        <Instructions
-          data-qa-instructions
+      <Paper
+        data-testid="longview-clients"
+        sx={(theme) => ({
+          padding: theme.spacing(3),
+        })}
+      >
+        <InstallationInstructions
           APIKey={props.clientAPIKey}
+          data-qa-instructions
           installationKey={props.clientInstallationKey}
         />
       </Paper>

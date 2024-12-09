@@ -1,3 +1,2 @@
-import DisplayPrice, { displayPrice } from './DisplayPrice';
-export { displayPrice };
-export default DisplayPrice;
+export { DisplayPrice, displayPrice } from './DisplayPrice';
+export type { DisplayPriceProps } from './DisplayPrice';

@@ -1,5 +1,8 @@
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
+
 import StorageIcon from 'src/assets/icons/entityIcons/bucket.svg';
+import DatabaseIcon from 'src/assets/icons/entityIcons/database.svg';
 import DomainIcon from 'src/assets/icons/entityIcons/domain.svg';
 import FirewallIcon from 'src/assets/icons/entityIcons/firewall.svg';
 import FolderIcon from 'src/assets/icons/entityIcons/folder.svg';
@@ -12,79 +15,67 @@ import ObjectIcon from 'src/assets/icons/entityIcons/object.svg';
 import MarketplaceIcon from 'src/assets/icons/entityIcons/oneclick.svg';
 import StackScriptIcon from 'src/assets/icons/entityIcons/stackscript.svg';
 import VolumeIcon from 'src/assets/icons/entityIcons/volume.svg';
-import DatabaseIcon from 'src/assets/icons/entityIcons/database.svg';
 import LongviewIcon from 'src/assets/icons/longview.svg';
-import { makeStyles, Theme } from 'src/components/core/styles';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    display: 'flex',
-    color: theme.color.grey1,
-    position: 'relative',
-  },
-}));
-
-export type Variant =
-  | 'managed'
-  | 'linode'
-  | 'volume'
-  | 'nodebalancer'
-  | 'firewall'
-  | 'stackscript'
-  | 'image'
+export type EntityVariants =
+  | 'database'
   | 'domain'
-  | 'kubernetes'
-  | 'storage'
-  | 'longview'
-  | 'marketplace'
-  | 'object'
+  | 'firewall'
   | 'folder'
-  | 'database';
+  | 'image'
+  | 'kubernetes'
+  | 'linode'
+  | 'longview'
+  | 'managed'
+  | 'marketplace'
+  | 'nodebalancer'
+  | 'object'
+  | 'stackscript'
+  | 'storage'
+  | 'volume';
 
-interface Props {
-  variant: Variant;
-  status?: string;
-  loading?: boolean;
-  size?: number;
+interface EntityIconProps {
   className?: any;
+  loading?: boolean;
   marginTop?: number;
+  size?: number;
+  status?: string;
   stopAnimation?: boolean;
+  style?: React.CSSProperties;
+  variant: EntityVariants;
 }
 
-type CombinedProps = Props;
-
 const iconMap = {
-  managed: ManagedIcon,
-  linode: LinodeIcon,
-  volume: VolumeIcon,
-  nodebalancer: NodeBalancerIcon,
-  firewall: FirewallIcon,
-  stackscript: StackScriptIcon,
-  image: ImageIcon,
-  domain: DomainIcon,
-  kube: KubernetesIcon,
-  bucket: StorageIcon,
-  longview: LongviewIcon,
-  oca: MarketplaceIcon,
-  object: ObjectIcon,
-  folder: FolderIcon,
   database: DatabaseIcon,
+  domain: DomainIcon,
+  firewall: FirewallIcon,
+  folder: FolderIcon,
+  image: ImageIcon,
+  kubernetes: KubernetesIcon,
+  linode: LinodeIcon,
+  longview: LongviewIcon,
+  managed: ManagedIcon,
+  marketplace: MarketplaceIcon,
+  nodebalancer: NodeBalancerIcon,
+  object: ObjectIcon,
+  stackscript: StackScriptIcon,
+  storage: StorageIcon,
+  volume: VolumeIcon,
 };
 
-const getIcon = (variant: Variant) => {
+const getIcon = (variant: EntityVariants) => {
   return iconMap[variant] ?? LinodeIcon;
 };
 
-const EntityIcon: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const EntityIcon = (props: EntityIconProps) => {
   const {
-    variant,
-    status,
-    loading,
-    size,
     className,
+    loading,
     marginTop,
+    size,
+    status,
+    style,
+    variant,
     ...rest
   } = props;
 
@@ -118,18 +109,22 @@ const EntityIcon: React.FC<CombinedProps> = (props) => {
       : status;
 
   return (
-    <div
-      className={`${classes.root} ${className}`}
-      style={{ top: marginTop }}
-      data-qa-icon={variant}
-      data-qa-entity-status={status || 'undefined'}
-      data-qa-is-loading={loading || 'false'}
+    <EntityIconRoot
       aria-label={`${variant} is ${finalStatus}`}
+      className={className}
+      data-qa-entity-status={status || 'undefined'}
+      data-qa-icon={variant}
+      data-qa-is-loading={loading || 'false'}
+      style={{ top: marginTop, ...style }}
       {...rest}
     >
       <Icon height={iconSize} width={iconSize} />
-    </div>
+    </EntityIconRoot>
   );
 };
 
-export default EntityIcon;
+const EntityIconRoot = styled('div')(({ theme }) => ({
+  color: theme.color.grey1,
+  display: 'flex',
+  position: 'relative',
+}));

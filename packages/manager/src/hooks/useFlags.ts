@@ -1,7 +1,8 @@
 import { useFlags as ldUseFlags } from 'launchdarkly-react-client-sdk';
 import { useSelector } from 'react-redux';
-import { FlagSet } from 'src/featureFlags';
-import { ApplicationState } from 'src/store';
+
+import type { FlagSet } from 'src/featureFlags';
+import type { ApplicationState } from 'src/store';
 export { useLDClient } from 'launchdarkly-react-client-sdk';
 
 /**
@@ -30,5 +31,3 @@ export const useFlags = () => {
     ...mockFlags,
   };
 };
-
-export default useFlags;

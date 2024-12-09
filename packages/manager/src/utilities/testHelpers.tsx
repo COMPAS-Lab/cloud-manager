@@ -1,36 +1,79 @@
-import { MatcherFunction, render, RenderResult } from '@testing-library/react';
-import { Provider as LDProvider } from 'launchdarkly-react-client-sdk/lib/context';
+import { QueryClientProvider } from '@tanstack/react-query';
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router';
+import { act, render, waitFor } from '@testing-library/react';
+import mediaQuery from 'css-mediaquery';
+import { Formik } from 'formik';
+import { LDProvider } from 'launchdarkly-react-client-sdk';
 import { SnackbarProvider } from 'notistack';
 import { mergeDeepRight } from 'ramda';
 import * as React from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { FormProvider, useForm } from 'react-hook-form';
 import { Provider } from 'react-redux';
-import { MemoryRouterProps } from 'react-router';
-import { MemoryRouter } from 'react-router-dom';
-import { DeepPartial } from 'redux';
+import { MemoryRouter, Route } from 'react-router-dom';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import { FlagSet } from 'src/featureFlags';
-import LinodeThemeWrapper from 'src/LinodeThemeWrapper';
-import { queryClient } from 'src/queries/base';
-import store, { ApplicationState, defaultState } from 'src/store';
+
+import { LinodeThemeWrapper } from 'src/LinodeThemeWrapper';
+import { queryClientFactory } from 'src/queries/base';
+import { setupInterceptors } from 'src/request';
+import { migrationRouteTree } from 'src/routes';
+import { defaultState, storeFactory } from 'src/store';
+
+import type { QueryClient } from '@tanstack/react-query';
+// TODO: Tanstack Router - replace AnyRouter once migration is complete.
+import type { AnyRootRoute, AnyRouter } from '@tanstack/react-router';
+import type { MatcherFunction, RenderResult } from '@testing-library/react';
+import type { FormikConfig, FormikValues } from 'formik';
+import type { FieldValues, UseFormProps } from 'react-hook-form';
+import type { MemoryRouterProps } from 'react-router';
+import type { DeepPartial } from 'redux';
+import type { FlagSet } from 'src/featureFlags';
+import type { ApplicationState, ApplicationStore } from 'src/store';
 
 export const mockMatchMedia = (matches: boolean = true) => {
-  window.matchMedia = jest.fn().mockImplementation((query) => {
+  window.matchMedia = vi.fn().mockImplementation((query) => {
     return {
+      addListener: vi.fn(),
       matches,
       media: query,
       onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
+      removeListener: vi.fn(),
     };
   });
 };
+
+const createMatchMedia = (width: number) => {
+  return (query: string) => {
+    return {
+      addEventListener: () => vi.fn(),
+      addListener: () => vi.fn(),
+      dispatchEvent: () => true,
+      matches: mediaQuery.match(query, { width }),
+      media: '',
+      onchange: () => vi.fn(),
+      removeEventListener: () => vi.fn(),
+      removeListener: () => vi.fn(),
+    };
+  };
+};
+
+export const resizeScreenSize = (width: number) => {
+  window.matchMedia = createMatchMedia(width);
+};
+
 interface Options {
   MemoryRouter?: MemoryRouterProps;
   customStore?: DeepPartial<ApplicationState>;
   flags?: FlagSet;
   queryClient?: QueryClient;
+  routePath?: string;
+  theme?: 'dark' | 'light';
 }
 
 /**
@@ -44,21 +87,160 @@ export const baseStore = (customStore: DeepPartial<ApplicationState> = {}) =>
   );
 
 export const wrapWithTheme = (ui: any, options: Options = {}) => {
-  const { customStore, queryClient: passedQueryClient } = options;
-  const storeToPass = customStore ? baseStore(customStore) : store;
+  const { customStore, queryClient: passedQueryClient, routePath } = options;
+  const queryClient = passedQueryClient ?? queryClientFactory();
+  const storeToPass = customStore ? baseStore(customStore) : storeFactory();
+
+  // we have to call setupInterceptors so that our API error normalization works as expected
+  // I'm sorry that it makes us pass it the "ApplicationStore"
+  setupInterceptors(
+    configureStore<ApplicationState>([thunk])(defaultState)
+  );
+
+  const uiToRender = ui.children ?? ui;
+
   return (
     <Provider store={storeToPass}>
       <QueryClientProvider client={passedQueryClient || queryClient}>
-        <LinodeThemeWrapper theme="dark" shouldGetPreferences={false}>
-          <LDProvider value={{ flags: options.flags ?? {} }}>
+        <LinodeThemeWrapper theme={options.theme}>
+          <LDProvider
+            clientSideID={''}
+            deferInitialization
+            flags={options.flags ?? {}}
+            options={{ bootstrap: options.flags }}
+          >
             <SnackbarProvider>
-              <MemoryRouter {...options.MemoryRouter}>{ui}</MemoryRouter>
+              {/**
+               * TODO Tanstack Router - remove amy routing  routing wrapWithTheme
+               */}
+              <MemoryRouter {...options.MemoryRouter}>
+                {routePath ? (
+                  <Route path={routePath}>{uiToRender}</Route>
+                ) : (
+                  uiToRender
+                )}
+              </MemoryRouter>
             </SnackbarProvider>
           </LDProvider>
         </LinodeThemeWrapper>
       </QueryClientProvider>
     </Provider>
   );
+};
+
+interface OptionsWithRouter
+  extends Omit<Options, 'MemoryRouter' | 'routePath'> {
+  initialRoute?: string;
+  routeTree?: AnyRootRoute;
+  router?: AnyRouter;
+}
+
+/**
+ * We don't always need to use the router in our tests. When we do, due to the async nature of TanStack Router, we need to use this helper function.
+ * The reason we use this instead of extending renderWithTheme is because of having to make all tests async.
+ * It seems unnecessary to refactor all tests to async when we don't need to access the router at all.
+ *
+ * In order to use this, you must await the result of the function.
+ *
+ * @example
+ * const { getByText, router } = await renderWithThemeAndRouter(
+ *   <Component />, {
+ *     initialRoute: '/route',
+ *   }
+ * );
+ *
+ * // Assert the initial route
+ * expect(router.state.location.pathname).toBe('/route');
+ *
+ * // from here, you can use the router to navigate
+ * await waitFor(() =>
+ *   router.navigate({
+ *    params: { betaId: beta.id },
+ *    to: '/path/to/something',
+ *  })
+ * );
+ *
+ * // And assert
+ * expect(router.state.location.pathname).toBe('/path/to/something');
+ *
+ * // and test the UI
+ * getByText('Some text');
+ */
+export const wrapWithThemeAndRouter = (
+  ui: React.ReactNode,
+  options: OptionsWithRouter = {}
+) => {
+  const {
+    customStore,
+    initialRoute = '/',
+    queryClient: passedQueryClient,
+  } = options;
+  const queryClient = passedQueryClient ?? queryClientFactory();
+  const storeToPass = customStore ? baseStore(customStore) : storeFactory();
+
+  setupInterceptors(
+    configureStore<ApplicationState>([thunk])(defaultState)
+  );
+
+  const rootRoute = createRootRoute({});
+  const indexRoute = createRoute({
+    component: () => ui,
+    getParentRoute: () => rootRoute,
+    path: initialRoute,
+  });
+  const router: AnyRouter = createRouter({
+    history: createMemoryHistory({
+      initialEntries: [initialRoute],
+    }),
+    routeTree: rootRoute.addChildren([indexRoute]),
+  });
+
+  return (
+    <Provider store={storeToPass}>
+      <QueryClientProvider client={passedQueryClient || queryClient}>
+        <LinodeThemeWrapper theme={options.theme}>
+          <LDProvider
+            clientSideID={''}
+            deferInitialization
+            flags={options.flags ?? {}}
+            options={{ bootstrap: options.flags }}
+          >
+            <SnackbarProvider>
+              <RouterProvider router={router} />
+            </SnackbarProvider>
+          </LDProvider>
+        </LinodeThemeWrapper>
+      </QueryClientProvider>
+    </Provider>
+  );
+};
+
+export const renderWithThemeAndRouter = async (
+  ui: React.ReactNode,
+  options: OptionsWithRouter = {}
+): Promise<RenderResult & { router: AnyRouter }> => {
+  const router = createRouter({
+    history: createMemoryHistory({
+      initialEntries: [options.initialRoute || '/'],
+    }),
+    routeTree: options.routeTree || migrationRouteTree,
+  });
+
+  let renderResult: RenderResult;
+
+  await act(async () => {
+    renderResult = render(wrapWithThemeAndRouter(ui, { ...options, router }));
+
+    // Wait for the router to be ready
+    await waitFor(() => expect(router.state.status).toBe('idle'));
+  });
+
+  return {
+    ...renderResult!,
+    rerender: (ui) =>
+      renderResult.rerender(wrapWithThemeAndRouter(ui, { ...options, router })),
+    router,
+  };
 };
 
 /**
@@ -74,8 +256,13 @@ export const wrapWithTheme = (ui: any, options: Options = {}) => {
  * @param param {object} contains children to render
  * @returns {JSX.Element} wrapped component with Redux available for use
  */
-export const wrapWithStore = ({ children }: { children: any }) => {
-  return <Provider store={store}>{children}</Provider>;
+export const wrapWithStore = (props: {
+  children: React.ReactNode;
+  queryClient?: QueryClient;
+  store?: ApplicationStore;
+}) => {
+  const store = props.store ?? storeFactory();
+  return <Provider store={store}>{props.children}</Provider>;
 };
 
 // When wrapping a TableRow component to test, we'll get an invalid DOM nesting
@@ -90,80 +277,60 @@ export const wrapWithTableBody = (ui: any, options: Options = {}) =>
     options
   );
 
-export const renderWithTheme = (ui: any, options: Options = {}) => {
-  return render(wrapWithTheme(ui, options));
+export const renderWithTheme = (
+  ui: React.ReactNode,
+  options: Options = {}
+): RenderResult => {
+  const renderResult = render(wrapWithTheme(ui, options));
+  return {
+    ...renderResult,
+    rerender: (ui) => renderResult.rerender(wrapWithTheme(ui, options)),
+  };
 };
 
-declare global {
-  // export would be better, but i m aligning with how the namespace is declared by jest-axe
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace jest {
-    interface Matchers<R, T> {
-      toPassAxeCheck(): R;
-    }
-  }
+/**
+ * Renders the given UI component within both the Formik and renderWithTheme.
+ *
+ * @param {React.ReactElement} ui - The React component that you want to render. This component
+ *                                  typically will be a part of or a whole form.
+ * @param {FormikConfig<T>} configObj - Formik configuration object which includes all the necessary
+ *                                      configurations for the Formik context such as initialValues,
+ *                                      validationSchema, and onSubmit.
+ */
+
+export const renderWithThemeAndFormik = <T extends FormikValues>(
+  ui: React.ReactElement,
+  configObj: FormikConfig<T>
+) => renderWithTheme(<Formik {...configObj}>{ui}</Formik>);
+
+interface UseFormPropsWithChildren<T extends FieldValues>
+  extends UseFormProps<T> {
+  children: React.ReactNode;
 }
-export const toPassAxeCheck = {
-  toPassAxeCheck(received: RenderResult) {
-    // if ((typeof rec) !== RenderResult){
-    //   return {
-    //     pass:false,
-    //     message:()=> `Expected type RenderResult (result of function call render...)`
-    //   };
-    // }
-    const anchors = received.container.querySelectorAll('a');
-    // Here i want to use forEach but tslint has a bug saying not all my pth return a value,
-    // which is intended as i want to return only if there is an error, if not keep traversing
-    // Also i could have used For .. Of but this was making tslint think e was a string...
-    for (let i = 0; i < anchors.length; i++) {
-      const e = anchors[i];
-      const hasHref = e.hasAttribute('href');
-      if (!hasHref) {
-        return {
-          message: () => `anchors has no href - specify a value for href
-        \nsee: https://a11yproject.com/posts/creating-valid-and-accessible-links/:\n${received.debug(
-          e
-        )}`,
-          pass: false,
-        };
-      }
-      let hrefAtt = e.getAttribute('href');
-      if (hrefAtt == null) {
-        return {
-          message: () => `anchors has bad href - specify a non null value for href
-        \nsee: https://a11yproject.com/posts/creating-valid-and-accessible-links/:\n${received.debug(
-          e
-        )}`,
-          pass: false,
-        };
-      }
-      hrefAtt = hrefAtt as string;
-      if (['#', ''].includes(hrefAtt) || hrefAtt.includes('javascript')) {
-        return {
-          message: () => `anchors has invalid href - specify a valid value not #,'' or javascript(void)
-        \nsee: https://a11yproject.com/posts/creating-valid-and-accessible-links/:\n${received.debug(
-          e
-        )}`,
-          pass: false,
-        };
-      }
-      // ugly trick to bypass tslint inablility to understand it s normal not to return
-      continue;
-    }
-    return { pass: true, message: () => '!' };
-  },
+
+const FormContextWrapper = <T extends FieldValues>(
+  props: UseFormPropsWithChildren<T>
+) => {
+  const formMethods = useForm<T>(props);
+
+  return <FormProvider {...formMethods}>{props.children}</FormProvider>;
 };
 
-export const includesActions = (
-  actions: string[],
-  query: any,
-  includes = true
+interface RenderWithThemeAndHookFormOptions<T extends FieldValues> {
+  component: React.ReactElement;
+  options?: Options;
+  useFormOptions?: UseFormProps<T>;
+}
+
+export const renderWithThemeAndHookFormContext = <T extends FieldValues>(
+  options: RenderWithThemeAndHookFormOptions<T>
 ) => {
-  for (const action of actions) {
-    includes
-      ? expect(query(action)).toBeInTheDocument()
-      : expect(query(action)).not.toBeInTheDocument();
-  }
+  return renderWithTheme(
+    <FormContextWrapper {...options.useFormOptions}>
+      {options.component}
+    </FormContextWrapper>,
+    options.options
+  );
 };
 
 type Query = (f: MatcherFunction) => HTMLElement;

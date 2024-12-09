@@ -1,172 +1,151 @@
-import copy from 'copy-to-clipboard';
-import { tail } from 'ramda';
 import * as React from 'react';
-import CopyTooltip from 'src/components/CopyTooltip';
+
+import { CopyTooltip } from 'src/components/CopyTooltip/CopyTooltip';
+import { ShowMore } from 'src/components/ShowMore/ShowMore';
+import { PublicIPAddressesTooltip } from 'src/features/Linodes/PublicIPAddressesTooltip';
+import { usePreferences } from 'src/queries/profile/preferences';
+import { isPrivateIP } from 'src/utilities/ipUtils';
+import { tail } from 'src/utilities/tail';
+
 import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import ShowMore from 'src/components/ShowMore';
-import { privateIPRegex } from 'src/utilities/ipUtils';
+  StyledCopyTooltip,
+  StyledIpLinkDiv,
+  StyledRenderIPDiv,
+  StyledRootDiv,
+} from './IPAddress.styles';
 
-type CSSClasses =
-  | 'root'
-  | 'right'
-  | 'icon'
-  | 'row'
-  | 'multipleAddresses'
-  | 'ipLink'
-  | 'hide';
-
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      marginBottom: theme.spacing() / 2,
-      maxWidth: '100%',
-      width: '100%',
-      '&:last-child': {
-        marginBottom: 0,
-      },
-      '&:hover': {
-        '& $hide': {
-          opacity: 1,
-        },
-      },
-    },
-    row: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      width: '100%',
-    },
-    multipleAddresses: {
-      '&:not(:last-child)': {
-        marginBottom: theme.spacing() / 2,
-      },
-    },
-    right: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: theme.spacing(0.5),
-    },
-    icon: {
-      '& svg': {
-        height: 12,
-        width: 12,
-        top: 1,
-      },
-    },
-    ipLink: {
-      display: 'inline-block',
-      color: theme.palette.primary.main,
-      position: 'relative',
-      top: -1,
-      transition: theme.transitions.create(['color']),
-    },
-    hide: {
-      [theme.breakpoints.up('md')]: {
-        // Hide until the component is hovered,
-        // when props.showCopyOnHover is true (only on desktop)
-        opacity: 0,
-      },
-      transition: theme.transitions.create(['opacity']),
-      '&:focus': {
-        opacity: 1,
-      },
-    },
-  });
-
-interface Props {
+export interface IPAddressProps {
+  /**
+   * If true, the copy button will be disabled with a tooltip explanation.
+   * @default false
+   */
+  disabled?: boolean;
+  /**
+   * Conditional handlers to be applied to the IP wrapper div when `showTooltipOnIpHover` is true.
+   * @default undefined
+   */
+  handlers?: {
+    onMouseEnter: () => void;
+    onMouseLeave: () => void;
+  };
+  /**
+   * The IP addresses to be displayed.
+   * default []
+   */
   ips: string[];
-  showCopyOnHover?: boolean;
-  showMore?: boolean;
+  /**
+   * If true, the IP address copy icon will be displayed when the row is hovered.
+   * @default false
+   */
+  isHovered?: boolean;
+  /**
+   * If true, all IP addresses will be displayed.
+   * @default false
+   */
   showAll?: boolean;
+  /**
+   * If true, additional IP addresses will be displayed via a ShowMore component within a tooltip.
+   * @default false
+   */
+  showMore?: boolean;
+  /**
+   * If true, the IP address copy icon will only be displayed when hovering over the IP address.
+   * @default false
+   */
+  showTooltipOnIpHover?: boolean;
 }
 
 export const sortIPAddress = (ip1: string, ip2: string) =>
-  (privateIPRegex.test(ip1) ? 1 : -1) - (privateIPRegex.test(ip2) ? 1 : -1);
+  (isPrivateIP(ip1) ? 1 : -1) - (isPrivateIP(ip2) ? 1 : -1);
 
-export class IPAddress extends React.Component<Props & WithStyles<CSSClasses>> {
-  state = {
-    copied: false,
-  };
+export const IPAddress = (props: IPAddressProps) => {
+  const {
+    disabled = false,
+    ips,
+    isHovered = false,
+    showAll,
+    showMore,
+    showTooltipOnIpHover = false,
+  } = props;
 
-  copiedTimeout: number | null = null;
+  const formattedIPS = ips
+    .map((ip) => ip.replace('/64', ''))
+    .sort(sortIPAddress);
 
-  componentWillUnmount() {
-    if (this.copiedTimeout !== null) {
-      window.clearTimeout(this.copiedTimeout);
+  const copiedTimeout: null | number = null;
+
+  const [isIpTooltipHovered, setIsIpTooltipHovered] = React.useState<boolean>(
+    false
+  );
+
+  const { data: preferences } = usePreferences();
+
+  React.useEffect(() => {
+    return () => {
+      if (copiedTimeout !== null) {
+        window.clearTimeout(copiedTimeout);
+      }
+    };
+  }, [copiedTimeout]);
+
+  const handleMouseEnter = () => setIsIpTooltipHovered(true);
+  const handleMouseLeave = () => setIsIpTooltipHovered(false);
+
+  const renderCopyIcon = (ip: string) => {
+    if (disabled) {
+      return PublicIPAddressesTooltip;
     }
-  }
-
-  clickIcon = (ip: string) => {
-    this.setState({
-      copied: true,
-    });
-    window.setTimeout(() => this.setState({ copied: false }), 1500);
-    copy(ip);
-  };
-
-  renderCopyIcon = (ip: string) => {
-    const { classes, showCopyOnHover } = this.props;
 
     return (
-      <div className={`${classes.ipLink}`} data-qa-copy-ip>
-        <CopyTooltip
+      <StyledIpLinkDiv data-qa-copy-ip>
+        <StyledCopyTooltip
+          data-testid={`styled-copytooltip`}
+          isHovered={isHovered}
+          isIpHovered={isIpTooltipHovered}
+          showTooltipOnIpHover={showTooltipOnIpHover}
           text={ip}
-          className={`${classes.icon} ${showCopyOnHover ? classes.hide : ''}
-            ${classes.right} copy`}
         />
-      </div>
+      </StyledIpLinkDiv>
     );
   };
 
-  renderIP = (ip: string, key?: number) => {
-    const { classes, showAll } = this.props;
+  const renderIP = (ip: string) => {
+    const handlers = showTooltipOnIpHover
+      ? {
+          onMouseEnter: handleMouseEnter,
+          onMouseLeave: handleMouseLeave,
+        }
+      : undefined;
+
     return (
-      <div
-        key={key}
-        className={`${classes.row} ${showAll && classes.multipleAddresses}`}
-        data-qa-ip-main
+      <StyledRenderIPDiv
+        {...handlers}
+        showTooltipOnIpHover={showTooltipOnIpHover}
       >
-        {ip}
-        {this.renderCopyIcon(ip)}
-      </div>
+        <CopyTooltip
+          copyableText
+          data-qa-copy-ip-text
+          disabled={disabled}
+          masked={Boolean(preferences?.maskSensitiveData)}
+          maskedTextLength="ipv4"
+          text={ip}
+        />
+        {renderCopyIcon(ip)}
+      </StyledRenderIPDiv>
     );
   };
 
-  render() {
-    const { classes, ips, showMore, showAll } = this.props;
-
-    const formattedIPS = ips
-      .map((ip) => ip.replace('/64', ''))
-      .sort(sortIPAddress);
-
-    return (
-      <div className={`${!showAll && 'dif'} ${classes.root}`}>
-        {!showAll
-          ? this.renderIP(formattedIPS[0])
-          : formattedIPS.map((a, i) => {
-              return this.renderIP(a, i);
-            })}
-
-        {formattedIPS.length > 1 && showMore && !showAll && (
-          <ShowMore
-            items={tail(formattedIPS)}
-            ariaItemType="IP addresses"
-            render={(ipsAsArray: string[]) => {
-              return ipsAsArray.map((ip, idx) =>
-                this.renderIP(ip.replace('/64', ''), idx)
-              );
-            }}
-            data-qa-ip-more
-          />
-        )}
-      </div>
-    );
-  }
-}
-
-export default withStyles(styles)(IPAddress);
+  return (
+    <StyledRootDiv showAll={showAll}>
+      {!showAll ? renderIP(formattedIPS[0]) : formattedIPS.map(renderIP)}
+      {formattedIPS.length > 1 && showMore && !showAll && (
+        <ShowMore
+          ariaItemType="IP addresses"
+          data-qa-ip-more
+          items={tail(formattedIPS)}
+          render={(ipsAsArray: string[]) => ipsAsArray.map(renderIP)}
+        />
+      )}
+    </StyledRootDiv>
+  );
+};

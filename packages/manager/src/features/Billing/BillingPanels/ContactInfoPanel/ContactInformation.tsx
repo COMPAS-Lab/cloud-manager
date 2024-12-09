@@ -1,95 +1,77 @@
-import classNames from 'classnames';
-import countryData from 'country-region-data';
+import { Box } from '@linode/ui';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Unstable_Grid2';
+import { allCountries } from 'country-region-data';
 import * as React from 'react';
+import { useHistory, useRouteMatch } from 'react-router-dom';
+
+import { MaskableText } from 'src/components/MaskableText/MaskableText';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { Typography } from 'src/components/Typography';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { EDIT_BILLING_CONTACT } from 'src/features/Billing/constants';
+import { StyledAutorenewIcon } from 'src/features/TopMenu/NotificationMenu/NotificationMenu';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { useNotificationsQuery } from 'src/queries/account/notifications';
+
 import {
-  RouteComponentProps,
-  useHistory,
-  useRouteMatch,
-} from 'react-router-dom';
-import { compose } from 'recompose';
-import Button from 'src/components/Button';
-import Paper from 'src/components/core/Paper';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Grid from 'src/components/Grid';
-import styled from 'src/containers/SummaryPanels.styles';
+  BillingActionButton,
+  BillingBox,
+  BillingPaper,
+} from '../../BillingDetail';
 import BillingContactDrawer from './EditBillingContactDrawer';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  ...styled(theme),
-  wordWrap: {
-    wordBreak: 'break-all',
-  },
-  switchWrapper: {
-    flex: 1,
-    maxWidth: '100%',
-    position: 'relative',
-    '&.mlMain': {
-      [theme.breakpoints.up('lg')]: {
-        maxWidth: '78.8%',
-      },
-    },
-  },
-  switchWrapperFlex: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  edit: {
-    color: theme.textColors.linkActiveLight,
-    fontFamily: theme.font.normal,
-    fontSize: '.875rem',
-    fontWeight: 700,
-    minHeight: 'unset',
-    minWidth: 'auto',
-    padding: 0,
-    '&:hover, &:focus': {
-      backgroundColor: 'transparent',
-      color: theme.palette.primary.main,
-      textDecoration: 'underline',
-    },
-  },
-}));
+import type { Profile } from '@linode/api-v4';
 
-interface Props extends Pick<RouteComponentProps, 'history'> {
-  company: string;
-  firstName: string;
-  lastName: string;
+interface Props {
   address1: string;
   address2: string;
   city: string;
-  state: string;
-  zip: string;
+  company: string;
   country: string;
   email: string;
+  firstName: string;
+  lastName: string;
   phone: string;
+  profile: Profile | undefined;
+  state: string;
   taxId: string;
   /* -- Clanode Change -- */
   hide?: boolean;
   /* -- Clanode Change End -- */
 }
 
-type CombinedProps = Props;
+const StyledTypography = styled(Typography)(({ theme }) => ({
+  '& .dif': {
+    '& .MuiChip-root': {
+      position: 'absolute',
+      right: -10,
+      top: '-4px',
+    },
+    position: 'relative',
+    width: 'auto',
+  },
+  marginBottom: theme.spacing(1),
+}));
 
-const ContactInformation: React.FC<CombinedProps> = (props) => {
+const ContactInformation = (props: Props) => {
   const {
-    company,
-    firstName,
-    lastName,
     address1,
     address2,
     city,
-    state,
-    zip,
+    company,
     country,
     email,
+    firstName,
+    lastName,
     phone,
+    profile,
+    state,
     taxId,
     /* -- Clanode Change -- */
     hide,
     /* -- Clanode Change End -- */
   } = props;
-
-  const classes = useStyles();
 
   const history = useHistory<{
     contactDrawerOpen?: boolean;
@@ -101,7 +83,21 @@ const ContactInformation: React.FC<CombinedProps> = (props) => {
     setEditContactDrawerOpen,
   ] = React.useState<boolean>(false);
 
+  const { data: notifications } = useNotificationsQuery();
+
   const [focusEmail, setFocusEmail] = React.useState(false);
+
+  const isChildUser = Boolean(profile?.user_type === 'child');
+
+  const taxIdIsVerifyingNotification = notifications?.find((notification) => {
+    return notification.type === 'tax_id_verifying';
+  });
+
+  const isReadOnly =
+    useRestrictedGlobalGrantCheck({
+      globalGrantType: 'account_access',
+      permittedGrantLevel: 'read_write',
+    }) || isChildUser;
 
   const handleEditDrawerOpen = React.useCallback(
     () => setEditContactDrawerOpen(true),
@@ -141,26 +137,29 @@ const ContactInformation: React.FC<CombinedProps> = (props) => {
   /* -- Clanode Change End -- */
 
   return (
-    <Grid item xs={12} md={6}>
-      <Paper className={classes.summarySection} data-qa-contact-summary>
-        <Grid container spacing={2}>
-          <Grid item className={classes.switchWrapper}>
-            <Typography variant="h3" className={classes.title}>
-              Billing Contact
-            </Typography>
-          </Grid>
-          <Grid item>
-            <Button
-              className={classes.edit}
-              onClick={() => {
-                history.push('/account/billing/edit');
-                handleEditDrawerOpen();
-              }}
-            >
-              Edit
-            </Button>
-          </Grid>
-        </Grid>
+    <Grid md={6} xs={12}>
+      <BillingPaper data-qa-contact-summary variant="outlined">
+        <BillingBox>
+          <Typography variant="h3">Billing Contact</Typography>
+          <BillingActionButton
+            onClick={() => {
+              history.push('/account/billing/edit');
+              handleEditDrawerOpen();
+            }}
+            tooltipText={getRestrictedResourceText({
+              includeContactInfo: false,
+              isChildUser,
+              resourceType: 'Account',
+            })}
+            data-testid="edit-contact-info"
+            disableFocusRipple
+            disableRipple
+            disableTouchRipple
+            disabled={isReadOnly}
+          >
+            {EDIT_BILLING_CONTACT}
+          </BillingActionButton>
+        </BillingBox>
 
         <Grid container spacing={2}>
           {(firstName ||
@@ -172,85 +171,107 @@ const ContactInformation: React.FC<CombinedProps> = (props) => {
             state ||
             zip ||
             country) && (
-            <Grid item className={classes.switchWrapper}>
+            <Grid sx={sxGrid}>
               {(firstName || lastName) && (
-                <Typography
-                  className={`${classes.section} ${classes.wordWrap}`}
-                  data-qa-contact-name
+                <MaskableText
+                  text={`${firstName} ${lastName}`}
+                  length="plaintext"
                 >
-                  {firstName} {lastName}
-                </Typography>
+                  <StyledTypography
+                    data-qa-contact-name
+                    sx={{ wordBreak: 'break-all' }}
+                  >
+                    {firstName} {lastName}
+                  </StyledTypography>
+                </MaskableText>
               )}
               {company && (
-                <Typography
-                  className={`${classes.section} ${classes.wordWrap}`}
-                  data-qa-company
-                >
-                  {company}
-                </Typography>
+                <MaskableText text={company} length="plaintext">
+                  <>
+                    {' '}
+                    <StyledTypography
+                      data-qa-company
+                      sx={{ wordBreak: 'break-all' }}
+                    >
+                      {company}
+                    </StyledTypography>
+                  </>
+                </MaskableText>
               )}
               {(address1 || address2 || city || state || zip || country) && (
-                <>
-                  <Typography
-                    className={classes.section}
-                    data-qa-contact-address
-                  >
-                    {address1}
-                  </Typography>
-                  <Typography className={classes.section}>
-                    {address2}
-                  </Typography>
-                </>
+                <MaskableText
+                  text={`${address1} ${address2}`}
+                  length="plaintext"
+                >
+                  <>
+                    <StyledTypography data-qa-contact-address>
+                      {address1}
+                    </StyledTypography>
+                    <StyledTypography>{address2}</StyledTypography>
+                  </>
+                </MaskableText>
               )}
-              <Typography className={classes.section}>
-                {city}
-                {city && state && ','} {state} {zip}
-              </Typography>
-              <Typography className={classes.section}>{countryName}</Typography>
+              <MaskableText text={`${city} ${state} ${zip}`} length="plaintext">
+                <StyledTypography>
+                  {city}
+                  {city && state && ','} {state} {zip}
+                </StyledTypography>
+              </MaskableText>
+              <MaskableText text={countryName}>
+                <StyledTypography>{countryName}</StyledTypography>
+              </MaskableText>
             </Grid>
           )}
-
-          <Grid
-            item
-            className={classNames({
-              [classes.switchWrapper]: true,
-              [classes.switchWrapperFlex]:
-                taxId !== undefined && taxId !== null && taxId !== '',
-            })}
-          >
-            <Typography
-              className={`${classes.section} ${classes.wordWrap}`}
-              data-qa-contact-email
-            >
-              {email}
-            </Typography>
+          <Grid sx={sxGrid}>
+            <MaskableText text={email} length="plaintext">
+              <StyledTypography
+                data-qa-contact-email
+                sx={{ wordBreak: 'break-all' }}
+              >
+                {email}
+              </StyledTypography>
+            </MaskableText>
             {phone && (
-              <Typography className={classes.section} data-qa-contact-phone>
-                {phone}
-              </Typography>
+              <MaskableText text={phone} length="plaintext">
+                <StyledTypography data-qa-contact-phone>
+                  {phone}
+                </StyledTypography>
+              </MaskableText>
             )}
             {taxId && (
-              <Typography
-                className={classes.section}
-                style={{ marginTop: 'auto' }}
-              >
-                <strong>Tax ID</strong> {taxId}
-              </Typography>
+              <MaskableText text={taxId} length="plaintext">
+                <Box alignItems="center" display="flex">
+                  <StyledTypography
+                    sx={{
+                      margin: 0,
+                    }}
+                  >
+                    <strong>Tax ID</strong> {taxId}
+                  </StyledTypography>
+                  {taxIdIsVerifyingNotification && (
+                    <TooltipIcon
+                      icon={<StyledAutorenewIcon />}
+                      status="other"
+                      text={taxIdIsVerifyingNotification.label}
+                    />
+                  )}
+                </Box>
+              </MaskableText>
             )}
           </Grid>
         </Grid>
-      </Paper>
+      </BillingPaper>
       <BillingContactDrawer
-        open={editContactDrawerOpen}
         onClose={() => {
           history.replace('/account/billing', { contactDrawerOpen: false });
           setEditContactDrawerOpen(false);
           setFocusEmail(false);
         }}
         focusEmail={focusEmail}
+        open={editContactDrawerOpen}
       />
     </Grid>
   );
 };
 
-export default compose<CombinedProps, Props>(React.memo)(ContactInformation);
+export default React.memo(ContactInformation);

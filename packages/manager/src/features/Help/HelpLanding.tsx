@@ -1,43 +1,32 @@
+import { styled } from '@mui/material/styles';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
-import OtherWays from './Panels/OtherWays';
-import PopularPosts from './Panels/PopularPosts';
-import SearchPanel from './Panels/SearchPanel';
 
-type ClassNames = 'root';
+import { OtherWays } from './Panels/OtherWays';
+import { PopularPosts } from './Panels/PopularPosts';
+import { SearchPanel } from './Panels/SearchPanel';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {
-      [theme.breakpoints.up('lg')]: {
-        padding: `${theme.spacing(2)}px ${theme.spacing(14)}px`,
-      },
-    },
-  });
+export const HelpLanding = () => {
+  return (
+    <StyledRootContainer>
+      <DocumentTitleSegment segment="Get Help" />
+      <SearchPanel />
+      <PopularPosts />
+      <OtherWays />
+    </StyledRootContainer>
+  );
+};
 
-type CombinedProps = WithStyles<ClassNames>;
+const StyledRootContainer = styled('div', {
+  label: 'StyledRootContainer',
+})(({ theme }) => ({
+  [theme.breakpoints.up('lg')]: {
+    padding: `${theme.spacing(2)} ${theme.spacing(14)}`,
+  },
+}));
 
-export class HelpLanding extends React.Component<CombinedProps, {}> {
-  render(): JSX.Element {
-    const { classes } = this.props;
-
-    return (
-      <div className={classes.root}>
-        <DocumentTitleSegment segment="Get Help" />
-        <SearchPanel />
-        <PopularPosts />
-        <OtherWays />
-      </div>
-    );
-  }
-}
-
-const styled = withStyles(styles);
-
-export default styled(HelpLanding);
+export const helpLandingLazyRoute = createLazyRoute('/')({
+  component: HelpLanding,
+});

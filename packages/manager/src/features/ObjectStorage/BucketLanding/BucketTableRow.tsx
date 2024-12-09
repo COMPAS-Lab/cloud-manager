@@ -1,132 +1,134 @@
-import { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
-import Grid from 'src/components/Grid';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import { formatObjectStorageCluster } from 'src/utilities/formatRegion';
+
+import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
+import { Hidden } from 'src/components/Hidden';
+import { Link } from 'src/components/Link';
+import { MaskableText } from 'src/components/MaskableText/MaskableText';
+import { Stack } from 'src/components/Stack';
+import { TableCell } from 'src/components/TableCell';
+import { TableRow } from 'src/components/TableRow';
+import { Typography } from 'src/components/Typography';
+import { useAccountManagement } from 'src/hooks/useAccountManagement';
+import { useFlags } from 'src/hooks/useFlags';
+import { useObjectStorageClusters } from 'src/queries/object-storage/queries';
+import { useRegionsQuery } from 'src/queries/regions/regions';
+import { isFeatureEnabledV2 } from 'src/utilities/accountCapabilities';
+import { getRegionsByRegionId } from 'src/utilities/regions';
 import { readableBytes } from 'src/utilities/unitConversions';
-import BucketActionMenu from './BucketActionMenu';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  bucketRow: {
-    backgroundColor: theme.bg.white,
-  },
-  bucketNameWrapper: {
-    display: 'flex',
-    flexFlow: 'row nowrap',
-    alignItems: 'center',
-    wordBreak: 'break-all',
-  },
-  link: {
-    '&:hover': {
-      textDecoration: 'underline',
-    },
-  },
-  bucketLabel: {
-    color: theme.textColors.linkActiveLight,
-    '&:hover, &:focus': {
-      textDecoration: 'underline',
-    },
-  },
-  bucketRegion: {
-    width: '20%',
-  },
-  bucketSize: {
-    width: '15%',
-  },
-  bucketObjects: {
-    width: '10%',
-  },
-}));
+import { BucketActionMenu } from './BucketActionMenu';
+import {
+  StyledBucketObjectsCell,
+  StyledBucketRegionCell,
+  StyledBucketSizeCell,
+} from './BucketTableRow.styles';
 
-interface BucketTableRowProps extends ObjectStorageBucket {
-  onRemove: () => void;
+import type { ObjectStorageBucket } from '@linode/api-v4/lib/object-storage';
+
+export interface BucketTableRowProps extends ObjectStorageBucket {
   onDetails: () => void;
+  onRemove: () => void;
 }
 
-export type CombinedProps = BucketTableRowProps;
-
-export const BucketTableRow: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
-
+export const BucketTableRow = (props: BucketTableRowProps) => {
   const {
-    label,
     cluster,
-    hostname,
     created,
-    size,
-    onRemove,
+    endpoint_type,
+    hostname,
+    label,
     objects,
     onDetails,
+    onRemove,
+    region,
+    size,
   } = props;
 
-  return (
-    <TableRow
-      key={label}
-      data-qa-bucket-cell={label}
-      className={classes.bucketRow}
-      ariaLabel={label}
-    >
-      <TableCell>
-        <Grid container wrap="nowrap" alignItems="center">
-          <Grid item>
-            <div className={classes.bucketNameWrapper}>
-              <Typography variant="body1" component="h3" data-qa-label>
-                <Link
-                  className={classes.bucketLabel}
-                  to={`/object-storage/buckets/${cluster}/${label}`}
-                >
-                  {label}{' '}
-                </Link>
-              </Typography>
-            </div>
+  const { data: regions } = useRegionsQuery();
 
+  const flags = useFlags();
+  const { account } = useAccountManagement();
+
+  const isObjMultiClusterEnabled = isFeatureEnabledV2(
+    'Object Storage Access Key Regions',
+    Boolean(flags.objMultiCluster),
+    account?.capabilities ?? []
+  );
+
+  const { data: clusters } = useObjectStorageClusters(
+    !isObjMultiClusterEnabled
+  );
+
+  const actualCluster = clusters?.find((c) => c.id === cluster);
+  const clusterRegion = regions?.find((r) => r.id === actualCluster?.region);
+
+  const regionsLookup = regions && getRegionsByRegionId(regions);
+
+  const isLegacy = endpoint_type === 'E0';
+  const typeLabel = isLegacy ? 'Legacy' : 'Standard';
+
+  return (
+    <TableRow data-qa-bucket-cell={label} key={label}>
+      <TableCell>
+        <MaskableText isToggleable text={hostname}>
+          <Stack>
+            <Link
+              to={`/object-storage/buckets/${
+                isObjMultiClusterEnabled ? region : cluster
+              }/${label}`}
+            >
+              {label}
+            </Link>
             {hostname}
-          </Grid>
-        </Grid>
+          </Stack>
+        </MaskableText>
       </TableCell>
-      <Hidden xsDown>
-        <TableCell className={classes.bucketRegion}>
-          <Typography variant="body1" data-qa-region>
-            {formatObjectStorageCluster(cluster) || cluster}
+      <Hidden smDown>
+        <StyledBucketRegionCell>
+          <Typography data-qa-region variant="body1">
+            {isObjMultiClusterEnabled && regionsLookup && region
+              ? regionsLookup[region].label
+              : clusterRegion?.label ?? cluster}
           </Typography>
-        </TableCell>
+        </StyledBucketRegionCell>
       </Hidden>
-      <Hidden mdDown>
+      {Boolean(endpoint_type) && (
+        <Hidden lgDown>
+          <TableCell>
+            <Typography data-qa-size variant="body1">
+              {typeLabel} ({endpoint_type})
+            </Typography>
+          </TableCell>
+        </Hidden>
+      )}
+      <Hidden lgDown>
         <TableCell>
-          <DateTimeDisplay value={created} data-qa-created />
+          <DateTimeDisplay data-qa-created value={created} />
         </TableCell>
       </Hidden>
-      <TableCell className={classes.bucketSize} noWrap>
-        <Typography variant="body1" data-qa-size>
+      <StyledBucketSizeCell noWrap>
+        <Typography data-qa-size variant="body1">
           {readableBytes(size).formatted}
         </Typography>
-      </TableCell>
+      </StyledBucketSizeCell>
 
-      <Hidden xsDown>
-        <TableCell className={classes.bucketObjects}>
-          <Typography variant="body1" data-qa-size>
+      <Hidden smDown>
+        <StyledBucketObjectsCell>
+          <Typography data-qa-size variant="body1">
             {objects}
           </Typography>
-        </TableCell>
+        </StyledBucketObjectsCell>
       </Hidden>
 
       <TableCell>
         <BucketActionMenu
-          onRemove={onRemove}
-          onDetails={onDetails}
-          label={label}
           cluster={cluster}
           data-qa-action-menu
+          label={label}
+          onDetails={onDetails}
+          onRemove={onRemove}
         />
       </TableCell>
     </TableRow>
   );
 };
-
-export default BucketTableRow;

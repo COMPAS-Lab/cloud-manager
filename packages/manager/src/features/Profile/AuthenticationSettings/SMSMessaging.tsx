@@ -1,53 +1,34 @@
-import * as React from 'react';
-import Button from 'src/components/Button';
-import Box from 'src/components/core/Box';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import ActionsPanel from 'src/components/ActionsPanel';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import { useProfile } from 'src/queries/profile';
+import { Box } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import { useSnackbar } from 'notistack';
-import { useSMSOptOutMutation } from 'src/queries/profile';
+import * as React from 'react';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { Button } from 'src/components/Button/Button';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Link } from 'src/components/Link';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
+import { useSMSOptOutMutation } from 'src/queries/profile/profile';
+import { useProfile } from 'src/queries/profile/profile';
+
 import { getFormattedNumber } from './PhoneVerification/helpers';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  notice: {
-    borderLeft: `5px solid ${theme.color.green}`,
-  },
-  text: {
-    fontSize: '0.875rem !important',
-  },
-  button: {
-    marginTop: theme.spacing(),
-    width: '150px',
-  },
-  copy: {
-    maxWidth: 960,
-    lineHeight: '20px',
-  },
-}));
-
 export const SMSMessaging = () => {
-  const classes = useStyles();
-
   const { enqueueSnackbar } = useSnackbar();
   const { data: profile } = useProfile();
   const {
-    mutateAsync: optOut,
     error,
-    isLoading,
+    isPending,
+    mutateAsync: optOut,
     reset,
   } = useSMSOptOutMutation();
-
   const hasVerifiedPhoneNumber = Boolean(profile?.verified_phone_number);
-
   const [open, setOpen] = React.useState(false);
 
   const onOpen = () => {
     setOpen(true);
   };
-
   const onClose = () => {
     setOpen(false);
     if (error) {
@@ -66,67 +47,62 @@ export const SMSMessaging = () => {
 
   return (
     <>
-      <Notice
-        spacingTop={12}
+      <StyledNotice
+        hasVerifiedPhoneNumber={hasVerifiedPhoneNumber}
         spacingBottom={16}
         spacingLeft={1}
-        success={hasVerifiedPhoneNumber}
-        warning={!hasVerifiedPhoneNumber}
-        className={hasVerifiedPhoneNumber ? classes.notice : undefined}
+        spacingTop={12}
+        variant={hasVerifiedPhoneNumber ? 'success' : 'warning'}
       >
-        <Typography className={classes.text}>
+        <Typography sx={{ fontSize: '0.875rem !important' }}>
           <b>
             {hasVerifiedPhoneNumber
               ? 'You have opted in to SMS messaging.'
               : 'You are opted out of SMS messaging.'}
           </b>
         </Typography>
-      </Notice>
-      <Typography className={classes.copy}>
+      </StyledNotice>
+      <StyledCopy>
         An authentication code is sent via SMS as part of the phone verification
         process. Messages are not sent for any other reason. SMS authentication
         is optional and provides an important degree of account security. You
         may opt out at any time and your verified phone number will be deleted.
-      </Typography>
+      </StyledCopy>
       {hasVerifiedPhoneNumber ? (
         <Box display="flex" justifyContent="flex-end">
-          <Button
-            className={classes.button}
-            buttonType="primary"
-            onClick={onOpen}
-          >
+          <StyledButton buttonType="primary" onClick={onOpen}>
             Opt Out
-          </Button>
+          </StyledButton>
         </Box>
       ) : null}
       <ConfirmationDialog
-        title={'Opt out of SMS messaging for phone verification'}
-        open={open}
-        onClose={onClose}
-        error={error?.[0].reason}
         actions={() => (
-          <ActionsPanel>
-            <Button buttonType="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button buttonType="primary" loading={isLoading} onClick={onOptOut}>
-              Opt Out
-            </Button>
-          </ActionsPanel>
+          <ActionsPanel
+            primaryButtonProps={{
+              label: 'Opt Out',
+              loading: isPending,
+              onClick: onOptOut,
+            }}
+            secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
+          />
         )}
+        error={error?.[0].reason}
+        onClose={onClose}
+        open={open}
+        title={'Opt out of SMS messaging for phone verification'}
       >
         <Typography>
           Opting out of SMS messaging will reduce security and limit the ways
           you can securely access your account.{' '}
-          <a href="https://www.linode.com/docs/guides/linode-manager-security-controls/">
+          <Link to="https://techdocs.akamai.com/cloud-computing/docs/security-controls-for-user-accounts">
             Learn more about security options.
-          </a>
+          </Link>
         </Typography>
         <Notice
-          spacingTop={16}
           spacingBottom={0}
-          className={classes.text}
-          error
+          spacingTop={16}
+          sx={{ fontSize: '0.875rem !important' }}
+          variant="error"
         >
           <b>Warning:</b> As part of this action, your verified phone number{' '}
           {profile?.verified_phone_number
@@ -138,3 +114,27 @@ export const SMSMessaging = () => {
     </>
   );
 };
+
+const StyledButton = styled(Button, {
+  label: 'StyledButton',
+})(({ theme }) => ({
+  marginTop: theme.spacing(),
+  width: '150px',
+}));
+
+const StyledCopy = styled(Typography, {
+  label: 'StyledCopy',
+})(() => ({
+  lineHeight: '20px',
+  maxWidth: 960,
+}));
+
+const StyledNotice = styled(Notice, {
+  label: 'StyledNotice',
+})<{ hasVerifiedPhoneNumber: boolean }>(
+  ({ hasVerifiedPhoneNumber, theme }) => ({
+    borderLeft: hasVerifiedPhoneNumber
+      ? `5px solid ${theme.color.green}`
+      : `5px solid ${theme.color.yellow}`,
+  })
+);

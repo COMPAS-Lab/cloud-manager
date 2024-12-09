@@ -3,8 +3,8 @@ import {
   UpdateNodeBalancerConfigSchema,
 } from '@linode/validation/lib/nodebalancers.schema';
 import { API_ROOT } from '../constants';
-import Request, { setData, setMethod, setURL } from '../request';
-import { ResourcePage as Page } from '../types';
+import Request, { setData, setMethod, setParams, setURL } from '../request';
+import { ResourcePage as Page, Params } from '../types';
 import {
   CreateNodeBalancerConfig,
   NodeBalancerConfig,
@@ -19,10 +19,16 @@ import { combineConfigNodeAddressAndPort } from './utils';
  *
  * @param nodeBalancerId { number } The ID of the NodeBalancer to view configs for.
  */
-export const getNodeBalancerConfigs = (nodeBalancerId: number) =>
+export const getNodeBalancerConfigs = (
+  nodeBalancerId: number,
+  params?: Params
+) =>
   Request<Page<NodeBalancerConfig>>(
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}/configs`),
-    setMethod('GET')
+    setURL(
+      `${API_ROOT}/nodebalancers/${encodeURIComponent(nodeBalancerId)}/configs`
+    ),
+    setMethod('GET'),
+    setParams(params)
   );
 
 /**
@@ -37,7 +43,11 @@ export const getNodeBalancerConfig = (
   configId: number
 ) =>
   Request<Page<NodeBalancerConfig>>(
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}/configs/${configId}`),
+    setURL(
+      `${API_ROOT}/nodebalancers/${encodeURIComponent(
+        nodeBalancerId
+      )}/configs/${encodeURIComponent(configId)}`
+    ),
     setMethod('GET')
   );
 
@@ -55,7 +65,9 @@ export const createNodeBalancerConfig = (
 ) =>
   Request<NodeBalancerConfig>(
     setMethod('POST'),
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}/configs`),
+    setURL(
+      `${API_ROOT}/nodebalancers/${encodeURIComponent(nodeBalancerId)}/configs`
+    ),
     setData(
       data,
       createNodeBalancerConfigSchema,
@@ -78,7 +90,11 @@ export const updateNodeBalancerConfig = (
 ) =>
   Request<NodeBalancerConfig>(
     setMethod('PUT'),
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}/configs/${configId}`),
+    setURL(
+      `${API_ROOT}/nodebalancers/${encodeURIComponent(
+        nodeBalancerId
+      )}/configs/${encodeURIComponent(configId)}`
+    ),
     setData(data, UpdateNodeBalancerConfigSchema)
   );
 
@@ -96,5 +112,9 @@ export const deleteNodeBalancerConfig = (
 ) =>
   Request<{}>(
     setMethod('DELETE'),
-    setURL(`${API_ROOT}/nodebalancers/${nodeBalancerId}/configs/${configId}`)
+    setURL(
+      `${API_ROOT}/nodebalancers/${encodeURIComponent(
+        nodeBalancerId
+      )}/configs/${encodeURIComponent(configId)}`
+    )
   );

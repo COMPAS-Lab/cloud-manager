@@ -1,20 +1,21 @@
-import classNames from 'classnames';
 import * as React from 'react';
 import { OptionProps } from 'react-select';
+import { useStyles } from 'tss-react/mui';
+
 import Arrow from 'src/assets/icons/diagonalArrow.svg';
-import Typography from 'src/components/core/Typography';
-import Option from 'src/components/EnhancedSelect/components/Option';
-import { sanitizeHTML } from 'src/utilities/sanitize-html';
+import { Option } from 'src/components/EnhancedSelect/components/Option';
+import { Typography } from 'src/components/Typography';
+import { sanitizeHTML } from 'src/utilities/sanitizeHTML';
 
 interface Props extends OptionProps<any, any> {
   data: {
-    label: string;
     data: any;
+    label: string;
   };
   searchText: string;
 }
 
-const SearchItem: React.FC<Props> = (props) => {
+export const SearchItem = (props: Props) => {
   const getLabel = () => {
     if (isFinal) {
       return props.label ? `Search for "${props.label}"` : 'Search';
@@ -22,6 +23,8 @@ const SearchItem: React.FC<Props> = (props) => {
       return props.label;
     }
   };
+
+  const { cx } = useStyles();
 
   const {
     data,
@@ -33,13 +36,13 @@ const SearchItem: React.FC<Props> = (props) => {
 
   return (
     <Option
-      className={classNames({
+      className={cx({
         [classes.algoliaRoot]: true,
         [classes.selectedMenuItem]: isFocused,
       })}
-      value={data.label}
-      aria-describedby={!isFinal ? 'external-site' : undefined}
+      aria-label={!isFinal ? `${getLabel()} - opens in a new tab` : undefined}
       attrs={{ ['data-qa-search-result']: source }}
+      value={data.label}
       {...props}
     >
       {isFinal ? (
@@ -50,8 +53,13 @@ const SearchItem: React.FC<Props> = (props) => {
         <>
           <div className={classes.row}>
             <div
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHTML({
+                  sanitizingTier: 'flexible',
+                  text: getLabel(),
+                }),
+              }}
               className={classes.label}
-              dangerouslySetInnerHTML={{ __html: sanitizeHTML(getLabel()) }}
             />
             <Arrow className={classes.icon} />
           </div>
@@ -61,5 +69,3 @@ const SearchItem: React.FC<Props> = (props) => {
     </Option>
   );
 };
-
-export default SearchItem;

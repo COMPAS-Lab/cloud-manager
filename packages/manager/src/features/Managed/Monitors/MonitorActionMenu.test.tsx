@@ -1,47 +1,63 @@
+import userEvent from '@testing-library/user-event';
 import * as React from 'react';
-import { includesActions, renderWithTheme } from 'src/utilities/testHelpers';
-import { reactRouterProps } from 'src/__data__/reactRouterProps';
-import { CombinedProps, MonitorActionMenu } from './MonitorActionMenu';
 
-const props: CombinedProps = {
-  enqueueSnackbar: jest.fn(),
-  closeSnackbar: jest.fn(),
-  status: 'disabled',
+import { renderWithTheme } from 'src/utilities/testHelpers';
+
+import { MonitorActionMenu, MonitorActionMenuProps } from './MonitorActionMenu';
+
+const props: MonitorActionMenuProps = {
   label: 'this-monitor',
-  openDialog: jest.fn(),
   monitorID: 1,
-  openMonitorDrawer: jest.fn(),
-  openHistoryDrawer: jest.fn(),
-  updateServiceMonitor: jest.fn(),
-  createServiceMonitor: jest.fn(),
-  requestManagedServices: jest.fn(),
-  enableServiceMonitor: jest.fn(),
-  deleteServiceMonitor: jest.fn(),
-  disableServiceMonitor: jest.fn(),
-  ...reactRouterProps,
+  openDialog: vi.fn(),
+  openHistoryDrawer: vi.fn(),
+  openMonitorDrawer: vi.fn(),
+  status: 'disabled',
 };
 
 describe('Monitor action menu', () => {
-  it('should include basic Monitor actions', () => {
-    const { queryByText } = renderWithTheme(
+  it('should include basic Monitor actions', async () => {
+    const { getByLabelText, getByText } = renderWithTheme(
       <MonitorActionMenu {...props} status="disabled" />
     );
-    includesActions(['View Issue History', 'Edit', 'Delete'], queryByText);
+
+    const actionMenuButton = getByLabelText(
+      `Action menu for Monitor ${props.label}`
+    );
+
+    await userEvent.click(actionMenuButton);
+
+    for (const action of ['View Issue History', 'Edit', 'Delete']) {
+      expect(getByText(action)).toBeVisible();
+    }
   });
 
-  it('should include Enable if the monitor is disabled', () => {
-    const { queryByText } = renderWithTheme(
+  it('should include Enable if the monitor is disabled', async () => {
+    const { getByLabelText, getByText, queryByText } = renderWithTheme(
       <MonitorActionMenu {...props} status="disabled" />
     );
-    includesActions(['Enable'], queryByText);
+
+    const actionMenuButton = getByLabelText(
+      `Action menu for Monitor ${props.label}`
+    );
+
+    await userEvent.click(actionMenuButton);
+
+    expect(getByText('Enable')).toBeVisible();
     expect(queryByText('Disable')).toBeNull();
   });
 
-  it('should include Disable if the monitor is enabled', () => {
-    const { queryByText } = renderWithTheme(
+  it('should include Disable if the monitor is enabled', async () => {
+    const { getByLabelText, getByText, queryByText } = renderWithTheme(
       <MonitorActionMenu {...props} status="ok" />
     );
-    includesActions(['Disable'], queryByText);
+
+    const actionMenuButton = getByLabelText(
+      `Action menu for Monitor ${props.label}`
+    );
+
+    await userEvent.click(actionMenuButton);
+
+    expect(getByText('Disable')).toBeVisible();
     expect(queryByText('Enable')).toBeNull();
   });
 });

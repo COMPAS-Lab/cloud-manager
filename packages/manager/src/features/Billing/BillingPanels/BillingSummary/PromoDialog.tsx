@@ -1,19 +1,19 @@
-import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import { makeStyles } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
-import TextField from 'src/components/TextField';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 import { addPromotion } from '@linode/api-v4/lib';
-import { queryClient } from 'src/queries/base';
-import { queryKey } from 'src/queries/account';
-import { useSnackbar } from 'notistack';
 import { APIError } from '@linode/api-v4/lib/types';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSnackbar } from 'notistack';
+import * as React from 'react';
+import { makeStyles } from 'tss-react/mui';
 
-const useStyles = makeStyles(() => ({
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Notice } from 'src/components/Notice/Notice';
+import { TextField } from 'src/components/TextField';
+import { Typography } from 'src/components/Typography';
+import { accountQueries } from 'src/queries/account/queries';
+import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
+
+const useStyles = makeStyles()(() => ({
   input: {
     maxWidth: 'unset',
     width: '100%',
@@ -21,14 +21,15 @@ const useStyles = makeStyles(() => ({
 }));
 
 interface Props {
-  open: boolean;
   onClose: () => void;
+  open: boolean;
 }
 
-const PromoDialog: React.FC<Props> = (props) => {
-  const { open, onClose } = props;
-  const classes = useStyles();
+const PromoDialog = (props: Props) => {
+  const { onClose, open } = props;
+  const { classes } = useStyles();
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
   const [promoCode, setPromoCode] = React.useState<string>('');
   const [error, setError] = React.useState<string>();
   const [loading, setLoading] = React.useState<boolean>(false);
@@ -50,7 +51,9 @@ const PromoDialog: React.FC<Props> = (props) => {
         enqueueSnackbar('Successfully applied promo to your account.', {
           variant: 'success',
         });
-        queryClient.invalidateQueries(queryKey);
+        queryClient.invalidateQueries({
+          queryKey: accountQueries.account.queryKey,
+        });
         onClose();
       })
       .catch((error: APIError[]) => {
@@ -62,40 +65,36 @@ const PromoDialog: React.FC<Props> = (props) => {
   };
 
   const actions = (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={onClose}>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={addPromo}
-        loading={loading}
-        disabled={!promoCode}
-      >
-        Apply Promo Code
-      </Button>
-    </ActionsPanel>
+    <ActionsPanel
+      primaryButtonProps={{
+        disabled: !promoCode,
+        label: 'Apply Promo Code',
+        loading,
+        onClick: addPromo,
+      }}
+      secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
+    />
   );
 
   return (
     <ConfirmationDialog
-      title="Add promo code"
-      open={open}
-      onClose={onClose}
       actions={actions}
+      onClose={onClose}
+      open={open}
+      title="Add promo code"
     >
-      {error && <Notice error text={error} />}
+      {error && <Notice text={error} variant="error" />}
       <Typography>
         Enter the promo code in the field below. You will see promo details in
         the Promotions panel on the Billing Info tab.
       </Typography>
       <TextField
-        label="Promo code"
-        value={promoCode}
-        className={classes.input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
           setPromoCode(e.target.value)
         }
+        className={classes.input}
+        label="Promo code"
+        value={promoCode}
       />
     </ConfirmationDialog>
   );

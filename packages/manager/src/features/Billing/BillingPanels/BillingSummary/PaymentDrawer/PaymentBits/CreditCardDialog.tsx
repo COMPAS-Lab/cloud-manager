@@ -1,64 +1,48 @@
 import * as React from 'react';
-import { compose } from 'recompose';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import ConfirmationDialog from 'src/components/ConfirmationDialog';
-import Typography from 'src/components/core/Typography';
-import Notice from 'src/components/Notice';
+
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { Notice } from 'src/components/Notice/Notice';
+import { Typography } from 'src/components/Typography';
 
 interface Actions {
-  executePayment: () => void;
   cancel: () => void;
+  executePayment: () => void;
   isMakingPayment: boolean;
 }
 
 interface Props extends Actions {
+  error: null | string;
   open: boolean;
   usd: string;
-  error: string | null;
 }
 
-type CombinedProps = Props;
-
-const CreditCardDialog: React.SFC<CombinedProps> = (props) => {
-  const { cancel, error, open, usd, ...actionsProps } = props;
+export const CreditCardDialog = (props: Props) => {
+  const { cancel, error, open, usd, isMakingPayment, executePayment } = props;
 
   return (
     <ConfirmationDialog
+      actions={
+        <ActionsPanel
+          primaryButtonProps={{
+            'data-testid': 'submit',
+            label: 'Confirm Payment',
+            loading: isMakingPayment,
+            onClick: executePayment,
+          }}
+          secondaryButtonProps={{
+            'data-testid': 'cancel',
+            label: 'Cancel',
+            onClick: cancel,
+          }}
+        />
+      }
+      onClose={cancel}
       open={open}
       title="Confirm Payment"
-      onClose={cancel}
-      actions={<DialogActions {...actionsProps} cancel={cancel} />}
     >
-      {error && <Notice error text={error} />}
+      {error && <Notice text={error} variant="error" />}
       <Typography>{`Confirm payment of $${usd} USD to Linode LLC?`}</Typography>
     </ConfirmationDialog>
   );
 };
-
-export default compose<CombinedProps, Props>(React.memo)(CreditCardDialog);
-
-class DialogActions extends React.PureComponent<Actions> {
-  render() {
-    return (
-      <ActionsPanel>
-        <Button
-          buttonType="secondary"
-          onClick={this.props.cancel}
-          data-qa-cancel
-        >
-          Cancel
-        </Button>
-        <Button
-          buttonType="primary"
-          onClick={this.props.executePayment}
-          loading={this.props.isMakingPayment}
-          data-qa-submit
-          data-testid="credit-card-submit"
-        >
-          Confirm Payment
-        </Button>
-      </ActionsPanel>
-    );
-  }
-}

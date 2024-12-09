@@ -1,11 +1,37 @@
-import { APIWarning } from '../types';
+import type { APIWarning, RequestOptions } from '../types';
+import type { Capabilities, Region } from '../regions';
+
+export type UserType = 'child' | 'parent' | 'proxy' | 'default';
 
 export interface User {
-  username: string;
   email: string;
+  /**
+   * Information for the most recent login attempt for this User.
+   * `null` if no login attempts have been made since creation of this User.
+   */
+  last_login: {
+    /**
+     * @example 2022-02-09T16:19:26
+     */
+    login_datetime: string;
+    /**
+     * @example successful
+     */
+    status: AccountLoginStatus;
+  } | null;
+  /**
+   * The date of when a password was set on a user.
+   * `null` if this user has not created a password yet
+   * @example 2022-02-09T16:19:26
+   * @example null
+   */
+  password_created: string | null;
   restricted: boolean;
-  gravatarUrl?: string;
   ssh_keys: string[];
+  tfa_enabled: boolean;
+  username: string;
+  user_type: UserType;
+  verified_phone_number: string | null;
 }
 
 export interface Account {
@@ -35,16 +61,34 @@ export interface Account {
 export type BillingSource = 'linode' | 'akamai';
 
 export type AccountCapability =
-  | 'Linodes'
-  | 'NodeBalancers'
+  | 'Akamai Cloud Load Balancer'
+  | 'Akamai Cloud Pulse'
   | 'Block Storage'
-  | 'Object Storage'
-  | 'Kubernetes'
+  | 'Block Storage Encryption'
   | 'Cloud Firewall'
-  | 'Vlans'
-  | 'Machine Images'
+  | 'CloudPulse'
+  | 'Disk Encryption'
+  | 'Kubernetes'
+  | 'Linodes'
   | 'LKE HA Control Planes'
-  | 'Managed Databases';
+  | 'LKE Network Access Control List (IP ACL)'
+  | 'Machine Images'
+  | 'Managed Databases'
+  | 'Managed Databases Beta'
+  | 'NodeBalancers'
+  | 'Object Storage Access Key Regions'
+  | 'Object Storage Endpoint Types'
+  | 'Object Storage'
+  | 'Placement Group'
+  | 'SMTP Enabled'
+  | 'Support Ticket Severity'
+  | 'Vlans'
+  | 'VPCs';
+
+export interface AccountAvailability {
+  region: string; // will be slug of dc (matches id field of region object returned by API)
+  unavailable: Capabilities[];
+}
 
 export interface AccountSettings {
   managed: boolean;
@@ -116,6 +160,7 @@ export interface InvoiceItem {
   unit_price: null | string;
   tax: number;
   total: number;
+  region: string | null;
 }
 
 export interface Payment {
@@ -128,10 +173,6 @@ export interface PaymentResponse extends Payment {
   warnings?: APIWarning[];
 }
 
-export interface PaypalResponse {
-  warnings?: APIWarning[];
-}
-
 export type GrantLevel = null | 'read_only' | 'read_write';
 
 export interface Grant {
@@ -140,15 +181,16 @@ export interface Grant {
   label: string;
 }
 export type GlobalGrantTypes =
+  | 'account_access'
+  | 'add_databases'
+  | 'add_domains'
+  | 'add_firewalls'
+  | 'add_images'
   | 'add_linodes'
   | 'add_longview'
-  | 'longview_subscription'
-  | 'account_access'
-  | 'cancel_account'
-  | 'add_domains'
-  | 'add_stackscripts'
+  | 'add_databases'
   | 'add_nodebalancers'
-  | 'add_images'
+  | 'add_stackscripts'
   | 'add_volumes'
   | 'add_firewalls'
   | 'manager_role';
@@ -165,7 +207,9 @@ export type GrantType =
   | 'longview'
   | 'stackscript'
   | 'volume'
-  | 'firewall';
+  | 'database'
+  | 'firewall'
+  | 'vpc';
 
 export type Grants = GlobalGrants & Record<GrantType, Grant[]>;
 
@@ -173,6 +217,12 @@ export interface NetworkUtilization {
   billable: number;
   used: number;
   quota: number;
+}
+export interface RegionalNetworkUtilization extends NetworkUtilization {
+  region_transfers: RegionalTransferObject[];
+}
+export interface RegionalTransferObject extends NetworkUtilization {
+  id: Region['id'];
 }
 
 export interface NetworkTransfer {
@@ -189,6 +239,10 @@ export interface CancelAccountPayload {
   comments: string;
 }
 
+export interface ChildAccountPayload extends RequestOptions {
+  euuid: string;
+}
+
 export type AgreementType = 'eu_model' | 'privacy_policy';
 
 export interface Agreements {
@@ -203,6 +257,7 @@ export type NotificationType =
   | 'reboot_scheduled'
   | 'outage'
   | 'maintenance'
+  | 'maintenance_scheduled'
   | 'payment_due'
   | 'ticket_important'
   | 'ticket_abuse'
@@ -210,7 +265,8 @@ export type NotificationType =
   | 'promotion'
   | 'user_email_bounce'
   | 'volume_migration_scheduled'
-  | 'volume_migration_imminent';
+  | 'volume_migration_imminent'
+  | 'tax_id_verifying';
 
 export type NotificationSeverity = 'minor' | 'major' | 'critical';
 
@@ -227,109 +283,195 @@ export interface Notification {
 
 export interface Entity {
   id: number;
-  label: string;
+  label: string | null;
   type: string;
   url: string;
 }
 
-export type EventAction =
-  | 'account_update'
-  | 'account_settings_update'
-  | 'backups_cancel'
-  | 'backups_enable'
-  | 'backups_restore'
-  | 'community_like'
-  | 'community_mention'
-  | 'community_question_reply'
-  | 'credit_card_updated'
-  | 'disk_create'
-  | 'disk_update'
-  | 'disk_delete'
-  | 'disk_duplicate'
-  | 'disk_imagize'
-  | 'disk_resize'
-  | 'domain_create'
-  | 'domain_update'
-  | 'domain_delete'
-  | 'domain_record_create'
-  | 'domain_record_updated'
-  | 'domain_record_delete'
-  | 'entity_transfer_accept'
-  | 'entity_transfer_cancel'
-  | 'entity_transfer_create'
-  | 'entity_transfer_fail'
-  | 'entity_transfer_stale'
-  | 'firewall_create'
-  | 'firewall_delete'
-  | 'firewall_device_add'
-  | 'firewall_device_remove'
-  | 'firewall_disable'
-  | 'firewall_enable'
-  | 'firewall_update'
-  | 'host_reboot'
-  | 'image_update'
-  | 'image_upload'
-  | 'image_delete'
-  | 'lassie_reboot'
-  | 'linode_addip'
-  | 'linode_boot'
-  | 'linode_clone'
-  | 'linode_create'
-  | 'linode_update'
-  | 'linode_delete'
-  | 'linode_deleteip'
-  | 'linode_migrate'
-  | 'linode_reboot'
-  | 'linode_resize'
-  | 'linode_resize_create'
-  | 'linode_migrate_datacenter_create'
-  | 'linode_migrate_datacenter'
-  | 'linode_mutate'
-  | 'linode_mutate_create'
-  | 'linode_rebuild'
-  | 'linode_shutdown'
-  | 'linode_snapshot'
-  | 'linode_config_create'
-  | 'linode_config_update'
-  | 'linode_config_delete'
-  | 'lke_node_create'
-  | 'longviewclient_create'
-  | 'longviewclient_delete'
-  | 'longviewclient_update'
-  | 'nodebalancer_config_create'
-  | 'nodebalancer_config_update'
-  | 'nodebalancer_config_delete'
-  | 'nodebalancer_create'
-  | 'nodebalancer_update'
-  | 'nodebalancer_delete'
-  | 'password_reset'
-  | 'profile_update'
-  | 'stackscript_create'
-  | 'stackscript_update'
-  | 'stackscript_delete'
-  | 'stackscript_publicize'
-  | 'stackscript_revise'
-  | 'tfa_enabled'
-  | 'tfa_disabled'
-  | 'ticket_attachment_upload'
-  | 'user_ssh_key_add'
-  | 'user_ssh_key_update'
-  | 'user_ssh_key_delete'
-  | 'volume_create'
-  | 'volume_update'
-  | 'volume_delete'
-  | 'volume_detach'
-  | 'volume_attach'
-  | 'volume_resize'
-  | 'volume_clone'
-  | 'volume_migrate_scheduled'
-  | 'volume_migrate'
-  | 'database_create'
-  | 'database_delete'
-  | 'database_update'
-  | 'database_update_failed'
-  | 'database_backup_restore'
-  | 'database_credentials_reset';
+export const EventActionKeys = [
+  'account_agreement_eu_model',
+  'account_promo_apply',
+  'account_settings_update',
+  'account_update',
+  'backups_cancel',
+  'backups_enable',
+  'backups_restore',
+  'community_like',
+  'community_mention',
+  'community_question_reply',
+  'credit_card_updated',
+  'database_backup_create',
+  'database_backup_delete',
+  'database_backup_restore',
+  'database_create',
+  'database_credentials_reset',
+  'database_degraded',
+  'database_delete',
+  'database_failed',
+  'database_low_disk_space',
+  'database_resize_create',
+  'database_resize',
+  'database_scale',
+  'database_update_failed',
+  'database_update',
+  'database_upgrade',
+  'disk_create',
+  'disk_delete',
+  'disk_duplicate',
+  'disk_imagize',
+  'disk_resize',
+  'disk_update',
+  'dns_record_create',
+  'dns_record_delete',
+  'dns_zone_create',
+  'dns_zone_delete',
+  'domain_create',
+  'domain_delete',
+  'domain_import',
+  'domain_record_create',
+  'domain_record_delete',
+  'domain_record_update',
+  'domain_record_updated',
+  'domain_update',
+  'entity_transfer_accept_recipient',
+  'entity_transfer_accept',
+  'entity_transfer_cancel',
+  'entity_transfer_create',
+  'entity_transfer_fail',
+  'entity_transfer_stale',
+  'firewall_apply',
+  'firewall_create',
+  'firewall_delete',
+  'firewall_device_add',
+  'firewall_device_remove',
+  'firewall_disable',
+  'firewall_enable',
+  'firewall_rules_update',
+  'firewall_update',
+  'host_reboot',
+  'image_delete',
+  'image_update',
+  'image_upload',
+  'ipaddress_update',
+  'ipv6pool_add',
+  'ipv6pool_delete',
+  'lassie_reboot',
+  'linode_addip',
+  'linode_boot',
+  'linode_clone',
+  'linode_config_create',
+  'linode_config_delete',
+  'linode_config_update',
+  'linode_create',
+  'linode_delete',
+  'linode_deleteip',
+  'linode_migrate_datacenter_create',
+  'linode_migrate_datacenter',
+  'linode_migrate',
+  'linode_mutate_create',
+  'linode_mutate',
+  'linode_reboot',
+  'linode_rebuild',
+  'linode_resize_create',
+  'linode_resize_warm_create',
+  'linode_resize',
+  'linode_shutdown',
+  'linode_snapshot',
+  'linode_update',
+  'lish_boot',
+  'lke_cluster_create',
+  'lke_cluster_delete',
+  'lke_cluster_recycle',
+  'lke_cluster_regenerate',
+  'lke_cluster_update',
+  'lke_control_plane_acl_create',
+  'lke_control_plane_acl_delete',
+  'lke_control_plane_acl_update',
+  'lke_kubeconfig_regenerate',
+  'lke_node_create',
+  'lke_node_recycle',
+  'lke_pool_create',
+  'lke_pool_delete',
+  'lke_pool_recycle',
+  'lke_token_rotate',
+  'longviewclient_create',
+  'longviewclient_delete',
+  'longviewclient_update',
+  'managed_enabled',
+  'managed_service_create',
+  'managed_service_delete',
+  'nodebalancer_config_create',
+  'nodebalancer_config_delete',
+  'nodebalancer_config_update',
+  'nodebalancer_create',
+  'nodebalancer_delete',
+  'nodebalancer_node_create',
+  'nodebalancer_node_delete',
+  'nodebalancer_node_update',
+  'nodebalancer_update',
+  'oauth_client_create',
+  'oauth_client_delete',
+  'oauth_client_secret_reset',
+  'oauth_client_update',
+  'obj_access_key_create',
+  'obj_access_key_delete',
+  'obj_access_key_update',
+  'password_reset',
+  'payment_method_add',
+  'payment_submitted',
+  'placement_group_assign',
+  'placement_group_became_compliant',
+  'placement_group_became_non_compliant',
+  'placement_group_create',
+  'placement_group_delete',
+  'placement_group_unassign',
+  'placement_group_update',
+  'profile_update',
+  'reserved_ip_assign',
+  'reserved_ip_create',
+  'reserved_ip_delete',
+  'reserved_ip_unassign',
+  'stackscript_create',
+  'stackscript_delete',
+  'stackscript_publicize',
+  'stackscript_revise',
+  'stackscript_update',
+  'subnet_create',
+  'subnet_delete',
+  'subnet_update',
+  'tag_create',
+  'tag_delete',
+  'tax_id_invalid',
+  'tax_id_valid',
+  'tfa_disabled',
+  'tfa_enabled',
+  'ticket_attachment_upload',
+  'ticket_create',
+  'ticket_update',
+  'token_create',
+  'token_delete',
+  'token_update',
+  'user_create',
+  'user_delete',
+  'user_ssh_key_add',
+  'user_ssh_key_delete',
+  'user_ssh_key_update',
+  'user_update',
+  'volume_attach',
+  'volume_clone',
+  'volume_create',
+  'volume_delete',
+  'volume_detach',
+  'volume_migrate_scheduled',
+  'volume_migrate',
+  'volume_resize',
+  'volume_update',
+  'vpc_create',
+  'vpc_delete',
+  'vpc_update',
+] as const;
+
+export type EventAction = typeof EventActionKeys[number];
 
 export type EventStatus =
   | 'scheduled'
@@ -353,9 +495,8 @@ export interface Event {
   seen: boolean;
   status: EventStatus;
   time_remaining: null | string;
-  username: string;
+  username: string | null;
   secondary_entity: Entity | null;
-  _initial?: boolean;
   message: string | null;
 }
 /**
@@ -370,26 +511,16 @@ export interface OAuthClient {
   id: string;
   label: string;
   redirect_uri: string;
-  thumbnail_url: string;
+  thumbnail_url: string | null;
   public: boolean;
   status: 'disabled' | 'active' | 'suspended';
+  secret: string;
 }
 
 export interface OAuthClientRequest {
   label: string;
   redirect_uri: string;
   public?: boolean;
-}
-
-export interface Paypal {
-  cancel_url: string;
-  redirect_url: string;
-  usd: string;
-}
-
-export interface ExecutePayload {
-  payer_id: string;
-  payment_id: string;
 }
 
 export interface SaveCreditCardData {
@@ -401,7 +532,7 @@ export interface SaveCreditCardData {
 
 export interface AccountMaintenance {
   reason: string;
-  status: 'pending' | 'started';
+  status: 'pending' | 'started' | 'completed';
   type: 'reboot' | 'cold_migration' | 'live_migration' | 'volume_migration';
   when: string;
   entity: {

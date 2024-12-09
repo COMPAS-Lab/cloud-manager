@@ -1,60 +1,96 @@
-import { ObjectStorageClusterID } from '@linode/api-v4/lib/object-storage';
+import { createLazyRoute } from '@tanstack/react-router';
 import * as React from 'react';
-import { matchPath, RouteComponentProps } from 'react-router-dom';
-import Breadcrumb from 'src/components/Breadcrumb';
-import Box from 'src/components/core/Box';
-import TabPanels from 'src/components/core/ReachTabPanels';
-import Tabs from 'src/components/core/ReachTabs';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import DocsLink from 'src/components/DocsLink';
-import SafeTabPanel from 'src/components/SafeTabPanel';
-import SuspenseLoader from 'src/components/SuspenseLoader';
-import TabLinkList from 'src/components/TabLinkList';
+import { matchPath } from 'react-router-dom';
+
+import { LandingHeader } from 'src/components/LandingHeader';
+import { ProductInformationBanner } from 'src/components/ProductInformationBanner/ProductInformationBanner';
+import { SuspenseLoader } from 'src/components/SuspenseLoader';
+import { SafeTabPanel } from 'src/components/Tabs/SafeTabPanel';
+import { TabLinkList } from 'src/components/Tabs/TabLinkList';
+import { TabPanels } from 'src/components/Tabs/TabPanels';
+import { Tabs } from 'src/components/Tabs/Tabs';
+import { useFlags } from 'src/hooks/useFlags';
+import { useAccount } from 'src/queries/account/account';
+import { useObjectStorageBuckets } from 'src/queries/object-storage/queries';
+import { isFeatureEnabledV2 } from 'src/utilities/accountCapabilities';
+
 import { BucketAccess } from './BucketAccess';
 
-const ObjectList = React.lazy(() => import('./BucketDetail'));
-// const Access = React.lazy(() => import('./BucketAccess'));
-const BucketSSL = React.lazy(() => import('./BucketSSL'));
+import type { ObjectStorageClusterID } from '@linode/api-v4/lib/object-storage';
+import type { ComponentType, LazyExoticComponent } from 'react';
+import type { RouteComponentProps } from 'react-router-dom';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    [theme.breakpoints.down('sm')]: {
-      paddingRight: theme.spacing(),
-    },
-    [theme.breakpoints.down('xs')]: {
-      paddingLeft: theme.spacing(),
-    },
-  },
-}));
+const ObjectList: LazyExoticComponent<ComponentType<any>> = React.lazy(() =>
+  import('./BucketDetail').then((module) => ({ default: module.BucketDetail }))
+);
+const BucketSSL = React.lazy(() =>
+  import('./BucketSSL').then((module) => ({
+    default: module.BucketSSL,
+  }))
+);
+const BucketProperties = React.lazy(() =>
+  import('./BucketProperties').then((module) => ({
+    default: module.BucketProperties,
+  }))
+);
 
 interface MatchProps {
-  clusterId: ObjectStorageClusterID;
   bucketName: string;
+  clusterId: ObjectStorageClusterID;
 }
 
-type CombinedProps = RouteComponentProps<MatchProps>;
+type Props = RouteComponentProps<MatchProps>;
 
-export const BucketDetailLanding: React.FC<CombinedProps> = (props) => {
-  const classes = useStyles();
+export const BucketDetailLanding = React.memo((props: Props) => {
+  const { data: account } = useAccount();
+  const flags = useFlags();
+
+  const isObjectStorageGen2Enabled = isFeatureEnabledV2(
+    'Object Storage Endpoint Types',
+    Boolean(flags.objectStorageGen2?.enabled),
+    account?.capabilities ?? []
+  );
+
+  const { data: bucketsData } = useObjectStorageBuckets(
+    isObjectStorageGen2Enabled
+  );
 
   const matches = (p: string) => {
     return Boolean(matchPath(p, { path: props.location.pathname }));
   };
   const { bucketName, clusterId } = props.match.params;
 
+  const bucket = bucketsData?.buckets.find(({ label }) => label === bucketName);
+
+  const { endpoint_type } = bucket ?? {};
+
+  const isSSLEnabled = endpoint_type !== 'E2' && endpoint_type !== 'E3';
+
   const tabs = [
     {
-      title: 'Objects',
       routeName: `${props.match.url}/objects`,
+      title: 'Objects',
     },
     {
-      title: 'Access',
       routeName: `${props.match.url}/access`,
+      title: 'Access',
     },
-    {
-      title: 'SSL/TLS',
-      routeName: `${props.match.url}/ssl`,
-    },
+    ...(flags.objectStorageGen2?.enabled
+      ? [
+          {
+            routeName: `${props.match.url}/properties`,
+            title: 'Properties',
+          },
+        ]
+      : []),
+    ...(isSSLEnabled
+      ? [
+          {
+            routeName: `${props.match.url}/ssl`,
+            title: 'SSL/TLS',
+          },
+        ]
+      : []),
   ];
 
   const [index, setIndex] = React.useState(
@@ -68,27 +104,22 @@ export const BucketDetailLanding: React.FC<CombinedProps> = (props) => {
 
   return (
     <>
-      <Box
-        display="flex"
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="space-between"
-        className={classes.root}
-      >
-        <Breadcrumb
-          // The actual pathname doesn't match what we want in the Breadcrumb,
-          // so we create a custom one.
-          pathname={`/object-storage/${bucketName}`}
-          crumbOverrides={[
+      <ProductInformationBanner bannerLocation="Object Storage" />
+      <LandingHeader
+        breadcrumbProps={{
+          crumbOverrides: [
             {
-              position: 1,
               label: 'Object Storage',
+              position: 1,
             },
-          ]}
-          labelOptions={{ noCap: true }}
-        />
-        <DocsLink href="https://www.linode.com/docs/platform/object-storage/" />
-      </Box>
+          ],
+          labelOptions: { noCap: true },
+          pathname: `/object-storage/${bucketName}`,
+        }}
+        // Purposefully not using the title prop here because we want to use the `bucketName` override.
+        docsLabel="Docs"
+        docsLink="https://www.linode.com/docs/platform/object-storage/"
+      />
 
       <Tabs index={index} onChange={handleTabChange}>
         <TabLinkList tabs={tabs} />
@@ -96,12 +127,21 @@ export const BucketDetailLanding: React.FC<CombinedProps> = (props) => {
         <React.Suspense fallback={<SuspenseLoader />}>
           <TabPanels>
             <SafeTabPanel index={0}>
-              <ObjectList {...props} />
+              <ObjectList {...props} endpointType={endpoint_type} />
             </SafeTabPanel>
             <SafeTabPanel index={1}>
-              <BucketAccess bucketName={bucketName} clusterId={clusterId} />
+              <BucketAccess
+                bucketName={bucketName}
+                clusterId={clusterId}
+                endpointType={endpoint_type}
+              />
             </SafeTabPanel>
-            <SafeTabPanel index={2}>
+            {flags.objectStorageGen2?.enabled && bucket && (
+              <SafeTabPanel index={2}>
+                <BucketProperties bucket={bucket} />
+              </SafeTabPanel>
+            )}
+            <SafeTabPanel index={tabs.length - 1}>
               <BucketSSL bucketName={bucketName} clusterId={clusterId} />
             </SafeTabPanel>
           </TabPanels>
@@ -109,6 +149,12 @@ export const BucketDetailLanding: React.FC<CombinedProps> = (props) => {
       </Tabs>
     </>
   );
-};
+});
 
-export default React.memo(BucketDetailLanding);
+export const bucketDetailLandingLazyRoute = createLazyRoute(
+  '/object-storage/buckets/$clusterId/$bucketName'
+)({
+  component: BucketDetailLanding,
+});
+
+export default BucketDetailLanding;

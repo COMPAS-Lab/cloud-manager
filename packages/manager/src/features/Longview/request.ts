@@ -1,6 +1,8 @@
 import Axios, { AxiosResponse } from 'axios';
 import { curry } from 'ramda';
+
 import { LONGVIEW_ROOT } from 'src/constants';
+
 import {
   Get,
   LongviewAction,
@@ -63,33 +65,33 @@ import {
  */
 
 export const fieldNames: Record<LongviewFieldName, string> = {
-  cpu: 'CPU.*',
-  uptime: 'Uptime',
-  memory: 'Memory.*',
-  load: 'Load.*',
-  network: 'Network.*',
-  disk: 'Disk.*',
-  sysinfo: 'SysInfo.*',
-  packages: 'Packages',
-  processes: 'Processes.*',
-  listeningServices: 'Ports.listening',
   activeConnections: 'Ports.active',
-  nginx: 'Applications.Nginx.*',
-  nginxProcesses: 'Processes.nginx.*',
   apache: 'Applications.Apache.*',
   apacheProcesses: 'Processes.apache.*',
+  cpu: 'CPU.*',
+  disk: 'Disk.*',
+  listeningServices: 'Ports.listening',
+  load: 'Load.*',
+  memory: 'Memory.*',
   mysql: 'Applications.MySQL.*',
   mysqlProcesses: 'Processes.mysql.*',
+  network: 'Network.*',
+  nginx: 'Applications.Nginx.*',
+  nginxProcesses: 'Processes.nginx.*',
+  packages: 'Packages',
+  processes: 'Processes.*',
+  sysinfo: 'SysInfo.*',
+  uptime: 'Uptime',
 };
 
 export const baseRequest = Axios.create({
   baseURL: LONGVIEW_ROOT,
-  method: 'POST',
   headers: { 'Content-Type': 'Multivalue-FormData' },
+  method: 'POST',
 });
 
 export const handleLongviewResponse = (
-  response: AxiosResponse<LongviewResponse<any>>
+  response: AxiosResponse<LongviewResponse<any>[]>
 ) => {
   const notifications = response.data[0].NOTIFICATIONS;
   /**
@@ -106,12 +108,12 @@ export const handleLongviewResponse = (
   }
 };
 
-export const get: Get = (
+export const get: Get = async (
   token: string,
   action: LongviewAction,
   options: Partial<Options> = {}
 ) => {
-  const { fields, start, end } = options;
+  const { end, fields, start } = options;
 
   const request = baseRequest;
   const data = new FormData();
@@ -129,9 +131,10 @@ export const get: Get = (
   if (end) {
     data.set('end', `${end}`);
   }
-  return request({
+  const response = await request({
     data,
-  }).then(handleLongviewResponse);
+  });
+  return handleLongviewResponse(response);
 };
 
 export const getLastUpdated = (token: string) => {
@@ -149,5 +152,3 @@ export const getLatestValue = curry((token: string, options: Options) => {
 export const getTopProcesses = curry((token: string, options?: Options) => {
   return get(token, 'getTopProcesses', options);
 });
-
-export default get;

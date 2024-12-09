@@ -1,6 +1,7 @@
-import Algolia from 'algoliasearch';
+import Algolia, { SearchClient } from 'algoliasearch';
 import { pathOr } from 'ramda';
 import * as React from 'react';
+
 import { Item } from 'src/components/EnhancedSelect/Select';
 import {
   ALGOLIA_APPLICATION_ID,
@@ -11,12 +12,12 @@ import {
 import { truncate } from 'src/utilities/truncate';
 
 interface SearchHit {
-  title?: string;
+  _highlightResult?: any;
   description?: string;
+  href?: string;
   keywords?: string[];
   objectID: string;
-  href?: string;
-  _highlightResult?: any;
+  title?: string;
 }
 
 export interface AlgoliaState {
@@ -27,33 +28,27 @@ export interface AlgoliaState {
 }
 
 interface SearchOptions {
-  hitsPerPage: number;
   highlight: boolean;
+  hitsPerPage: number;
 }
 
 interface AlgoliaContent {
-  results: Algolia.Response[];
-}
-
-interface AlgoliaError {
-  message: string;
-  code: number;
+  results: unknown;
 }
 
 // Functional helper methods
-
 export const convertDocsToItems = (
   highlight: boolean,
   hits: SearchHit[] = []
 ): Item[] => {
   return hits.map((hit: SearchHit, idx: number) => {
     return {
-      value: idx,
-      label: getDocsResultLabel(hit, highlight),
       data: {
-        source: 'Linode documentation',
         href: DOCS_BASE_URL + hit.href,
+        source: 'Linode documentation',
       },
+      label: getDocsResultLabel(hit, highlight),
+      value: idx,
     };
   });
 };
@@ -64,12 +59,12 @@ export const convertCommunityToItems = (
 ): Item[] => {
   return hits.map((hit: SearchHit, idx: number) => {
     return {
-      value: idx,
-      label: getCommunityResultLabel(hit, highlight),
       data: {
-        source: 'Linode Community Site',
         href: getCommunityUrl(hit.objectID),
+        source: 'Linode Community Site',
       },
+      label: getCommunityResultLabel(hit, highlight),
+      value: idx,
     };
   });
 };
@@ -114,24 +109,29 @@ export const cleanDescription = (description: string): string => {
 export default (options: SearchOptions) => (
   Component: React.ComponentType<any>
 ) => {
-  const { hitsPerPage, highlight } = options;
+  const { highlight, hitsPerPage } = options;
   class WrappedComponent extends React.PureComponent<{}, AlgoliaState> {
-    searchIndex: any;
-    mounted: boolean = false;
-
     componentDidMount() {
       this.mounted = true;
       this.initializeSearchIndices();
     }
-
     componentWillUnmount() {
       this.mounted = false;
     }
 
+    render() {
+      return React.createElement(Component, {
+        ...this.props,
+        ...this.state,
+      });
+    }
+
+    client: SearchClient;
+
     initializeSearchIndices = () => {
       try {
         const client = Algolia(ALGOLIA_APPLICATION_ID, ALGOLIA_SEARCH_KEY);
-        this.searchIndex = client;
+        this.client = client;
         this.setState({ searchEnabled: true, searchError: undefined });
       } catch {
         // Credentials were incorrect or couldn't be found;
@@ -144,7 +144,9 @@ export default (options: SearchOptions) => (
       }
     };
 
-    searchAlgolia = (inputValue: string) => {
+    mounted: boolean = false;
+
+    searchAlgolia = async (inputValue: string) => {
       if (!this.mounted) {
         return;
       }
@@ -152,54 +154,51 @@ export default (options: SearchOptions) => (
         this.setState({ searchResults: [[], []] });
         return;
       }
-      if (!this.searchIndex) {
+      if (!this.client) {
         this.setState({
-          searchResults: [[], []],
           searchError: 'Search could not be enabled.',
+          searchResults: [[], []],
         });
         return;
       }
-      this.searchIndex.search(
-        [
+
+      try {
+        const results = await this.client.search([
           {
             indexName: 'linode-docs',
-            query: inputValue,
             params: {
-              hitsPerPage,
               attributesToRetrieve: ['title', '_highlightResult', 'href'],
+              hitsPerPage,
             },
+            query: inputValue,
           },
           {
             indexName: 'linode-community',
-            query: inputValue,
             params: {
-              hitsPerPage,
-              distinct: true,
               attributesToRetrieve: [
                 'title',
                 'description',
                 '_highlightResult',
               ],
+              distinct: true,
+              hitsPerPage,
             },
+            query: inputValue,
           },
-        ],
-        this.searchSuccess
-      );
-    };
-
-    searchSuccess = (err: AlgoliaError, content: AlgoliaContent) => {
-      if (!this.mounted) {
-        return;
-      }
-      if (err) {
-        /*
-         * Errors from Algolia have the format: {'message': string, 'code': number}
-         * We do not want to push these messages on to the user as they are not under
-         * our control and can be account-related (e.g. "You have exceeded your quota").
-         */
+        ]);
+        this.searchSuccess(results);
+      } catch (e) {
+        if (!this.mounted) {
+          return;
+        }
         this.setState({
           searchError: 'There was an error retrieving your search results.',
         });
+      }
+    };
+
+    searchSuccess = (content: AlgoliaContent) => {
+      if (!this.mounted) {
         return;
       }
 
@@ -209,8 +208,8 @@ export default (options: SearchOptions) => (
       const docsResults = convertDocsToItems(highlight, docs);
       const commResults = convertCommunityToItems(highlight, community);
       this.setState({
-        searchResults: [docsResults, commResults],
         searchError: undefined,
+        searchResults: [docsResults, commResults],
       });
     };
 
@@ -220,13 +219,7 @@ export default (options: SearchOptions) => (
       searchError: undefined,
       searchResults: [[], []],
     };
-
-    render() {
-      return React.createElement(Component, {
-        ...this.props,
-        ...this.state,
-      });
-    }
   }
+
   return WrappedComponent;
 };

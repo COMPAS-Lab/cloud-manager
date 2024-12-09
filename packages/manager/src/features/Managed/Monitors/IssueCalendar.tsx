@@ -1,20 +1,22 @@
+import { ManagedIssue } from '@linode/api-v4';
 import { DateTime } from 'luxon';
 import * as React from 'react';
-import { ExtendedIssue } from 'src/store/managed/issues.actions';
-import IssueDay from './IssueDay';
+
+import { useProfile } from 'src/queries/profile/profile';
 import { parseAPIDate } from 'src/utilities/date';
-import { useProfile } from 'src/queries/profile';
-import getUserTimezone from 'src/utilities/getUserTimezone';
+import { getUserTimezone } from 'src/utilities/getUserTimezone';
+
+import IssueDay from './IssueDay';
 
 const TOTAL_DAYS = 10;
 
-interface Props {
-  issues: ExtendedIssue[];
+interface IssueCalendarProps {
+  issues: ManagedIssue[];
 }
 
 export const createdOnTargetDay = (
   timezone: string,
-  issue: ExtendedIssue,
+  issue: ManagedIssue,
   targetDay: DateTime
 ) => {
   return parseAPIDate(issue.created)
@@ -23,11 +25,11 @@ export const createdOnTargetDay = (
 };
 
 interface CalendarDay {
-  issues: ExtendedIssue[];
   day: string;
+  issues: ManagedIssue[];
 }
 
-export const generateCalendar = (timezone: string, issues: ExtendedIssue[]) => {
+export const generateCalendar = (timezone: string, issues: ManagedIssue[]) => {
   /**
    * To maintain continuity with Classic, we have to generate
    * a mock calendar of the past 10 days. If an issue was created
@@ -40,27 +42,32 @@ export const generateCalendar = (timezone: string, issues: ExtendedIssue[]) => {
   const days: CalendarDay[] = [];
 
   // Start with today, since it will be at the top of our list.
-  const day = DateTime.local().setZone(timezone);
   for (let i = 0; i < TOTAL_DAYS; i++) {
+    const day = DateTime.local().minus({ days: i }).setZone(timezone);
     /**
      * Iterate through the past 10 days
      */
     const relevantIssues = issues.filter((thisIssue) =>
       createdOnTargetDay(timezone, thisIssue, day)
     );
-    days.push({
-      issues: relevantIssues,
-      day: day.minus({ days: i }).toISO(),
-    });
+
+    const isoDate = day.toISO();
+
+    if (isoDate) {
+      days.push({
+        day: isoDate,
+        issues: relevantIssues,
+      });
+    }
   }
 
   return days;
 };
 
-export const IssueCalendar: React.FC<Props> = (props) => {
+export const IssueCalendar = (props: IssueCalendarProps) => {
   const { issues } = props;
   const { data: profile } = useProfile();
-  const timezone = getUserTimezone(profile);
+  const timezone = getUserTimezone(profile?.timezone);
 
   const days = generateCalendar(timezone, issues);
 
@@ -68,13 +75,11 @@ export const IssueCalendar: React.FC<Props> = (props) => {
     <>
       {days.map((thisDay, idx) => (
         <IssueDay
-          key={`issue-day-${idx}`}
-          issues={thisDay.issues}
           day={thisDay.day}
+          issues={thisDay.issues}
+          key={`issue-day-${idx}`}
         />
       ))}
     </>
   );
 };
-
-export default IssueCalendar;

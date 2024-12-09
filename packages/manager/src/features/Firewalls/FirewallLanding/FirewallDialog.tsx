@@ -1,131 +1,107 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useSnackbar } from 'notistack';
 import * as React from 'react';
-import ActionsPanel from 'src/components/ActionsPanel';
-import Button from 'src/components/Button';
-import Dialog from 'src/components/ConfirmationDialog';
-import { DispatchProps } from 'src/containers/firewalls.container';
-import { capitalize } from 'src/utilities/capitalize';
-import { getAPIErrorOrDefault } from 'src/utilities/errorUtils';
 
-export type Mode = 'enable' | 'disable' | 'delete';
-interface Props
-  extends Pick<
-    DispatchProps,
-    'enableFirewall' | 'disableFirewall' | 'deleteFirewall'
-  > {
-  open: boolean;
+import { ActionsPanel } from 'src/components/ActionsPanel/ActionsPanel';
+import { ConfirmationDialog } from 'src/components/ConfirmationDialog/ConfirmationDialog';
+import { useDeleteFirewall, useMutateFirewall } from 'src/queries/firewalls';
+import { linodeQueries } from 'src/queries/linodes/linodes';
+import { nodebalancerQueries } from 'src/queries/nodebalancers';
+import { capitalize } from 'src/utilities/capitalize';
+
+import type { Firewall } from '@linode/api-v4';
+
+export type Mode = 'delete' | 'disable' | 'enable';
+
+interface Props {
   mode: Mode;
-  closeDialog: () => void;
-  selectedFirewallID?: number;
-  selectedFirewallLabel: string;
+  onClose: () => void;
+  open: boolean;
+  selectedFirewall: Firewall;
 }
 
-type CombinedProps = Props;
+export const FirewallDialog = React.memo((props: Props) => {
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
 
-const toContinuousTense = (s: string) => {
-  return s.replace(/e$/, 'ing');
-};
-
-const FirewallDialog: React.FC<CombinedProps> = (props) => {
-  const [isSubmitting, setSubmitting] = React.useState<boolean>(false);
-  const [error, setError] = React.useState<string | undefined>(undefined);
+  const { mode, onClose, open, selectedFirewall } = props;
 
   const {
-    open,
-    closeDialog,
-    deleteFirewall,
-    disableFirewall,
-    enableFirewall,
-    mode,
-    selectedFirewallID,
-    selectedFirewallLabel: label,
-  } = props;
+    error: updateError,
+    isPending: isUpdating,
+    mutateAsync: updateFirewall,
+  } = useMutateFirewall(selectedFirewall.id);
+  const {
+    error: deleteError,
+    isPending: isDeleting,
+    mutateAsync: deleteFirewall,
+  } = useDeleteFirewall(selectedFirewall.id);
 
-  /** reset error on open */
-  React.useEffect(() => {
-    if (open) {
-      setError(undefined);
-    }
-  }, [open]);
-
-  const determineRequest = () => {
-    switch (mode) {
-      case 'enable':
-        return enableFirewall;
-      case 'disable':
-        return disableFirewall;
-      case 'delete':
-        return deleteFirewall;
-    }
+  const requestMap = {
+    delete: () => deleteFirewall(),
+    disable: () => updateFirewall({ status: 'disabled' }),
+    enable: () => updateFirewall({ status: 'enabled' }),
   };
 
-  const handleSubmit = () => {
-    const defaultError = `There was an issue ${toContinuousTense(
-      mode
-    )} this Firewall.`;
-    if (!selectedFirewallID) {
-      return setError(defaultError);
-    }
-
-    setSubmitting(true);
-    setError(undefined);
-
-    const request = determineRequest();
-
-    request(selectedFirewallID)
-      .then((_) => {
-        setSubmitting(false);
-        closeDialog();
-      })
-      .catch((e) => {
-        setSubmitting(false);
-        setError(getAPIErrorOrDefault(e, defaultError)[0].reason);
-      });
+  const isLoadingMap = {
+    delete: isDeleting,
+    disable: isUpdating,
+    enable: isUpdating,
   };
 
-  const _label = label ? label : 'this Firewall';
+  const errorMap = {
+    delete: deleteError,
+    disable: updateError,
+    enable: updateError,
+  };
+
+  const onSubmit = async () => {
+    await requestMap[mode]();
+
+    // Invalidate Firewalls assigned to NodeBalancers and Linodes when Firewall is enabled, disabled, or deleted.
+    for (const entity of selectedFirewall.entities) {
+      if (entity.type === 'nodebalancer') {
+        queryClient.invalidateQueries({
+          queryKey: nodebalancerQueries.nodebalancer(entity.id)._ctx.firewalls
+            .queryKey,
+        });
+      }
+
+      if (entity.type === 'linode') {
+        queryClient.invalidateQueries({
+          queryKey: linodeQueries.linode(entity.id)._ctx.firewalls.queryKey,
+        });
+      }
+    }
+
+    enqueueSnackbar(
+      `Firewall ${selectedFirewall.label} successfully ${mode}d`,
+      {
+        variant: 'success',
+      }
+    );
+
+    onClose();
+  };
 
   return (
-    <Dialog
-      open={open}
-      title={`${capitalize(mode)} Firewall ${_label}?`}
-      onClose={props.closeDialog}
-      error={error}
+    <ConfirmationDialog
       actions={
-        <Actions
-          onClose={props.closeDialog}
-          isSubmitting={isSubmitting}
-          onSubmit={handleSubmit}
-          mode={mode}
+        <ActionsPanel
+          primaryButtonProps={{
+            label: `${capitalize(mode)} Firewall`,
+            loading: isLoadingMap[mode],
+            onClick: onSubmit,
+          }}
+          secondaryButtonProps={{ label: 'Cancel', onClick: onClose }}
         />
       }
+      error={errorMap[mode]?.[0].reason}
+      onClose={onClose}
+      open={open}
+      title={`${capitalize(mode)} Firewall ${selectedFirewall.label}?`}
     >
-      Are you sure you want to {mode} this Firewall?
-    </Dialog>
+      Are you sure you want to {mode} this firewall?
+    </ConfirmationDialog>
   );
-};
-
-interface ActionsProps {
-  onClose: () => void;
-  onSubmit: () => void;
-  isSubmitting: boolean;
-  mode: Mode;
-}
-
-const Actions: React.FC<ActionsProps> = (props) => {
-  return (
-    <ActionsPanel>
-      <Button buttonType="secondary" onClick={props.onClose}>
-        Cancel
-      </Button>
-      <Button
-        buttonType="primary"
-        onClick={props.onSubmit}
-        loading={props.isSubmitting}
-      >
-        {capitalize(props.mode)} Firewall
-      </Button>
-    </ActionsPanel>
-  );
-};
-
-export default React.memo(FirewallDialog);
+});

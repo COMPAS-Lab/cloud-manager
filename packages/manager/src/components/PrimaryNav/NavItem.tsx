@@ -1,45 +1,45 @@
-import classNames from 'classnames';
+import { Tooltip } from '@linode/ui';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { compose } from 'recompose';
-import Divider from 'src/components/core/Divider';
-import ListItem from 'src/components/core/ListItem';
-import ListItemText from 'src/components/core/ListItemText';
-import Tooltip from 'src/components/core/Tooltip';
+import { useStyles } from 'tss-react/mui';
+
+import { Divider } from 'src/components/Divider';
+import { ListItem } from 'src/components/ListItem';
+import { ListItemText } from 'src/components/ListItemText';
 
 interface Props extends PrimaryLink {
   closeMenu: () => void;
   dividerClasses?: string;
+  isCollapsed?: boolean;
   linkClasses: (href?: string) => string;
   listItemClasses: string;
-  isCollapsed?: boolean;
 }
 
 export interface PrimaryLink {
-  href?: string;
-  onClick?: () => void;
   QAKey: string;
   display: string;
-  logo?: React.ComponentType<any>;
+  href?: string;
   icon?: JSX.Element;
   isDisabled?: () => string;
+  logo?: React.ComponentType<any>;
+  onClick?: () => void;
 }
 
-type CombinedProps = Props;
-
-const NavItem: React.SFC<CombinedProps> = (props) => {
+export const NavItem = React.memo((props: Props) => {
   const {
-    href,
-    onClick,
     QAKey,
+    closeMenu,
     display,
-    isCollapsed,
+    href,
     icon,
+    isCollapsed,
     isDisabled,
     linkClasses,
     listItemClasses,
-    closeMenu,
+    onClick,
   } = props;
+
+  const { cx } = useStyles();
 
   if (!onClick && !href) {
     throw new Error('A Primary Link needs either an href or an onClick prop');
@@ -53,27 +53,24 @@ const NavItem: React.SFC<CombinedProps> = (props) => {
     <React.Fragment>
       {href ? (
         <Link
-          to={href}
-          onClick={closeMenu}
+          className={linkClasses(href)}
           data-qa-nav-item={QAKey}
-          className={classNames({
-            [linkClasses(href)]: true,
-            listItemCollapsed: isCollapsed,
-          })}
+          onClick={closeMenu}
+          to={href}
         >
           {icon && isCollapsed && <div className="icon">{icon}</div>}
           <ListItemText
-            primary={display}
-            disableTypography={true}
-            className={classNames({
+            className={cx({
+              hiddenWhenCollapsed: isCollapsed,
               [listItemClasses]: true,
               primaryNavLink: true,
-              hiddenWhenCollapsed: isCollapsed,
             })}
+            disableTypography={true}
+            primary={display}
           />
         </Link>
       ) : (
-        <Tooltip title={isDisabled ? isDisabled() : ''} placement="left-end">
+        <Tooltip placement="left-end" title={isDisabled ? isDisabled() : ''}>
           <ListItem
             onClick={(e) => {
               props.closeMenu();
@@ -81,14 +78,14 @@ const NavItem: React.SFC<CombinedProps> = (props) => {
               onClick!();
             }}
             aria-live="polite"
-            disabled={!!isDisabled ? !!isDisabled() : false}
-            data-qa-nav-item={QAKey}
             className={linkClasses()}
+            data-qa-nav-item={QAKey}
+            disabled={!!isDisabled ? !!isDisabled() : false}
           >
             <ListItemText
-              primary={display}
-              disableTypography={true}
               className={listItemClasses}
+              disableTypography={true}
+              primary={display}
             />
           </ListItem>
         </Tooltip>
@@ -96,6 +93,4 @@ const NavItem: React.SFC<CombinedProps> = (props) => {
       <Divider className={props.dividerClasses} />
     </React.Fragment>
   );
-};
-
-export default compose<CombinedProps, Props>(React.memo)(NavItem);
+});

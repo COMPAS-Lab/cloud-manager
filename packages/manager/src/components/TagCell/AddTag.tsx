@@ -1,101 +1,103 @@
-import { getTags } from '@linode/api-v4/lib/tags';
-import classNames from 'classnames';
+import { useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Select, { Item } from 'src/components/EnhancedSelect/Select';
-import useAccountManagement from 'src/hooks/useAccountManagement';
 
-const useStyles = makeStyles((_: Theme) => ({
-  root: {
-    width: '100%',
-    padding: '0px',
-  },
-  hasFixedMenu: {
-    '& .react-select__menu': {
-      margin: '2px 0 0 0',
-    },
-  },
-  inDetailsContext: {
-    width: '415px',
-    flexBasis: '100%',
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-}));
+import { useProfile } from 'src/queries/profile/profile';
+import { updateTagsSuggestionsData, useAllTagsQuery } from 'src/queries/tags';
 
-interface Props {
-  label?: string;
-  tags: string[];
+import { Autocomplete } from '../Autocomplete/Autocomplete';
+
+interface AddTagProps {
+  addTag: (tag: string) => Promise<void>;
+  existingTags: string[];
   onClose?: () => void;
-  addTag: (tag: string) => void;
-  fixedMenu?: boolean;
-  inDetailsContext?: boolean;
 }
 
-export type CombinedProps = Props;
+export const AddTag = (props: AddTagProps) => {
+  const { addTag, existingTags, onClose } = props;
 
-export const AddTag: React.FC<Props> = (props) => {
-  const classes = useStyles();
-  const { addTag, label, onClose, tags, fixedMenu, inDetailsContext } = props;
-  const [accountTags, setAccountTags] = React.useState<Item<string>[]>([]);
-
-  const { _isRestrictedUser } = useAccountManagement();
-
-  React.useEffect(() => {
-    if (!_isRestrictedUser) {
-      getTags()
-        .then((response) =>
-          response.data.map((thisTag) => ({
-            value: thisTag.label,
-            label: thisTag.label,
-          }))
-        )
-        .then((tags) => setAccountTags(tags))
-        // @todo should we toast for this? If we swallow the error the only
-        // thing we lose is preexisting tabs as options; the add tag flow
-        // should still work.
-        .catch((_) => null);
-    }
-  }, [_isRestrictedUser]);
-
-  const tagOptions = accountTags.filter(
-    (thisTag) => !tags.includes(thisTag.value)
+  const queryClient = useQueryClient();
+  const { data: profile } = useProfile();
+  const { data: accountTags, isFetching: accountTagsLoading } = useAllTagsQuery(
+    !profile?.restricted
   );
+  // @todo should we toast for this? If we swallow the error the only
+  // thing we lose is preexisting tabs as options; the add tag flow
+  // should still work.
 
-  const handleAddTag = (newTag: Item<string>) => {
-    if (newTag?.value) {
-      addTag(newTag.value);
-    }
+  const [inputValue, setInputValue] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
 
-    if (onClose) {
-      onClose();
-    }
+  const createTag =
+    !!accountTags &&
+    !!inputValue &&
+    !accountTags.some(
+      (tag) => tag.label.toLowerCase() == inputValue.toLowerCase()
+    );
+
+  const tagOptions: { displayLabel?: string; label: string }[] = [
+    ...(createTag
+      ? [{ displayLabel: `Create "${inputValue}"`, label: inputValue }]
+      : []),
+    ...(accountTags?.filter((tag) => !existingTags.includes(tag.label)) ?? []),
+  ];
+
+  const handleAddTag = (newTag: string) => {
+    setLoading(true);
+    addTag(newTag)
+      .then(() => {
+        if (accountTags) {
+          updateTagsSuggestionsData(
+            [...accountTags, { label: newTag }],
+            queryClient
+          );
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        if (onClose) {
+          onClose();
+        }
+      });
   };
 
   return (
-    <Select
-      small
-      escapeClearsValue
-      className={classNames({
-        [classes.root]: true,
-        [classes.hasFixedMenu]: fixedMenu,
-        [classes.inDetailsContext]: inDetailsContext,
-      })}
-      onChange={handleAddTag}
-      options={tagOptions}
-      creatable
-      value={null}
-      onBlur={onClose}
+    <Autocomplete
+      noOptionsText={
+        inputValue.length === 0 ? (
+          'No tags to choose from. Type to create a new tag.'
+        ) : (
+          <i>{`"${inputValue}" already added`}</i> // Will display create option unless that tag is already added
+        )
+      }
+      onBlur={() => {
+        if (onClose) {
+          onClose();
+        }
+      }}
+      onChange={(_, value) => {
+        if (value) {
+          handleAddTag(typeof value == 'string' ? value : value.label);
+        }
+      }}
+      renderOption={(props, option) => {
+        const { key, ...rest } = props;
+
+        return (
+          <li {...rest} key={key}>
+            {option.displayLabel ?? option.label}
+          </li>
+        );
+      }}
+      disableClearable
+      forcePopupIcon
+      label={'Create or Select a Tag'}
+      loading={accountTagsLoading || loading}
+      onInputChange={(_, value) => setInputValue(value)}
+      openOnFocus
+      options={tagOptions ?? []}
       placeholder="Create or Select a Tag"
-      label={label ?? 'Add a tag'}
-      hideLabel={!label}
-      // eslint-disable-next-line
-      autoFocus
-      createOptionPosition="first"
-      blurInputOnSelect={true}
-      menuPosition={fixedMenu ? 'fixed' : 'absolute'}
+      sx={{ width: '100%' }}
+      textFieldProps={{ autoFocus: true, hideLabel: true }}
     />
   );
 };
-
-export default AddTag;

@@ -1,12 +1,15 @@
 import * as React from 'react';
+
 import { longviewProcessFactory } from 'src/factories/longviewProcess';
 import { renderWithTheme } from 'src/utilities/testHelpers';
+
 import { extendData } from './ProcessesLanding';
-import { ProcessesTable, Props } from './ProcessesTable';
+import { ProcessesTable } from './ProcessesTable';
+import type { ProcessesTableProps } from './ProcessesTable';
 
-const mockSetSelectedRow = jest.fn();
+const mockSetSelectedRow = vi.fn();
 
-const props: Props = {
+const props: ProcessesTableProps = {
   processesData: [],
   processesLoading: false,
   selectedProcess: null,
@@ -17,7 +20,7 @@ describe('ProcessTable', () => {
   const extendedData = extendData(longviewProcessFactory.build());
 
   it('renders all columns for each row', () => {
-    const { getAllByText, getAllByTestId } = renderWithTheme(
+    const { getAllByTestId, getAllByText } = renderWithTheme(
       <ProcessesTable {...props} processesData={extendedData} />
     );
     extendedData.forEach((row) => {

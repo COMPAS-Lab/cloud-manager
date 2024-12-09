@@ -1,89 +1,154 @@
+import { breakpoints } from '@linode/ui';
 import { render, screen } from '@testing-library/react';
 import * as React from 'react';
+
 import {
-  ClassNames,
-  SupportTicketDetail,
-  CombinedProps,
-} from './SupportTicketDetail';
+  supportReplyFactory,
+  supportTicketFactory,
+} from 'src/factories/support';
+import { makeResourcePage } from 'src/mocks/serverHandlers';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
+import {
+  renderWithTheme,
+  resizeScreenSize,
+  wrapWithTheme,
+} from 'src/utilities/testHelpers';
 
-import { reactRouterProps } from 'src/__data__/reactRouterProps';
-import { supportTicketFactory } from 'src/factories/support';
-import { rest, server } from 'src/mocks/testServer';
-import { wrapWithTheme } from 'src/utilities/testHelpers';
-import { profileFactory } from 'src/factories';
-import { UseQueryResult } from 'react-query';
-import { APIError } from '@linode/api-v4/lib/types';
-import { Grants, Profile } from '@linode/api-v4/lib';
-
-const classes: Record<ClassNames, string> = {
-  title: '',
-  label: '',
-  labelIcon: '',
-  status: '',
-  open: '',
-  ticketLabel: '',
-  closed: '',
-  breadcrumbs: '',
-};
-
-const props: CombinedProps = {
-  classes,
-  profile: { data: profileFactory.build() } as UseQueryResult<
-    Profile,
-    APIError[]
-  >,
-  grants: { data: {} } as UseQueryResult<Grants, APIError[]>,
-  ...reactRouterProps,
-};
-
-const mockClosedTicket = () => {
-  server.use(
-    rest.get('*/support/tickets/:ticketId', (req, res, ctx) => {
-      const ticket = supportTicketFactory.build({
-        id: req.params.ticketId,
-        status: 'closed',
-      });
-      return res(ctx.json(ticket));
-    })
-  );
-};
+import { SupportTicketDetail } from './SupportTicketDetail';
 
 describe('Support Ticket Detail', () => {
-  describe('Component', () => {
-    it('should display a loading spinner', () => {
-      render(wrapWithTheme(<SupportTicketDetail {...props} />));
-      expect(screen.getByTestId('circle-progress')).toBeInTheDocument();
-    });
+  beforeAll(() => {
+    resizeScreenSize(breakpoints.values.lg);
+  });
 
-    it('should display the ticket summary', async () => {
-      render(wrapWithTheme(<SupportTicketDetail {...props} />));
-      expect(
-        await screen.findByText(/#0: TEST Support Ticket/i)
-      ).toBeInTheDocument();
-    });
+  it('should display a loading spinner', () => {
+    renderWithTheme(<SupportTicketDetail />);
+    expect(screen.getByTestId('circle-progress')).toBeInTheDocument();
+  });
 
-    it('should display the ticket body', async () => {
-      const { findByText } = render(
-        wrapWithTheme(<SupportTicketDetail {...props} />)
-      );
-      expect(await findByText(/TEST Support Ticket body/i)).toBeInTheDocument();
-    });
+  it('should display the ticket body', async () => {
+    server.use(
+      http.get('*/support/tickets/:ticketId', ({ params }) => {
+        const ticket = supportTicketFactory.build({
+          description: 'TEST Support Ticket body',
+          id: Number(params.ticketId),
+          status: 'open',
+          summary: '#0: TEST Support Ticket',
+        });
+        return HttpResponse.json(ticket);
+      })
+    );
+    const { findByText } = render(wrapWithTheme(<SupportTicketDetail />));
+    expect(
+      await screen.findByText(/#0: TEST Support Ticket/i)
+    ).toBeInTheDocument();
+    expect(await findByText(/TEST Support Ticket body/i)).toBeInTheDocument();
+  });
 
-    it("should display a 'new' icon and 'updated by' messaging", async () => {
-      render(wrapWithTheme(<SupportTicketDetail {...props} />));
-      expect(await screen.findByText(/new/)).toBeInTheDocument();
-      expect(
-        await screen.findByText(/updated by test-account/i)
-      ).toBeInTheDocument();
-    });
+  it("should display a 'new' status and 'updated by' messaging", async () => {
+    server.use(
+      http.get('*/support/tickets/:ticketId', ({ params }) => {
+        const ticket = supportTicketFactory.build({
+          id: Number(params.ticketId),
+          status: 'new',
+          updated_by: 'test-account',
+        });
+        return HttpResponse.json(ticket);
+      })
+    );
+    renderWithTheme(<SupportTicketDetail />);
+    expect(await screen.findByText(/New/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/updated by test-account/i)
+    ).toBeInTheDocument();
+  });
 
-    it("should display a 'closed' status and 'closed by' messaging", async () => {
-      mockClosedTicket();
-      render(wrapWithTheme(<SupportTicketDetail {...props} />));
-      expect(await screen.findByText(/closed/)).toBeInTheDocument();
-      expect(
-        await screen.findByText(/closed by test-account/i)
-      ).toBeInTheDocument();
-    });
+  it("should display an 'open' status and 'updated by' messaging", async () => {
+    server.use(
+      http.get('*/support/tickets/:ticketId', ({ params }) => {
+        const ticket = supportTicketFactory.build({
+          id: Number(params.ticketId),
+          status: 'open',
+          updated_by: 'test-account',
+        });
+        return HttpResponse.json(ticket);
+      })
+    );
+    renderWithTheme(<SupportTicketDetail />);
+    expect(await screen.findByText(/Open/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/updated by test-account/i)
+    ).toBeInTheDocument();
+  });
+
+  it("should display a 'closed' status and 'closed by' messaging", async () => {
+    server.use(
+      http.get('*/support/tickets/:ticketId', ({ params }) => {
+        const ticket = supportTicketFactory.build({
+          id: Number(params.ticketId),
+          status: 'closed',
+        });
+        return HttpResponse.json(ticket);
+      })
+    );
+    renderWithTheme(<SupportTicketDetail />);
+    expect(await screen.findByText('Closed')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/closed by test-account/i)
+    ).toBeInTheDocument();
+  });
+
+  it('should display an entity in the status details if the ticket has one', async () => {
+    const mockEntity = {
+      id: 1,
+      label: 'my-linode-entity',
+      type: 'linode',
+      url: '/',
+    };
+    server.use(
+      http.get('*/support/tickets/:ticketId', ({ params }) => {
+        const ticket = supportTicketFactory.build({
+          entity: mockEntity,
+          id: Number(params.ticketId),
+        });
+        return HttpResponse.json(ticket);
+      })
+    );
+    renderWithTheme(<SupportTicketDetail />);
+    const entity = await screen.findByText(mockEntity.label, { exact: false });
+    const entityTextLink = entity.closest('a');
+
+    expect(entity).toBeInTheDocument();
+    expect(entityTextLink).toBeInTheDocument();
+    expect(entityTextLink?.getAttribute('aria-label')).toContain(
+      mockEntity.label
+    );
+  });
+
+  it('should display replies', async () => {
+    server.use(
+      http.get('*/support/tickets/:ticketId/replies', () => {
+        const ticket = supportReplyFactory.buildList(1, {
+          description:
+            'Hi, this is lindoe support! OMG, sorry your Linode is broken!',
+        });
+        return HttpResponse.json(makeResourcePage(ticket));
+      }),
+      http.get('*/support/tickets/:ticketId', ({ params }) => {
+        const ticket = supportTicketFactory.build({
+          description: 'this ticket should have a reply on it',
+          id: Number(params.ticketId),
+          status: 'open',
+          summary: 'My Linode is broken :(',
+        });
+        return HttpResponse.json(ticket);
+      })
+    );
+    renderWithTheme(<SupportTicketDetail />);
+    expect(
+      await screen.findByText(
+        'Hi, this is lindoe support! OMG, sorry your Linode is broken!'
+      )
+    ).toBeInTheDocument();
   });
 });

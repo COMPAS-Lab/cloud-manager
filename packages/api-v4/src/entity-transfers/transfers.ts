@@ -7,21 +7,19 @@ import Request, {
   setURL,
   setXFilter,
 } from '../request';
-import { ResourcePage as Page } from '../types';
+import { Filter, Params, ResourcePage as Page } from '../types';
 import { CreateTransferPayload, EntityTransfer } from './types';
-
-// SELF SERVE ENTITY TRANSFERS
 
 /**
  * getEntityTransfers
  *
  * Returns a paginated list of all Entity Transfers which this customer has created or accepted.
  */
-export const getEntityTransfers = (params?: any, filters?: any) =>
+export const getEntityTransfers = (params?: Params, filter?: Filter) =>
   Request<Page<EntityTransfer>>(
     setMethod('GET'),
     setParams(params),
-    setXFilter(filters),
+    setXFilter(filter),
     setURL(`${BETA_API_ROOT}/account/entity-transfers`)
   );
 
@@ -35,7 +33,9 @@ export const getEntityTransfers = (params?: any, filters?: any) =>
 export const getEntityTransfer = (token: string) =>
   Request<EntityTransfer>(
     setMethod('GET'),
-    setURL(`${BETA_API_ROOT}/account/entity-transfers/${token}`)
+    setURL(
+      `${BETA_API_ROOT}/account/entity-transfers/${encodeURIComponent(token)}`
+    )
   );
 
 /**
@@ -59,7 +59,11 @@ export const createEntityTransfer = (data: CreateTransferPayload) =>
 export const acceptEntityTransfer = (token: string) =>
   Request<{}>(
     setMethod('POST'),
-    setURL(`${BETA_API_ROOT}/account/entity-transfers/${token}/accept`)
+    setURL(
+      `${BETA_API_ROOT}/account/entity-transfers/${encodeURIComponent(
+        token
+      )}/accept`
+    )
   );
 
 /**
@@ -72,5 +76,7 @@ export const acceptEntityTransfer = (token: string) =>
 export const cancelTransfer = (token: string) =>
   Request<{}>(
     setMethod('DELETE'),
-    setURL(`${BETA_API_ROOT}/account/entity-transfers/${token}`)
+    setURL(
+      `${BETA_API_ROOT}/account/entity-transfers/${encodeURIComponent(token)}`
+    )
   );

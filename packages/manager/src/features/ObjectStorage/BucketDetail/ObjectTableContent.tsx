@@ -1,26 +1,29 @@
-import {
-  ObjectStorageObject,
-  ObjectStorageObjectListResponse,
-} from '@linode/api-v4';
-import { APIError } from '@linode/api-v4/lib/types';
 import * as React from 'react';
-import TableRowEmptyState from 'src/components/TableRowEmptyState';
-import TableRowError from 'src/components/TableRowError';
+
+import { TableRowEmpty } from 'src/components/TableRowEmpty/TableRowEmpty';
+import { TableRowError } from 'src/components/TableRowError/TableRowError';
 import { TableRowLoading } from 'src/components/TableRowLoading/TableRowLoading';
 import { useWindowDimensions } from 'src/hooks/useWindowDimensions';
 import { truncateEnd, truncateMiddle } from 'src/utilities/truncate';
-import { displayName, isFolder } from '../utilities';
-import FolderTableRow from './FolderTableRow';
-import ObjectTableRow from './ObjectTableRow';
+
+import { displayName, isEmptyObjectForFolder, isFolder } from '../utilities';
+import { FolderTableRow } from './FolderTableRow';
+import { ObjectTableRow } from './ObjectTableRow';
+
+import type {
+  ObjectStorageObject,
+  ObjectStorageObjectList,
+} from '@linode/api-v4';
+import type { APIError } from '@linode/api-v4/lib/types';
 
 interface Props {
-  data: ObjectStorageObjectListResponse[];
-  isFetching: boolean;
-  isFetchingNextPage: boolean;
+  data: ObjectStorageObjectList[];
   error?: APIError[];
-  handleClickDownload: (objectName: string, newTab: boolean) => void;
   handleClickDelete: (objectName: string) => void;
   handleClickDetails: (object: ObjectStorageObject) => void;
+  handleClickDownload: (objectName: string, newTab: boolean) => void;
+  isFetching: boolean;
+  isFetchingNextPage: boolean;
   numOfDisplayedObjects: number;
   prefix: any;
 }
@@ -28,12 +31,12 @@ interface Props {
 const ObjectTableContent: React.FC<Props> = (props) => {
   const {
     data,
-    isFetching,
-    isFetchingNextPage,
     error,
-    handleClickDownload,
     handleClickDelete,
     handleClickDetails,
+    handleClickDownload,
+    isFetching,
+    isFetchingNextPage,
     numOfDisplayedObjects,
     prefix,
   } = props;
@@ -41,7 +44,7 @@ const ObjectTableContent: React.FC<Props> = (props) => {
   const { width } = useWindowDimensions();
 
   if (isFetching && !isFetchingNextPage) {
-    return <TableRowLoading columns={4} responsive={{ 2: { smDown: true } }} />;
+    return <TableRowLoading columns={4} responsive={{ 2: { mdDown: true } }} />;
   }
 
   if (error) {
@@ -55,7 +58,7 @@ const ObjectTableContent: React.FC<Props> = (props) => {
 
   if (numOfDisplayedObjects === 0) {
     return (
-      <TableRowEmptyState
+      <TableRowEmpty
         colSpan={6}
         message={prefix ? 'This folder is empty.' : 'This bucket is empty.'}
       />
@@ -69,15 +72,29 @@ const ObjectTableContent: React.FC<Props> = (props) => {
     <>
       {data.map((page) => {
         return page.data.map((object) => {
+          if (isEmptyObjectForFolder(object)) {
+            if (numOfDisplayedObjects === 1) {
+              return (
+                <TableRowEmpty
+                  colSpan={6}
+                  key={`empty-${object.name}`}
+                  message="This folder is empty."
+                />
+              );
+            }
+            return null;
+          }
+
           if (isFolder(object)) {
             return (
               <FolderTableRow
-                key={object.name}
-                folderName={object.name}
                 displayName={truncateEnd(
                   displayName(object.name),
                   maxNameWidth
                 )}
+                folderName={object.name}
+                handleClickDelete={handleClickDelete}
+                key={object.name}
                 manuallyCreated={false}
               />
             );
@@ -85,7 +102,6 @@ const ObjectTableContent: React.FC<Props> = (props) => {
 
           return (
             <ObjectTableRow
-              key={object.name}
               displayName={truncateMiddle(
                 displayName(object.name),
                 maxNameWidth
@@ -97,18 +113,19 @@ const ObjectTableContent: React.FC<Props> = (props) => {
                * `null`. The OR fallbacks are to make TSC happy, and to safeguard
                * in the event of the data being something we don't expect.
                */
-              objectSize={object.size || 0}
-              objectLastModified={object.last_modified || ''}
-              manuallyCreated={false}
-              handleClickDownload={handleClickDownload}
               handleClickDelete={handleClickDelete}
               handleClickDetails={() => handleClickDetails(object)}
+              handleClickDownload={handleClickDownload}
+              key={object.name}
+              manuallyCreated={false}
+              objectLastModified={object.last_modified || ''}
+              objectSize={object.size || 0}
             />
           );
         });
       })}
       {isFetchingNextPage ? (
-        <TableRowLoading columns={4} responsive={{ 2: { smDown: true } }} />
+        <TableRowLoading columns={4} responsive={{ 2: { mdDown: true } }} />
       ) : null}
     </>
   );

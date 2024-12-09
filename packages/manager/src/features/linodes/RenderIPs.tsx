@@ -1,16 +1,14 @@
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import Grid from 'src/components/Grid';
 
 export interface Props {
   ipv4: string[];
-  ipv6: string | null;
+  ipv6: null | string;
   linodeId: number;
 }
 
-type CombinedProps = Props;
-
-export const RenderIPs: React.FC<CombinedProps> = (props) => {
+export const RenderIPs = React.memo((props: Props) => {
   const { ipv4, ipv6, linodeId } = props;
 
   const ipv4ShouldTruncate = ipv4.length > 4;
@@ -20,18 +18,18 @@ export const RenderIPs: React.FC<CombinedProps> = (props) => {
     <>
       {ipv4Slice.map((thisIP) => {
         return (
-          <Grid item key={thisIP} data-testid="ipv4-list-item">
+          <Grid data-testid="ipv4-list-item" key={thisIP}>
             {thisIP}
           </Grid>
         );
       })}
-      {ipv6 && <Grid item>{ipv6}</Grid>}
+      {ipv6 && <Grid>{ipv6}</Grid>}
       {ipv4ShouldTruncate ? (
-        <Grid item>
+        <Grid>
           ... plus{' '}
           <Link
-            to={`/linodes/${linodeId}/networking`}
             data-testid="truncated-ips"
+            to={`/linodes/${linodeId}/networking`}
           >
             {ipv4.length - 3} more
           </Link>{' '}
@@ -39,6 +37,4 @@ export const RenderIPs: React.FC<CombinedProps> = (props) => {
       ) : null}
     </>
   );
-};
-
-export default React.memo(RenderIPs);
+});

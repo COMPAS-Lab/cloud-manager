@@ -1,60 +1,22 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
-import Hidden from 'src/components/core/Hidden';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import DateTimeDisplay from 'src/components/DateTimeDisplay';
+
+import { DateTimeDisplay } from 'src/components/DateTimeDisplay';
 import { Item } from 'src/components/EnhancedSelect/Select';
-import TableCell from 'src/components/TableCell';
-import TableRow from 'src/components/TableRow';
-import Tags from 'src/components/Tags';
-import RegionIndicator from 'src/features/linodes/LinodesLanding/RegionIndicator';
+import { Hidden } from 'src/components/Hidden';
+import { Tags } from 'src/components/Tags/Tags';
+import { Typography } from 'src/components/Typography';
+import { RegionIndicator } from 'src/features/Linodes/LinodesLanding/RegionIndicator';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    cursor: 'pointer',
-    paddingTop: '0 !important',
-    paddingBottom: '0 !important',
-    width: '100%',
-    transition: theme.transitions.create(['background-color']),
-  },
-  labelCell: {
-    width: '60%',
-    [theme.breakpoints.up('md')]: {
-      width: '35%',
-    },
-  },
-  regionCell: {
-    width: '100%',
-    [theme.breakpoints.up('md')]: {
-      width: '15%',
-    },
-  },
-  createdCell: {
-    width: '100%',
-    [theme.breakpoints.up('md')]: {
-      width: '20%',
-    },
-  },
-  tagCell: {
-    width: '100%',
-    [theme.breakpoints.up('md')]: {
-      width: '30%',
-    },
-  },
-  tag: {
-    margin: theme.spacing() / 2,
-  },
-  link: {
-    display: 'block',
-    color: theme.textColors.linkActiveLight,
-    fontFamily: theme.font.bold,
-    fontSize: '.875rem',
-    lineHeight: '1.125rem',
-  },
-}));
+import {
+  StyledCreatedTableCell,
+  StyledLabelTableCell,
+  StyledLink,
+  StyledRegionTableCell,
+  StyledTableRow,
+  StyledTagTableCell,
+} from './ResultRow.styles';
 
-interface Props {
+interface ResultRowProps {
   result: Item;
   /* -- Clanode Change -- */
   showRegion?: boolean;
@@ -69,17 +31,9 @@ export const ResultRow: React.FC<CombinedProps> = (props) => {
   const { result, showRegion } = props;
 
   return (
-    <TableRow
-      className={classes.root}
-      data-qa-result-row={result.label}
-      ariaLabel={result.label}
-    >
-      <TableCell className={classes.labelCell}>
-        <Link
-          to={result.data.path}
-          className={classes.link}
-          title={result.label}
-        >
+    <StyledTableRow data-qa-result-row={result.label}>
+      <StyledLabelTableCell>
+        <StyledLink title={result.label} to={result.data.path}>
           {result.label}
         </Link>
         <Typography variant="body1">{result.data.description}</Typography>
@@ -100,14 +54,12 @@ export const ResultRow: React.FC<CombinedProps> = (props) => {
               <DateTimeDisplay value={result.data.created} />
             </Typography>
           )}
-        </TableCell>
+        </StyledCreatedTableCell>
 
-        <TableCell className={classes.tagCell}>
-          <Tags tags={result.data.tags} data-testid={'result-tags'} />
-        </TableCell>
+        <StyledTagTableCell>
+          <Tags data-testid={'result-tags'} tags={result.data.tags} />
+        </StyledTagTableCell>
       </Hidden>
-    </TableRow>
+    </StyledTableRow>
   );
 };
-
-export default ResultRow;

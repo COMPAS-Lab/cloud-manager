@@ -1,24 +1,27 @@
 import { Component } from 'react';
-import { connect, MapDispatchToProps } from 'react-redux';
-import { RouteComponentProps, withRouter } from 'react-router-dom';
-import { compose } from 'recompose';
+import { connect } from 'react-redux';
+import { withRouter } from 'react-router-dom';
 
 import { handleStartSession } from 'src/store/authentication/authentication.actions';
-import { parseQueryParams } from 'src/utilities/queryParams';
+import { getQueryParamsFromQueryString } from 'src/utilities/queryParams';
 import { authentication } from 'src/utilities/storage';
 
-type CombinedProps = DispatchProps & RouteComponentProps;
+import type { MapDispatchToProps } from 'react-redux';
+import type { RouteComponentProps } from 'react-router-dom';
+import type { BaseQueryParams } from 'src/utilities/queryParams';
 
-interface OAuthQueryParams {
+interface OAuthCallbackPageProps extends DispatchProps, RouteComponentProps {}
+
+export interface OAuthQueryParams extends BaseQueryParams {
   access_token: string; // token for auth
-  token_type: string; // token prefix AKA "Bearer"
-  scope: string;
   expires_in: string; // amount of time (in seconds) the token has before expiry
-  state: string; // nonce
   return: string;
+  scope: string;
+  state: string; // nonce
+  token_type: string; // token prefix AKA "Bearer"
 }
 
-export class OAuthCallbackPage extends Component<CombinedProps> {
+export class OAuthCallbackPage extends Component<OAuthCallbackPageProps> {
   checkNonce(nonce: string) {
     const { history } = this.props;
     // nonce should be set and equal to ours otherwise retry auth
@@ -39,7 +42,7 @@ export class OAuthCallbackPage extends Component<CombinedProps> {
      *
      */
 
-    const { location, history } = this.props;
+    const { history, location } = this.props;
 
     /**
      * If the hash doesn't contain a string after the #, there's no point continuing as we dont have
@@ -50,14 +53,14 @@ export class OAuthCallbackPage extends Component<CombinedProps> {
       return history.push('/');
     }
 
-    const hashParams = (parseQueryParams(
+    const hashParams = getQueryParamsFromQueryString<OAuthQueryParams>(
       location.hash.substr(1)
-    ) as unknown) as OAuthQueryParams;
+    );
 
     const {
       access_token: accessToken,
-      scope: scopes,
       expires_in: expiresIn,
+      scope: scopes,
       state: nonce,
       token_type: tokenType,
     } = hashParams;
@@ -144,7 +147,4 @@ const mapDispatchToProps: MapDispatchToProps<DispatchProps, {}> = (
 
 const connected = connect(undefined, mapDispatchToProps);
 
-export default compose<CombinedProps, {}>(
-  connected,
-  withRouter
-)(OAuthCallbackPage);
+export default connected(withRouter(OAuthCallbackPage));

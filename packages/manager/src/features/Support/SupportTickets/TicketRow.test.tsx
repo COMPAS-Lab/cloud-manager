@@ -1,18 +1,20 @@
 import { render } from '@testing-library/react';
 import * as React from 'react';
+
 import { supportTicketFactory } from 'src/factories/support';
 import { wrapWithTheme } from 'src/utilities/testHelpers';
-import TicketRow from './TicketRow';
+
+import { TicketRow } from './TicketRow';
 
 const supportTicket = supportTicketFactory.build();
 
-window.matchMedia = jest.fn().mockImplementation((query) => {
+window.matchMedia = vi.fn().mockImplementation((query) => {
   return {
+    addListener: vi.fn(),
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
+    removeListener: vi.fn(),
   };
 });
 

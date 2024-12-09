@@ -1,30 +1,25 @@
-import { render, waitForElementToBeRemoved } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { assocPath } from 'ramda';
 import * as React from 'react';
 
 import { reactRouterProps } from 'src/__data__/reactRouterProps';
 import { searchbarResult1 } from 'src/__data__/searchResults';
-import { renderWithTheme, wrapWithTheme } from 'src/utilities/testHelpers';
-import { CombinedProps as Props, SearchLanding } from './SearchLanding';
-import { emptyResults } from './utils';
-import { rest, server } from 'src/mocks/testServer';
+import { linodeTypeFactory } from 'src/factories';
 import { makeResourcePage } from 'src/mocks/serverHandlers';
-import { QueryClient } from 'react-query';
+import { HttpResponse, http, server } from 'src/mocks/testServer';
+import { renderWithTheme, wrapWithTheme } from 'src/utilities/testHelpers';
+
+import { SearchLanding } from './SearchLanding';
+import { emptyResults } from './utils';
+
+import type { SearchLandingProps as Props } from './SearchLanding';
 
 const props: Props = {
+  combinedResults: [],
   entities: [],
   entitiesLoading: false,
+  search: vi.fn(),
   searchResultsByEntity: emptyResults,
-  combinedResults: [],
-  search: jest.fn(),
-  errors: {
-    hasErrors: false,
-    linodes: false,
-    nodebalancers: false,
-    images: false,
-    volumes: false,
-    kubernetes: false,
-  },
   ...reactRouterProps,
 };
 
@@ -34,25 +29,21 @@ const propsWithResults: Props = {
   searchResultsByEntity: { ...emptyResults, linodes: [searchbarResult1] },
 };
 
-const queryClient = new QueryClient();
-
-jest.mock('src/hooks/useReduxLoad', () => ({
-  useReduxLoad: () => jest.fn().mockReturnValue({ _loading: false }),
-}));
-
 describe('Component', () => {
-  server.use(
-    rest.get('*/domains', (req, res, ctx) => {
-      return res(ctx.json(makeResourcePage([])));
-    })
-  );
+  beforeEach(() => {
+    server.use(
+      http.get('*/domains', () => {
+        return HttpResponse.json(makeResourcePage([]));
+      }),
+      http.get('*/linode/types/*', () => {
+        return HttpResponse.json(linodeTypeFactory.build());
+      })
+    );
+  });
 
   it('should render', async () => {
-    const { getByText, getByTestId } = renderWithTheme(
-      <SearchLanding {...props} />
-    );
-    await waitForElementToBeRemoved(getByTestId('loading'));
-    expect(getByText(/search/));
+    const { findByText } = renderWithTheme(<SearchLanding {...props} />);
+    expect(await findByText(/searched/i));
   });
 
   it('should search on mount', async () => {
@@ -61,17 +52,13 @@ describe('Component', () => {
       '?query=search',
       propsWithResults
     );
-    const { getByText, getByTestId } = renderWithTheme(
-      <SearchLanding {...newProps} />,
-      { queryClient }
-    );
-    await waitForElementToBeRemoved(getByTestId('loading'));
+    const { getByText } = renderWithTheme(<SearchLanding {...newProps} />);
     getByText(/search/i);
-    expect(props.search).toHaveBeenCalledWith('search', [], []);
+    expect(props.search).toHaveBeenCalled();
   });
 
   it('should search when the entity list (from Redux) changes', () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     const { rerender } = render(wrapWithTheme(<SearchLanding {...props} />));
     expect(props.search).toHaveBeenCalledTimes(1);
 
@@ -83,15 +70,15 @@ describe('Component', () => {
   });
 
   it('should show an empty state', async () => {
-    const { getByText } = renderWithTheme(<SearchLanding {...props} />);
-    getByText(/no results/i);
+    const { findByText } = renderWithTheme(<SearchLanding {...props} />);
+    await findByText(/no results/i);
   });
 
-  it('should display the query term', () => {
-    const { getByText } = renderWithTheme(
+  it('should display the query term', async () => {
+    const { findByText } = renderWithTheme(
       <SearchLanding {...propsWithResults} />
     );
-    getByText('Search Results for "search"');
+    await findByText('Search Results for "search"');
   });
 
   it('should parse multi-word queries correctly', async () => {
@@ -100,8 +87,8 @@ describe('Component', () => {
       '?query=two%20words',
       propsWithResults
     );
-    const { getByText } = renderWithTheme(<SearchLanding {...newProps} />);
-    expect(getByText('Search Results for "two words"'));
+    const { findByText } = renderWithTheme(<SearchLanding {...newProps} />);
+    expect(await findByText('Search Results for "two words"'));
   });
 
   it('should handle blank or unusual queries without crashing', async () => {
@@ -110,7 +97,7 @@ describe('Component', () => {
       '?query=',
       propsWithResults
     );
-    const { getByText } = renderWithTheme(<SearchLanding {...newProps} />);
-    getByText(/search/i);
+    const { findByText } = renderWithTheme(<SearchLanding {...newProps} />);
+    await findByText(/search/i);
   });
 });

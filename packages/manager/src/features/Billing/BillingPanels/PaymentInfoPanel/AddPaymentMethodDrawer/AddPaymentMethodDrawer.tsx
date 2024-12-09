@@ -1,23 +1,30 @@
+import { Box } from '@linode/ui';
+import Grid from '@mui/material/Unstable_Grid2';
 import * as React from 'react';
-import { PaymentMethod } from '@linode/api-v4/lib/account';
-import { VariantType } from 'notistack';
-import Divider from 'src/components/core/Divider';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import Drawer from 'src/components/Drawer';
-import Grid from 'src/components/Grid';
-import LinearProgress from 'src/components/LinearProgress';
-import GooglePayChip from '../GooglePayChip';
-import AddCreditCardForm from './AddCreditCardForm';
-import Notice from 'src/components/Notice';
+
+import { Divider } from 'src/components/Divider';
+import { Drawer } from 'src/components/Drawer';
+import { LinearProgress } from 'src/components/LinearProgress';
+import { Notice } from 'src/components/Notice/Notice';
+import { TooltipIcon } from 'src/components/TooltipIcon';
+import { Typography } from 'src/components/Typography';
 import { MAXIMUM_PAYMENT_METHODS } from 'src/constants';
+import { getRestrictedResourceText } from 'src/features/Account/utils';
+import { useRestrictedGlobalGrantCheck } from 'src/hooks/useRestrictedGlobalGrantCheck';
+import { useProfile } from 'src/queries/profile/profile';
+
+import GooglePayChip from '../GooglePayChip';
 import { PayPalChip } from '../PayPalChip';
-import PayPalErrorBoundary from '../PayPalErrorBoundary';
-import HelpIcon from 'src/components/HelpIcon';
+import { PayPalErrorBoundary } from '../PayPalErrorBoundary';
+import AddCreditCardForm from './AddCreditCardForm';
+
+import type { PaymentMethod } from '@linode/api-v4/lib/account';
+import type { VariantType } from 'notistack';
+import type { NoticeVariant } from 'src/components/Notice/Notice';
 
 interface Props {
-  open: boolean;
   onClose: () => void;
+  open: boolean;
   paymentMethods: PaymentMethod[] | undefined;
 }
 
@@ -26,62 +33,34 @@ export interface PaymentMessage {
   variant: VariantType;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  methodGroup: {
-    marginTop: theme.spacing(),
-    marginBottom: theme.spacing(),
-  },
-  root: {
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  progress: {
-    marginBottom: 18,
-    width: '100%',
-    height: 5,
-  },
-  tooltip: {
-    color: theme.color.grey1,
-    padding: '0 0 0 4px',
-    '& svg': {
-      height: 20,
-      width: 20,
-    },
-  },
-  notice: {
-    borderLeft: `solid 6px ${theme.color.green}`,
-    marginBottom: theme.spacing(2),
-    padding: '8px 16px',
-    '& p': {
-      fontSize: '0.95em',
-    },
-  },
-  link: {
-    ...theme.applyLinkStyles,
-  },
-  errorIcon: {
-    color: theme.color.red,
-    marginRight: -20,
-    '&:hover': {
-      color: theme.color.red,
-      opacity: 0.7,
-    },
-    '& svg': {
-      height: 28,
-      width: 28,
-    },
-  },
-}));
+const sxBox = {
+  paddingBottom: '8px',
+  paddingTop: '8px',
+};
 
-export const AddPaymentMethodDrawer: React.FC<Props> = (props) => {
+const sxTooltipIcon = {
+  '& svg': {
+    height: '28px',
+    width: '28px',
+  },
+  '&:hover': {
+    opacity: 0.7,
+  },
+};
+
+export const AddPaymentMethodDrawer = (props: Props) => {
   const { onClose, open, paymentMethods } = props;
-
-  const classes = useStyles();
-
+  const { data: profile } = useProfile();
   const [isProcessing, setIsProcessing] = React.useState<boolean>(false);
   const [noticeMessage, setNoticeMessage] = React.useState<
     PaymentMessage | undefined
   >(undefined);
+  const isChildUser = profile?.user_type === 'child';
+  const isReadOnly =
+    useRestrictedGlobalGrantCheck({
+      globalGrantType: 'account_access',
+      permittedGrantLevel: 'read_write',
+    }) || isChildUser;
 
   React.useEffect(() => {
     if (open) {
@@ -96,7 +75,11 @@ export const AddPaymentMethodDrawer: React.FC<Props> = (props) => {
 
   const renderError = (errorMsg: string) => {
     return (
-      <HelpIcon className={classes.errorIcon} isError={true} text={errorMsg} />
+      <TooltipIcon
+        status="error"
+        sxTooltipIcon={sxTooltipIcon}
+        text={errorMsg}
+      />
     );
   };
 
@@ -104,80 +87,101 @@ export const AddPaymentMethodDrawer: React.FC<Props> = (props) => {
     ? paymentMethods.length >= MAXIMUM_PAYMENT_METHODS
     : false;
 
-  const disabled = isProcessing || hasMaxPaymentMethods;
+  const disabled = isProcessing || hasMaxPaymentMethods || isReadOnly;
 
   return (
-    <Drawer title="Add Payment Method" open={open} onClose={onClose}>
-      {isProcessing ? <LinearProgress className={classes.progress} /> : null}
+    <Drawer onClose={onClose} open={open} title="Add Payment Method">
+      {isProcessing ? (
+        <LinearProgress
+          sx={{
+            height: 5,
+            marginBottom: 2,
+            width: '100%',
+          }}
+        />
+      ) : null}
+      {isReadOnly && (
+        <Grid xs={12}>
+          <Notice
+            text={getRestrictedResourceText({
+              isChildUser,
+              resourceType: 'Account',
+            })}
+            variant="error"
+          />
+        </Grid>
+      )}
       {hasMaxPaymentMethods ? (
         <Notice
-          warning
           text="You reached the maximum number of payment methods on your account. Delete an existing payment method to add a new one."
+          variant="warning"
         />
       ) : null}
       {noticeMessage ? (
         <Notice
-          error={noticeMessage.variant === 'error'}
-          warning={noticeMessage.variant === 'warning'}
           text={noticeMessage.text}
+          variant={noticeMessage.variant as NoticeVariant}
         />
       ) : null}
       <>
         <Divider />
-        <Grid className={classes.root} container>
-          <Grid item xs={8} md={9}>
-            <Typography variant="h3">Google Pay</Typography>
-            <Typography>
-              You&rsquo;ll be taken to Google Pay to complete sign up.
-            </Typography>
+        <Box sx={sxBox}>
+          <Grid container spacing={2}>
+            <Grid md={9} xs={8}>
+              <Typography variant="h3">Google Pay</Typography>
+              <Typography>
+                You&rsquo;ll be taken to Google Pay to complete sign up.
+              </Typography>
+            </Grid>
+            {!isReadOnly && (
+              <Grid
+                alignContent="center"
+                container
+                justifyContent="flex-end"
+                md={3}
+                xs={4}
+              >
+                <GooglePayChip
+                  disabled={disabled}
+                  onClose={onClose}
+                  renderError={renderError}
+                  setMessage={setMessage}
+                  setProcessing={setIsProcessing}
+                />
+              </Grid>
+            )}
           </Grid>
-          <Grid
-            container
-            item
-            xs={4}
-            md={3}
-            justifyContent="flex-end"
-            alignContent="center"
-          >
-            <GooglePayChip
-              disabled={disabled}
-              setMessage={setMessage}
-              onClose={onClose}
-              setProcessing={setIsProcessing}
-              renderError={renderError}
-            />
-          </Grid>
-        </Grid>
-      </>
-      <>
+        </Box>
         <Divider />
-        <Grid className={classes.root} container>
-          <Grid item xs={8} md={9}>
-            <Typography variant="h3">PayPal</Typography>
-            <Typography>
-              You&rsquo;ll be taken to PayPal to complete sign up.
-            </Typography>
+        <Box sx={sxBox}>
+          <Grid container spacing={2}>
+            <Grid md={9} xs={8}>
+              <Typography variant="h3">PayPal</Typography>
+              <Typography>
+                You&rsquo;ll be taken to PayPal to complete sign up.
+              </Typography>
+            </Grid>
+            {!isReadOnly && (
+              <Grid
+                alignContent="center"
+                container
+                justifyContent="flex-end"
+                md={3}
+                xs={4}
+              >
+                <PayPalErrorBoundary renderError={renderError}>
+                  <PayPalChip
+                    disabled={disabled}
+                    onClose={onClose}
+                    renderError={renderError}
+                    setMessage={setMessage}
+                    setProcessing={setIsProcessing}
+                  />
+                </PayPalErrorBoundary>
+              </Grid>
+            )}
           </Grid>
-          <Grid
-            container
-            item
-            xs={4}
-            md={3}
-            justifyContent="flex-end"
-            alignContent="center"
-          >
-            <PayPalErrorBoundary renderError={renderError}>
-              <PayPalChip
-                onClose={onClose}
-                setProcessing={setIsProcessing}
-                renderError={renderError}
-                disabled={disabled}
-              />
-            </PayPalErrorBoundary>
-          </Grid>
-        </Grid>
-      </>
-      <>
+        </Box>
         <Divider spacingBottom={16} />
         <Typography variant="h3">Credit Card</Typography>
         <AddCreditCardForm disabled={disabled} onClose={onClose} />

@@ -1,54 +1,64 @@
 import {
   createObjectStorageKeys,
-  ObjectStorageKey,
-  ObjectStorageKeyRequest,
   revokeObjectStorageKey,
   updateObjectStorageKey,
 } from '@linode/api-v4/lib/object-storage';
-import { FormikBag } from 'formik';
 import * as React from 'react';
-import SecretTokenDialog from 'src/features/Profile/SecretTokenDialog';
+
 import { DocumentTitleSegment } from 'src/components/DocumentTitle';
+import { PaginationFooter } from 'src/components/PaginationFooter/PaginationFooter';
+import { SecretTokenDialog } from 'src/features/Profile/SecretTokenDialog/SecretTokenDialog';
+import { useAccountManagement } from 'src/hooks/useAccountManagement';
 import { useErrors } from 'src/hooks/useErrors';
+import { useFlags } from 'src/hooks/useFlags';
 import { useOpenClose } from 'src/hooks/useOpenClose';
-import { useAccountSettings } from 'src/queries/accountSettings';
-import { getAPIErrorOrDefault, getErrorMap } from 'src/utilities/errorUtils';
+import { usePagination } from 'src/hooks/usePagination';
+import { useAccountSettings } from 'src/queries/account/settings';
+import { useObjectStorageAccessKeys } from 'src/queries/object-storage/queries';
+import { isFeatureEnabledV2 } from 'src/utilities/accountCapabilities';
 import {
   sendCreateAccessKeyEvent,
   sendEditAccessKeyEvent,
   sendRevokeAccessKeyEvent,
-} from 'src/utilities/ga';
-import AccessKeyDrawer from './AccessKeyDrawer';
-import AccessKeyTable from './AccessKeyTable';
-import RevokeAccessKeyDialog from './RevokeAccessKeyDialog';
-import { MODE, OpenAccessDrawer } from './types';
-import ViewPermissionsDrawer from './ViewPermissionsDrawer';
-import { useObjectStorageAccessKeys } from 'src/queries/objectStorage';
-import usePagination from 'src/hooks/usePagination';
-import PaginationFooter from 'src/components/PaginationFooter';
+} from 'src/utilities/analytics/customEventAnalytics';
+import { getAPIErrorOrDefault, getErrorMap } from 'src/utilities/errorUtils';
+
+import { AccessKeyDrawer } from './AccessKeyDrawer';
+import { AccessKeyTable } from './AccessKeyTable/AccessKeyTable';
+import { OMC_AccessKeyDrawer } from './OMC_AccessKeyDrawer';
+import { RevokeAccessKeyDialog } from './RevokeAccessKeyDialog';
+import { ViewPermissionsDrawer } from './ViewPermissionsDrawer';
+
+import type { MODE, OpenAccessDrawer } from './types';
+import type {
+  CreateObjectStorageKeyPayload,
+  ObjectStorageKey,
+  UpdateObjectStorageKeyPayload,
+} from '@linode/api-v4/lib/object-storage';
+import type { FormikBag, FormikHelpers } from 'formik';
 
 interface Props {
-  isRestrictedUser: boolean;
   accessDrawerOpen: boolean;
-  openAccessDrawer: (mode: MODE) => void;
   closeAccessDrawer: () => void;
+  isRestrictedUser: boolean;
   mode: MODE;
+  openAccessDrawer: (mode: MODE) => void;
 }
 
-export type FormikProps = FormikBag<Props, ObjectStorageKeyRequest>;
+export type FormikProps = FormikBag<Props, CreateObjectStorageKeyPayload>;
 
-export const AccessKeyLanding: React.FC<Props> = (props) => {
+export const AccessKeyLanding = (props: Props) => {
   const {
-    closeAccessDrawer,
-    openAccessDrawer,
-    mode,
     accessDrawerOpen,
+    closeAccessDrawer,
     isRestrictedUser,
+    mode,
+    openAccessDrawer,
   } = props;
 
   const pagination = usePagination(1);
 
-  const { data, isLoading, error, refetch } = useObjectStorageAccessKeys({
+  const { data, error, isLoading, refetch } = useObjectStorageAccessKeys({
     page: pagination.page,
     page_size: pagination.pageSize,
   });
@@ -78,11 +88,22 @@ export const AccessKeyLanding: React.FC<Props> = (props) => {
 
   const displayKeysDialog = useOpenClose();
   const revokeKeysDialog = useOpenClose();
-  const viewPermissionsDrawer = useOpenClose();
+  const flags = useFlags();
+  const { account } = useAccountManagement();
+
+  const isObjMultiClusterEnabled = isFeatureEnabledV2(
+    'Object Storage Access Key Regions',
+    Boolean(flags.objMultiCluster),
+    account?.capabilities ?? []
+  );
 
   const handleCreateKey = (
-    values: ObjectStorageKeyRequest,
-    { setSubmitting, setErrors, setStatus }: FormikProps
+    values: CreateObjectStorageKeyPayload,
+    {
+      setErrors,
+      setStatus,
+      setSubmitting,
+    }: FormikHelpers<CreateObjectStorageKeyPayload>
   ) => {
     // Clear out status (used for general errors)
     setStatus(null);
@@ -137,8 +158,12 @@ export const AccessKeyLanding: React.FC<Props> = (props) => {
   };
 
   const handleEditKey = (
-    values: ObjectStorageKeyRequest,
-    { setSubmitting, setErrors, setStatus }: FormikProps
+    values: UpdateObjectStorageKeyPayload,
+    {
+      setErrors,
+      setStatus,
+      setSubmitting,
+    }: FormikHelpers<UpdateObjectStorageKeyPayload>
   ) => {
     // This shouldn't happen, but just in case.
     if (!keyToEdit) {
@@ -156,7 +181,10 @@ export const AccessKeyLanding: React.FC<Props> = (props) => {
 
     setSubmitting(true);
 
-    updateObjectStorageKey(keyToEdit.id, { label: values.label })
+    updateObjectStorageKey(
+      keyToEdit.id,
+      isObjMultiClusterEnabled ? values : { label: values.label }
+    )
       .then((_) => {
         setSubmitting(false);
 
@@ -223,13 +251,8 @@ export const AccessKeyLanding: React.FC<Props> = (props) => {
     objectStorageKey: ObjectStorageKey | null = null
   ) => {
     setKeyToEdit(objectStorageKey);
-    switch (mode) {
-      case 'creating':
-      case 'editing':
-        openAccessDrawer(mode);
-        break;
-      case 'viewing':
-        viewPermissionsDrawer.open();
+    if (mode !== 'creating') {
+      openAccessDrawer(mode);
     }
   };
 
@@ -248,51 +271,61 @@ export const AccessKeyLanding: React.FC<Props> = (props) => {
       <DocumentTitleSegment segment="Access Keys" />
       <AccessKeyTable
         data={data?.data}
-        isLoading={isLoading}
+        data-qa-access-key-table
         error={error}
+        isLoading={isLoading}
         isRestrictedUser={isRestrictedUser}
         openDrawer={openDrawer}
         openRevokeDialog={openRevokeDialog}
-        data-qa-access-key-table
       />
       <PaginationFooter
-        page={pagination.page}
-        pageSize={pagination.pageSize}
         count={data?.results || 0}
+        eventCategory="object storage keys table"
         handlePageChange={pagination.handlePageChange}
         handleSizeChange={pagination.handlePageSizeChange}
-        eventCategory="object storage keys table"
+        page={pagination.page}
+        pageSize={pagination.pageSize}
       />
-      <AccessKeyDrawer
-        open={accessDrawerOpen}
-        onClose={closeAccessDrawer}
-        onSubmit={mode === 'creating' ? handleCreateKey : handleEditKey}
-        mode={mode}
-        objectStorageKey={keyToEdit ? keyToEdit : undefined}
-        isRestrictedUser={props.isRestrictedUser}
-      />
+      {isObjMultiClusterEnabled ? (
+        <OMC_AccessKeyDrawer
+          isRestrictedUser={props.isRestrictedUser}
+          mode={mode}
+          objectStorageKey={keyToEdit ? keyToEdit : undefined}
+          onClose={closeAccessDrawer}
+          onSubmit={mode === 'creating' ? handleCreateKey : handleEditKey}
+          open={accessDrawerOpen}
+        />
+      ) : (
+        <AccessKeyDrawer
+          isRestrictedUser={props.isRestrictedUser}
+          mode={mode}
+          objectStorageKey={keyToEdit ? keyToEdit : undefined}
+          onClose={closeAccessDrawer}
+          onSubmit={mode === 'creating' ? handleCreateKey : handleEditKey}
+          open={accessDrawerOpen}
+        />
+      )}
+
       <ViewPermissionsDrawer
-        open={viewPermissionsDrawer.isOpen}
-        onClose={viewPermissionsDrawer.close}
         objectStorageKey={keyToEdit}
+        onClose={closeAccessDrawer}
+        open={mode === 'viewing' && accessDrawerOpen}
       />
       <SecretTokenDialog
-        title="Access Keys"
-        open={displayKeysDialog.isOpen}
-        onClose={displayKeysDialog.close}
         objectStorageKey={keyToDisplay}
+        onClose={displayKeysDialog.close}
+        open={displayKeysDialog.isOpen}
+        title="Access Keys"
       />
       <RevokeAccessKeyDialog
-        isOpen={revokeKeysDialog.isOpen}
-        label={(keyToRevoke && keyToRevoke.label) || ''}
+        errors={revokeErrors}
         handleClose={closeRevokeDialog}
         handleSubmit={handleRevokeKeys}
         isLoading={isRevoking}
+        isOpen={revokeKeysDialog.isOpen}
+        label={keyToRevoke?.label || ''}
         numAccessKeys={data?.results || 0}
-        errors={revokeErrors}
       />
     </div>
   );
 };
-
-export default AccessKeyLanding;

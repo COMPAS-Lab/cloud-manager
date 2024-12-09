@@ -1,5 +1,6 @@
 import { APIError } from '@linode/api-v4/lib/types';
 import { pathOr } from 'ramda';
+
 import { DEFAULT_ERROR_MESSAGE } from 'src/constants';
 
 /**
@@ -33,7 +34,7 @@ export const getAPIErrorOrDefault = (
   field?: string
 ): APIError[] => {
   const _defaultError = field
-    ? [{ reason: defaultError, field }]
+    ? [{ field, reason: defaultError }]
     : [{ reason: defaultError }];
 
   return isDefaultError(errorResponse) ? _defaultError : errorResponse;
@@ -84,7 +85,7 @@ export const getErrorStringOrDefault = (
 export const getErrorMap = <T extends string = string>(
   fields: T[] = [],
   errors?: APIError[] | null
-): Partial<Record<T | 'none', string | undefined>> => {
+): Partial<Record<'none' | T, string | undefined>> => {
   if (!errors) {
     return {} as Partial<Record<any, any>>;
   }
@@ -104,6 +105,6 @@ export const getErrorMap = <T extends string = string>(
         };
       }
     },
-    { none: undefined }
-  ) as Record<T | 'none', string | undefined>;
+    { none: undefined } as Record<string, string | undefined>
+  ) as Record<'none' | T, string | undefined>;
 };

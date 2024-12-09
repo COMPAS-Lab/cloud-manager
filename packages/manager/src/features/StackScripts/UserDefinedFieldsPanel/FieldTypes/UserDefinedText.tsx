@@ -1,84 +1,66 @@
-import classNames from 'classnames';
-import { UserDefinedField } from '@linode/api-v4/lib/stackscripts';
+import { omittedProps } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import * as React from 'react';
-import AccessPanel from 'src/components/AccessPanel';
-import {
-  createStyles,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
-import RenderGuard from 'src/components/RenderGuard';
-import TextField from 'src/components/TextField';
 
-type ClassNames = 'accessPanel' | 'marginTop';
+import { AccessPanel } from 'src/components/AccessPanel/AccessPanel';
+import { RenderGuard } from 'src/components/RenderGuard';
+import { TextField } from 'src/components/TextField';
 
-const styles = () =>
-  createStyles({
-    accessPanel: {
-      padding: 0,
-    },
-    marginTop: {
-      marginTop: 0,
-    },
-  });
+import type { UserDefinedField } from '@linode/api-v4/lib/stackscripts';
 
 interface Props {
-  isPassword?: boolean;
-  field: UserDefinedField;
-  updateFormState: (key: string, value: any) => void;
-  isOptional: boolean;
-  placeholder?: string;
   error?: string;
+  field: UserDefinedField;
+  isOptional: boolean;
+  isPassword?: boolean;
+  placeholder?: string;
+  tooltip?: JSX.Element;
+  updateFormState: (key: string, value: any) => void;
   value: string;
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
-
-class UserDefinedText extends React.Component<CombinedProps, {}> {
-  renderTextField = () => {
-    const { error, field, placeholder, isOptional } = this.props;
-
-    return (
-      <TextField
-        required={!isOptional}
-        onChange={this.handleUpdateText}
-        label={field.label}
-        errorText={error}
-        helperText={placeholder}
-        value={this.props.value}
-      />
-    );
-  };
-
-  renderPasswordField = () => {
-    const { error, field, placeholder, isOptional, classes } = this.props;
-
-    return (
-      <AccessPanel
-        required={!isOptional}
-        handleChange={this.handleUpdatePassword}
-        label={field.label}
-        placeholder={placeholder}
-        error={error}
-        hideStrengthLabel
-        className={classNames({
-          [classes.accessPanel]: true,
-          [classes.marginTop]: !isOptional,
-        })}
-        isOptional={isOptional}
-        password={this.props.value}
-      />
-    );
+class UserDefinedText extends React.Component<Props, {}> {
+  handleUpdatePassword = (value: string) => {
+    const { field, updateFormState } = this.props;
+    updateFormState(field.name, value);
   };
 
   handleUpdateText = (e: any) => {
-    const { updateFormState, field } = this.props;
+    const { field, updateFormState } = this.props;
     updateFormState(field.name, e.target.value);
   };
 
-  handleUpdatePassword = (value: string) => {
-    const { updateFormState, field } = this.props;
-    updateFormState(field.name, value);
+  renderPasswordField = () => {
+    const { error, field, isOptional, placeholder, tooltip } = this.props;
+
+    return (
+      <StyledAccessPanel
+        disabledReason={tooltip}
+        error={error}
+        handleChange={this.handleUpdatePassword}
+        hideStrengthLabel
+        isOptional={isOptional}
+        label={field.label}
+        password={this.props.value}
+        placeholder={placeholder}
+        required={!isOptional}
+      />
+    );
+  };
+
+  renderTextField = () => {
+    const { error, field, isOptional, placeholder } = this.props;
+
+    return (
+      <TextField
+        errorText={error}
+        helperText={placeholder}
+        label={field.label}
+        onChange={this.handleUpdateText}
+        required={!isOptional}
+        value={this.props.value}
+      />
+    );
   };
 
   render() {
@@ -92,6 +74,14 @@ class UserDefinedText extends React.Component<CombinedProps, {}> {
   }
 }
 
-const styled = withStyles(styles);
+type StyledAccessPanelProps = Pick<Props, 'isOptional'>;
 
-export default styled(RenderGuard<CombinedProps>(UserDefinedText));
+const StyledAccessPanel = styled(AccessPanel, {
+  label: 'StyledAccessPanel',
+  shouldForwardProp: omittedProps(['isOptional']),
+})<StyledAccessPanelProps>(({ isOptional }) => ({
+  padding: 0,
+  ...(!isOptional && { margin: 0 }),
+}));
+
+export default RenderGuard<Props>(UserDefinedText);

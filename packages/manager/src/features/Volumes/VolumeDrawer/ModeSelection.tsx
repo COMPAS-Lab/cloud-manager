@@ -1,65 +1,36 @@
 import * as React from 'react';
-import FormControlLabel from 'src/components/core/FormControlLabel';
-import Radio from 'src/components/core/Radio';
-import RadioGroup from 'src/components/core/RadioGroup';
-import {
-  createStyles,
-  Theme,
-  withStyles,
-  WithStyles,
-} from 'src/components/core/styles';
 
-type ClassNames = 'root' | 'label';
+import { FormControlLabel } from 'src/components/FormControlLabel';
+import { Radio } from 'src/components/Radio/Radio';
+import { RadioGroup } from 'src/components/RadioGroup';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    root: {},
-    label: {
-      '& span': {
-        fontSize: '1rem',
-      },
-    },
-  });
+type Mode = 'attach' | 'create';
 
 interface Props {
-  mode: string;
-  onChange: () => void;
-  classes: any;
+  mode: Mode;
+  onChange: (value: Mode) => void;
 }
 
-type CombinedProps = Props & WithStyles<ClassNames>;
-
-const DrawerModeSelection: React.FC<CombinedProps> = ({
-  mode,
-  onChange,
-  classes,
-}) => {
+export const ModeSelection = ({ mode, onChange }: Props) => {
   return (
     <RadioGroup
       aria-label="mode"
       name="mode"
+      onChange={(_, value) => onChange(value as Mode)}
       value={mode}
-      onChange={onChange}
-      data-qa-mode-radio-group
     >
       <FormControlLabel
-        className={classes.label}
-        value="creating_for_linode"
-        label="Create and Attach Volume"
         control={<Radio />}
         data-qa-radio="Create and Attach Volume"
+        label="Create and Attach Volume"
+        value="create"
       />
       <FormControlLabel
-        className={classes.label}
-        value="attaching"
-        label="Attach Existing Volume"
         control={<Radio />}
         data-qa-radio="Attach Existing Volume"
+        label="Attach Existing Volume"
+        value="attach"
       />
     </RadioGroup>
   );
 };
-
-const styled = withStyles(styles);
-
-export default styled(DrawerModeSelection);

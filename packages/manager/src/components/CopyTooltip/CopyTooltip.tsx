@@ -1,55 +1,77 @@
-import classNames from 'classnames';
+import { Tooltip, VisibilityTooltip, omittedProps } from '@linode/ui';
+import { styled } from '@mui/material/styles';
 import copy from 'copy-to-clipboard';
 import * as React from 'react';
-import FileCopy from 'src/assets/icons/copy.svg';
-import { makeStyles, Theme } from 'src/components/core/styles';
-import Typography from 'src/components/core/Typography';
-import ToolTip from 'src/components/core/Tooltip';
 
-interface Props {
-  text: string;
+import FileCopy from 'src/assets/icons/copy.svg';
+import { createMaskedText } from 'src/utilities/createMaskedText';
+
+import type { MaskableTextLength } from '../MaskableText/MaskableText';
+import type { TooltipProps } from '@linode/ui';
+
+export interface CopyTooltipProps {
+  /**
+   * Additional classes to be applied to the root element.
+   */
   className?: string;
-  displayText?: string;
+  /**
+   * If true, the text will be displayed in the tooltip.
+   * @default false
+   */
+  copyableText?: boolean;
+  /**
+   * If true, the copy button will be disabled and there will be no tooltip.
+   * @default false
+   */
+  disabled?: boolean;
+  /**
+   * If true, the text will be masked with dots when displayed. It will still be copyable.
+   * @default false
+   */
+  masked?: boolean;
+  /**
+   * Optionally specifies the length of the masked text to depending on data type (e.g. 'ipv4', 'ipv6', 'plaintext'); if not provided, will use a default length.
+   */
+  maskedTextLength?: MaskableTextLength;
+  /**
+   * Callback to be executed when the icon is clicked.
+   */
+
   onClickCallback?: () => void;
+  /**
+   * The placement of the tooltip.
+   */
+  placement?: TooltipProps['placement'];
+  /**
+   * The text to be copied to the clipboard.
+   */
+  text: string;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
-  root: {
-    position: 'relative',
-    padding: 4,
-    backgroundColor: 'transparent',
-    transition: theme.transitions.create(['background-color']),
-    borderRadius: 4,
-    border: 'none',
-    cursor: 'pointer',
-    color: theme.color.grey1,
-    '& svg': {
-      transition: theme.transitions.create(['color']),
-      color: theme.color.grey1,
-      margin: 0,
-      position: 'relative',
-      width: 20,
-      height: 20,
-    },
-    '&:hover': {
-      backgroundColor: theme.color.white,
-    },
-  },
-  flex: {
-    display: 'flex',
-    width: 'auto !important',
-  },
-  displayText: {
-    color: theme.textColors.linkActiveLight,
-    marginLeft: 6,
-  },
-}));
+/**
+ *
+ * Content that is to be copied should be displayed before (to the left of) the clipboard icon.<br />
+ * If horizontal space is limited, truncate the content.
+ */
 
-export const CopyTooltip: React.FC<Props> = (props) => {
-  const classes = useStyles();
+export const CopyTooltip = (props: CopyTooltipProps) => {
+  const {
+    className,
+    copyableText,
+    disabled,
+    masked,
+    maskedTextLength,
+    onClickCallback,
+    placement,
+    text,
+  } = props;
+
   const [copied, setCopied] = React.useState<boolean>(false);
+  const [isTextMasked, setIsTextMasked] = React.useState(masked);
 
-  const { text, className, displayText, onClickCallback } = props;
+  const displayText = isTextMasked
+    ? createMaskedText(text, maskedTextLength)
+    : text;
 
   const handleIconClick = () => {
     setCopied(true);
@@ -60,25 +82,87 @@ export const CopyTooltip: React.FC<Props> = (props) => {
     }
   };
 
+  const CopyButton = (
+    <StyledIconButton
+      aria-label={`Copy ${text} to clipboard`}
+      className={className}
+      data-qa-copy-btn
+      name={text}
+      onClick={handleIconClick}
+      type="button"
+      {...props}
+    >
+      {copyableText ? displayText : <FileCopy />}
+    </StyledIconButton>
+  );
+
+  if (disabled) {
+    return CopyButton;
+  }
+
   return (
-    <ToolTip title={copied ? 'Copied!' : 'Copy'} placement="top" data-qa-copied>
-      <button
-        aria-label={`Copy ${text} to clipboard`}
-        name={text}
-        type="button"
-        onClick={handleIconClick}
-        className={classNames(className, {
-          [classes.root]: true,
-          [classes.flex]: Boolean(displayText),
-        })}
+    <>
+      <Tooltip
+        className="copy-tooltip"
+        data-qa-copied
+        disableInteractive
+        placement={placement ?? 'top'}
+        title={copied ? 'Copied!' : 'Copy'}
       >
-        <FileCopy />
-        {displayText && (
-          <Typography className={classes.displayText}>{displayText}</Typography>
-        )}
-      </button>
-    </ToolTip>
+        {CopyButton}
+      </Tooltip>
+      {masked && (
+        <VisibilityTooltip
+          handleClick={() => setIsTextMasked(!isTextMasked)}
+          isVisible={!isTextMasked}
+        />
+      )}
+    </>
   );
 };
 
-export default CopyTooltip;
+export const StyledIconButton = styled('button', {
+  label: 'StyledIconButton',
+  shouldForwardProp: omittedProps([
+    'copyableText',
+    'text',
+    'onClickCallback',
+    'masked',
+    'maskedTextLength',
+  ]),
+})<Omit<CopyTooltipProps, 'text'>>(({ theme, ...props }) => ({
+  '& svg': {
+    color: theme.color.grey1,
+    height: 20,
+    margin: 0,
+    position: 'relative',
+    transition: theme.transitions.create(['color']),
+    width: 20,
+  },
+  '& svg:hover': {
+    color: theme.palette.primary.main,
+  },
+  backgroundColor: 'transparent',
+  border: 'none',
+  borderRadius: 4,
+  color: theme.color.grey1,
+  cursor: 'pointer',
+  padding: 4,
+  position: 'relative',
+  transition: theme.transitions.create(['background-color']),
+  ...(props.copyableText && {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: theme.palette.text.primary,
+    cursor: 'pointer',
+    font: 'inherit',
+    padding: 0,
+  }),
+  ...(props.disabled && {
+    color:
+      theme.palette.mode === 'dark'
+        ? theme.color.grey6
+        : theme.color.disabledText,
+    cursor: 'default',
+  }),
+}));

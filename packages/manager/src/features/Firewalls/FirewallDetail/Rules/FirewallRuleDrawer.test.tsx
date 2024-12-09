@@ -1,36 +1,37 @@
 import { FirewallPolicyType } from '@linode/api-v4/lib/firewalls/types';
-import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
+
 import { allIPs } from 'src/features/Firewalls/shared';
 import { stringToExtendedIP } from 'src/utilities/ipUtils';
 import { renderWithTheme } from 'src/utilities/testHelpers';
-import RuleDrawer, {
+
+import { FirewallRuleDrawer } from './FirewallRuleDrawer';
+import {
+  IP_ERROR_MESSAGE,
   classifyIPs,
-  CombinedProps,
   deriveTypeFromValuesAndIPs,
   formValueToIPs,
   getInitialIPs,
   itemsToPortString,
   portStringToItems,
-  IP_ERROR_MESSAGE,
   validateForm,
   validateIPs,
-} from './FirewallRuleDrawer';
+} from './FirewallRuleDrawer.utils';
 import { ExtendedFirewallRule } from './firewallRuleEditor';
 import { FirewallRuleError, PORT_PRESETS } from './shared';
 
-const mockOnClose = jest.fn();
-const mockOnSubmit = jest.fn();
+import type { FirewallRuleDrawerProps } from './FirewallRuleDrawer.types';
+
+const mockOnClose = vi.fn();
+const mockOnSubmit = vi.fn();
 
 const baseItems = [PORT_PRESETS['22'], PORT_PRESETS['443']];
 
-jest.mock('src/components/EnhancedSelect/Select');
-
-const props: CombinedProps = {
+const props: FirewallRuleDrawerProps = {
   category: 'inbound',
-  mode: 'create',
   isOpen: true,
+  mode: 'create',
   onClose: mockOnClose,
   onSubmit: mockOnSubmit,
 };
@@ -38,16 +39,29 @@ const props: CombinedProps = {
 describe('AddRuleDrawer', () => {
   it('renders the title', () => {
     const { getByText } = renderWithTheme(
-      <RuleDrawer {...props} mode="create" category="inbound" />
+      <FirewallRuleDrawer {...props} category="inbound" mode="create" />
     );
     getByText('Add an Inbound Rule');
   });
 
-  it('disables the port input when the ICMP protocol is selected', () => {
-    renderWithTheme(<RuleDrawer {...props} mode="create" category="inbound" />);
-    expect(screen.getByLabelText('Ports')).not.toBeDisabled();
-    userEvent.selectOptions(screen.getByPlaceholderText(/protocol/i), 'ICMP');
-    expect(screen.getByLabelText('Ports')).toBeDisabled();
+  it('disables the port input when the ICMP protocol is selected', async () => {
+    const { getByText, getByPlaceholderText } = renderWithTheme(
+      <FirewallRuleDrawer {...props} category="inbound" mode="create" />
+    );
+    expect(getByPlaceholderText('Select a port...')).not.toBeDisabled();
+    await userEvent.click(getByPlaceholderText('Select a protocol...'));
+    await userEvent.click(getByText('ICMP'));
+    expect(getByPlaceholderText('Select a port...')).toBeDisabled();
+  });
+
+  it('disables the port input when the IPENCAP protocol is selected', async () => {
+    const { getByText, getByPlaceholderText } = renderWithTheme(
+      <FirewallRuleDrawer {...props} category="inbound" mode="create" />
+    );
+    expect(getByPlaceholderText('Select a port...')).not.toBeDisabled();
+    await userEvent.click(getByPlaceholderText('Select a protocol...'));
+    await userEvent.click(getByText('IPENCAP'));
+    expect(getByPlaceholderText('Select a port...')).toBeDisabled();
   });
 });
 
@@ -84,81 +98,157 @@ describe('utilities', () => {
 
   describe('validateForm', () => {
     it('validates protocol', () => {
-      expect(validateForm()).toHaveProperty(
+      expect(validateForm({})).toHaveProperty(
         'protocol',
         'Protocol is required.'
       );
     });
     it('validates ports', () => {
-      expect(validateForm('ICMP', '80')).toHaveProperty(
+      expect(validateForm({ ports: '80', protocol: 'ICMP' })).toHaveProperty(
         'ports',
         'Ports are not allowed for ICMP protocols.'
       );
-      expect(validateForm('TCP', 'invalid-port')).toHaveProperty('ports');
+      expect(
+        validateForm({ ports: '443', protocol: 'IPENCAP' })
+      ).toHaveProperty('ports', 'Ports are not allowed for IPENCAP protocols.');
+      expect(
+        validateForm({ ports: 'invalid-port', protocol: 'TCP' })
+      ).toHaveProperty('ports');
+    });
+    it('validates custom ports', () => {
+      const rest = {
+        addresses: 'All IPv4',
+        label: 'Firewalllabel',
+      };
+      // SUCCESS CASES
+      expect(validateForm({ ports: '1234', protocol: 'TCP', ...rest })).toEqual(
+        {}
+      );
+      expect(
+        validateForm({ ports: '1,2,3,4,5', protocol: 'TCP', ...rest })
+      ).toEqual({});
+      expect(
+        validateForm({ ports: '1, 2, 3, 4, 5', protocol: 'TCP', ...rest })
+      ).toEqual({});
+      expect(validateForm({ ports: '1-20', protocol: 'TCP', ...rest })).toEqual(
+        {}
+      );
+      expect(
+        validateForm({
+          ports: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15',
+          protocol: 'TCP',
+          ...rest,
+        })
+      ).toEqual({});
+      expect(
+        validateForm({ ports: '1-2,3-4', protocol: 'TCP', ...rest })
+      ).toEqual({});
+      expect(
+        validateForm({ ports: '1,5-12', protocol: 'TCP', ...rest })
+      ).toEqual({});
+      // FAILURE CASES
+      expect(
+        validateForm({ ports: '1,21-12', protocol: 'TCP', ...rest })
+      ).toHaveProperty(
+        'ports',
+        'Range must start with a smaller number and end with a larger number'
+      );
+      expect(
+        validateForm({ ports: '1-21-45', protocol: 'TCP', ...rest })
+      ).toHaveProperty('ports', 'Ranges must have 2 values');
+      expect(
+        validateForm({ ports: 'abc', protocol: 'TCP', ...rest })
+      ).toHaveProperty('ports', 'Must be 1-65535');
+      expect(
+        validateForm({ ports: '1--20', protocol: 'TCP', ...rest })
+      ).toHaveProperty('ports', 'Must be 1-65535');
+      expect(
+        validateForm({ ports: '-20', protocol: 'TCP', ...rest })
+      ).toHaveProperty('ports', 'Must be 1-65535');
+      expect(
+        validateForm({
+          ports: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16',
+          protocol: 'TCP',
+          ...rest,
+        })
+      ).toHaveProperty(
+        'ports',
+        'Number of ports or port range endpoints exceeded. Max allowed is 15'
+      );
     });
     it('validates label', () => {
       const expectedResults = [
         {
+          result: {},
           value: 'test',
-          result: {},
         },
         {
+          result: {},
           value: 'accept-inbound-HTTP',
-          result: {},
         },
         {
+          result: {
+            label: 'Label must be 3-32 characters.',
+          },
           value: 'ab',
+        },
+        {
           result: {
             label: 'Label must be 3-32 characters.',
           },
-        },
-        {
           value: 'qwertyuiopasdfghjklzxcvbnm1234567890',
-          result: {
-            label: 'Label must be 3-32 characters.',
-          },
         },
         {
-          value: ' test',
           result: {
             label: 'Label must begin with a letter.',
           },
+          value: ' test',
         },
         {
+          result: {
+            label:
+              'Label must include only ASCII letters, numbers, underscores, periods, and dashes.',
+          },
           value: 'test ',
-          result: {
-            label:
-              'Label must include only ASCII letters, numbers, underscores, periods, and dashes.',
-          },
         },
         {
-          value: 'b&a$e#c@!%^*()+=[]{}?/,<>~',
           result: {
             label:
               'Label must include only ASCII letters, numbers, underscores, periods, and dashes.',
           },
+          value: 'b&a$e#c@!%^*()+=[]{}?/,<>~',
         },
       ];
-      expectedResults.forEach(({ value, result }) => {
-        expect(validateForm('TCP', '80', value)).toEqual(result);
+      expectedResults.forEach(({ result, value }) => {
+        const rest = {
+          addresses: 'All IPv4',
+          ports: '80',
+          protocol: 'TCP',
+        };
+        expect(validateForm({ label: value, ...rest })).toEqual(result);
       });
     });
-    it('accepts a valid form', () => {
-      expect(validateForm('TCP', '22')).toEqual({});
+    it('handles required fields', () => {
+      expect(validateForm({})).toEqual({
+        addresses: 'Sources is a required field.',
+        label: 'Label is required.',
+        ports: 'Ports is a required field.',
+        protocol: 'Protocol is required.',
+      });
     });
   });
 
   describe('getInitialIPs', () => {
     const ruleToModify: ExtendedFirewallRule = {
-      ports: '80',
-      protocol: 'TCP',
-      status: 'NEW',
       action: 'ACCEPT',
-      originalIndex: 0,
       addresses: {
         ipv4: ['1.2.3.4'],
         ipv6: ['::0'],
       },
+      originalIndex: 0,
+      ports: '80',
+      protocol: 'TCP',
+      status: 'NEW',
     };
     it('parses the IPs when no errors', () => {
       expect(getInitialIPs(ruleToModify)).toEqual([
@@ -172,8 +262,8 @@ describe('utilities', () => {
           category: 'inbound',
           formField: 'addresses',
           idx: 1,
-          reason: 'Invalid IP',
           ip: { idx: 0, type: 'ipv4' },
+          reason: 'Invalid IP',
         },
       ];
       expect(getInitialIPs({ ...ruleToModify, errors })).toEqual([
@@ -193,8 +283,8 @@ describe('utilities', () => {
             category: 'inbound',
             formField: 'addresses',
             idx: 1,
-            reason: 'Invalid IP',
             ip: { idx: 0, type: 'ipv6' },
+            reason: 'Invalid IP',
           },
         ],
       });
@@ -223,11 +313,11 @@ describe('utilities', () => {
     const formValues = {
       action: 'DROP' as FirewallPolicyType,
       addresses: 'all',
+      description: '',
+      label: '',
       ports: '443',
       protocol: 'TCP',
       type: '',
-      label: '',
-      description: '',
     };
 
     it('correctly matches values to their representative type', () => {
@@ -250,13 +340,13 @@ describe('utilities', () => {
 
     it('should ignore the CUSTOM item', () => {
       expect(
-        itemsToPortString([...baseItems, { value: 'CUSTOM', label: 'Custom' }])
+        itemsToPortString([...baseItems, { label: 'Custom', value: 'CUSTOM' }])
       ).toMatch('22, 443');
     });
 
     it('should return a single range covering all ports if any of the items has the value ALL', () => {
       expect(
-        itemsToPortString([...baseItems, { value: 'ALL', label: 'All' }])
+        itemsToPortString([...baseItems, { label: 'All', value: 'ALL' }])
       ).toMatch('1-65535');
     });
 
